@@ -139,7 +139,7 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
   const Previsora =
     (await loadLogoBytes(`${base}templates/logo-previsora.png`)) ||
-    (await loadLogoBytes(`${base}templates/logo-zurich.png`));
+    (await loadLogoBytes(`${base}templates/logo-previsora.jpg`));
 
   const siniestro = txt(caso.siniestro || caso.consecutivo, '—');
   const fecha = fmtFechaCorta(informe.fechaInforme || new Date());
@@ -173,7 +173,7 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
                   data: logo.bytes,
                   transformation:
                     logo === Previsora
-                      ? { width: 118, height: 52 }
+                      ? { width: 140, height: 69 }
                       : { width: 130, height: 42 },
                   type: logo.type,
                 }),

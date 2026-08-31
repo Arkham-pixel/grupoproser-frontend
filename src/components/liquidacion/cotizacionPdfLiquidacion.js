@@ -5,6 +5,14 @@
 
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import {
+  compactarMontosEnLineaCOP,
+  documentoUsaTildeMiles,
+  esMontoMillonesTruncadoCOP,
+  normalizarSeparadoresMilesCOP,
+  parsearMontoCOP,
+  RE_MONTO_COP,
+} from '../../utils/parsearMontoCOP.js';
 
 if (typeof window !== 'undefined' && pdfWorkerUrl) {
   GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -19,100 +27,183 @@ const TOTAL_SUAVE = /\btotal\b/i;
 const DESCARTAR =
   /sub\s*total|subtotal|\biva\b|descuento|anticipo|retenci[oó]n|reteica|retefuente|cantidad|p[aá]gina|nit\b|tel[eé]fono|fecha/i;
 
-/** 21'568.750 (Colombia: apóstrofo = millones) → 21.568.750 para el regex. */
-function compactarMontosEnLinea(linea = '') {
-  return String(linea)
-    .replace(/[\u2019\u2018\u00B4\u2032]/g, "'")
-    .replace(/(\d)\s*'\s*(\d)/g, '$1.$2')
-    .replace(/(\d)\s+\.\s+(\d{3})\b/g, '$1.$2');
-}
-
 function parsearMontoCotizacion(valor) {
-  if (valor === '' || valor === null || valor === undefined) return 0;
-  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
-  let numero = String(valor)
-    .replace(/[\u2019\u2018\u00B4\u2032]/g, "'")
-    .replace(/(\d)'(\d)/g, '$1$2')
-    .replace(/[^\d.,-]/g, '');
-  if (!numero) return 0;
-  if (numero.includes(',') && numero.includes('.')) {
-    numero = numero.replace(/\./g, '').replace(',', '.');
-  } else if (numero.includes('.') && !numero.includes(',')) {
-    const partes = numero.split('.');
-    if (partes.length > 2 || (partes[1] && partes[1].length === 3)) {
-      numero = numero.replace(/\./g, '');
-    }
-  } else if (numero.includes(',')) {
-    const partes = numero.split(',');
-    if (partes.length > 2 || (partes[1] && partes[1].length === 3 && !numero.includes('.'))) {
-      numero = numero.replace(/,/g, '');
-    } else {
-      numero = numero.replace(',', '.');
-    }
-  }
-  const n = parseFloat(numero);
-  return Number.isFinite(n) ? n : 0;
+  return parsearMontoCOP(valor);
 }
 
 function esAnioOCodigo(n, crudo) {
-  if (n >= 1900 && n <= 2100 && !/[.,]/.test(String(crudo))) return true;
+  if (n >= 1900 && n <= 2100 && !/[.,'~]/.test(String(crudo))) return true;
   if (n > 0 && n < 50 && !String(crudo).includes(',')) return true;
   return false;
 }
 
-function reconstruirLineasPdf(items = []) {
-  const filas = [];
-  for (const it of items) {
-    const str = String(it?.str || '').trim();
-    if (!str) continue;
-    const y = Number(it?.transform?.[5]);
-    const x = Number(it?.transform?.[4]);
-    const yKey = Number.isFinite(y) ? Math.round(y / 4) * 4 : filas.length;
-    let fila = filas.find((f) => f.yKey === yKey);
-    if (!fila) {
-      fila = { yKey, partes: [] };
-      filas.push(fila);
-    }
-    fila.partes.push({ x: Number.isFinite(x) ? x : 0, str });
-  }
-  filas.sort((a, b) => b.yKey - a.yKey);
-  return filas.map((f) =>
-    f.partes
-      .sort((a, b) => a.x - b.x)
-      .map((p) => p.str)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-  );
+function esMontoMillonesTruncado(crudo, monto) {
+  return esMontoMillonesTruncadoCOP(crudo, monto);
 }
 
-const RE_MONTO =
-  /\$\s*\d{1,3}(?:[.'\s]\d{3})+(?:,\d{1,2})?|\$\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\$\s*\d+(?:[.,]\d{2})?|\d{1,3}(?:[.'']\d{3}){1,4}(?:,\d{1,2})?|\d{1,3}(?:,\d{3}){1,4}(?:\.\d{2})?|\d{4,}(?:[.,]\d{2})?/g;
+function documentoUsaApostrofoMillones(rows = []) {
+  return documentoUsaTildeMiles(rows);
+}
 
-export function extraerMontoFinalCotizacion(texto = '', { lineas = null } = {}) {
-  const rows = Array.isArray(lineas) && lineas.length
+function itemsPdfUsanTilde(items = []) {
+  return (items || []).some((it) => documentoUsaTildeMiles([it?.str]));
+}
+
+function documentoUsaCerosDeMiles(rows = []) {
+  return (rows || []).some((l) => /\d[.\s'~]*000\b/.test(String(l || '')));
+}
+
+/** Une `61'642` + `.000` cuando el PDF los dejó en renglones distintos. */
+function fusionarLineasMonto(rows = []) {
+  const out = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    let linea = String(rows[i] || '').trim();
+    if (!linea) continue;
+    for (let salto = 1; salto <= 2 && i + salto < rows.length; salto += 1) {
+      const next = String(rows[i + salto] || '').trim();
+      const compacta = linea.replace(/\s+/g, '');
+      const nextCompacta = next.replace(/\s+/g, '');
+      if (
+        /\d(?:[.'~\u00B4\u2019]\d{3})$/.test(compacta) &&
+        /^\.??000\b/.test(nextCompacta) &&
+        nextCompacta.length <= 8
+      ) {
+        linea = `${linea.replace(/\s+$/, '')}.${next.replace(/^\s*\.?\s*/, '')}`;
+        i += salto;
+        break;
+      }
+    }
+    out.push(linea);
+  }
+  return out;
+}
+
+function unirPartesLinea(partes = []) {
+  const sorted = [...partes].sort((a, b) => a.x - b.x);
+  let out = '';
+  for (let i = 0; i < sorted.length; i += 1) {
+    const cur = String(sorted[i].str || '');
+    if (!out) {
+      out = cur;
+      continue;
+    }
+    const curCompact = cur.replace(/\s+/g, '');
+    const outCompact = out.replace(/\s+/g, '');
+    if (/^\.?000$/.test(curCompact) && /\d{3}$/.test(outCompact)) {
+      out = `${out.replace(/\s+$/, '')}.000`;
+      continue;
+    }
+    const prevCh = out.slice(-1);
+    const curCh = cur.charAt(0);
+    const esFragNum = /[\d$.,'~]/.test(prevCh) && /[\d$.,'~]/.test(curCh);
+    const gap = sorted[i].x - (sorted[i - 1].x + (sorted[i - 1].w || 0));
+    if (esFragNum || (Number.isFinite(gap) && gap >= 0 && gap < 2.5)) {
+      out += cur;
+    } else {
+      out += ` ${cur}`;
+    }
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+function reconstruirLineasPdf(items = []) {
+  const partes = [];
+  for (const it of items) {
+    const str = normalizarSeparadoresMilesCOP(it?.str ?? '').trim();
+    if (!str) continue;
+    const tr = it?.transform || [];
+    const x = Number(tr[4]);
+    const y = Number(tr[5]);
+    const h = Number(it?.height) || Math.abs(Number(tr[3])) || 10;
+    const w = Number(it?.width);
+    partes.push({
+      str,
+      x: Number.isFinite(x) ? x : 0,
+      y: Number.isFinite(y) ? y : 0,
+      h: Number.isFinite(h) && h > 0 ? h : 10,
+      w: Number.isFinite(w) && w > 0 ? w : 0,
+    });
+  }
+  partes.sort((a, b) => b.y - a.y || a.x - b.x);
+  const filas = [];
+  for (const p of partes) {
+    const tol = Math.max(8, p.h * 0.6);
+    let fila = filas.find((f) => Math.abs(f.y - p.y) <= Math.max(tol, f.h * 0.6));
+    if (!fila) {
+      fila = { y: p.y, h: p.h, partes: [] };
+      filas.push(fila);
+    }
+    fila.partes.push(p);
+    fila.y = fila.partes.reduce((s, q) => s + q.y, 0) / fila.partes.length;
+    fila.h = Math.max(fila.h, p.h);
+  }
+  filas.sort((a, b) => b.y - a.y);
+  return fusionarLineasMonto(filas.map((f) => unirPartesLinea(f.partes)));
+}
+
+export function extraerMontoFinalCotizacion(
+  texto = '',
+  { lineas = null, usaTilde = false } = {}
+) {
+  const rowsCrudas = Array.isArray(lineas) && lineas.length
     ? lineas
     : String(texto || '')
         .split(/\n+/)
         .map((l) => l.trim())
         .filter(Boolean);
-  const candidatos = [];
+  const rows = fusionarLineasMonto(rowsCrudas);
+  const usaApostrofo = Boolean(usaTilde) || documentoUsaApostrofoMillones(rowsCrudas);
+  const hayCerosDeMiles = documentoUsaCerosDeMiles(rows);
+  const brutos = [];
   rows.forEach((lineaCruda, idx) => {
-    const linea = compactarMontosEnLinea(lineaCruda);
-    RE_MONTO.lastIndex = 0;
-    const matches = String(linea).match(RE_MONTO) || [];
+    const linea = compactarMontosEnLineaCOP(lineaCruda);
+    const lineaAnt = compactarMontosEnLineaCOP(rows[idx - 1] || '');
+    RE_MONTO_COP.lastIndex = 0;
+    const matches = String(linea).match(RE_MONTO_COP) || [];
     for (const crudo of matches) {
       const monto = parsearMontoCotizacion(crudo);
       if (!(monto >= 1000) || esAnioOCodigo(monto, crudo)) continue;
-      let score = 0;
-      if (TOTAL_FUERTE.test(linea)) score += 80;
-      else if (TOTAL_SUAVE.test(linea)) score += 40;
-      if (DESCARTAR.test(linea) && !TOTAL_FUERTE.test(linea)) score -= 35;
-      if (/\$/.test(crudo) || /\$/.test(linea)) score += 8;
-      score += Math.round((idx / Math.max(rows.length, 1)) * 18);
-      if (monto >= 100000) score += 4;
-      candidatos.push({ monto, crudo: crudo.trim(), linea, score });
+      brutos.push({
+        monto,
+        crudo: crudo.trim(),
+        linea,
+        lineaAnt,
+        idx,
+      });
     }
+  });
+  const hayMillones = brutos.some((c) => c.monto >= 1000000);
+  const candidatos = brutos.map((c) => {
+    const etiquetaCerca =
+      TOTAL_FUERTE.test(c.linea) ||
+      (c.linea.length < 48 && TOTAL_FUERTE.test(c.lineaAnt));
+    const totalCerca =
+      TOTAL_SUAVE.test(c.linea) ||
+      (c.linea.length < 48 && TOTAL_SUAVE.test(c.lineaAnt));
+    let monto = c.monto;
+    let crudo = c.crudo;
+    const truncado = esMontoMillonesTruncado(crudo, monto);
+    const completar =
+      truncado &&
+      (usaApostrofo ||
+        hayMillones ||
+        hayCerosDeMiles ||
+        etiquetaCerca ||
+        (totalCerca && (/\$/.test(crudo) || /\$/.test(c.linea))));
+    if (completar) {
+      monto *= 1000;
+      if (!/\.000\b/.test(crudo)) crudo = `${crudo}.000`;
+    }
+    let score = 0;
+    if (etiquetaCerca) score += 80;
+    else if (totalCerca) score += 40;
+    if (DESCARTAR.test(c.linea) && !etiquetaCerca) score -= 35;
+    if (/\$/.test(crudo) || /\$/.test(c.linea)) score += 8;
+    score += Math.round((c.idx / Math.max(rows.length, 1)) * 18);
+    if (monto >= 100000) score += 4;
+    if (monto >= 1000000) score += 18;
+    if (completar && etiquetaCerca) score += 30;
+    return { monto, crudo, linea: c.linea, score };
   });
   candidatos.sort((a, b) => b.score - a.score || b.monto - a.monto);
   const unico = [];
@@ -122,7 +213,7 @@ export function extraerMontoFinalCotizacion(texto = '', { lineas = null } = {}) 
     if (vistos.has(key)) continue;
     vistos.add(key);
     unico.push(c);
-    if (unico.length >= 6) break;
+    if (unico.length >= 8) break;
   }
   const mejor = unico[0] || null;
   return {
@@ -171,6 +262,7 @@ export async function procesarCotizacionPdf(fuente, { maxPaginas = MAX_PAGINAS_C
   const hasta = Math.min(total, maxPaginas);
   const paginas = [];
   const lineasTodas = [];
+  let usaTildePdf = false;
 
   for (let i = 1; i <= hasta; i += 1) {
     const page = await pdf.getPage(i);
@@ -191,7 +283,9 @@ export async function procesarCotizacionPdf(fuente, { maxPaginas = MAX_PAGINAS_C
     let textoPagina = '';
     try {
       const textContent = await page.getTextContent();
-      const lineas = reconstruirLineasPdf(textContent.items || []);
+      const items = textContent.items || [];
+      if (itemsPdfUsanTilde(items)) usaTildePdf = true;
+      const lineas = reconstruirLineasPdf(items);
       textoPagina = lineas.join('\n');
       lineasTodas.push(...lineas);
     } catch {
@@ -219,7 +313,10 @@ export async function procesarCotizacionPdf(fuente, { maxPaginas = MAX_PAGINAS_C
   }
 
   const textoCompleto = lineasTodas.join('\n');
-  const extraido = extraerMontoFinalCotizacion(textoCompleto, { lineas: lineasTodas });
+  const extraido = extraerMontoFinalCotizacion(textoCompleto, {
+    lineas: lineasTodas,
+    usaTilde: usaTildePdf,
+  });
   return {
     paginas,
     textoCompleto,

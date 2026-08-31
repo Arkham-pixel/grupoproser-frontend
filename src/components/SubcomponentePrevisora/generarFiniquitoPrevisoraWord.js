@@ -55,7 +55,7 @@ async function buildLogosHeader() {
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
   const Previsora =
     (await loadLogoBytes(`${base}templates/logo-previsora.png`)) ||
-    (await loadLogoBytes(`${base}templates/logo-zurich.png`));
+    (await loadLogoBytes(`${base}templates/logo-previsora.jpg`));
 
   const left = new Paragraph({
     spacing: { after: 0 },
@@ -77,7 +77,7 @@ async function buildLogosHeader() {
       ? [
           new ImageRun({
             data: Previsora.bytes,
-            transformation: { width: 150, height: 66 },
+            transformation: { width: 150, height: 74 },
             type: Previsora.type,
           }),
         ]

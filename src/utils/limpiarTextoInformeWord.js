@@ -3,6 +3,8 @@
  * o cuando InputMoneda concatenó los dígitos de esos atributos.
  */
 
+import { compactarMontosEnLineaCOP } from './parsearMontoCOP.js';
+
 export const MAX_DIGITOS_COP_INFORME = 13;
 export const MAX_COP_INFORME = 9_999_999_999_999;
 
@@ -54,7 +56,7 @@ function parsearMontoLimpio(valor) {
     if (!Number.isFinite(valor) || valor <= 0 || Math.abs(valor) > MAX_COP_INFORME) return 0;
     return valor;
   }
-  let numero = String(valor).replace(/[^\d.,-]/g, '');
+  let numero = compactarMontosEnLineaCOP(valor).replace(/[^\d.,-]/g, '');
   const nDigitos = numero.replace(/[^\d]/g, '').length;
   if (!numero || nDigitos === 0 || nDigitos > MAX_DIGITOS_COP_INFORME) return 0;
   if (numero.includes(',') && numero.includes('.')) {

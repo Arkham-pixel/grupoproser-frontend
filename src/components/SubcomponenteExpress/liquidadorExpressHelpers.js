@@ -4,6 +4,7 @@ import {
   esXmlWordOoXml,
   parsearMontoInformeSeguro,
 } from '../../utils/limpiarTextoInformeWord.js';
+import { compactarMontosEnLineaCOP } from '../../utils/parsearMontoCOP.js';
 
 /** SMMLV Colombia por año (actualizar cada enero cuando salga el decreto). */
 export const SMMLV_POR_ANIO = {
@@ -153,7 +154,7 @@ export function parsearNumero(valor) {
   if (esXmlWordOoXml(str) || str.replace(/[^\d]/g, '').length > 14) {
     return parsearMontoInformeSeguro(str);
   }
-  let numero = str.replace(/[^\d.,-]/g, '');
+  let numero = compactarMontosEnLineaCOP(str).replace(/[^\d.,-]/g, '');
   if (numero.includes(',') && numero.includes('.')) {
     numero = numero.replace(/\./g, '').replace(',', '.');
   } else if (numero.includes('.') && !numero.includes(',')) {

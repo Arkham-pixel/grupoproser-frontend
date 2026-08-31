@@ -7,6 +7,7 @@ import {
   SMMLV_DEFAULT,
   resolverSmmlvPorAnio,
 } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+import { compactarMontosEnLineaCOP } from '../../utils/parsearMontoCOP.js';
 
 /** Hoja Listas · Estado → Puntaje */
 export const ESTADOS_DANO_NSR10 = [
@@ -1288,7 +1289,7 @@ export function aplicarCatalogoAFilaContenido(row = {}, catalogoItem = null) {
 export function parseMontoNsr10(valor) {
   if (valor === null || valor === undefined || valor === '') return null;
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
-  let numero = String(valor).replace(/[^\d.,-]/g, '').trim();
+  let numero = compactarMontosEnLineaCOP(valor).replace(/[^\d.,-]/g, '').trim();
   if (!numero || numero === '-' || numero === '.' || numero === ',') return null;
 
   if (numero.includes(',') && numero.includes('.')) {

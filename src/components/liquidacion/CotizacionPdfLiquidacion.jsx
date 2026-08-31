@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFilePdf, FaTrash, FaUpload } from 'react-icons/fa';
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaExternalLinkAlt,
+  FaEye,
+  FaFilePdf,
+  FaSearchMinus,
+  FaSearchPlus,
+  FaTimes,
+  FaTrash,
+  FaUpload,
+} from 'react-icons/fa';
 import {
   expressAlertError,
   expressBtnGhost,
@@ -9,6 +20,7 @@ import {
 import { Campo, InputFenix, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { formatMilesInputNsr10, formatMilesNsr10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { getImageUrl } from '../../utils/imageUtils.js';
+import { esMontoMillonesTruncadoCOP } from '../../utils/parsearMontoCOP.js';
 import {
   archivosPdfCotizacion,
   ETIQUETA_ARCHIVO_COTIZACION,
@@ -27,7 +39,17 @@ async function fetchArchivoComoFile(url, nombre = 'cotizacion.pdf') {
   if (!res.ok) throw new Error(`No se pudo leer el PDF (${res.status})`);
   const blob = await res.blob();
   const tipo = blob.type || 'application/pdf';
-  return new File([blob], nombre, { type: tipo });
+  return new File([blob], nombre, { type: tipo.includes('pdf') ? 'application/pdf' : tipo });
+}
+
+function srcDePagina(pagina) {
+  if (!pagina) return '';
+  return (
+    pagina.preview ||
+    getImageUrl(pagina) ||
+    (pagina.ruta ? getImageUrl({ ruta: pagina.ruta }) : '') ||
+    ''
+  );
 }
 
 /**
@@ -51,28 +73,209 @@ export default function CotizacionPdfLiquidacion({
   const { t } = useTranslation();
   const tq = (key, opts) => t(`${i18nPrefix}.${key}`, opts);
   const inputRef = useRef(null);
+  const pdfBlobUrlRef = useRef('');
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState('');
   const [pdfArchivoId, setPdfArchivoId] = useState('');
+  const [previewPaginaIdx, setPreviewPaginaIdx] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState('');
+  const [pdfPreviewNombre, setPdfPreviewNombre] = useState('');
+  const [cargandoPdfPreview, setCargandoPdfPreview] = useState(false);
   const cotizacion = value && typeof value === 'object' ? value : null;
   const paginas = Array.isArray(cotizacion?.paginas) ? cotizacion.paginas : [];
   const pdfsArchivero = useMemo(
     () => archivosPdfCotizacion(archivosCaso),
     [archivosCaso]
   );
+  const pdfOriginal = useMemo(() => {
+    const fromCotiz = cotizacion?.archivoPdf;
+    if (fromCotiz?._id) {
+      const found = pdfsArchivero.find((a) => String(a._id) === String(fromCotiz._id));
+      if (found?.ruta) return found;
+    }
+    if (fromCotiz?.ruta) return fromCotiz;
+    const nombre = String(cotizacion?.nombreOriginal || '').trim().toLowerCase();
+    if (nombre) {
+      const porNombre = pdfsArchivero.find(
+        (a) => String(a.nombreOriginal || a.nombre || '').trim().toLowerCase() === nombre
+      );
+      if (porNombre?.ruta) return porNombre;
+    }
+    return fromCotiz?.ruta ? fromCotiz : null;
+  }, [cotizacion, pdfsArchivero]);
+  const pdfArchiveroSeleccionado = useMemo(
+    () => pdfsArchivero.find((a) => String(a._id) === String(pdfArchivoId)) || null,
+    [pdfsArchivero, pdfArchivoId]
+  );
+
+  const revocarPdfBlob = () => {
+    if (pdfBlobUrlRef.current) {
+      try {
+        URL.revokeObjectURL(pdfBlobUrlRef.current);
+      } catch {
+        /* ignore */
+      }
+      pdfBlobUrlRef.current = '';
+    }
+    setPdfBlobUrl('');
+    setPdfPreviewNombre('');
+  };
+
+  const cerrarPreviews = () => {
+    setPreviewPaginaIdx(null);
+    setZoom(1);
+    revocarPdfBlob();
+  };
+
+  const abrirVistaPagina = (idx) => {
+    if (idx < 0 || idx >= paginas.length) return;
+    revocarPdfBlob();
+    setZoom(1);
+    setPreviewPaginaIdx(idx);
+  };
+
+  const urlDeArchivoPdf = (archivo) => {
+    const ruta = archivo?.ruta;
+    if (!ruta || !api?.url) return '';
+    try {
+      return api.url(ruta) || '';
+    } catch {
+      return '';
+    }
+  };
+
+  const abrirPdfOriginal = async (archivo) => {
+    const url = urlDeArchivoPdf(archivo);
+    const nombre =
+      archivo?.nombreOriginal ||
+      archivo?.nombre ||
+      cotizacion?.nombreOriginal ||
+      'cotizacion.pdf';
+    if (!url) {
+      setError(tq('quotePreviewError', { defaultValue: 'No se pudo abrir la vista previa del PDF.' }));
+      return;
+    }
+    setCargandoPdfPreview(true);
+    setError('');
+    try {
+      const file = await fetchArchivoComoFile(url, nombre);
+      const pdfBlob = file.type.includes('pdf')
+        ? file
+        : new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
+      revocarPdfBlob();
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      pdfBlobUrlRef.current = blobUrl;
+      setPdfBlobUrl(blobUrl);
+      setPdfPreviewNombre(nombre);
+      setPreviewPaginaIdx(null);
+    } catch (err) {
+      console.warn(err);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setCargandoPdfPreview(false);
+    }
+  };
 
   useEffect(
     () => () => {
       revocarPreviewsCotizacion(paginas);
+      if (pdfBlobUrlRef.current) {
+        try {
+          URL.revokeObjectURL(pdfBlobUrlRef.current);
+        } catch {
+          /* ignore */
+        }
+        pdfBlobUrlRef.current = '';
+      }
     },
     // solo al desmontar
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
+  useEffect(() => {
+    const modalAbierto = previewPaginaIdx != null || Boolean(pdfBlobUrl);
+    if (!modalAbierto) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cerrarPreviews();
+        return;
+      }
+      if (previewPaginaIdx == null) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setPreviewPaginaIdx((i) => Math.max(0, (i ?? 0) - 1));
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setPreviewPaginaIdx((i) => Math.min(paginas.length - 1, (i ?? 0) + 1));
+      }
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        setZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100));
+      }
+      if (e.key === '-') {
+        e.preventDefault();
+        setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100));
+      }
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  // cerrarPreviews usa setState; no hace falta re-suscribir en cada render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewPaginaIdx, pdfBlobUrl, paginas.length]);
+
   const emitir = (next) => {
     onChange?.(next);
   };
+
+  const truncadoAplicadoRef = useRef('');
+  useEffect(() => {
+    if (procesando) truncadoAplicadoRef.current = '';
+  }, [procesando]);
+  useEffect(() => {
+    if (!cotizacion || disabled || procesando) return;
+    const crudo = String(cotizacion.montoFinal || '');
+    const monto = parsearMontoCotizacionExport(cotizacion.montoFinal);
+    const detectado = parsearMontoCotizacionExport(cotizacion.montoDetectado);
+    if (!esMontoMillonesTruncadoCOP(crudo, monto)) return;
+    if (detectado > 0 && Math.round(detectado) !== Math.round(monto)) return;
+    const clave = `${crudo}|${Math.round(monto)}`;
+    if (truncadoAplicadoRef.current === clave) return;
+    truncadoAplicadoRef.current = clave;
+    const corregido = monto * 1000;
+    const cands = Array.isArray(cotizacion.candidatos) ? [...cotizacion.candidatos] : [];
+    if (!cands.some((c) => Math.round(Number(c.monto)) === Math.round(corregido))) {
+      cands.unshift({
+        monto: corregido,
+        crudo: `${crudo}.000`,
+        linea: 'TOTAL',
+        score: 999,
+      });
+    }
+    if (!cands.some((c) => Math.round(Number(c.monto)) === Math.round(monto))) {
+      cands.push({
+        monto,
+        crudo,
+        linea: crudo,
+        score: 1,
+      });
+    }
+    emitir({
+      ...cotizacion,
+      montoFinal: formatMilesNsr10(corregido),
+      montoDetectado: corregido,
+      candidatos: cands,
+      millonesCompletados: true,
+    });
+  }, [cotizacion, disabled, procesando]);
 
   const notificarEliminados = (ids = []) => {
     const limpios = [...new Set((ids || []).map((id) => String(id || '')).filter(Boolean))];
@@ -291,6 +494,12 @@ export default function CotizacionPdfLiquidacion({
     if (!pagina) return;
     if (!window.confirm(tq('quoteRemovePageConfirm'))) return;
     setError('');
+    if (previewPaginaIdx === idx) {
+      setPreviewPaginaIdx(null);
+      setZoom(1);
+    } else if (previewPaginaIdx != null && previewPaginaIdx > idx) {
+      setPreviewPaginaIdx(previewPaginaIdx - 1);
+    }
     if (pagina.preview && String(pagina.preview).startsWith('blob:')) {
       try {
         URL.revokeObjectURL(pagina.preview);
@@ -325,6 +534,7 @@ export default function CotizacionPdfLiquidacion({
     setError('');
     const ids = idsCapturasCotizacion(paginas);
     revocarPreviewsCotizacion(paginas);
+    cerrarPreviews();
     emitir(null);
     setPdfArchivoId('');
     const borrados = [];
@@ -396,7 +606,7 @@ export default function CotizacionPdfLiquidacion({
       </div>
 
       {pdfsArchivero.length > 0 && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
           <Campo label={tq('quoteFromArchive')} className="flex-1">
             <SelectFenix
               value={pdfArchivoId}
@@ -419,18 +629,50 @@ export default function CotizacionPdfLiquidacion({
           >
             {tq('quoteUseArchive')}
           </button>
+          <button
+            type="button"
+            className={expressBtnGhost}
+            disabled={procesando || cargandoPdfPreview || !pdfArchivoId}
+            onClick={() => abrirPdfOriginal(pdfArchiveroSeleccionado)}
+          >
+            <FaEye />
+            {cargandoPdfPreview
+              ? tq('quotePreviewLoading', { defaultValue: 'Cargando documento…' })
+              : tq('quotePreviewArchive', { defaultValue: 'Vista previa' })}
+          </button>
         </div>
       )}
 
       {cotizacion && (
         <>
+          {(paginas.length > 0 || pdfOriginal) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {pdfOriginal && (
+                <button
+                  type="button"
+                  className={expressBtnSecondary}
+                  disabled={procesando || cargandoPdfPreview}
+                  onClick={() => abrirPdfOriginal(pdfOriginal)}
+                >
+                  <FaEye />
+                  {cargandoPdfPreview
+                    ? tq('quotePreviewLoading', { defaultValue: 'Cargando documento…' })
+                    : tq('quotePreviewPdf', { defaultValue: 'Ver PDF original' })}
+                </button>
+              )}
+              {paginas.length > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {tq('quotePreviewHint', {
+                    defaultValue: 'Clic en una página para ampliarla y revisar el documento.',
+                  })}
+                </p>
+              )}
+            </div>
+          )}
           {paginas.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {paginas.map((pagina, idx) => {
-              const src =
-                pagina.preview ||
-                getImageUrl(pagina) ||
-                (pagina.ruta ? getImageUrl({ ruta: pagina.ruta }) : '');
+              const src = srcDePagina(pagina);
               return (
                 <figure
                   key={pagina._id || pagina.preview || `p-${idx}`}
@@ -446,13 +688,26 @@ export default function CotizacionPdfLiquidacion({
                     <FaTrash className="h-3.5 w-3.5" />
                   </button>
                   {src ? (
-                    <img
-                      src={src}
-                      alt={pagina.descripcion || `Página ${pagina.pagina || idx + 1}`}
-                      className="h-48 w-full object-contain bg-gray-50 dark:bg-gray-950"
-                    />
+                    <button
+                      type="button"
+                      className="group relative block w-full bg-gray-50 dark:bg-gray-950"
+                      onClick={() => abrirVistaPagina(idx)}
+                      title={tq('quotePreview', { defaultValue: 'Vista previa' })}
+                    >
+                      <img
+                        src={src}
+                        alt={pagina.descripcion || `Página ${pagina.pagina || idx + 1}`}
+                        className="h-56 w-full object-contain"
+                      />
+                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/45">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-gray-800 opacity-0 shadow-sm transition group-hover:opacity-100">
+                          <FaSearchPlus />
+                          {tq('quotePreview', { defaultValue: 'Vista previa' })}
+                        </span>
+                      </span>
+                    </button>
                   ) : (
-                    <div className="flex h-48 items-center justify-center text-xs text-gray-400">
+                    <div className="flex h-56 items-center justify-center text-xs text-gray-400">
                       {tq('quotePage', {
                         n: pagina.pagina || idx + 1,
                       })}
@@ -464,14 +719,23 @@ export default function CotizacionPdfLiquidacion({
                         n: pagina.pagina || idx + 1,
                       })}
                     </span>
-                    <button
-                      type="button"
-                      className="font-semibold text-red-600 hover:underline disabled:opacity-50"
-                      disabled={disabled || procesando}
-                      onClick={() => eliminarPagina(idx)}
-                    >
-                      {tq('quoteRemovePage')}
-                    </button>
+                    <span className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="font-semibold text-sky-700 hover:underline disabled:opacity-50 dark:text-sky-300"
+                        onClick={() => abrirVistaPagina(idx)}
+                      >
+                        {tq('quotePreview', { defaultValue: 'Vista previa' })}
+                      </button>
+                      <button
+                        type="button"
+                        className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+                        disabled={disabled || procesando}
+                        onClick={() => eliminarPagina(idx)}
+                      >
+                        {tq('quoteRemovePage')}
+                      </button>
+                    </span>
                   </figcaption>
                 </figure>
               );
@@ -513,7 +777,16 @@ export default function CotizacionPdfLiquidacion({
             )}
           </div>
           <p className="text-xs text-gray-500">
-            {cotizacion?.montoDetectado
+            {cotizacion?.millonesCompletados
+              ? tq('quoteAmountHintMillones', {
+                  defaultValue:
+                    'El PDF traía $ {{valorCorto}} (faltaba .000). Se tomó $ {{valor}} como total en pesos.',
+                  valorCorto: formatMilesNsr10(
+                    parsearMontoCotizacionExport(cotizacion.montoFinal) / 1000
+                  ),
+                  valor: formatMilesNsr10(cotizacion.montoDetectado || cotizacion.montoFinal),
+                })
+              : cotizacion?.montoDetectado
               ? tq('quoteAmountHintDetected', {
                   valor: formatMilesNsr10(cotizacion.montoDetectado),
                 })
@@ -535,6 +808,152 @@ export default function CotizacionPdfLiquidacion({
             </span>
           </label>
         </>
+      )}
+
+      {previewPaginaIdx != null && paginas[previewPaginaIdx] && (
+        <div
+          className="fixed inset-0 z-[120] flex flex-col bg-black/80"
+          role="dialog"
+          aria-modal="true"
+          aria-label={tq('quotePreview', { defaultValue: 'Vista previa' })}
+          onClick={cerrarPreviews}
+        >
+          <div
+            className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-black/40 px-3 py-2 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold">
+              {tq('quotePageOf', {
+                n: paginas[previewPaginaIdx].pagina || previewPaginaIdx + 1,
+                total: paginas.length,
+                defaultValue: 'Página {{n}} de {{total}}',
+              })}
+              {cotizacion?.nombreOriginal ? ` · ${cotizacion.nombreOriginal}` : ''}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1.5 text-xs font-semibold hover:bg-white/20 disabled:opacity-40"
+                disabled={previewPaginaIdx <= 0}
+                title={tq('quotePrevPage', { defaultValue: 'Página anterior' })}
+                onClick={() => setPreviewPaginaIdx((i) => Math.max(0, (i ?? 0) - 1))}
+              >
+                <FaChevronLeft />
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1.5 text-xs font-semibold hover:bg-white/20 disabled:opacity-40"
+                disabled={previewPaginaIdx >= paginas.length - 1}
+                title={tq('quoteNextPage', { defaultValue: 'Página siguiente' })}
+                onClick={() =>
+                  setPreviewPaginaIdx((i) => Math.min(paginas.length - 1, (i ?? 0) + 1))
+                }
+              >
+                <FaChevronRight />
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1.5 text-xs font-semibold hover:bg-white/20 disabled:opacity-40"
+                disabled={zoom <= 0.5}
+                title={tq('quoteZoomOut', { defaultValue: 'Alejar' })}
+                onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100))}
+              >
+                <FaSearchMinus />
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-white/10 px-2 py-1.5 text-xs font-semibold hover:bg-white/20"
+                title={tq('quoteZoomReset', { defaultValue: '100%' })}
+                onClick={() => setZoom(1)}
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1.5 text-xs font-semibold hover:bg-white/20 disabled:opacity-40"
+                disabled={zoom >= 3}
+                title={tq('quoteZoomIn', { defaultValue: 'Acercar' })}
+                onClick={() => setZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
+              >
+                <FaSearchPlus />
+              </button>
+              {pdfOriginal && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1.5 text-xs font-semibold hover:bg-white/20"
+                  onClick={() => abrirPdfOriginal(pdfOriginal)}
+                >
+                  <FaFilePdf />
+                  {tq('quotePreviewPdf', { defaultValue: 'Ver PDF original' })}
+                </button>
+              )}
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-100"
+                onClick={cerrarPreviews}
+              >
+                <FaTimes />
+                {tq('quotePreviewClose', { defaultValue: 'Cerrar' })}
+              </button>
+            </div>
+          </div>
+          <div
+            className="relative min-h-0 flex-1 overflow-auto p-3 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={srcDePagina(paginas[previewPaginaIdx])}
+              alt={
+                paginas[previewPaginaIdx].descripcion ||
+                `Página ${paginas[previewPaginaIdx].pagina || previewPaginaIdx + 1}`
+              }
+              className="mx-auto h-auto rounded-sm bg-white shadow-2xl"
+              style={{
+                width: `${Math.round(zoom * 100)}%`,
+                maxWidth: zoom > 1 ? 'none' : '1100px',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {pdfBlobUrl && (
+        <div
+          className="fixed inset-0 z-[130] flex flex-col bg-black/85"
+          role="dialog"
+          aria-modal="true"
+          aria-label={tq('quotePreviewPdf', { defaultValue: 'Ver PDF original' })}
+        >
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-black/50 px-3 py-2 text-white">
+            <p className="truncate text-sm font-semibold">
+              {pdfPreviewNombre || tq('quotePreviewPdf', { defaultValue: 'Ver PDF original' })}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <a
+                href={pdfBlobUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/20"
+              >
+                <FaExternalLinkAlt />
+                {tq('quoteOpenTab', { defaultValue: 'Abrir en pestaña' })}
+              </a>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-100"
+                onClick={cerrarPreviews}
+              >
+                <FaTimes />
+                {tq('quotePreviewClose', { defaultValue: 'Cerrar' })}
+              </button>
+            </div>
+          </div>
+          <iframe
+            title={pdfPreviewNombre || 'PDF'}
+            src={pdfBlobUrl}
+            className="min-h-0 w-full flex-1 bg-neutral-800"
+          />
+        </div>
       )}
     </div>
   );

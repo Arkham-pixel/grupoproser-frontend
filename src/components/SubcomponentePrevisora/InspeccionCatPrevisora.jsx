@@ -10,7 +10,7 @@ import {
   FaTimes,
   FaTrash,
 } from 'react-icons/fa';
-import logoPrevisora from '../../assets/zurich-logo.png';
+import logoPrevisora from '../../assets/logo-previsora.png';
 import {
   actualizarArchivoPrevisora,
   eliminarArchivoPrevisora,

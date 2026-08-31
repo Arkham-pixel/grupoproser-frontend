@@ -20,7 +20,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import logoPrevisoraUrl from '../../assets/zurich-logo.png';
+import logoPrevisoraUrl from '../../assets/logo-previsora.png';
 import { urlDescargaArchivoPrevisora } from '../../services/previsoraService.js';
 import { nombreUsuarioPlataforma } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
@@ -363,7 +363,7 @@ export async function generarDesprendibleCatPrevisora(caso = {}) {
                   ? [
                       new ImageRun({
                         data: logoPrevisora.bytes,
-                        transformation: { width: 110, height: 44 },
+                        transformation: { width: 140, height: 69 },
                         type: logoPrevisora.type,
                       }),
                     ]
