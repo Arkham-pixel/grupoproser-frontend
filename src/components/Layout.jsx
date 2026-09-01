@@ -88,6 +88,7 @@ const ICONOS_ASEGURADORA = {
   previsora: FaEye,
   allianz: FaLink,
   equidadCat: FaBalanceScale,
+  express: FaBolt,
   sura: FaGlobeAmericas,
 };
 
@@ -849,7 +850,7 @@ export default function Layout() {
     sgSst: !accesoRestringido
       ? [{ path: '/sg-sst', icon: FaShieldAlt, label: t('nav.sgSstSelfAssessment') }]
       : [],
-    express: !accesoRestringido
+    express: !accesoRestringido || configContractor?.seccionesMenu?.includes('express')
       ? [
           { path: '/express/carga', icon: FaBolt, label: t('nav.expressLoad') },
           { path: '/express/liquidador', icon: FaCalculator, label: t('nav.expressSettlement') },

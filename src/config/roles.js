@@ -14,6 +14,7 @@ export const ROLES_VALIDOS = [
   'contractor_solo_bbva',
   'contractor_solo_equidad',
   'contractor_solo_equidad_cat',
+  'contractor_solo_express',
   'contractor_solo_previsora',
   'contractor_catastroficos',
 ];
@@ -33,6 +34,9 @@ export const ROL_SOLO_EQUIDAD = 'contractor_solo_equidad';
 /** Contratista solo módulo Equidad CAT. */
 export const ROL_SOLO_EQUIDAD_CAT = 'contractor_solo_equidad_cat';
 
+/** Contratista solo módulo Express. */
+export const ROL_SOLO_EXPRESS = 'contractor_solo_express';
+
 /** Contratista solo módulo Previsora (Home + Previsora). */
 export const ROL_SOLO_PREVISORA = 'contractor_solo_previsora';
 
@@ -45,6 +49,7 @@ export const ROLES_CONTRACTOR = [
   ROL_SOLO_BBVA,
   ROL_SOLO_EQUIDAD,
   ROL_SOLO_EQUIDAD_CAT,
+  ROL_SOLO_EXPRESS,
   ROL_SOLO_PREVISORA,
   ROL_CATASTROFICOS,
 ];
@@ -103,6 +108,13 @@ export const CONFIG_SOLO_EQUIDAD_CAT = {
   etiqueta: 'Equidad CAT',
 };
 
+export const CONFIG_SOLO_EXPRESS = {
+  seccionesMenu: ['express'],
+  inicio: '/express/reporte',
+  prefijosRuta: ['/express'],
+  etiqueta: 'Express',
+};
+
 export const CONFIG_SOLO_PREVISORA = {
   /** Home + módulo Previsora completo. */
   seccionesMenu: ['previsora'],
@@ -143,6 +155,7 @@ export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
   if (r === ROL_SOLO_BBVA) return CONFIG_SOLO_BBVA;
   if (r === ROL_SOLO_EQUIDAD) return CONFIG_SOLO_EQUIDAD;
   if (r === ROL_SOLO_EQUIDAD_CAT) return CONFIG_SOLO_EQUIDAD_CAT;
+  if (r === ROL_SOLO_EXPRESS) return CONFIG_SOLO_EXPRESS;
   if (r === ROL_SOLO_PREVISORA) return CONFIG_SOLO_PREVISORA;
   if (r === ROL_CATASTROFICOS) return CONFIG_CATASTROFICOS;
   if (ROLES_CONTRACTOR_TRES.includes(r)) return CONFIG_CONTRACTOR_TRES;
@@ -175,6 +188,10 @@ export function esRolSoloEquidad(rol = obtenerRolAlmacenado()) {
 
 export function esRolSoloEquidadCat(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_EQUIDAD_CAT;
+}
+
+export function esRolSoloExpress(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_SOLO_EXPRESS;
 }
 
 export function esRolSoloPrevisora(rol = obtenerRolAlmacenado()) {

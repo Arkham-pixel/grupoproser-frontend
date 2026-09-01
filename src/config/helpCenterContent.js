@@ -4,7 +4,7 @@ import {
   RESUMEN_PLAZOS_PROTOCOLO_EXPRESS,
 } from './protocoloExpressDefaults.js';
 import { PASOS_INICIO_RAPIDO } from '../components/MatrizRiesgoAvanzada/matrizContenidoShared.js';
-import { normalizarRol, ROLES_CONTRACTOR, ROL_CATASTROFICOS, ROL_SOLO_EQUIDAD, ROL_SOLO_EQUIDAD_CAT } from './roles.js';
+import { normalizarRol, ROLES_CONTRACTOR, ROL_CATASTROFICOS, ROL_SOLO_EQUIDAD, ROL_SOLO_EQUIDAD_CAT, ROL_SOLO_EXPRESS } from './roles.js';
 
 const EXCLUIR_CONTRACTOR = [...ROLES_CONTRACTOR];
 const EXCLUIR_CONTRACTOR_SIN_EQUIDAD = ROLES_CONTRACTOR.filter((r) => r !== ROL_SOLO_EQUIDAD);
@@ -124,7 +124,7 @@ export const HELP_MODULES = [
     icono: 'bolt',
     ruta: '/express/carga',
     palabrasClave: ['express', 'cargue', 'liquidador', 'protocolo', 'ans', 'reporte'],
-    excluirRoles: ['visualizador', 'puertos', 'externo', ...EXCLUIR_CONTRACTOR],
+    excluirRoles: ['visualizador', 'puertos', 'externo', ...ROLES_CONTRACTOR.filter((r) => r !== ROL_SOLO_EXPRESS)],
     articulos: [
       {
         titulo: 'Flujo Express',
