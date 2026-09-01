@@ -20,10 +20,8 @@ import CampoTomadorAllianz from './CampoTomadorAllianz.jsx';
 import { formatMilesInput } from './allianzHelpers.js';
 import {
   calcularLiquidacionAllianz,
-  cuadroLiquidacionAllianz,
   desgloseDeducibleTerremotoAllianz,
   formDataNsrDesdeLiquidadorAllianz,
-  formatearMonto,
   mapcasoAllianzALiquidador,
   parsearNumero,
   patchDeduciblePresupuestoAllianz,
@@ -37,7 +35,7 @@ import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
-import TablaCotizacionVsPresupuestoAllianz from './TablaCotizacionVsPresupuestoAllianz.jsx';
+import ResumenLiquidacionesAllianz from './ResumenLiquidacionesAllianz.jsx';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -76,10 +74,6 @@ export default function LiquidadorAllianz({
   }, [casoAllianz?._id]);
 
   const totales = useMemo(() => calcularLiquidacionAllianz(liquidador), [liquidador]);
-  const cuadroAgil = useMemo(
-    () => cuadroLiquidacionAllianz(totales, liquidador),
-    [totales, liquidador]
-  );
   const desgloseDed = useMemo(
     () => desgloseDeducibleTerremotoAllianz(liquidador, totales.diagrama),
     [liquidador, totales.diagrama]
@@ -367,64 +361,9 @@ export default function LiquidadorAllianz({
             disabled={!!exportando || guardandoCaso}
           />
         </div>
-        <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('allianz.settlement.totalDamagesNsr')}</span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          {totales.cotizacionMonto > 0 && (
-            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-              <span>{t('allianz.settlement.totalQuote')}</span>
-              <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
-            </div>
-          )}
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaPct}</span>
-            <span>$ {formatearMonto(desgloseDed.montoPct)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaSmmlv}</span>
-            <span>$ {formatearMonto(desgloseDed.montoSmmlv)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaAplicado}</span>
-            <span>$ {formatearMonto(desgloseDed.aplicado)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible contenidos</span>
-            <span>
-              ${' '}
-              {formatearMonto(
-                totales.diagrama?.deducibleContenidos?.aplicado ||
-                  totales.diagrama?.deducibleAplicado ||
-                  0
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Otros amparos (sin deducible)</span>
-            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('allianz.settlement.suggestedIndemnify')}</span>
-            <span>$ {formatearMonto(cuadroAgil.valorSugeridoIndemnizar)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('allianz.settlement.deductibleToApply')}</span>
-            <span>$ {formatearMonto(cuadroAgil.deducibleMonto)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('allianz.settlement.suggestedAfterDeductible')}</span>
-            <span>$ {formatearMonto(cuadroAgil.valorSugeridoLuegoDeducible)}</span>
-          </div>
+        <div className="mt-4">
+          <ResumenLiquidacionesAllianz totales={totales} desgloseNsr={desgloseDed} />
         </div>
-        <p className="mt-2 text-xs text-gray-500">
-          {cuadroAgil.deducibleTexto || totales.deducibleTexto || desgloseDed.texto}
-        </p>
         <div className="mt-4">
           <Campo label={t('allianz.settlement.notes')}>
             <textarea
@@ -454,15 +393,6 @@ export default function LiquidadorAllianz({
           modoLiquidador={embeberEnInforme}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
         />
-        <div className="mt-4">
-          <TablaCotizacionVsPresupuestoAllianz
-            filas={liquidador.filasCotizacionVsPresupuesto}
-            disabled={!!exportando || guardandoCaso}
-            onChange={(filas) =>
-              setLiquidador((prev) => ({ ...prev, filasCotizacionVsPresupuesto: filas }))
-            }
-          />
-        </div>
       </section>
     </div>
   );

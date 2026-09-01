@@ -6,7 +6,6 @@ import {
   ESTADO_ALLIANZ_PENDIENTE_DOCS,
   ESTADO_ALLIANZ_OBJECION,
   ESTADO_ALLIANZ_AUTORIZACION,
-  ESTADO_ALLIANZ_PAGO,
   ESTADOS_TEMPRANOS_ALLIANZ,
   casoAtendidoAllianz,
   casoInspeccionadoAllianz,
@@ -35,6 +34,7 @@ export const TRAMOS_ETAPA_ALLIANZ = [
   { id: 'analisis-docs', desde: 'fechaAnalisisCaso', hasta: 'fechaSolicitudDocumento' },
   { id: 'docs-auth', desde: 'fechaSolicitudDocumento', hasta: 'fechaAutorizacionAnalista' },
   { id: 'auth-pago', desde: 'fechaAutorizacionAnalista', hasta: 'fechaCasoParaPago' },
+  { id: 'pago-cierre', desde: 'fechaCasoParaPago', hasta: 'fechaCasoPagado' },
 ];
 
 export function fechaAltaListadoAllianz(caso = {}) {
@@ -42,7 +42,13 @@ export function fechaAltaListadoAllianz(caso = {}) {
 }
 
 export function fechaCierreListadoAllianz(caso = {}) {
-  return parseFecha(caso.fechaCasoParaPago || caso.fechaLiquidado || caso.fechaFinalizado);
+  return parseFecha(
+    caso.fechaCasoPagado ||
+      caso.fechaObjetado ||
+      caso.fechaAnulado ||
+      caso.fechaLiquidado ||
+      caso.fechaFinalizado
+  );
 }
 
 export function montoCargadoAllianz(valor) {
@@ -559,7 +565,7 @@ export function construirTorreAllianz(
       }
     }
     if (estado === ESTADO_ALLIANZ_DEFAULT) nuevosEstado += 1;
-    if (estado === ESTADO_ALLIANZ_PAGO) finalizados += 1;
+    if (esEstadoCerradoAllianz(estado)) finalizados += 1;
     if (casoAtendidoAllianz(caso)) atendidos += 1;
     if (casoInspeccionadoAllianz(caso)) inspecciones += 1;
     if (estado === ESTADO_ALLIANZ_INSPECCION) enInspeccion += 1;
@@ -729,7 +735,7 @@ export function construirTorreAllianz(
   ];
 
   const reservaPorEstado = porEstado
-    .filter((f) => f.estado !== ESTADO_ALLIANZ_PAGO && f.reserva > 0)
+    .filter((f) => !esEstadoCerradoAllianz(f.estado) && f.reserva > 0)
     .map((f) => ({ nombre: f.estado, valor: f.reserva, cantidad: f.cantidad }))
     .sort((a, b) => b.valor - a.valor);
 

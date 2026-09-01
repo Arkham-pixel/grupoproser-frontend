@@ -289,6 +289,9 @@ export default function DashboardAllianzListado() {
       'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
       'FECHA VISITA': formatDate(caso.fechaVisita || caso.fechaInspeccion),
       'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+      'FECHA PAGADO': formatDate(caso.fechaCasoPagado),
+      'FECHA OBJETADO': formatDate(caso.fechaObjetado),
+      'FECHA ANULADO': formatDate(caso.fechaAnulado),
     }));
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(filas);
@@ -918,7 +921,7 @@ function OperacionPanel({
     <>
       <ChartCard title={td('heatmap.title')} hint={td('heatmap.hint')} empty={false}>
         <HeatmapAns
-          estados={ESTADOS_ALLIANZ}
+      estados={ESTADOS_ALLIANZ}
           cubetas={stats.heatmap.cubetas}
           celdas={stats.heatmap.celdas}
           isDark={isDark}

@@ -354,6 +354,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           .filter(Boolean)
           .join(' | '),
         observaciones: form.observaciones,
+        direccionPredio: form.direccionPredio,
         ciudad: form.ciudad,
         departamento: form.departamento,
         valorAseguradoInmueble: aNumero(form.valorAseguradoInmueble),
@@ -376,8 +377,11 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
         fechaObjecion: form.fechaObjecion,
+        fechaObjetado: form.fechaObjetado,
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
         fechaCasoParaPago: form.fechaCasoParaPago,
+        fechaCasoPagado: form.fechaCasoPagado,
+        fechaAnulado: form.fechaAnulado,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -647,6 +651,17 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </Campo>
+          {esModuloListado && (
+            <Campo label={t('allianz.fields.direccionPredio')} className="md:col-span-2">
+              <InputFenix
+                value={form.direccionPredio}
+                onChange={setCampo('direccionPredio')}
+                placeholder={t('allianz.placeholders.direccionPredio', {
+                  defaultValue: 'Dirección del predio',
+                })}
+              />
+            </Campo>
+          )}
           <Campo label={t('allianz.fields.estado')} required>
             {selectSimple('estado', ESTADOS_ALLIANZ)}
           </Campo>
@@ -774,6 +789,9 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('allianz.fields.fechaObjecion')}>
             <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
           </Campo>
+          <Campo label={t('allianz.fields.fechaObjetado')}>
+            <InputFenix type="date" value={form.fechaObjetado} onChange={setCampo('fechaObjetado')} />
+          </Campo>
           <Campo label={t('allianz.fields.fechaAutorizacionAnalista')}>
             <InputFenix
               type="date"
@@ -787,6 +805,16 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               value={form.fechaCasoParaPago}
               onChange={setCampo('fechaCasoParaPago')}
             />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaCasoPagado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaCasoPagado}
+              onChange={setCampo('fechaCasoPagado')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaAnulado')}>
+            <InputFenix type="date" value={form.fechaAnulado} onChange={setCampo('fechaAnulado')} />
           </Campo>
           <Campo label={t('allianz.fields.diasEnEstado')}>
             <InputFenix value={diasEnEstadoAllianz(form)} readOnly />

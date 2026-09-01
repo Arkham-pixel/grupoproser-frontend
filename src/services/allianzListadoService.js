@@ -30,6 +30,7 @@ export const normalizeAllianzListadoItem = (item = {}) => {
   correoAsegurado: item.correoAsegurado ?? '',
   contactoAsegurado: item.contactoAsegurado ?? '',
   observaciones: item.observaciones ?? '',
+  direccionPredio: item.direccionPredio ?? '',
   ciudad: ub.ciudad || homologarCiudadAllianz(item.ciudad) || item.ciudad || '',
   departamento: ub.departamento || item.departamento || '',
   ajustadorLider: item.ajustadorLider ?? '',

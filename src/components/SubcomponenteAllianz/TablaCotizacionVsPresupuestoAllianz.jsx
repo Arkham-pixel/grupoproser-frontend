@@ -6,7 +6,7 @@ import { InputFenix, InputMonedaExpress } from '../SubcomponenteExpress/ExpressU
 import {
   diferenciaFilaCotizacionVsPresupuestoAllianz,
   filaCotizacionVsPresupuestoAllianz,
-  filasBreveCotizacionVsPresupuestoAllianz,
+  filasConDatoCotizacionVsPresupuestoAllianz,
   formatearMonto,
   motivoFilaCotizacionVsPresupuestoAllianz,
 } from './liquidadorAllianzHelpers.js';
@@ -21,7 +21,7 @@ export default function TablaCotizacionVsPresupuestoAllianz({
     Array.isArray(filas) && filas.length
       ? filas.map((fila) => filaCotizacionVsPresupuestoAllianz(fila))
       : [filaCotizacionVsPresupuestoAllianz()];
-  const breve = filasBreveCotizacionVsPresupuestoAllianz(lista);
+  const conDato = filasConDatoCotizacionVsPresupuestoAllianz(lista);
 
   const emitir = (next) => {
     onChange?.(next);
@@ -157,7 +157,7 @@ export default function TablaCotizacionVsPresupuestoAllianz({
           <FaPlus /> {t('allianz.settlement.quoteVsBudgetAdd')}
         </button>
         <p className="font-body text-xs text-gray-500">
-          {t('allianz.settlement.quoteVsBudgetWordCount', { count: breve.length })}
+          {t('allianz.settlement.quoteVsBudgetWordCount', { count: conDato.length })}
         </p>
       </div>
     </div>

@@ -19,16 +19,19 @@ import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../Su
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionAllianz,
+  completarFilasPolizaCoberturaAllianz,
   defaultInformeUnicoAllianz,
   desgloseDeducibleTerremotoAllianz,
+  encabezadoDesdecasoAllianz,
   etiquetaEncabezadoInformeAllianz,
   etiquetaReporteCuadroAllianz,
   etiquetaTituloInformeAllianz,
   esInformePreliminarAllianz,
   esInformeUnicoAllianz,
-  filasBreveCotizacionVsPresupuestoAllianz,
+  filasConDatoCotizacionVsPresupuestoAllianz,
   etiquetaMotivoCotizacionVsPresupuestoAllianz,
   motivoFilaCotizacionVsPresupuestoAllianz,
+  fusionarEncabezadoAllianz,
   formatearMonto,
   formatDateLarga,
   itemsPlanosAllianz,
@@ -36,9 +39,15 @@ import {
   normalizarTipoInformeAllianz,
   parsearNumero,
   prefijoArchivoInformeAllianz,
+  presupuestoNsrTieneDatosAllianz,
   reservaSugeridaAllianz,
+  resolverCoberturaAllianz,
+  resolverDireccionPredioAllianz,
+  resolverFechaInspeccionAllianz,
+  resolverTomadorAllianz,
   totalPresupuestoPreliminarAllianz,
 } from './liquidadorAllianzHelpers.js';
+import { nombreTipoOtroAmparo } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 
@@ -376,43 +385,68 @@ const campoFila = (label, value, opts = {}) =>
     ],
   });
 
-function construirTablaPolizaCasoAllianz({ caso = {}, enc = {} } = {}) {
-  const polizaRows = [
-    campoFila('Tomador', txt(caso.tomador || enc.tomador)),
-    campoFila('Identificación', txt(caso.identificacion || enc.identificacion)),
-    campoFila('Tipo de identificación', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)),
-    campoFila('N° póliza', txt(caso.numeroPoliza || enc.poliza)),
-    campoFila('Tipo de póliza', txt(caso.tipoPoliza || enc.tipoPoliza)),
-    campoFila('Causa', txt(caso.causa || enc.causa)),
-    campoFila('N° crédito', txt(caso.numeroCredito || enc.credito)),
-    campoFila('Cobertura / evento', txt(caso.cobertura || enc.cobertura || enc.evento)),
-    campoFila('Estado pago primas', txt(caso.estadoPagoPrimas)),
-    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza)),
-    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza)),
-    campoFila('Valor asegurado inmueble', money(caso.valorAseguradoInmueble)),
-    campoFila('Valor asegurado contenidos', money(caso.valorAseguradoContenidos)),
-    campoFila('Dirección predio', txt(caso.direccionPredio || enc.direccion)),
-    campoFila(
-      'Ciudad / Departamento',
-      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`
+/** Liquidación de la cotización: monto, deducible y auxilios (hospedaje + otros amparos). */
+function tablaLiquidacionCotizacionWord(liqCot = {}) {
+  const monto = Number(liqCot.monto) || 0;
+  if (!(monto > 0)) return null;
+  const des = liqCot.desglose || {};
+  const w = { labelW: 5000, valueW: 5000 };
+  const hosp = Number(liqCot.gastosHospedaje) || 0;
+  const otros = (Array.isArray(liqCot.otrosAmparos) ? liqCot.otrosAmparos : []).filter(
+    (it) => Number(it?.valor) > 0
+  );
+  const rows = [
+    campoFila('Cotización del asegurado', money(monto), w),
+    ...(Number(des.montoPct) > 0
+      ? [campoFila(des.etiquetaPct || '2%', money(des.montoPct), w)]
+      : []),
+    ...(Number(des.montoSmmlv) > 0
+      ? [campoFila(des.etiquetaSmmlv || '3 SMMLV', money(des.montoSmmlv), w)]
+      : []),
+    campoFila('Deducible a aplicar', money(liqCot.deducibleAplicado), w),
+    ...(hosp > 0 || otros.length
+      ? [campoFila('Cotización luego de deducible', money(liqCot.neto), w)]
+      : []),
+    ...(hosp > 0 ? [campoFila('Auxilio / gastos de hospedaje', money(hosp), w)] : []),
+    ...otros.map((it) =>
+      campoFila(
+        `${nombreTipoOtroAmparo(it.tipo, it.nombre)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
+        money(it.valor),
+        w
+      )
     ),
-    campoFila('Fecha siniestro', fmtFecha(caso.fechaSiniestro || enc.fechaSiniestro)),
-    campoFila('Fecha inspección', fmtFecha(caso.fechaInspeccion)),
+    campoFila('TOTAL (cotización − deducible + auxilios)', money(liqCot.total ?? liqCot.neto), {
+      ...w,
+      boldValue: true,
+    }),
   ];
   return new Table({
-    width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [4200, 5160],
+    width: { size: 10000, type: WidthType.DXA },
+    columnWidths: [5000, 5000],
     borders: bordersCuadro,
-    rows: polizaRows,
+    rows,
   });
+}
+
+function textoCiudadDeptoAllianz(caso = {}, enc = {}) {
+  const ciudad = txt(caso.ciudad || enc.ciudad, '');
+  const depto = txt(caso.departamento || enc.departamento, '');
+  if (ciudad && depto) return `${ciudad} / ${depto}`;
+  return ciudad || depto || '—';
+}
+
+function textoTipoPolizaWordAllianz(caso = {}, enc = {}) {
+  const tipo = String(caso.tipoPoliza || enc.tipoPoliza || '').trim();
+  const otro = String(caso.tipoPolizaOtro || '').trim();
+  if (/^otros?$/i.test(tipo) && otro) return otro;
+  return txt(tipo);
 }
 
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
 function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {} } = {}) {
-  const vigencia =
-    caso.fechaInicioPoliza || caso.fechaFinPoliza
-      ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
-      : '—';
+  const ini = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
+  const fin = caso.fechaFinPoliza || enc.fechaFinPoliza;
+  const vigencia = ini || fin ? `${fmtFechaCorta(ini)} – ${fmtFechaCorta(fin)}` : '—';
 
   const esPreliminar = esInformePreliminarAllianz(info);
   const esUnico = esInformeUnicoAllianz(info);
@@ -420,28 +454,25 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
   const filas = [
     ['REPORTE No', etiquetaReporteCuadroAllianz(info.tipoInforme)],
     ['CONSECUTIVO', txt(caso.consecutivo)],
-    ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
-    ['TOMADOR', txt(caso.tomador || enc.tomador)],
-    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
-    ['CORREO ELECTRÓNICO', txt(caso.correo)],
-    ['CELULAR', txt(caso.celular)],
+    ['SINIESTRO No', txt(caso.siniestro || enc.siniestro || caso.identificacion)],
+    ['TOMADOR', txt(resolverTomadorAllianz(caso, enc))],
+    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.asegurado || caso.informacionContacto)],
+    ['CORREO ELECTRÓNICO', txt(caso.correoAsegurado || caso.correo || enc.correo)],
+    ['CELULAR', txt(caso.telefonoAsegurado || caso.celular || enc.telefono)],
     ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
     ['TIPO IDENTIFICACIÓN', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)],
     ['N° PÓLIZA', txt(caso.numeroPoliza || enc.poliza)],
-    ['TIPO PÓLIZA', txt(caso.tipoPoliza || enc.tipoPoliza)],
+    ['TIPO PÓLIZA', textoTipoPolizaWordAllianz(caso, enc)],
     ['CAUSA', txt(caso.causa || enc.causa)],
     ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
     ['VIGENCIA', vigencia],
-    ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
-    ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
-    [
-      'CIUDAD / DEPARTAMENTO',
-      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`,
-    ],
+    ['COBERTURA / EVENTO', txt(resolverCoberturaAllianz(caso, enc))],
+    ['DIRECCIÓN RIESGO ASEGURADO', txt(resolverDireccionPredioAllianz(caso, enc, info))],
+    ['CIUDAD / DEPARTAMENTO', textoCiudadDeptoAllianz(caso, enc)],
     ['FECHA DE OCURRENCIA', fmtFechaCorta(caso.fechaSiniestro || enc.fechaSiniestro)],
-    ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
+    ['FECHA DE INSPECCIÓN', fmtFechaCorta(resolverFechaInspeccionAllianz(caso))],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
-    ['AJUSTADOR', txt(info.ajustadorNombre)],
+    ['AJUSTADOR', txt(info.ajustadorNombre || enc.ajustador || caso.ajustador)],
     ...(esPreliminar
       ? [['RESERVA SUGERIDA', money(reserva)]]
       : esUnico
@@ -698,7 +729,10 @@ async function construirBloqueDaniosUbicacionAllianz({
   const bloques = [];
   const descripcion = txt(info.descripcionDanios, '');
   const coordenadas = txt(info.coordenadasRiesgo, '');
-  const direccion = txt(info.direccionRiesgo || caso.direccionPredio, '');
+  const direccion = txt(
+    info.direccionRiesgo || resolverDireccionPredioAllianz(caso, {}, info),
+    ''
+  );
   const coords = extraerLatLngTexto(coordenadas);
   const mapaDataUrl = await cargarMapaRiesgoDataUrl(info);
 
@@ -1140,11 +1174,11 @@ function tablaPresupuestoPreliminarAllianz(filas = []) {
   });
 }
 
-/** Tabla breve: solo ítems de la cotización no pagados o de menor valor. */
-function tablaCotizacionVsPresupuestoBreveAllianz(filas = []) {
-  const lista = filasBreveCotizacionVsPresupuestoAllianz(filas);
-  const w = [3200, 1800, 1800, 1600, 5600];
-  const totalW = 14000;
+/** Tabla cotización vs presupuesto: partidas diligenciadas. */
+function tablaCotizacionVsPresupuestoAllianz(filas = []) {
+  const lista = filasConDatoCotizacionVsPresupuestoAllianz(filas);
+  const w = [2800, 1600, 1600, 1400, 1960];
+  const totalW = 9360;
   const rows = [
     new TableRow({
       children: [
@@ -1218,7 +1252,13 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const info = informe || defaultInformeUnicoAllianz(caso);
   const liq = liquidador || mapcasoAllianzALiquidador(caso);
   const totales = calcularLiquidacionAllianz(liq);
-  const enc = liq.encabezado || {};
+  const enc = fusionarEncabezadoAllianz(encabezadoDesdecasoAllianz(caso), liq.encabezado);
+  const filasPolizaWord = completarFilasPolizaCoberturaAllianz(info.filasPolizaCobertura, {
+    caso,
+    encabezado: enc,
+    informe: info,
+    liquidador: liq,
+  });
   const items = itemsPlanosAllianz(liq);
   const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
     ? liq.evaluacionSismicaNSR10.presupuesto.items
@@ -1230,6 +1270,9 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
       String(it?.categoria || '').trim() ||
       Number(it?.cantidad) > 0
   );
+  const incluirNsrWord =
+    info.incluirPresupuestoNsrEnWord !== false &&
+    (presupuestoNsrTieneDatosAllianz(liq) || tieneContenidosDiligenciados);
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
     (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
@@ -1248,7 +1291,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const tipoNorm = normalizarTipoInformeAllianz(info.tipoInforme, 'unico');
   const tipoEtiqueta =
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
-  const seccionFotos = esPreliminar ? 5 : esUnico ? 5 : 7;
+  const seccionFotos = esPreliminar ? 5 : esUnico ? (incluirNsrWord ? 4 : 3) : 7;
 
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
@@ -1355,16 +1398,23 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     );
   }
   const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
-  const seccionCotizacion = cotizacionParrafos.length
-    ? [
-        heading('Cotización de reparación'),
-        p(
-          `Soporte de la cotización presentada por el asegurado (${cotizacionesIncluidas} página(s)). Monto indicado: ${montoCotizTxt}. No sustituye el presupuesto NSR-10 del ajustador, que es la base de la liquidación.`,
-          { after: 120, size: SIZE_12 }
-        ),
-        ...cotizacionParrafos,
-      ]
-    : [];
+  const tablaCotizLiq = tablaLiquidacionCotizacionWord(totales.liquidacionCotizacion || {});
+  const seccionCotizacion =
+    cotizacionParrafos.length || tablaCotizLiq
+      ? [
+          heading('Cotización de reparación'),
+          p(
+            cotizacionesIncluidas
+              ? `Soporte de la cotización presentada por el asegurado (${cotizacionesIncluidas} página(s)).${
+                  Number(totales.cotizacionMonto) > 0 ? ` Monto indicado: ${montoCotizTxt}.` : ''
+                }`
+              : 'Liquidación de la cotización presentada por el asegurado.',
+            { after: 80, size: SIZE_12 }
+          ),
+          ...(tablaCotizLiq ? [tablaCotizLiq] : []),
+          ...cotizacionParrafos,
+        ]
+      : [];
 
   const filasCuadro = [
     new TableRow({
@@ -1554,117 +1604,91 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     (Array.isArray(liq?.cotizacionPdf?.paginas) && liq.cotizacionPdf.paginas.length > 0) ||
     Boolean(liq?.cotizacionPdf?.archivoPdf) ||
     montoCotizWord > 0;
+  const nsrTotalWord = Number(totales.totalPresupuesto ?? totales.presupuesto?.total) || 0;
+  const contenidosTotalWord = Number(totales.totalContenidos) || 0;
+  const sumaTotalWord = Number(totales.sumaCompleta ?? totales.totalDanios) || 0;
+  const hospedajeWord = Number(totales.diagrama?.gastosHospedaje) || 0;
+  const hayMontosNsrWord = nsrTotalWord > 0 || Number(totales.subtotal) > 0;
+  const hayDesgloseDedWord =
+    Number(desgloseDed.aplicado) > 0 ||
+    Number(desgloseDed.montoPct) > 0 ||
+    Number(desgloseDed.montoSmmlv) > 0;
+  const wResumen = { labelW: 5000, valueW: 5000 };
   const liquidacionResumen = [
     ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
       ? []
       : [
-          campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
+          campoFila('Dictamen', txt(criterio.dictamen), wResumen),
           campoFila(
             'Categoría / Habitabilidad',
             `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
-            { labelW: 5000, valueW: 5000 }
+            wResumen
           ),
         ]),
-    ...(montoCotizWord > 0
+    ...(hayMontosNsrWord
       ? [
-          campoFila(
-            'Cotización del asegurado (PDF, referencia; no sustituye el presupuesto)',
-            money(montoCotizWord),
-            {
-              labelW: 5000,
-              valueW: 5000,
-            }
-          ),
+          campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), wResumen),
+          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), wResumen),
+          ...(mostrarImprevistos
+            ? [campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), wResumen)]
+            : []),
+          ...(mostrarImpuestos
+            ? [campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), wResumen)]
+            : []),
+          campoFila('Total presupuesto NSR-10', money(nsrTotalWord), wResumen),
         ]
       : []),
-    campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    ...(mostrarImprevistos
+    ...(contenidosTotalWord > 0
+      ? [campoFila('Total contenidos', money(contenidosTotalWord), wResumen)]
+      : []),
+    ...(sumaTotalWord > 0 && (hayMontosNsrWord || contenidosTotalWord > 0)
       ? [
-          campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
-            labelW: 5000,
-            valueW: 5000,
+          campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(sumaTotalWord), {
+            ...wResumen,
+            boldValue: true,
           }),
         ]
       : []),
-    ...(mostrarImpuestos
+    ...(hospedajeWord > 0
+      ? [campoFila('Gastos de hospedaje', money(hospedajeWord), wResumen)]
+      : []),
+    ...(hayDesgloseDedWord
       ? [
-          campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-            labelW: 5000,
-            valueW: 5000,
+          campoFila(desgloseDed.etiquetaPct, money(desgloseDed.montoPct), wResumen),
+          campoFila(desgloseDed.etiquetaSmmlv, money(desgloseDed.montoSmmlv), wResumen),
+          campoFila(desgloseDed.etiquetaAplicado, money(desgloseDed.aplicado), {
+            ...wResumen,
+            boldValue: true,
           }),
         ]
       : []),
-    campoFila(
-      'Total presupuesto NSR-10',
-      money(totales.totalPresupuesto ?? totales.presupuesto?.total),
-      {
-        labelW: 5000,
-        valueW: 5000,
-      }
-    ),
-    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(
-      'Deducible (póliza)',
-      txt(totales.deducibleTexto || liq.deducible || liq.deducibleConfigPresupuesto?.texto),
-      { labelW: 5000, valueW: 5000 }
-    ),
-    campoFila(desgloseDed.etiquetaPct, money(desgloseDed.montoPct), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(desgloseDed.etiquetaSmmlv, money(desgloseDed.montoSmmlv), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(desgloseDed.etiquetaAplicado, money(desgloseDed.aplicado), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
     ...(deducibleContenidos > 0
-      ? [
-          campoFila('Deducible contenidos', money(deducibleContenidos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
+      ? [campoFila('Deducible contenidos', money(deducibleContenidos), wResumen)]
       : []),
     ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
       ? [
-          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
+          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), wResumen),
           ...totales.otrosAmparos.map((it) =>
             campoFila(
               `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
               money(it.valor),
-              { labelW: 5000, valueW: 5000 }
+              wResumen
             )
           ),
         ]
       : []),
-    campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
+    ...(hayMontosNsrWord ||
+    contenidosTotalWord > 0 ||
+    montoCotizWord > 0 ||
+    hayDesgloseDedWord ||
+    Number(totales.totalIndemnizar) > 0
+      ? [
+          campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
+            ...wResumen,
+            boldValue: true,
+          }),
+        ]
+      : []),
   ];
 
   const w = NSR_COLS.widths;
@@ -1813,22 +1837,36 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     size: { orientation: PageOrientation.LANDSCAPE },
   };
 
+  const tienePptoPreliminar = (Array.isArray(info.filasPresupuestoPreliminar)
+    ? info.filasPresupuestoPreliminar
+    : []
+  ).some(
+    (f) =>
+      String(f?.capitulo || '').trim() ||
+      String(f?.descripcion || '').trim() ||
+      parsearNumero(f?.valor) > 0
+  );
+
   const seccionConclusiones = [
     heading('4. Conclusiones y recomendación del ajustador'),
-    p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
-      bold: true,
-      before: 40,
-      after: 120,
-    }),
-    ...(tieneCotizacionPdf
+    ...(tienePptoPreliminar
       ? [
-          p(
-            'La cotización PDF queda como soporte de lo pedido por el asegurado. El presupuesto preliminar lo diligencia el ajustador según lo ocurrido.',
-            { after: 80 }
-          ),
+          p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
+            bold: true,
+            before: 40,
+            after: 120,
+          }),
+          ...(tieneCotizacionPdf
+            ? [
+                p(
+                  'La cotización PDF queda como soporte de lo pedido por el asegurado. El presupuesto preliminar lo diligencia el ajustador según lo ocurrido.',
+                  { after: 80 }
+                ),
+              ]
+            : []),
+          tablaPresupuestoPreliminarAllianz(info.filasPresupuestoPreliminar),
         ]
       : []),
-    tablaPresupuestoPreliminarAllianz(info.filasPresupuestoPreliminar),
     p('Conclusiones', { bold: true, before: 180, after: 40 }),
     p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
       after: 120,
@@ -1861,7 +1899,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   ];
 
   const childrenNsr = [
-    heading(esUnico ? '4. Liquidación de pérdidas (liquidador)' : '5. Liquidación de pérdidas'),
+    heading(esUnico ? '3. Liquidación de pérdidas (liquidador)' : '5. Liquidación de pérdidas'),
     p(
       mostrarImprevistos || mostrarImpuestos
         ? 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.'
@@ -1886,39 +1924,44 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           tablaContenidos,
         ]
       : []),
-    p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-    new Table({
-      width: { size: 10000, type: WidthType.DXA },
-      columnWidths: [5000, 5000],
-      borders: bordersCuadro,
-      rows: liquidacionResumen,
-    }),
+    ...(liquidacionResumen.length
+      ? [
+          p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
+          new Table({
+            width: { size: 10000, type: WidthType.DXA },
+            columnWidths: [5000, 5000],
+            borders: bordersCuadro,
+            rows: liquidacionResumen,
+          }),
+        ]
+      : []),
     ...(liq.observaciones
       ? [
           p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
           p(liq.observaciones, { after: 80 }),
         ]
       : []),
-    ...(() => {
-      const filasBreve = filasBreveCotizacionVsPresupuestoAllianz(
-        liq.filasCotizacionVsPresupuesto
-      );
-      if (!filasBreve.length) return [];
-      return [
-        p('Cotización vs presupuesto (ítems no pagados o de menor valor)', {
-          bold: true,
-          before: 200,
-          after: 40,
-          size: SIZE_12,
-        }),
-        p(
-          'Solo se listan partidas de la cotización del asegurado que no se reconocen o se reconocen por un valor menor, con la observación del ajustador.',
-          { after: 80, size: SIZE_META, color: '555555' }
-        ),
-        tablaCotizacionVsPresupuestoBreveAllianz(filasBreve),
-      ];
-    })(),
   ];
+
+  const filasVsWord = filasConDatoCotizacionVsPresupuestoAllianz(
+    liq.filasCotizacionVsPresupuesto
+  );
+  const seccionVsPresupuesto = filasVsWord.length
+    ? [
+        {
+          properties: { page: pagePortrait },
+          headers: { default: header },
+          children: [
+            heading('Cotización vs presupuesto'),
+            p(
+              'Comparativo entre la cotización del asegurado y el presupuesto del ajustador. Use Motivo y observaciones para indicar por qué no se paga una partida o se reconoce un valor menor.',
+              { after: 80, size: SIZE_META, color: '555555' }
+            ),
+            tablaCotizacionVsPresupuestoAllianz(filasVsWord),
+          ],
+        },
+      ]
+    : [];
 
   const portadaEventoDanios = [
     {
@@ -1958,27 +2001,15 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   if (esUnico) {
     sections = [
       ...portadaEventoDanios,
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('3. Información de póliza y cobertura'),
-          p('Datos de la ficha del caso (Gestionar).', { after: 80, size: SIZE_META, color: '555555' }),
-          construirTablaPolizaCasoAllianz({ caso, enc }),
-          p('Análisis de póliza y cobertura', {
-            bold: true,
-            before: 180,
-            after: 80,
-            size: SIZE_12,
-          }),
-          tablaAnalisisPolizaAllianz(info.filasPolizaCobertura),
-        ],
-      },
-      {
-        properties: { page: pageLandscape },
-        headers: { default: header },
-        children: childrenNsr,
-      },
+      ...(incluirNsrWord
+        ? [
+            {
+              properties: { page: pageLandscape },
+              headers: { default: header },
+              children: childrenNsr,
+            },
+          ]
+        : []),
       ...(seccionCotizacion.length
         ? [
             {
@@ -1988,11 +2019,12 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
             },
           ]
         : []),
+      ...seccionVsPresupuesto,
       {
         properties: { page: pagePortrait },
         headers: { default: header },
         children: [
-          heading('5. Inspección fotográfica'),
+          heading(`${incluirNsrWord ? 4 : 3}. Inspección fotográfica`),
           p(
             fotosIncluidas
               ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
@@ -2000,7 +2032,9 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
             { after: 80 }
           ),
           ...fotoParrafos,
-          heading('6. Conclusiones y recomendación del ajustador'),
+          heading(
+            `${incluirNsrWord ? 5 : 4}. Conclusiones y recomendación del ajustador`
+          ),
           p('Conclusiones', { bold: true, after: 40 }),
           p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
             after: 120,
@@ -2030,15 +2064,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
         headers: { default: header },
         children: [
           heading('3. Información de póliza y cobertura'),
-          p('Datos de la ficha del caso (Gestionar).', { after: 80, size: SIZE_META, color: '555555' }),
-          construirTablaPolizaCasoAllianz({ caso, enc }),
-          p('Análisis de póliza y cobertura', {
-            bold: true,
-            before: 180,
-            after: 80,
-            size: SIZE_12,
-          }),
-          tablaAnalisisPolizaAllianz(info.filasPolizaCobertura),
+          tablaAnalisisPolizaAllianz(filasPolizaWord),
         ],
       },
       {
@@ -2049,11 +2075,13 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     ];
 
     if (!esPreliminar) {
-      sections.push({
-        properties: { page: pageLandscape },
-        headers: { default: header },
-        children: childrenNsr,
-      });
+      if (incluirNsrWord) {
+        sections.push({
+          properties: { page: pageLandscape },
+          headers: { default: header },
+          children: childrenNsr,
+        });
+      }
       if (seccionCotizacion.length) {
         sections.push({
           properties: { page: pagePortrait },
@@ -2061,6 +2089,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           children: seccionCotizacion,
         });
       }
+      seccionVsPresupuesto.forEach((sec) => sections.push(sec));
       sections.push({
         properties: { page: pagePortrait },
         headers: { default: header },

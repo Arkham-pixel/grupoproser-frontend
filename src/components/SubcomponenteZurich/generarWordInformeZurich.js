@@ -73,6 +73,12 @@ const FONT = 'Arial';
 const SIZE_12 = 24;
 const SIZE_META = 20;
 const SIZE_NSR = 14; // 7 pt — tabla presupuesto completa en landscape
+/** Tamaño en página (docx px). El JPEG embebido va a ~2× para impresión nítida. */
+const FOTO_WORD_ANCHO = 400;
+const FOTO_WORD_ALTO = 260;
+const FOTO_WORD_MAX_LADO = 960;
+const FOTO_WORD_CALIDAD = 0.72;
+const FOTO_FETCH_PARALELO = 8;
 
 /** Anchos DXA del presupuesto NSR-10 completo (landscape ≈ 15.200 útil). */
 const NSR_COLS = {
@@ -610,6 +616,93 @@ async function bytesDesdeFoto(foto = {}) {
     if (img) return img;
   }
   return null;
+}
+
+async function mapConCurrencia(items, limite, iterar) {
+  const lista = Array.isArray(items) ? items : [];
+  const resultados = new Array(lista.length);
+  let siguiente = 0;
+  const n = Math.max(1, Math.min(limite, lista.length || 1));
+  await Promise.all(
+    Array.from({ length: lista.length ? n : 0 }, async () => {
+      while (siguiente < lista.length) {
+        const idx = siguiente;
+        siguiente += 1;
+        resultados[idx] = await iterar(lista[idx], idx);
+      }
+    })
+  );
+  return resultados;
+}
+
+/** Reduce el JPEG al tamaño de impresión para no inflar el .docx. */
+async function jpegCompactoParaWord(bytes) {
+  if (!bytes || !bytes.length) return null;
+  return new Promise((resolve) => {
+    try {
+      const esPng = bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50;
+      const blob = new Blob([bytes], { type: esPng ? 'image/png' : 'image/jpeg' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (!w || !h) {
+            URL.revokeObjectURL(url);
+            resolve(null);
+            return;
+          }
+          const scale = Math.min(1, FOTO_WORD_MAX_LADO / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            URL.revokeObjectURL(url);
+            resolve(null);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(
+            async (out) => {
+              URL.revokeObjectURL(url);
+              if (!out) {
+                resolve(null);
+                return;
+              }
+              resolve(new Uint8Array(await out.arrayBuffer()));
+            },
+            'image/jpeg',
+            FOTO_WORD_CALIDAD
+          );
+        } catch {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function bytesDesdeFotoParaInforme(foto = {}) {
+  const img = await bytesDesdeFoto(foto);
+  if (!img) return null;
+  if (img.type === 'jpg' && img.bytes.length <= 100 * 1024) return img;
+  const compacto = await jpegCompactoParaWord(img.bytes);
+  if (compacto && compacto.length && compacto.length < img.bytes.length) {
+    return { bytes: compacto, type: 'jpg' };
+  }
+  return img;
 }
 
 async function imagenDesdeDataUrl(dataUrl) {
@@ -1202,8 +1295,15 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
 
   const fotoParrafos = [];
   let fotosIncluidas = 0;
-  for (const archivo of fotosParaWord.slice(0, 24)) {
-    const img = await bytesDesdeFoto(archivo);
+  const fotosCargadas = await mapConCurrencia(
+    fotosParaWord,
+    FOTO_FETCH_PARALELO,
+    async (archivo) => {
+      const img = await bytesDesdeFotoParaInforme(archivo);
+      return { archivo, img };
+    }
+  );
+  for (const { archivo, img } of fotosCargadas) {
     if (!img) {
       fotoParrafos.push(
         p(`• ${archivo.nombreOriginal || archivo.nombre || 'Foto'} (no embebida)`, {
@@ -1220,7 +1320,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
         children: [
           new ImageRun({
             data: img.bytes,
-            transformation: { width: 400, height: 260 },
+            transformation: { width: FOTO_WORD_ANCHO, height: FOTO_WORD_ALTO },
             type: img.type,
           }),
         ],

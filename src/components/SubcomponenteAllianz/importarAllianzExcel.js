@@ -108,6 +108,10 @@ const HEADER_MAP = {
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
   ESTADO: 'estado',
   'ESTADO FINAL': 'estado',
+  'FECHA OBJETADO': 'fechaObjetado',
+  'FECHA PAGADO': 'fechaCasoPagado',
+  'FECHA CASO PAGADO': 'fechaCasoPagado',
+  'FECHA ANULADO': 'fechaAnulado',
   'SEVERIDAD CAT': 'severidadCat',
   SEVERIDAD: 'severidadCat',
   'NIVEL SEVERIDAD': 'severidadCat',
@@ -226,8 +230,11 @@ const CAMPOS_FECHA = new Set([
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
+  'fechaObjetado',
   'fechaAutorizacionAnalista',
   'fechaCasoParaPago',
+  'fechaCasoPagado',
+  'fechaAnulado',
 ]);
 
 const HEADERS_QUE_NO_SON_DATOS = new Set([
@@ -515,11 +522,19 @@ const HEADER_MAP_LISTADO = {
   'EMAIL ASEGURADO': 'correoAsegurado',
   'MAIL ASEGURADO': 'correoAsegurado',
   CIUDAD: 'ciudad',
+  DEPARTAMENTO: 'departamento',
+  DIRECCION: 'direccionPredio',
+  'DIRECCION PREDIO': 'direccionPredio',
+  'DIRECCION DEL RIESGO': 'direccionPredio',
   'FECHA ASIGNACION': 'fechaAsignacion',
   'FECHA VISITA': 'fechaVisita',
   INSPECTOR: 'inspector',
   AJUSTADOR: 'ajustador',
   ESTADO: 'estado',
+  'FECHA OBJETADO': 'fechaObjetado',
+  'FECHA PAGADO': 'fechaCasoPagado',
+  'FECHA CASO PAGADO': 'fechaCasoPagado',
+  'FECHA ANULADO': 'fechaAnulado',
   OBSERVACIONES: 'observaciones',
   OBSERVACION: 'observaciones',
   NOTAS: 'observaciones',
@@ -583,6 +598,8 @@ const parsearHojaListadoCliente = (sheet) => {
       correoAsegurado: '',
       contactoAsegurado: '',
       ciudad: '',
+      departamento: '',
+      direccionPredio: '',
       observaciones: '',
       inspector: '',
       ajustador: '',
@@ -639,6 +656,18 @@ const parsearHojaListadoCliente = (sheet) => {
       const ub = resolverUbicacionAllianz(caso.ciudad, caso.departamento);
       caso.ciudad = ub.ciudad || homologarCiudadAllianz(caso.ciudad) || caso.ciudad;
       if (ub.departamento) caso.departamento = ub.departamento;
+    }
+    if (!caso.direccionPredio) {
+      const pareceDir = (t) =>
+        /\b(kr|cl|cra|cr|carrera|calle|av|avenida|diag|transversal|tv|km|apto|apartamento|torre|barrio|#)\b/i.test(
+          t
+        ) || /\d\s*#/.test(t);
+      const deExtras = extras.find(pareceDir);
+      const deObs = String(caso.observaciones || '')
+        .split('|')
+        .map((p) => p.trim())
+        .find(pareceDir);
+      caso.direccionPredio = deExtras || deObs || '';
     }
     casos.push(caso);
   }

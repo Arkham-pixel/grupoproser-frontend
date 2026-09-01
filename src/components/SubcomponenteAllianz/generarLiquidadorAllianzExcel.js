@@ -9,7 +9,7 @@ import {
   parseMontoNsr10,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { prefillNsrDesdecasoAllianz } from './liquidadorAllianzHelpers.js';
+import { prefillNsrDesdecasoAllianz, calcularLiquidacionAllianz } from './liquidadorAllianzHelpers.js';
 
 const PLANTILLA_URL = `${import.meta.env.BASE_URL || '/'}templates/Plantilla_Evaluacion_Sismica_NSR10.xlsx`;
 
@@ -190,6 +190,56 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
   setVal(hojaPres, 43, 7, Number.isFinite(imp) ? imp : 0);
 }
 
+function agregarHojaLiquidacion(workbook, liquidador) {
+  const tot = calcularLiquidacionAllianz(liquidador || {});
+  const cot = tot.liquidacionCotizacion || {};
+  const desCot = cot.desglose || {};
+  const sheet = workbook.addWorksheet('Liquidación');
+  sheet.columns = [
+    { header: 'Bloque', key: 'bloque', width: 36 },
+    { header: 'Concepto', key: 'concepto', width: 52 },
+    { header: 'Valor', key: 'valor', width: 18 },
+  ];
+  const filas = [];
+  if (Number(cot.monto) > 0) {
+    filas.push(['Cotización del asegurado', 'Monto cotización', cot.monto]);
+    filas.push(['Cotización del asegurado', desCot.etiquetaPct || '% deducible', desCot.montoPct || 0]);
+    filas.push(['Cotización del asegurado', desCot.etiquetaSmmlv || 'SMMLV', desCot.montoSmmlv || 0]);
+    filas.push(['Cotización del asegurado', 'Deducible aplicado', cot.deducibleAplicado || 0]);
+    filas.push(['Cotización del asegurado', 'Luego de deducible', cot.neto || 0]);
+    if (Number(cot.gastosHospedaje) > 0) {
+      filas.push(['Cotización del asegurado', 'Auxilio / hospedaje', cot.gastosHospedaje]);
+    }
+    (Array.isArray(cot.otrosAmparos) ? cot.otrosAmparos : [])
+      .filter((it) => Number(it?.valor) > 0)
+      .forEach((it) => {
+        filas.push(['Cotización del asegurado', it.nombre || it.tipo || 'Auxilio', it.valor]);
+      });
+    filas.push([
+      'Cotización del asegurado',
+      'Total (cotización − deducible + auxilios)',
+      cot.total ?? cot.neto ?? 0,
+    ]);
+  }
+  filas.push(['Presupuesto ajustador (NSR-10)', 'Total daños NSR-10', tot.totalDanios || 0]);
+  filas.push(['Presupuesto ajustador (NSR-10)', 'Hospedaje', tot.diagrama?.gastosHospedaje || 0]);
+  filas.push([
+    'Presupuesto ajustador (NSR-10)',
+    tot.deducibleTexto || 'Deducible aplicado',
+    tot.deducibleAplicado || 0,
+  ]);
+  filas.push(['Presupuesto ajustador (NSR-10)', 'Luego de deducible', tot.totalIndemnizar || 0]);
+  filas.forEach((fila, i) => {
+    const row = sheet.getRow(i + 2);
+    row.getCell(1).value = fila[0];
+    row.getCell(2).value = fila[1];
+    row.getCell(3).value = fila[2];
+    if (typeof fila[2] === 'number') {
+      row.getCell(3).numFmt = '"$" #,##0';
+    }
+  });
+}
+
 /**
  * Excel liquidador Allianz = plantilla oficial Evaluación Sísmica NSR-10 rellenada.
  */
@@ -197,6 +247,7 @@ export async function generarLiquidadorAllianzExcelBlob(liquidador) {
   const workbook = await cargarPlantillaNsr10();
   rellenarPlantillaNsr10(workbook, liquidador || {});
   ocultarHojasEvaluacionYDictamenExcel(workbook);
+  agregarHojaLiquidacion(workbook, liquidador || {});
 
   const enc = liquidador?.encabezado || {};
   const buffer = await workbook.xlsx.writeBuffer();

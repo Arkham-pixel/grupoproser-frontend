@@ -20,6 +20,7 @@ import {
   NIVELES_AFECTACION_ALLIANZ,
   calcularLiquidacionAllianz,
   casoAllianzConInforme,
+  completarFilasPolizaCoberturaAllianz,
   defaultInformeUnicoAllianz,
   desgloseDeducibleTerremotoAllianz,
   etiquetaArchivoInformeAllianz,
@@ -30,7 +31,12 @@ import {
   mapcasoAllianzALiquidador,
   normalizarTipoInformeAllianz,
   patchDeduciblePresupuestoAllianz,
+  plantillaFilasPolizaAllianz,
+  presupuestoNsrTieneDatosAllianz,
   reservaSugeridaAllianz,
+  resolverCoberturaAllianz,
+  resolverDireccionPredioAllianz,
+  resolverTomadorAllianz,
   totalPresupuestoPreliminarAllianz,
 } from './liquidadorAllianzHelpers.js';
 import { descargarWordInformeAllianz } from './generarWordInformeAllianz.js';
@@ -45,6 +51,7 @@ import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
+import ResumenLiquidacionesAllianz from './ResumenLiquidacionesAllianz.jsx';
 import TablaCotizacionVsPresupuestoAllianz from './TablaCotizacionVsPresupuestoAllianz.jsx';
 
 function extraerLatLng(texto) {
@@ -285,6 +292,20 @@ export default function InformeUnicoAllianz({
     const nextTipo = normalizarTipoInformeAllianz(tipo, tipoInforme);
     if (nextTipo === tipoInforme) return;
     const next = { ...informe, tipoInforme: nextTipo };
+    const vacias = (informe.filasPolizaCobertura || []).every(
+      (f) => !String(f?.analisis || '').trim() && !String(f?.conclusion || '').trim()
+    );
+    if (vacias) {
+      next.filasPolizaCobertura = completarFilasPolizaCoberturaAllianz(
+        plantillaFilasPolizaAllianz(nextTipo),
+        {
+          caso: casoAllianz || {},
+          encabezado: liquidador?.encabezado || {},
+          informe: next,
+          liquidador,
+        }
+      );
+    }
     setInforme(next);
     onGuardarEnCaso?.(next);
   };
@@ -409,11 +430,11 @@ export default function InformeUnicoAllianz({
     });
   };
 
-  const nNsr = esUnico ? 4 : 5;
+  const nNsr = esUnico ? 3 : 5;
   const nTabla = 6;
-  const nFotos = esPreliminar ? 5 : esUnico ? 5 : 7;
-  const nConclusiones = esUnico ? 6 : 4;
-  const nFirmas = esPreliminar ? 6 : esUnico ? 7 : 8;
+  const nFotos = esPreliminar ? 5 : esUnico ? 4 : 7;
+  const nConclusiones = esUnico ? 5 : 4;
+  const nFirmas = esPreliminar ? 6 : esUnico ? 6 : 8;
 
   return (
     <div className="space-y-5">
@@ -588,7 +609,10 @@ export default function InformeUnicoAllianz({
             <MapaGoogleEarth
               apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               coordenadasIniciales={informe.coordenadasRiesgo}
-              direccionInicial={informe.direccionRiesgo || casoAllianz?.direccionPredio || ''}
+              direccionInicial={
+                informe.direccionRiesgo ||
+                resolverDireccionPredioAllianz(casoAllianz || {}, {}, informe)
+              }
               capturaInicial={capturaMapaInicial || undefined}
               forzarCaptura={forzarCapturaMapa}
               onMapaChange={handleMapaChange}
@@ -602,12 +626,15 @@ export default function InformeUnicoAllianz({
         </div>
       </section>
 
+      {!esUnico && (
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>3. {t('allianz.reportUnique.sectionPolicy')}</h3>
         <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-gray-500">{t('allianz.fields.tomador')}</dt>
-            <dd className="font-medium">{casoAllianz?.tomador || '—'}</dd>
+            <dd className="font-medium">
+              {resolverTomadorAllianz(casoAllianz || {}) || '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('allianz.fields.numeroPoliza')}</dt>
@@ -627,38 +654,29 @@ export default function InformeUnicoAllianz({
           </div>
           <div>
             <dt className="text-gray-500">{t('allianz.fields.cobertura')}</dt>
-            <dd className="font-medium">{casoAllianz?.cobertura || '—'}</dd>
+            <dd className="font-medium">
+              {resolverCoberturaAllianz(casoAllianz || {}) || '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('allianz.fields.estadoPagoPrimas')}</dt>
             <dd className="font-medium">{casoAllianz?.estadoPagoPrimas || '—'}</dd>
           </div>
-          {esUnico && (
-            <>
-              <div>
-                <dt className="text-gray-500">{t('allianz.fields.valorAseguradoInmueble')}</dt>
-                <dd className="font-medium">
-                  $ {formatearMonto(casoAllianz?.valorAseguradoInmueble)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">{t('allianz.fields.valorAseguradoContenidos')}</dt>
-                <dd className="font-medium">
-                  $ {formatearMonto(casoAllianz?.valorAseguradoContenidos)}
-                </dd>
-              </div>
-            </>
-          )}
           <div>
             <dt className="text-gray-500">{t('allianz.fields.direccionPredio')}</dt>
-            <dd className="font-medium">{casoAllianz?.direccionPredio || '—'}</dd>
+            <dd className="font-medium">
+              {resolverDireccionPredioAllianz(casoAllianz || {}, {}, informe) || '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">
               {t('allianz.fields.ciudad')} / {t('allianz.fields.departamento')}
             </dt>
             <dd className="font-medium">
-              {casoAllianz?.ciudad || '—'} / {casoAllianz?.departamento || '—'}
+              {[casoAllianz?.ciudad, casoAllianz?.departamento]
+                .map((x) => String(x || '').trim())
+                .filter(Boolean)
+                .join(' / ') || '—'}
             </dd>
           </div>
         </dl>
@@ -691,6 +709,7 @@ export default function InformeUnicoAllianz({
           emptyLabel={t('allianz.reportUnique.emptyPolicyRows')}
         />
       </section>
+      )}
 
       {!esUnico && (
       <section className={expressFormSection}>
@@ -778,6 +797,23 @@ export default function InformeUnicoAllianz({
                 ? t('allianz.reportUnique.settlementHint')
                 : t('allianz.reportUnique.finalAddsSettlement')}
             </p>
+            <label className="mb-4 flex items-start gap-2 font-body text-sm text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-blue-700"
+                checked={informe.incluirPresupuestoNsrEnWord !== false}
+                disabled={guardandoCaso}
+                onChange={(e) => setCampo('incluirPresupuestoNsrEnWord', e.target.checked)}
+              />
+              <span>
+                {t('allianz.reportUnique.includeNsrInWord')}
+                <span className="mt-0.5 block text-xs text-gray-500">
+                  {presupuestoNsrTieneDatosAllianz(liquidador)
+                    ? t('allianz.reportUnique.includeNsrInWordHintOn')
+                    : t('allianz.reportUnique.includeNsrInWordHintEmpty')}
+                </span>
+              </span>
+            </label>
 
             {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
               <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
@@ -837,45 +873,9 @@ export default function InformeUnicoAllianz({
               />
             </div>
 
-            <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>{t('allianz.settlement.totalDamagesNsr')}</span>
-                <span>$ {formatearMonto(totales.totalDanios)}</span>
-              </div>
-              {totales.cotizacionMonto > 0 && (
-                <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                  <span>{t('allianz.settlement.totalQuote')}</span>
-                  <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Hospedaje</span>
-                <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>{desgloseDed.etiquetaPct}</span>
-                <span>$ {formatearMonto(desgloseDed.montoPct)}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>{desgloseDed.etiquetaSmmlv}</span>
-                <span>$ {formatearMonto(desgloseDed.montoSmmlv)}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>{desgloseDed.etiquetaAplicado}</span>
-                <span>$ {formatearMonto(desgloseDed.aplicado)}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Otros amparos (sin deducible)</span>
-                <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-              </div>
-              <div className="flex justify-between px-4 py-2 text-sm font-bold">
-                <span>{t('allianz.settlement.totalPay')}</span>
-                <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-              </div>
+            <div className="mb-4">
+              <ResumenLiquidacionesAllianz totales={totales} desgloseNsr={desgloseDed} />
             </div>
-            <p className="mb-4 mt-2 text-xs text-gray-500">
-              {totales.deducibleTexto || desgloseDed.texto}
-            </p>
 
             <ChecklistEvaluacionSismicaNSR10
               formData={formDataNsr}
@@ -883,15 +883,16 @@ export default function InformeUnicoAllianz({
               modoLiquidador
               recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
             />
-            <div className="mt-4">
-              <TablaCotizacionVsPresupuestoAllianz
-                filas={liquidador.filasCotizacionVsPresupuesto}
-                disabled={guardandoCaso}
-                onChange={(filas) =>
-                  setLiquidador((prev) => ({ ...prev, filasCotizacionVsPresupuesto: filas }))
-                }
-              />
-            </div>
+          </section>
+
+          <section className={expressFormSection}>
+            <TablaCotizacionVsPresupuestoAllianz
+              filas={liquidador.filasCotizacionVsPresupuesto}
+              disabled={guardandoCaso}
+              onChange={(filas) =>
+                setLiquidador((prev) => ({ ...prev, filasCotizacionVsPresupuesto: filas }))
+              }
+            />
           </section>
 
           {!esUnico && (

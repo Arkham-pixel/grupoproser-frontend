@@ -8,8 +8,11 @@ export const ESTADO_ALLIANZ_INSPECCION = 'COORDINANDO INSPECCIÓN';
 export const ESTADO_ALLIANZ_ANALISIS = 'ANÁLISIS DEL CASO';
 export const ESTADO_ALLIANZ_PENDIENTE_DOCS = 'PENDIENTE DE DOCUMENTO';
 export const ESTADO_ALLIANZ_OBJECION = 'OBJECIÓN';
+export const ESTADO_ALLIANZ_OBJETADO = 'OBJETADO';
 export const ESTADO_ALLIANZ_AUTORIZACION = 'AUTORIZACIÓN ANALISTA';
 export const ESTADO_ALLIANZ_PAGO = 'CASO PARA PAGO';
+export const ESTADO_ALLIANZ_PAGADO = 'PAGADO';
+export const ESTADO_ALLIANZ_ANULADO = 'ANULADO';
 
 export const ESTADOS_ALLIANZ = [
   ESTADO_ALLIANZ_DEFAULT,
@@ -17,9 +20,18 @@ export const ESTADOS_ALLIANZ = [
   ESTADO_ALLIANZ_ANALISIS,
   ESTADO_ALLIANZ_PENDIENTE_DOCS,
   ESTADO_ALLIANZ_OBJECION,
+  ESTADO_ALLIANZ_OBJETADO,
   ESTADO_ALLIANZ_AUTORIZACION,
   ESTADO_ALLIANZ_PAGO,
+  ESTADO_ALLIANZ_PAGADO,
+  ESTADO_ALLIANZ_ANULADO,
 ];
+
+export const ESTADOS_CIERRE_ALLIANZ = new Set([
+  ESTADO_ALLIANZ_OBJETADO,
+  ESTADO_ALLIANZ_PAGADO,
+  ESTADO_ALLIANZ_ANULADO,
+]);
 
 export const ESTADOS_TEMPRANOS_ALLIANZ = new Set([
   ESTADO_ALLIANZ_DEFAULT,
@@ -34,8 +46,11 @@ export const FECHA_ACCION_POR_ESTADO_ALLIANZ = {
   'ANÁLISIS DEL CASO': 'fechaAnalisisCaso',
   'PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
   OBJECIÓN: 'fechaObjecion',
+  OBJETADO: 'fechaObjetado',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
   'CASO PARA PAGO': 'fechaCasoParaPago',
+  PAGADO: 'fechaCasoPagado',
+  ANULADO: 'fechaAnulado',
 };
 
 export const CAMPOS_FECHA_ACCION_ALLIANZ = [
@@ -45,8 +60,11 @@ export const CAMPOS_FECHA_ACCION_ALLIANZ = [
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
+  'fechaObjetado',
   'fechaAutorizacionAnalista',
   'fechaCasoParaPago',
+  'fechaCasoPagado',
+  'fechaAnulado',
 ];
 
 const ESTADOS_ALLIANZ_LEGACY = {
@@ -55,7 +73,19 @@ const ESTADOS_ALLIANZ_LEGACY = {
   DOCUMENTACION: 'PENDIENTE DE DOCUMENTO',
   LIQUIDADO: 'CASO PARA PAGO',
   'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
-  CERRADO: 'CASO PARA PAGO',
+  OBJECTED: 'OBJETADO',
+  'CASO OBJETADO': 'OBJETADO',
+  'OBJECION CERRADA': 'OBJETADO',
+  'OBJECION FINAL': 'OBJETADO',
+  PAGO: 'PAGADO',
+  'CASO PAGADO': 'PAGADO',
+  INDEMNIZADO: 'PAGADO',
+  GIRADO: 'PAGADO',
+  'CASE PAID': 'PAGADO',
+  CERRADO: 'PAGADO',
+  'CERRADO MANUAL': 'PAGADO',
+  CANCELADO: 'ANULADO',
+  'SIN COBERTURA': 'ANULADO',
 };
 
 const claveEstadoAllianz = (valor) =>
@@ -77,7 +107,7 @@ export function homologarEstadoAllianz(valor) {
 }
 
 export function esEstadoCerradoAllianz(estado) {
-  return homologarEstadoAllianz(estado) === ESTADO_ALLIANZ_PAGO;
+  return ESTADOS_CIERRE_ALLIANZ.has(homologarEstadoAllianz(estado));
 }
 
 export function esEstadoPendienteDocsAllianz(estado) {
@@ -586,8 +616,11 @@ export const FORM_VACIO_ALLIANZ = {
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',
   fechaObjecion: '',
+  fechaObjetado: '',
   fechaAutorizacionAnalista: '',
   fechaCasoParaPago: '',
+  fechaCasoPagado: '',
+  fechaAnulado: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',

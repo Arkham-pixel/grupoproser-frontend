@@ -78,6 +78,15 @@ export const ZONAS_DANIOS_PRELIMINAR_ALLIANZ = [
   'Columnas, vigas y sistema aporticado visible',
 ];
 
+export const CONCEPTOS_POLIZA_UNICO_ALLIANZ = [
+  'Vigencia',
+  'Ubicación del riesgo',
+  'Evento',
+  'Interés afectado',
+  'Deducible',
+  'Infraseguro',
+];
+
 export const CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ = [
   'Vigencia',
   'Modalidad de aseguramiento',
@@ -115,12 +124,278 @@ export function plantillaFilasDaniosAllianz() {
   }));
 }
 
-export function plantillaFilasPolizaAllianz() {
-  return CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ.map((concepto) => ({
+export function plantillaFilasPolizaAllianz(tipoInforme = 'unico') {
+  const conceptos =
+    normalizarTipoInformeAllianz(tipoInforme, 'unico') === 'preliminar'
+      ? CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ
+      : CONCEPTOS_POLIZA_UNICO_ALLIANZ;
+  return conceptos.map((concepto) => ({
     concepto,
     analisis: '',
     conclusion: '',
   }));
+}
+
+function textoNoVacioAllianz(valor) {
+  const s = String(valor ?? '')
+    .replace(/\t/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s || s === '—' || s === '-' || /^n\/?a$/i.test(s) || s === 'null' || s === 'undefined') {
+    return '';
+  }
+  return s;
+}
+
+export function extraerDireccionObservacionesAllianz(observaciones) {
+  const partes = String(observaciones || '')
+    .split(/[|\n;]+/)
+    .map((p) => p.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const esFecha = (t) =>
+    /\b(gmt|utc|est|edt|eastern|daylight|lunes|martes|miercoles|jueves|viernes|sabado|domingo|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(
+      t
+    ) || /^\d{4}-\d{2}-\d{2}/.test(t);
+  const esSoloNumero = (t) => /^\d{1,5}$/.test(t);
+  const pareceDir = (t) =>
+    /\b(kr|cl|cra|cr|carrera|calle|av|avenida|diag|transversal|tv|km|apto|apartamento|torre|barrio|#)\b/i.test(
+      t
+    ) || /\d\s*#/.test(t);
+  const candidatas = partes.filter((p) => !esFecha(p) && !esSoloNumero(p));
+  const hallada = candidatas.find(pareceDir);
+  if (hallada) return hallada;
+  const entero = String(observaciones || '').replace(/\s+/g, ' ').trim();
+  return pareceDir(entero) && !esFecha(entero) ? entero : '';
+}
+
+export function resolverTomadorAllianz(caso = {}, enc = {}) {
+  return (
+    textoNoVacioAllianz(caso.tomador) ||
+    textoNoVacioAllianz(enc.tomador) ||
+    textoNoVacioAllianz(caso.asegurado) ||
+    textoNoVacioAllianz(enc.asegurado) ||
+    textoNoVacioAllianz(caso.informacionContacto) ||
+    ''
+  );
+}
+
+export function resolverCoberturaAllianz(caso = {}, enc = {}) {
+  return (
+    textoNoVacioAllianz(caso.cobertura) ||
+    textoNoVacioAllianz(enc.cobertura) ||
+    textoNoVacioAllianz(enc.evento) ||
+    textoNoVacioAllianz(caso.causa) ||
+    textoNoVacioAllianz(enc.causa) ||
+    'TERREMOTO'
+  );
+}
+
+export function resolverFechaInspeccionAllianz(caso = {}) {
+  return caso.fechaInspeccion || caso.fechaVisita || '';
+}
+
+export function fusionarEncabezadoAllianz(base = {}, guardado = {}) {
+  const out = { ...(base || {}) };
+  Object.entries(guardado || {}).forEach(([clave, valor]) => {
+    const t = textoNoVacioAllianz(valor);
+    if (t) out[clave] = valor;
+  });
+  return out;
+}
+
+export function resolverDireccionPredioAllianz(caso = {}, enc = {}, info = {}) {
+  const directa =
+    textoNoVacioAllianz(caso.direccionPredio) ||
+    textoNoVacioAllianz(enc.direccion) ||
+    textoNoVacioAllianz(info.direccionRiesgo);
+  if (directa) return directa;
+  const deObs = extraerDireccionObservacionesAllianz(caso.observaciones);
+  if (deObs) return deObs;
+  return [caso.ciudad || enc.ciudad, caso.departamento || enc.departamento]
+    .map((x) => textoNoVacioAllianz(x))
+    .filter(Boolean)
+    .join(', ');
+}
+
+function textoInformeAllianz(v) {
+  return String(v ?? '').trim();
+}
+
+function claveConceptoPolizaAllianz(valor) {
+  return textoInformeAllianz(valor)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function conceptoPolizaCoincideAllianz(fila, ...needles) {
+  const k = claveConceptoPolizaAllianz(fila?.concepto);
+  if (!k) return false;
+  return needles.some((n) => k.includes(claveConceptoPolizaAllianz(n)));
+}
+
+function analisisConceptoPolizaAllianz(fila, ctx = {}) {
+  const caso = ctx.caso || {};
+  const enc = ctx.encabezado || {};
+  const info = ctx.informe || {};
+  const liq = ctx.liquidador || caso.liquidador || {};
+  const tomador = resolverTomadorAllianz(caso, enc);
+  const poliza = textoInformeAllianz(caso.numeroPoliza || enc.poliza);
+  const cobertura = resolverCoberturaAllianz(caso, enc);
+  const direccion = resolverDireccionPredioAllianz(caso, enc, info);
+  const ciudad = textoInformeAllianz(caso.ciudad || enc.ciudad);
+  const depto = textoInformeAllianz(caso.departamento || enc.departamento);
+  const ini = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
+  const fin = caso.fechaFinPoliza || enc.fechaFinPoliza;
+
+  if (conceptoPolizaCoincideAllianz(fila, 'vigencia')) {
+    if (ini || fin) {
+      return {
+        analisis: `${poliza ? `Póliza ${poliza}. ` : ''}${tomador ? `Tomador/asegurado: ${tomador}. ` : ''}Vigencia del ${formatDateLarga(ini)} al ${formatDateLarga(fin)}, según ficha de Gestionar.`,
+        conclusion: 'EN VIGENCIA',
+      };
+    }
+    if (poliza) {
+      return {
+        analisis: `Póliza ${poliza}${tomador ? `, asegurado ${tomador}` : ''}. Las fechas de vigencia no constan en Gestionar.`,
+        conclusion: 'PENDIENTE VIGENCIA',
+      };
+    }
+    return { analisis: '', conclusion: '' };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'ubicacion')) {
+    const geo = [ciudad, depto].filter(Boolean).join(' / ');
+    const lugar =
+      direccion && geo && ciudad && direccion.toLowerCase().includes(ciudad.toLowerCase())
+        ? direccion
+        : [direccion, geo].filter(Boolean).join('. ');
+    if (!lugar) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Ubicación del riesgo según Gestionar: ${lugar}.`,
+      conclusion: 'RIESGO IDENTIFICADO',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'evento')) {
+    if (!cobertura) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `El expediente (Gestionar) registra causa / cobertura ${cobertura}.`,
+      conclusion: 'EVENTO AMPARADO',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'interes afectado', 'interes')) {
+    const vaInm = parsearNumero(caso.valorAseguradoInmueble || enc.valorAseguradoInmueble);
+    const vaCont = parsearNumero(caso.valorAseguradoContenidos || enc.valorAseguradoContenidos);
+    const partes = [];
+    if (vaInm > 0) partes.push(`inmueble $ ${formatearMonto(vaInm)}`);
+    if (vaCont > 0) partes.push(`contenidos $ ${formatearMonto(vaCont)}`);
+    if (!partes.length) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Interés afectado según valores asegurados en Gestionar: ${partes.join(' y ')}.`,
+      conclusion: 'SEGÚN PÓLIZA / GESTIONAR',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'modalidad')) {
+    const vaInm = parsearNumero(caso.valorAseguradoInmueble || enc.valorAseguradoInmueble);
+    const vaCont = parsearNumero(caso.valorAseguradoContenidos || enc.valorAseguradoContenidos);
+    const partes = [];
+    if (vaInm > 0) partes.push(`valor asegurado inmueble $ ${formatearMonto(vaInm)}`);
+    if (vaCont > 0) partes.push(`contenidos $ ${formatearMonto(vaCont)}`);
+    if (!partes.length) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Según Gestionar se registra ${partes.join(' y ')}.`,
+      conclusion: 'SEGÚN PÓLIZA / GESTIONAR',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'deducible')) {
+    const textoCfg =
+      textoInformeAllianz(liq?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.texto) ||
+      textoInformeAllianz(liq?.deducible) ||
+      TEXTO_DEDUCIBLE_TERREMOTO_ALLIANZ;
+    return {
+      analisis: `Condición de deducible tomada de Gestionar / liquidador: ${textoCfg}.`,
+      conclusion: textoCfg,
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'infraseguro')) {
+    return {
+      analisis:
+        'No consta en Gestionar una relación valor asegurado vs. valor comercial que permita declarar infraseguro. Queda sujeto a la inspección y a la carátula de póliza.',
+      conclusion: 'POR DEFINIR',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'reserva')) {
+    const reserva = reservaSugeridaAllianz(info) || parsearNumero(caso.reserva);
+    if (!(reserva > 0)) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Reserva preliminar según presupuesto / ficha de Gestionar: $ ${formatearMonto(reserva)}.`,
+      conclusion: `$ ${formatearMonto(reserva)}`,
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'remocion', 'escombros')) {
+    return {
+      analisis:
+        'La remoción de escombros se reconocerá conforme a las condiciones de la póliza Allianz, una vez cuantificada en la inspección.',
+      conclusion: 'SEGÚN PÓLIZA',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'honorarios')) {
+    return {
+      analisis:
+        'Los honorarios profesionales se reconocerán si están amparados en la póliza y se acreditan con soportes.',
+      conclusion: 'SEGÚN PÓLIZA',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'exclusion')) {
+    return {
+      analisis:
+        'Se revisarán las exclusiones de la carátula y de las condiciones generales Allianz frente al evento reportado.',
+      conclusion: 'POR VERIFICAR',
+    };
+  }
+
+  if (conceptoPolizaCoincideAllianz(fila, 'concepto preliminar')) {
+    return {
+      analisis: `Reclamo asociado a ${cobertura || 'terremoto'} según la ficha de Gestionar. Queda sujeto a la carátula de póliza y a la inspección.`,
+      conclusion: 'EN ESTUDIO',
+    };
+  }
+
+  return { analisis: '', conclusion: '' };
+}
+
+/**
+ * Completa el análisis de póliza con datos de Gestionar sin pisar lo que ya escribió el ajustador.
+ */
+export function completarFilasPolizaCoberturaAllianz(filas, ctx = {}) {
+  const tipo = normalizarTipoInformeAllianz(ctx.informe?.tipoInforme, 'unico');
+  const plantilla = plantillaFilasPolizaAllianz(tipo);
+  const origen = Array.isArray(filas) && filas.length ? [...filas] : plantilla;
+  const vistos = new Set(origen.map((f) => claveConceptoPolizaAllianz(f?.concepto)).filter(Boolean));
+  plantilla.forEach((row) => {
+    const k = claveConceptoPolizaAllianz(row.concepto);
+    if (k && !vistos.has(k)) {
+      origen.push({ ...row });
+      vistos.add(k);
+    }
+  });
+  return origen.map((fila) => {
+    if (textoInformeAllianz(fila?.analisis) || textoInformeAllianz(fila?.conclusion)) return fila;
+    const auto = analisisConceptoPolizaAllianz(fila, ctx);
+    if (!auto.analisis && !auto.conclusion) return fila;
+    return { ...fila, analisis: auto.analisis, conclusion: auto.conclusion };
+  });
 }
 
 export function plantillaFilasPresupuestoPreliminarAllianz() {
@@ -213,6 +488,22 @@ export function totalPresupuestoPreliminarAllianz(filas = []) {
   );
 }
 
+export function itemPresupuestoNsrTieneDatoAllianz(it = {}) {
+  return Boolean(
+    String(it?.actividad || '').trim() ||
+      String(it?.componente || '').trim() ||
+      String(it?.capitulo || '').trim() ||
+      Number(it?.cantidad) > 0 ||
+      parsearNumero(it?.valorUnitario) > 0 ||
+      parsearNumero(it?.total) > 0
+  );
+}
+
+export function presupuestoNsrTieneDatosAllianz(liquidador = {}) {
+  const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
+  return (Array.isArray(items) ? items : []).some(itemPresupuestoNsrTieneDatoAllianz);
+}
+
 export function reservaSugeridaAllianz(info = {}) {
   const delPresupuesto = totalPresupuestoPreliminarAllianz(info?.filasPresupuestoPreliminar);
   if (delPresupuesto > 0) return delPresupuesto;
@@ -233,6 +524,7 @@ export function sanitizarInformeUnicoAllianz(informe = {}) {
   return {
     ...base,
     ...(tipo ? { tipoInforme: tipo } : {}),
+    incluirPresupuestoNsrEnWord: limpio.incluirPresupuestoNsrEnWord !== false,
     fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
   };
 }
@@ -365,23 +657,26 @@ export function liquidacionCatastroficoDefaultAllianz(caso = {}) {
 
 export function encabezadoDesdecasoAllianz(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
+  const cobertura = resolverCoberturaAllianz(c, {});
   return {
-    tomador: c.tomador || '',
-    asegurado: c.asegurado || c.informacionContacto || '',
+    tomador: resolverTomadorAllianz(c, {}),
+    asegurado: c.asegurado || c.informacionContacto || c.tomador || '',
     poliza: c.numeroPoliza || '',
     tipoPoliza: c.tipoPoliza || '',
     credito: c.numeroCredito || '',
-    siniestro: c.siniestro || '',
+    siniestro: c.siniestro || c.identificacion || '',
     consecutivo: c.consecutivo || '',
     identificacion: c.identificacion || '',
     tipoIdentificacion: c.tipoIdentificacion || '',
     causa: c.causa || '',
     fechaSiniestro: fechaInput(c.fechaSiniestro),
-    direccion: c.direccionPredio || '',
+    fechaInicioPoliza: fechaInput(c.fechaInicioPoliza),
+    fechaFinPoliza: fechaInput(c.fechaFinPoliza),
+    direccion: resolverDireccionPredioAllianz(c),
     ciudad: c.ciudad || '',
     departamento: c.departamento || '',
-    cobertura: c.cobertura || '',
-    evento: c.cobertura || 'TERREMOTO',
+    cobertura,
+    evento: cobertura,
     ajustador: c.ajustador || '',
     telefono: c.telefonoAsegurado || c.celular || '',
     correo: c.correoAsegurado || c.correo || '',
@@ -399,13 +694,13 @@ export function encabezadoDesdecasoAllianz(caso = {}) {
 /** Prefill portada NSR desde caso Allianz */
 export function prefillNsrDesdecasoAllianz(caso = {}, encabezado = {}) {
   return {
-    fechaInspeccion: fechaInput(caso.fechaInspeccion),
+    fechaInspeccion: fechaInput(caso.fechaInspeccion || caso.fechaVisita),
     asegurado: encabezado.asegurado || caso.asegurado || caso.informacionContacto || '',
     poliza: encabezado.poliza || caso.numeroPoliza || '',
     municipio: encabezado.ciudad || caso.ciudad || '',
     ciudad: encabezado.ciudad || caso.ciudad || '',
-    direccion: encabezado.direccion || caso.direccionPredio || '',
-    direccionRiesgo: encabezado.direccion || caso.direccionPredio || '',
+    direccion: encabezado.direccion || resolverDireccionPredioAllianz(caso, encabezado),
+    direccionRiesgo: encabezado.direccion || resolverDireccionPredioAllianz(caso, encabezado),
     fechaSiniestro: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
     fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
     inspector: caso.ajustador || '',
@@ -456,8 +751,59 @@ export function esLiquidadorNsrAllianz(liquidador = {}) {
 }
 
 /**
- * Totales Allianz = presupuesto NSR-10 del ajustador + contenidos + diagrama.
- * La cotización PDF es soporte de lo pedido por el cliente (reclamado), no sustituye el presupuesto.
+ * Liquidación de la cotización del asegurado (PDF/Excel), independiente del NSR-10.
+ * Aplica la misma fórmula de deducible de póliza sobre el monto cotizado.
+ */
+export function calcularLiquidacionCotizacionAllianz(liquidador = {}) {
+  const monto = Math.round((montoCotizacionPdf(liquidador.cotizacionPdf) || 0) * 100) / 100;
+  const vacio = {
+    monto: 0,
+    diagrama: {},
+    desglose: desgloseDeducibleTerremotoAllianz(liquidador, {}),
+    deducibleAplicado: 0,
+    neto: 0,
+    gastosHospedaje: 0,
+    totalOtrosAmparos: 0,
+    otrosAmparos: [],
+    total: 0,
+  };
+  if (!(monto > 0)) return vacio;
+  const liq = liquidador.liquidacionCatastrofico || {};
+  const cfg = configDeduciblePresupuestoParaCalculoAllianz(liquidador);
+  const diagrama = calcularDiagramaLiquidacion({
+    valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
+    totalDanios: monto,
+    totalPresupuesto: monto,
+    totalContenidos: 0,
+    hospedajePorcentaje: liq.hospedajePorcentaje,
+    hospedajeManual: liq.hospedajeManual,
+    deducible: liq.deducible,
+    deducibleConfig: cfg,
+    deducibleConfigContenidos: cfg,
+    deducibleConfigPresupuesto: cfg,
+    otrosAmparos: liquidador.otrosAmparos,
+  });
+  const desglose = desgloseDeducibleTerremotoAllianz(liquidador, diagrama);
+  const deducibleAplicado = Number(diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0) || 0;
+  const neto = Math.max(0, Math.round((monto - deducibleAplicado) * 100) / 100);
+  const gastosHospedaje = Number(diagrama.gastosHospedaje) || 0;
+  const totalOtrosAmparos = Number(diagrama.totalOtrosAmparos) || 0;
+  const total = Number(diagrama.totalIndemnizar) || neto;
+  return {
+    monto,
+    diagrama,
+    desglose,
+    deducibleAplicado,
+    neto,
+    gastosHospedaje,
+    totalOtrosAmparos,
+    otrosAmparos: diagrama.otrosAmparos || [],
+    total,
+  };
+}
+
+/**
+ * Totales Allianz = dos liquidadores: cotización del asegurado y presupuesto NSR-10 del ajustador.
  */
 export function calcularLiquidacionAllianz(liquidador = {}) {
   const evalData = aplicarRecargosEnEvaluacionNsr10(
@@ -521,6 +867,7 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
+    liquidacionCotizacion: calcularLiquidacionCotizacionAllianz(liquidador),
   };
 }
 
@@ -583,8 +930,29 @@ export function armarInformeLiquidacionAllianz(liquidador = {}, totales = null, 
   const cuadro = cuadroLiquidacionAllianz(tot, liquidador);
   const enc = liquidador.encabezado || {};
   const c = caso && typeof caso === 'object' ? caso : {};
+  const cot = tot.liquidacionCotizacion || {};
+  const usaCotiz = Number(cot.monto) > 0 && !(Number(tot.totalDanios) > 0);
   const observaciones = String(liquidador.observaciones || '').trim()
     || String(cuadro.deducibleTexto || tot.deducibleTexto || '').trim();
+  const filas = [];
+  if (Number(cot.monto) > 0) {
+    filas.push({
+      n: filas.length + 1,
+      bienAfectado: `${bienAfectadoAllianz(enc)} — cotización`,
+      valorReclamado: cot.monto,
+      valorLiquidacion: cot.neto,
+      cobertura: String(enc.cobertura || enc.evento || '1').trim() || '1',
+    });
+  }
+  if (Number(tot.totalDanios) > 0 || !filas.length) {
+    filas.push({
+      n: filas.length + 1,
+      bienAfectado: bienAfectadoAllianz(enc),
+      valorReclamado: cuadro.valorReclamado,
+      valorLiquidacion: cuadro.valorSugeridoIndemnizar,
+      cobertura: String(enc.cobertura || enc.evento || '1').trim() || '1',
+    });
+  }
   return {
     siniestro: String(enc.siniestro || c.siniestro || '').trim(),
     fechaCreacion: new Date(),
@@ -596,19 +964,11 @@ export function armarInformeLiquidacionAllianz(liquidador = {}, totales = null, 
     email: String(
       enc.correo || enc.correoAsegurado || c.correoAsegurado || c.correo || ''
     ).trim(),
-    valorTotalReclamado: cuadro.valorReclamado,
-    valorTotalLiquidacion: cuadro.valorSugeridoIndemnizar,
-    deducible: cuadro.deducibleMonto,
-    valorAIndemnizar: cuadro.valorSugeridoLuegoDeducible,
-    filas: [
-      {
-        n: 1,
-        bienAfectado: bienAfectadoAllianz(enc),
-        valorReclamado: cuadro.valorReclamado,
-        valorLiquidacion: cuadro.valorSugeridoIndemnizar,
-        cobertura: String(enc.cobertura || enc.evento || '1').trim() || '1',
-      },
-    ],
+    valorTotalReclamado: usaCotiz ? cot.monto : cuadro.valorReclamado,
+    valorTotalLiquidacion: usaCotiz ? cot.monto : cuadro.valorSugeridoIndemnizar,
+    deducible: usaCotiz ? cot.deducibleAplicado : cuadro.deducibleMonto,
+    valorAIndemnizar: usaCotiz ? cot.neto : cuadro.valorSugeridoLuegoDeducible,
+    filas,
     observaciones,
   };
 }
@@ -685,10 +1045,26 @@ export function diferenciaFilaCotizacionVsPresupuestoAllianz(fila = {}) {
   );
 }
 
-export function filasBreveCotizacionVsPresupuestoAllianz(filas = []) {
+export function filaCotizacionVsTieneDatoAllianz(fila = {}) {
+  const f = filaCotizacionVsPresupuestoAllianz(fila);
+  return Boolean(
+    String(f.concepto || '').trim() ||
+      parsearNumero(f.valorCotizacion) > 0 ||
+      parsearNumero(f.valorPresupuesto) > 0 ||
+      String(f.observaciones || '').trim()
+  );
+}
+
+export function filasConDatoCotizacionVsPresupuestoAllianz(filas = []) {
   return (Array.isArray(filas) ? filas : [])
     .map((fila) => filaCotizacionVsPresupuestoAllianz(fila))
-    .filter((fila) => motivoFilaCotizacionVsPresupuestoAllianz(fila));
+    .filter(filaCotizacionVsTieneDatoAllianz);
+}
+
+export function filasBreveCotizacionVsPresupuestoAllianz(filas = []) {
+  return filasConDatoCotizacionVsPresupuestoAllianz(filas).filter((fila) =>
+    motivoFilaCotizacionVsPresupuestoAllianz(fila)
+  );
 }
 
 export function etiquetaMotivoCotizacionVsPresupuestoAllianz(motivo) {
@@ -722,7 +1098,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
   if (!esLiquidadorNsrAllianz(guardado)) {
     return {
       ...base,
-      encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
+      encabezado: fusionarEncabezadoAllianz(base.encabezado, guardado.encabezado),
       observaciones: guardado.observaciones || '',
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
       otrosAmparos: Array.isArray(guardado.otrosAmparos)
@@ -735,7 +1111,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
     ...base,
     ...guardado,
     modelo: 'nsr10',
-    encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
+    encabezado: fusionarEncabezadoAllianz(base.encabezado, guardado.encabezado),
     evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
       guardado.evaluacionSismicaNSR10,
       prefill,
@@ -778,25 +1154,39 @@ export function formDataNsrDesdeLiquidadorAllianz(liquidador = {}, caso = {}) {
 export function defaultInformeUnicoAllianz(caso = {}) {
   const guardado =
     caso.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null;
+  const tipo = guardado
+    ? normalizarTipoInformeAllianz(guardado.tipoInforme, 'unico')
+    : 'unico';
+  const encabezado = encabezadoDesdecasoAllianz(caso);
+  const ctxPoliza = (informe) => ({
+    caso,
+    encabezado,
+    informe: { tipoInforme: tipo, ...(informe || {}) },
+    liquidador: caso.liquidador,
+  });
   const base = {
-    tipoInforme: 'unico',
+    tipoInforme: tipo,
     fechaInforme: fechaInput(new Date()),
     ajustadorNombre: caso.ajustador || '',
     infoEvento: INFO_EVENTO_DEFAULT_ALLIANZ,
     descripcionDanios: '',
     coordenadasRiesgo: '',
     imagenMapa: '',
-    direccionRiesgo: caso.direccionPredio || '',
+    direccionRiesgo: resolverDireccionPredioAllianz(caso, encabezado, guardado || {}),
     analisisCobertura: '',
     reservaSugerida: '',
     filasDanios: plantillaFilasDaniosAllianz(),
-    filasPolizaCobertura: plantillaFilasPolizaAllianz(),
+    filasPolizaCobertura: completarFilasPolizaCoberturaAllianz(
+      plantillaFilasPolizaAllianz(tipo),
+      ctxPoliza(null)
+    ),
     filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarAllianz(),
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
     fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
+    incluirPresupuestoNsrEnWord: true,
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -807,9 +1197,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
   return sanitizarInformeUnicoCamposWord({
     ...base,
     ...guardado,
-    tipoInforme: guardado
-      ? normalizarTipoInformeAllianz(guardado.tipoInforme, 'unico')
-      : 'unico',
+    tipoInforme: tipo,
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
@@ -817,12 +1205,13 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     descripcionDanios: guardado.descripcionDanios || base.descripcionDanios,
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
-    direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
+    direccionRiesgo:
+      textoNoVacioAllianz(guardado.direccionRiesgo) || base.direccionRiesgo,
     reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
     filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
-    filasPolizaCobertura: usarPlantillaSiVacio(
-      guardado.filasPolizaCobertura,
-      base.filasPolizaCobertura
+    filasPolizaCobertura: completarFilasPolizaCoberturaAllianz(
+      usarPlantillaSiVacio(guardado.filasPolizaCobertura, base.filasPolizaCobertura),
+      ctxPoliza(guardado)
     ),
     filasPresupuestoPreliminar: usarPlantillaSiVacio(
       guardado.filasPresupuestoPreliminar,
