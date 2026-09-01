@@ -699,6 +699,22 @@ export const fechaEnRango = (fecha, desde, hasta) => {
   return true;
 };
 
+/** Valor del selector «Filtrar fechas por» para inspección coordinada (solo Zurich). */
+export const CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA = 'fechaCoordinandoInspeccion';
+
+/**
+ * Fecha contra la que aplican Desde/Hasta en filtros Zurich.
+ * Si el campo es inspección coordinada, no hay fallback a ingreso.
+ */
+export function valorFechaFiltroZurich(caso = {}, campo = '', fallback) {
+  if (campo === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA) {
+    return caso.fechaCoordinandoInspeccion || null;
+  }
+  if (typeof fallback === 'function') return fallback(caso);
+  if (fallback !== undefined) return fallback;
+  return caso.fechaCasoNuevo || caso.fechaSiniestro || caso.fechaAviso || caso.createdAt;
+}
+
 export const normTexto = (value) =>
   String(value ?? '')
     .normalize('NFD')

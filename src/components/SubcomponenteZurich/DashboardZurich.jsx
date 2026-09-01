@@ -22,6 +22,7 @@ export default function DashboardZurich() {
       estados={ESTADOS_ZURICH}
       normalizarEstadoFn={homologarEstadoZurich}
       i18nNs="zurich"
+      modulo="zurich"
       extras={{ severidad: true }}
     />
   );

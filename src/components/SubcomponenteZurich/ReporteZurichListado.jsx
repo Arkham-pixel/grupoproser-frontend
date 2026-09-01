@@ -27,6 +27,8 @@ import {
   diasEnEstadoZurich,
   homologarEstadoZurich,
   normTexto,
+  valorFechaFiltroZurich,
+  CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA,
 } from './zurichHelpers.js';
 import {
   expressBadge,
@@ -169,6 +171,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const [filtroInspector, setFiltroInspector] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [tipoFecha, setTipoFecha] = useState('createdAt');
   const [pagina, setPagina] = useState(1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
@@ -207,7 +210,8 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
       if (!esClienteZurich && !coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (fechaInicio || fechaFin) {
-        if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
+        const fechaRef = valorFechaFiltroZurich(c, tipoFecha, () => c.createdAt);
+        if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
       }
       if (!q) return true;
       const blob = [
@@ -236,7 +240,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin]);
+  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
@@ -250,7 +254,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -260,6 +264,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     setFiltroInspector('');
     setFechaInicio('');
     setFechaFin('');
+    setTipoFecha('createdAt');
   };
 
   const FECHAS_LISTADO = new Set([
@@ -505,6 +510,14 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
               </SelectFenix>
             </Campo>
             )}
+            <Campo label={t('zurich.report.filterByDate')}>
+              <SelectFenix value={tipoFecha} onChange={(e) => setTipoFecha(e.target.value)}>
+                <option value="createdAt">{t('zurich.report.dateCreated')}</option>
+                <option value={CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA}>
+                  {t('zurich.fields.fechaCoordinandoInspeccion')}
+                </option>
+              </SelectFenix>
+            </Campo>
             <Campo label={t('zurich.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>

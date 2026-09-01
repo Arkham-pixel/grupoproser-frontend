@@ -18,6 +18,7 @@ import {
   coincideFiltroCausaZurich,
   coincideFiltroTexto,
   fechaEnRango,
+  valorFechaFiltroZurich,
   ultimaGestionZurich,
   resolverDepartamentoZurich,
   normTexto,
@@ -318,7 +319,8 @@ export function aplicarFiltrosTorreZurich(
       }
     }
     if (f.fechaDesde || f.fechaHasta) {
-      if (!fechaEnRango(fechaAltaListadoZurich(item), f.fechaDesde, f.fechaHasta)) return false;
+      const fechaRef = valorFechaFiltroZurich(item, f.campoFecha, fechaAltaListadoZurich);
+      if (!fechaEnRango(fechaRef, f.fechaDesde, f.fechaHasta)) return false;
     }
     if (f.busqueda && !coincideBusqueda(item, f.busqueda)) return false;
     return true;

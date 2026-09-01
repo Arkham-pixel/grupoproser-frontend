@@ -26,7 +26,7 @@ export default function Configurar2FA({ isDark }) {
   const cargarQr = async () => {
     const res = await axios.post(`${BASE_URL}/api/secur-auth/2fa/setup`, {}, authHeaders());
     setSetupData({
-      qr: res.data.qr,
+      qr: res.data.qr || '',
       secret: res.data.secret,
       label: res.data.label,
       issuer: res.data.issuer || 'ARNALD DATA FLOW',
@@ -65,7 +65,12 @@ export default function Configurar2FA({ isDark }) {
     try {
       await cargarQr();
     } catch (err) {
-      setError(err.response?.data?.message || t('account.ui.cuenta.twoFa.qrError'));
+      const data = err.response?.data || {};
+      setError(
+        data.detalle
+          ? `${data.message || t('account.ui.cuenta.twoFa.qrError')} (${data.detalle})`
+          : data.message || t('account.ui.cuenta.twoFa.qrError')
+      );
     } finally {
       setBusy(false);
     }
@@ -192,7 +197,13 @@ export default function Configurar2FA({ isDark }) {
           {!enabled && setupData && (
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
               <div className="flex-shrink-0 p-3 bg-white rounded-xl shadow-md">
-                <img src={setupData.qr} alt={t('account.ui.cuenta.twoFa.qrAlt')} className="w-52 h-52" />
+                {setupData.qr ? (
+                  <img src={setupData.qr} alt={t('account.ui.cuenta.twoFa.qrAlt')} className="w-52 h-52" />
+                ) : (
+                  <div className="w-52 h-52 flex items-center justify-center text-center text-xs text-gray-500 px-3">
+                    {t('account.ui.cuenta.twoFa.manualKey')} {setupData.secret}
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-semibold mb-3 ${isDark ? 'text-cyan-200' : 'text-cyan-800'}`}>

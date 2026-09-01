@@ -52,6 +52,7 @@ import {
   formatDate,
   homologarEstadoZurich,
   resolverDepartamentoZurich,
+  CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA,
 } from './zurichHelpers.js';
 import {
   FILTROS_TORRE_VACIOS,
@@ -224,8 +225,12 @@ export default function DashboardZurichListado() {
 
   const etiquetaChip = (clave, valor) => {
     const mapa = {
-      fechaDesde: `${td('from')}: ${valor}`,
-      fechaHasta: `${td('to')}: ${valor}`,
+      fechaDesde: `${filtros.campoFecha === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA ? td('fromInspection') : td('from')}: ${valor}`,
+      fechaHasta: `${filtros.campoFecha === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA ? td('toInspection') : td('to')}: ${valor}`,
+      campoFecha:
+        valor === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA
+          ? t('zurich.fields.fechaCoordinandoInspeccion')
+          : td('dateIngreso'),
       ciudad: `${t('zurich.fields.ciudad')}: ${valor}`,
       departamento: `${t('zurich.fields.departamento')}: ${valor}`,
       estado: `${t('zurich.fields.estado')}: ${valor}`,
@@ -385,10 +390,33 @@ export default function DashboardZurichListado() {
         {filtrosVisibles && (
           <ExpressFilterSection title={td('filters')} showClear={filtrosAplicados} onClear={limpiarFiltros}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Campo label={td('from')}>
+              <Campo label={td('filterByDate')}>
+                <SelectFenix
+                  value={filtros.campoFecha || ''}
+                  onChange={(e) => patchFiltro('campoFecha', e.target.value)}
+                >
+                  <option value="">{td('dateIngreso')}</option>
+                  <option value={CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA}>
+                    {t('zurich.fields.fechaCoordinandoInspeccion')}
+                  </option>
+                </SelectFenix>
+              </Campo>
+              <Campo
+                label={
+                  filtros.campoFecha === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA
+                    ? td('fromInspection')
+                    : td('from')
+                }
+              >
                 <InputFenix type="date" value={filtros.fechaDesde} onChange={(e) => patchFiltro('fechaDesde', e.target.value)} />
               </Campo>
-              <Campo label={td('to')}>
+              <Campo
+                label={
+                  filtros.campoFecha === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA
+                    ? td('toInspection')
+                    : td('to')
+                }
+              >
                 <InputFenix type="date" value={filtros.fechaHasta} onChange={(e) => patchFiltro('fechaHasta', e.target.value)} />
               </Campo>
               <Campo label={t('zurich.fields.ciudad')}>

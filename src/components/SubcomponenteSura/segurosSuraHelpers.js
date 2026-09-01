@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const SURA_REPORTE_PAGE_SIZE = 25;
@@ -307,3 +308,20 @@ export const construirFormDesdeCasoSura = (caso = {}) => ({
   ),
   sede: caso.sede || caso.sedeRiesgo || '',
 });
+
+/**
+ * Excel corto para cruzar reclamos con Control: siniestro SURA, consecutivo Proser y asegurado.
+ */
+export function descargarExcelVerificacionSura(casos = []) {
+  const rows = (Array.isArray(casos) ? casos : []).map((c) => ({
+    'No. de Reclamo': c?.siniestro ?? '',
+    'Numero Interno Proser': c?.consecutivo ?? '',
+    Asegurado: c?.asegurado ?? '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 42 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Verificacion');
+  const fecha = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `sura-verificacion-reclamos-${fecha}.xlsx`);
+}

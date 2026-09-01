@@ -109,6 +109,11 @@ export default function DashboardCatastrofico({
     .toLowerCase()
     .replace(/[-_\s]/g, '')
     .includes('bbva');
+  const esZurich =
+    String(i18nNs || '').toLowerCase() === 'zurich' ||
+    String(modulo || '')
+      .toLowerCase()
+      .includes('zurich');
 
   const [casos, setCasos] = useState([]);
   const [mapaNombres, setMapaNombres] = useState(() => new Map());
@@ -121,6 +126,7 @@ export default function DashboardCatastrofico({
   const [filtroTomador, setFiltroTomador] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+  const [tipoFecha, setTipoFecha] = useState('ingreso');
   const coincideCiudad = coincideFiltroCiudad || coincideFiltroTexto;
 
   useEffect(() => {
@@ -174,6 +180,7 @@ export default function DashboardCatastrofico({
     setFiltroTomador('');
     setFechaDesde('');
     setFechaHasta('');
+    setTipoFecha('ingreso');
   };
 
   const casosFiltrados = useMemo(
@@ -200,11 +207,11 @@ export default function DashboardCatastrofico({
         }
         if (filtroTomador && !coincideFiltroTexto(item.tomador, filtroTomador)) return false;
         if (fechaDesde || fechaHasta) {
-          return fechaEnRango(
-            item.fechaAviso || item.fechaSiniestro || item.createdAt,
-            fechaDesde,
-            fechaHasta
-          );
+          const fechaRef =
+            esZurich && tipoFecha === 'fechaCoordinandoInspeccion'
+              ? item.fechaCoordinandoInspeccion
+              : item.fechaAviso || item.fechaSiniestro || item.createdAt;
+          return fechaEnRango(fechaRef, fechaDesde, fechaHasta);
         }
         return true;
       }),
@@ -217,11 +224,13 @@ export default function DashboardCatastrofico({
       filtroTomador,
       fechaDesde,
       fechaHasta,
+      tipoFecha,
       coincideFiltroTexto,
       coincideCiudad,
       fechaEnRango,
       mapaNombres,
       normalizarEstadoFn,
+      esZurich,
     ]
   );
 
@@ -351,10 +360,32 @@ export default function DashboardCatastrofico({
               </SelectFenix>
             </Campo>
             )}
-            <Campo label={td('from')}>
+            {esZurich && (
+            <Campo label={td('filterByDate')}>
+              <SelectFenix value={tipoFecha} onChange={(e) => setTipoFecha(e.target.value)}>
+                <option value="ingreso">{td('dateIngreso')}</option>
+                <option value="fechaCoordinandoInspeccion">
+                  {t('zurich.fields.fechaCoordinandoInspeccion')}
+                </option>
+              </SelectFenix>
+            </Campo>
+            )}
+            <Campo
+              label={
+                esZurich && tipoFecha === 'fechaCoordinandoInspeccion'
+                  ? td('fromInspection')
+                  : td('from')
+              }
+            >
               <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
             </Campo>
-            <Campo label={td('to')}>
+            <Campo
+              label={
+                esZurich && tipoFecha === 'fechaCoordinandoInspeccion'
+                  ? td('toInspection')
+                  : td('to')
+              }
+            >
               <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
             </Campo>
           </div>

@@ -78,6 +78,7 @@ export const TABS_TORRE_ZURICH_CLIENTE = ['resumen', 'economico', 'detalle'];
 export const FILTROS_TORRE_VACIOS = {
   fechaDesde: '',
   fechaHasta: '',
+  campoFecha: '',
   ciudad: '',
   departamento: '',
   estado: '',

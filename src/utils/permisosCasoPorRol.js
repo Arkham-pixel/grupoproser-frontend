@@ -30,6 +30,12 @@ export const CAMPOS_ASIGNACION_CASO = Object.freeze([
 export const SURA_LOGINS_PERMISO_LIDER = Object.freeze(['72288319']);
 
 /**
+ * Excel de verificación SURA (No. de Reclamo, Número Interno Proser, Asegurado).
+ * Bernardo Sojo y Oscar Atencia.
+ */
+export const SURA_LOGINS_EXCEL_VERIFICACION = Object.freeze(['72134505', '1065012991']);
+
+/**
  * Alfa: estos logins ocultan del reporte los casos con fecha de llamada
  * (cola de contactos). El buscador sí los vuelve a mostrar.
  * Leyna Lucía Alfonso Rojas.
@@ -90,6 +96,18 @@ export function esIdentidadConPermisoLiderSura(opts = {}) {
 /** Sesión actual: Mario Pinilla tiene poderes de líder solo en SURA. */
 export function esSesionConPermisoLiderSura() {
   return esIdentidadConPermisoLiderSura(obtenerContextoPermisoCaso('sura'));
+}
+
+export function esLoginExcelVerificacionSura(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return SURA_LOGINS_EXCEL_VERIFICACION.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+/** Sesión actual: Bernardo Sojo o Oscar Atencia ven el Excel de verificación SURA. */
+export function esSesionExcelVerificacionSura() {
+  const ctx = obtenerContextoPermisoCaso('sura');
+  return [ctx.login, ctx.cedula].some((v) => esLoginExcelVerificacionSura(v));
 }
 
 export function esRolAjustadorLider(rol = obtenerRolAlmacenado()) {

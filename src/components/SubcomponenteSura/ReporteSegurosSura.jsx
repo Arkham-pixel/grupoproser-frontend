@@ -16,6 +16,7 @@ import {
   buildOpcionesFiltro,
   coincideFiltroTexto,
   casoSuraTieneDocumentacion,
+  descargarExcelVerificacionSura,
   ESTADOS_SURA,
   fechaEnRango,
   formatCurrency,
@@ -44,7 +45,12 @@ import {
   SelectFenix,
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { filtrarCasosPorAsignacionUsuario, etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
+import {
+  esSesionExcelVerificacionSura,
+  etiquetaSesionPersona,
+  filtrarCasosAsignadosASesion,
+  filtrarCasosPorAsignacionUsuario,
+} from '../../utils/permisosCasoPorRol.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 
 function valorOrdenSura(item, clave) {
@@ -188,6 +194,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteSura();
+  const puedeExcelVerificacion = esSesionExcelVerificacionSura();
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -361,6 +368,22 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
     }
   };
 
+  const exportarExcelVerificacion = () => {
+    if (!casos.length) {
+      setAviso({ tipo: 'info', titulo: t('segurosSura.report.noData'), mensaje: t('segurosSura.report.noDataExport') });
+      return;
+    }
+    try {
+      descargarExcelVerificacionSura(casos);
+    } catch (err) {
+      setAviso({
+        tipo: 'error',
+        titulo: t('segurosSura.report.exportError'),
+        mensaje: err.message || t('segurosSura.report.exportErrorMessage'),
+      });
+    }
+  };
+
   const solicitarEliminar = (item) => {
       setAviso({
         tipo: 'warning',
@@ -471,6 +494,18 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
               >
                 <FaUpload />
                 {t('segurosSura.report.importExcel')}
+              </button>
+            )}
+            {puedeExcelVerificacion && !modoAsignados && (
+              <button
+                type="button"
+                className={expressBtnPrimary}
+                onClick={exportarExcelVerificacion}
+                disabled={loading}
+                title={t('segurosSura.report.exportVerificationHint')}
+              >
+                <FaFileExcel />
+                {t('segurosSura.report.exportVerificationExcel')}
               </button>
             )}
             <button type="button" className={expressBtnSecondary} onClick={exportarExcel} disabled={loading}>

@@ -23,6 +23,8 @@ import {
   homologarEstadoZurich,
   labelSeveridadCat,
   normTexto,
+  valorFechaFiltroZurich,
+  CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA,
   evidenciaAplicaSi,
   normalizeEvidenciaItem,
   esChecklistCatLleno,
@@ -262,6 +264,7 @@ export default function ReporteZurich() {
   const [filtroInspector, setFiltroInspector] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [tipoFecha, setTipoFecha] = useState('fechaSiniestro');
   const [pagina, setPagina] = useState(1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
@@ -323,7 +326,12 @@ export default function ReporteZurich() {
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (fechaInicio || fechaFin) {
-        if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
+        const fechaRef = valorFechaFiltroZurich(
+          c,
+          tipoFecha,
+          () => c.fechaSiniestro || c.createdAt
+        );
+        if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
       }
       if (!q) return true;
       const blob = [
@@ -365,6 +373,7 @@ export default function ReporteZurich() {
     filtroInspector,
     fechaInicio,
     fechaFin,
+    tipoFecha,
   ]);
 
   const casosOrdenados = useMemo(
@@ -379,7 +388,7 @@ export default function ReporteZurich() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -390,6 +399,7 @@ export default function ReporteZurich() {
     setFiltroInspector('');
     setFechaInicio('');
     setFechaFin('');
+    setTipoFecha('fechaSiniestro');
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -571,6 +581,14 @@ export default function ReporteZurich() {
                     {o.label}
                   </option>
                 ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('zurich.report.filterByDate')}>
+              <SelectFenix value={tipoFecha} onChange={(e) => setTipoFecha(e.target.value)}>
+                <option value="fechaSiniestro">{t('zurich.report.dateSiniestro')}</option>
+                <option value={CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA}>
+                  {t('zurich.fields.fechaCoordinandoInspeccion')}
+                </option>
               </SelectFenix>
             </Campo>
             <Campo label={t('zurich.report.from')}>
