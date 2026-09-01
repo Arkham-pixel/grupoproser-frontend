@@ -188,6 +188,7 @@ export default function AgregarCuenta() {
             <option value="contractor_solo_zurich">{t('account.ui.cuenta.roles.contractor_solo_zurich')}</option>
             <option value="contractor_solo_bbva">{t('account.ui.cuenta.roles.contractor_solo_bbva')}</option>
             <option value="contractor_solo_equidad">{t('account.ui.cuenta.roles.contractor_solo_equidad', 'Equidad FDM')}</option>
+            <option value="contractor_solo_equidad_cat">{t('account.ui.cuenta.roles.contractor_solo_equidad_cat', 'Equidad CAT')}</option>
             <option value="contractor_solo_previsora">{t('account.ui.cuenta.roles.contractor_solo_previsora', 'Previsora')}</option>
             <option value="contractor_catastroficos">{t('account.ui.cuenta.roles.contractor_catastroficos', 'Catastróficos')}</option>
             <option value="soporte">{t('account.ui.cuenta.roles.soporte')}</option>

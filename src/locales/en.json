@@ -244,6 +244,7 @@
     "contractor_solo_zurich": "Zurich",
     "contractor_solo_bbva": "BBVA",
     "contractor_solo_equidad": "Equidad FDM",
+    "contractor_solo_equidad_cat": "Equidad CAT",
     "contractor_solo_previsora": "Previsora",
     "contractor_catastroficos": "Catastrophic"
   },
@@ -7183,6 +7184,7 @@
           "contractor_solo_zurich": "Zurich",
           "contractor_solo_bbva": "BBVA",
           "contractor_solo_equidad": "Equidad FDM",
+          "contractor_solo_equidad_cat": "Equidad CAT",
           "contractor_solo_previsora": "Previsora",
           "contractor_catastroficos": "Catastrophic",
           "soporte": "Support",
