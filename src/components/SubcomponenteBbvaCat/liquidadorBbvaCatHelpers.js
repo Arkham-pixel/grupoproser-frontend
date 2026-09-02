@@ -68,6 +68,62 @@ export const INFO_EVENTO_DEFAULT_BBVA_CAT = `El presente informe se elabora en e
 
 La evaluación técnica tiene por objeto verificar la existencia y alcance de los daños, confrontarlos con las coberturas de la póliza vigente y cuantificar las pérdidas indemnizables de acuerdo con las condiciones particulares del contrato de seguro.`;
 
+function montoHueco(valor) {
+  if (valor == null || valor === '') return true;
+  const n = parsearNumero(valor);
+  return !Number.isFinite(n) || n <= 0;
+}
+
+function primerMontoPositivo(...cands) {
+  for (const c of cands) {
+    if (c == null || c === '') continue;
+    const n = parsearNumero(c);
+    if (n > 0) return n;
+  }
+  return undefined;
+}
+
+/**
+ * Sube al caso SOLO lo del ajustador (Proser).
+ * Reserva / reclamado / estimado de BBVA no se pisan.
+ * valorALiquidar = indemnización neta del liquidador (después del deducible).
+ * valorLiquidado (reserva ajustador) no se pisa: el AIU 25% vive en el liquidador
+ * de cada caso, con sus cifras reales.
+ */
+export function camposValoresDesdeLiquidadorBbvaCat(liquidador = {}, totales = {}, casoBase = {}) {
+  const tot =
+    totales && parsearNumero(totales.totalIndemnizar) > 0
+      ? totales
+      : calcularLiquidacionBbvaCat(liquidador);
+  const enc =
+    liquidador?.encabezado && typeof liquidador.encabezado === 'object'
+      ? liquidador.encabezado
+      : {};
+  const liq =
+    liquidador?.liquidacionCatastrofico && typeof liquidador.liquidacionCatastrofico === 'object'
+      ? liquidador.liquidacionCatastrofico
+      : {};
+  const out = {};
+
+  if (montoHueco(casoBase.valorAseguradoInmueble)) {
+    const va = primerMontoPositivo(enc.valorAseguradoInmueble, enc.valorGlobal, liq.valorAsegurado);
+    if (va > 0) out.valorAseguradoInmueble = va;
+  }
+
+  if (montoHueco(casoBase.valorReclamado)) {
+    const rec = primerMontoPositivo(liquidador.valorReclamadoCaso);
+    if (rec > 0) out.valorReclamado = rec;
+  }
+
+  const liquidado = Math.max(
+    0,
+    primerMontoPositivo(tot.totalIndemnizar, tot.totalIndemnizable) || 0
+  );
+  out.valorALiquidar = Math.round(liquidado);
+
+  return out;
+}
+
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
   if (typeof valor === 'number') return Number.isNaN(valor) ? 0 : valor;

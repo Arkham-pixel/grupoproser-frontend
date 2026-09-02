@@ -4,7 +4,7 @@ import {
   RESUMEN_PLAZOS_PROTOCOLO_EXPRESS,
 } from './protocoloExpressDefaults.js';
 import { PASOS_INICIO_RAPIDO } from '../components/MatrizRiesgoAvanzada/matrizContenidoShared.js';
-import { normalizarRol, ROLES_CONTRACTOR, ROL_CATASTROFICOS, ROL_SOLO_EQUIDAD, ROL_SOLO_EQUIDAD_CAT, ROL_SOLO_EXPRESS } from './roles.js';
+import { normalizarRol, ROLES_CONTRACTOR, ROL_CATASTROFICOS, ROL_ERA, ROL_SOLO_EQUIDAD, ROL_SOLO_EQUIDAD_CAT, ROL_SOLO_EXPRESS } from './roles.js';
 
 const EXCLUIR_CONTRACTOR = [...ROLES_CONTRACTOR];
 const EXCLUIR_CONTRACTOR_SIN_EQUIDAD = ROLES_CONTRACTOR.filter((r) => r !== ROL_SOLO_EQUIDAD);
@@ -67,9 +67,9 @@ export const HELP_MODULES = [
       },
       {
         titulo: 'Alertas y cumplimiento',
-        descripcion: 'Las alertas muestran plazos próximos a vencerse o vencidos. La campana lleva a sus alertas personales.',
+        descripcion: 'Las alertas muestran plazos próximos a vencerse o vencidos. Ábralas desde Complex → Mis alertas.',
         ruta: '/complex/mis-alertas',
-        pasos: ['Revise la campana de la barra superior.', 'Abra Mis alertas y atienda primero los casos vencidos.'],
+        pasos: ['Abra Complex → Mis alertas.', 'Atienda primero los casos vencidos.'],
       },
     ],
   },
@@ -168,7 +168,7 @@ export const HELP_MODULES = [
       'visualizador',
       'puertos',
       'externo',
-      ...ROLES_CONTRACTOR.filter((r) => r !== ROL_CATASTROFICOS && r !== ROL_SOLO_EQUIDAD_CAT),
+      ...ROLES_CONTRACTOR.filter((r) => r !== ROL_CATASTROFICOS && r !== ROL_ERA && r !== ROL_SOLO_EQUIDAD_CAT),
     ],
     articulos: [
       {
@@ -309,7 +309,7 @@ export const HELP_MANUALS = {
       {
         titulo: '3. Notificaciones, ayuda y cuenta',
         pasos: [
-          'La campana muestra la cantidad de alertas pendientes. Al pulsarla verá sus alertas o el sistema general si tiene perfil de administración o soporte.',
+          'La campana avisa a líderes, ajustadores e inspectores cuando se crean casos (uno o varios) y cuando el líder asigna inspector y ajustador.',
           'El icono de lista abre **Mis subtareas Complex** cuando este módulo está habilitado para su perfil.',
           'Pulse el icono de interrogación para volver a este Centro de Ayuda en cualquier momento.',
           'En Cuenta puede revisar su información y las opciones que hayan sido habilitadas para su usuario.',

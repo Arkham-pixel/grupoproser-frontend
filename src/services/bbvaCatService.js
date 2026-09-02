@@ -5,7 +5,10 @@ import {
   homologarEstadoBbvaCat,
   ultimaGestionBbvaCat,
 } from '../components/SubcomponenteBbvaCat/bbvaCatHelpers.js';
-import { sanitizarInformeUnicoBbvaCat } from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
+import {
+  camposValoresDesdeLiquidadorBbvaCat,
+  sanitizarInformeUnicoBbvaCat,
+} from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
 
 const BBVA_CAT_API_URL = `${BASE_URL}/api/bbva-cat`;
 
@@ -328,11 +331,8 @@ export const guardarLiquidadorEnCasoBbvaCat = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
+    ...camposValoresDesdeLiquidadorBbvaCat(liquidador || {}, totales, casoBase),
     liquidador: liquidador || {},
-    valorReclamado:
-      totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
-    valorLiquidado:
-      totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
   };
 
   delete payload._id;

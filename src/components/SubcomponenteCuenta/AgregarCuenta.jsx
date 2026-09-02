@@ -192,6 +192,7 @@ export default function AgregarCuenta() {
             <option value="contractor_solo_express">{t('account.ui.cuenta.roles.contractor_solo_express', 'Express')}</option>
             <option value="contractor_solo_previsora">{t('account.ui.cuenta.roles.contractor_solo_previsora', 'Previsora')}</option>
             <option value="contractor_catastroficos">{t('account.ui.cuenta.roles.contractor_catastroficos', 'Catastróficos')}</option>
+            <option value="contractor_era">{t('account.ui.cuenta.roles.contractor_era', 'ERA')}</option>
             <option value="soporte">{t('account.ui.cuenta.roles.soporte')}</option>
             <option value="admin">{t('account.ui.cuenta.roles.admin')}</option>
           </select>

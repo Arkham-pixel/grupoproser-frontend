@@ -486,6 +486,83 @@ export const formatCurrency = (value) => {
   }).format(Number(value));
 };
 
+/** Número persistido, incluido 0. Vacío / no numérico → null. */
+export function numeroGuardadoBbvaCat(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (typeof valor === 'string') {
+    const t = valor.trim();
+    if (!t) return null;
+    const n = Number(t.replace(/\./g, '').replace(/[^\d-]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function liquidadorGuardadoBbvaCat(caso = {}) {
+  const liq = caso?.liquidador;
+  if (!liq || typeof liq !== 'object' || Array.isArray(liq)) return false;
+  return Object.keys(liq).length > 0;
+}
+
+export function tieneReservaAjustadorBbvaCat(caso = {}) {
+  return numeroGuardadoBbvaCat(caso.valorLiquidado) != null;
+}
+
+export function tieneValorALiquidarBbvaCat(caso = {}) {
+  if (numeroGuardadoBbvaCat(caso.valorALiquidar) != null) return true;
+  return liquidadorGuardadoBbvaCat(caso);
+}
+
+export function valorALiquidarEsCeroCalculadoBbvaCat(caso = {}) {
+  const n = numeroGuardadoBbvaCat(caso.valorALiquidar);
+  if (n === 0) return true;
+  return liquidadorGuardadoBbvaCat(caso) && n == null;
+}
+
+/** Diferencia informativa: valor a liquidar − reserva ajustador. No persistir. */
+export function diferenciaValoresProserBbvaCat(valorALiquidar, valorLiquidado) {
+  const a = numeroGuardadoBbvaCat(valorALiquidar);
+  const r = numeroGuardadoBbvaCat(valorLiquidado);
+  if (a == null || r == null) return { comparable: false, diferencia: null };
+  return { comparable: true, diferencia: a - r };
+}
+
+/** Cifra corta para dashboard: $ 5.105 MM. */
+export const formatCurrencyCompact = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return formatCurrency(0);
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '−' : '';
+  if (abs >= 1_000_000) {
+    const millones = abs / 1_000_000;
+    const cifra =
+      millones >= 100
+        ? Math.round(millones).toLocaleString('es-CO')
+        : millones.toLocaleString('es-CO', { maximumFractionDigits: 1 });
+    return `${sign}$ ${cifra} MM`;
+  }
+  return formatCurrency(n);
+};
+
+export const formatCurrencyMm = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return formatCurrencyCompact(n);
+};
+
+export const formatEjeCop = (valor) => {
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n === 0) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${Math.round(n / 1_000_000)} MM`;
+  if (abs >= 1_000) return `${Math.round(n / 1_000)} mil`;
+  return String(Math.round(n));
+};
+
 export const formatDate = (value) => {
   const date = crearFechaLocal(value);
   if (!date) return '';
@@ -635,6 +712,8 @@ export const FORM_VACIO_BBVA_CAT = {
   modalidadAtencion: '',
   fechaCasoNuevo: '',
   fechaCoordinandoInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaAnalisisCaso: '',
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',
@@ -669,8 +748,11 @@ export const FORM_VACIO_BBVA_CAT = {
   valorReservaPreventivaPromedio: '',
   valorComercialInmueble: '',
   reserva: '',
+  valorEstimadoAseguradora: '',
   valorReclamado: '',
   valorLiquidado: '',
+  valorALiquidar: '',
+  observacionReserva: '',
   fechaInspeccion: '',
   fechaUltimoDocumento: '',
   fechaLiquidado: '',
@@ -742,8 +824,10 @@ export const CAMPOS_NUMERICOS_BBVA_CAT = [
   'valorReservaPreventivaPromedio',
   'valorComercialInmueble',
   'reserva',
+  'valorEstimadoAseguradora',
   'valorReclamado',
   'valorLiquidado',
+  'valorALiquidar',
 ];
 
 /** Decimales libres (distancia epicentro, etc.) — no usan formato de miles */

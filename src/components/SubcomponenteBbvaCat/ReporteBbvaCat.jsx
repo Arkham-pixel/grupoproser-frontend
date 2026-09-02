@@ -47,6 +47,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -95,6 +96,7 @@ const COLUMNAS = [
   { clave: 'reserva', labelKey: 'reserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
   { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
+  { clave: 'valorALiquidar', labelKey: 'valorALiquidar' },
   { clave: 'fechaUltimoDocumento', labelKey: 'fechaUltimoDocumento' },
   { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
   { clave: 'fechaAceptacionLiquidacion', labelKey: 'fechaAceptacionLiquidacion' },
@@ -123,6 +125,7 @@ const COLUMNAS = [
 const CAMPOS_MONEDA = new Set([
   'valorReclamado',
   'valorLiquidado',
+  'valorALiquidar',
   'reserva',
   'valorAseguradoInmueble',
   'valorAseguradoContenidos',
@@ -195,6 +198,7 @@ const buildExportRow = (caso) => ({
   RESERVA: caso.reserva ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
   'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
+  'VALOR A LIQUIDAR': caso.valorALiquidar ?? '',
   'FECHA ULTIMO DOCUMENTO': formatDate(caso.fechaUltimoDocumento),
   'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
   'FECHA ACEPTACIÓN LIQUIDACIÓN': formatDate(caso.fechaAceptacionLiquidacion),
@@ -234,6 +238,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteBbvaCat() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const soloChecklistLleno = false;
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -302,6 +308,8 @@ export default function ReporteBbvaCat() {
     const q = normTexto(busqueda);
     const idsBloque = new Set((idsBloqueSeleccionado || []).map(String));
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroCiudadBbvaCat(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
@@ -348,6 +356,8 @@ export default function ReporteBbvaCat() {
     fechaInicio,
     fechaFin,
     idsBloqueSeleccionado,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -373,6 +383,7 @@ export default function ReporteBbvaCat() {
     idsBloqueSeleccionado,
     orden.campo,
     orden.asc,
+    casoIdUrl,
   ]);
 
   const limpiarFiltros = () => {
@@ -385,6 +396,7 @@ export default function ReporteBbvaCat() {
     setFechaFin('');
     setBloqueSeleccionadoId(null);
     setIdsBloqueSeleccionado([]);
+    limpiarCasoUrl();
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -455,7 +467,8 @@ export default function ReporteBbvaCat() {
       filtroAjustador ||
       fechaInicio ||
       fechaFin ||
-      bloqueSeleccionadoId
+      bloqueSeleccionadoId ||
+      filtroCasoUrl
   );
 
   return (

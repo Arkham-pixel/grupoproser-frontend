@@ -17,6 +17,7 @@ export const ROLES_VALIDOS = [
   'contractor_solo_express',
   'contractor_solo_previsora',
   'contractor_catastroficos',
+  'contractor_era',
 ];
 
 /** Contratista con Zurich + Alfa + Sura + BBVA (Rodrigo y similares). */
@@ -43,6 +44,9 @@ export const ROL_SOLO_PREVISORA = 'contractor_solo_previsora';
 /** Contratista con todos los módulos catastróficos. */
 export const ROL_CATASTROFICOS = 'contractor_catastroficos';
 
+/** Contratista ERA: módulos catastróficos sin Equidad FDM. */
+export const ROL_ERA = 'contractor_era';
+
 export const ROLES_CONTRACTOR = [
   ...ROLES_CONTRACTOR_TRES,
   ROL_SOLO_ZURICH,
@@ -52,19 +56,20 @@ export const ROLES_CONTRACTOR = [
   ROL_SOLO_EXPRESS,
   ROL_SOLO_PREVISORA,
   ROL_CATASTROFICOS,
+  ROL_ERA,
 ];
 
 export const CONFIG_CONTRACTOR_TRES = {
   seccionesMenu: ['alfa', 'zurich', 'bbvaCat', 'sura'],
   inicio: '/zurich/reporte',
-  prefijosRuta: ['/zurich', '/seguros-alfa', '/sura', '/bbva-cat'],
+  prefijosRuta: ['/zurich', '/seguros-alfa', '/sura', '/bbva-cat', '/agenda-catastrofico'],
   etiqueta: 'Zurich, Alfa, Sura y BBVA',
 };
 
 export const CONFIG_SOLO_ZURICH = {
   seccionesMenu: ['zurich'],
   inicio: '/zurich/listado/dashboard',
-  prefijosRuta: ['/zurich'],
+  prefijosRuta: ['/zurich', '/agenda-catastrofico'],
   rutasExcluidas: [
     '/zurich/carga',
     '/zurich/caso',
@@ -80,7 +85,7 @@ export const CONFIG_SOLO_ZURICH = {
 export const CONFIG_SOLO_BBVA = {
   seccionesMenu: ['bbvaCat'],
   inicio: '/bbva-cat/listado/analista',
-  prefijosRuta: ['/bbva-cat'],
+  prefijosRuta: ['/bbva-cat', '/agenda-catastrofico'],
   rutasExcluidas: ['/bbva-cat/listado/reporte'],
   etiqueta: 'BBVA',
 };
@@ -104,7 +109,7 @@ export const CONFIG_SOLO_EQUIDAD = {
 export const CONFIG_SOLO_EQUIDAD_CAT = {
   seccionesMenu: ['equidadCat'],
   inicio: '/equidad-cat/reporte',
-  prefijosRuta: ['/equidad-cat'],
+  prefijosRuta: ['/equidad-cat', '/agenda-catastrofico'],
   etiqueta: 'Equidad CAT',
 };
 
@@ -119,7 +124,7 @@ export const CONFIG_SOLO_PREVISORA = {
   /** Home + módulo Previsora completo. */
   seccionesMenu: ['previsora'],
   inicio: '/inicio',
-  prefijosRuta: ['/inicio', '/previsora'],
+  prefijosRuta: ['/inicio', '/previsora', '/agenda-catastrofico'],
   incluirHome: true,
   etiqueta: 'Previsora',
 };
@@ -137,8 +142,14 @@ export const CONFIG_CATASTROFICOS = {
     '/allianz',
     '/equidad-cat',
     '/catastrofico',
+    '/agenda-catastrofico',
   ],
   etiqueta: 'Catastróficos',
+};
+
+export const CONFIG_ERA = {
+  ...CONFIG_CATASTROFICOS,
+  etiqueta: 'ERA',
 };
 
 export function normalizarRol(rol) {
@@ -158,6 +169,7 @@ export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
   if (r === ROL_SOLO_EXPRESS) return CONFIG_SOLO_EXPRESS;
   if (r === ROL_SOLO_PREVISORA) return CONFIG_SOLO_PREVISORA;
   if (r === ROL_CATASTROFICOS) return CONFIG_CATASTROFICOS;
+  if (r === ROL_ERA) return CONFIG_ERA;
   if (ROLES_CONTRACTOR_TRES.includes(r)) return CONFIG_CONTRACTOR_TRES;
   return null;
 }
@@ -194,12 +206,25 @@ export function esRolSoloExpress(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_EXPRESS;
 }
 
+/** Agenda CAT: todos menos visualizador, puertos, externo, FDM-only y Express-only. */
+export function puedeVerAgendaCatastrofico(rol = obtenerRolAlmacenado()) {
+  const r = normalizarRol(rol);
+  if (!r || r === 'visualizador' || r === 'puertos' || r === 'externo') return false;
+  if (r === ROL_SOLO_EQUIDAD || r === ROL_SOLO_EXPRESS) return false;
+  return true;
+}
+
 export function esRolSoloPrevisora(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_PREVISORA;
 }
 
 export function esRolCatastroficos(rol = obtenerRolAlmacenado()) {
-  return normalizarRol(rol) === ROL_CATASTROFICOS;
+  const r = normalizarRol(rol);
+  return r === ROL_CATASTROFICOS || r === ROL_ERA;
+}
+
+export function esRolEra(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_ERA;
 }
 
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */

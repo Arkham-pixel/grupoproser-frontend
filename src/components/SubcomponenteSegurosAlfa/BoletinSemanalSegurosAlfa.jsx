@@ -98,7 +98,7 @@ export default function BoletinSemanalSegurosAlfa() {
           getAlertasAlfa().catch(() => null),
         ]);
         if (!cancelado) {
-          setCasos(filtrarCasosPorAsignacionUsuario(lista));
+          setCasos(filtrarCasosPorAsignacionUsuario(lista, { modulo: 'alfa' }));
           setAlertasPayload(alertas);
         }
       } catch (err) {

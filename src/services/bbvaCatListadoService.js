@@ -5,7 +5,10 @@ import {
   homologarEstadoBbvaCat,
   ultimaGestionBbvaCat,
 } from '../components/SubcomponenteBbvaCat/bbvaCatHelpers.js';
-import { sanitizarInformeUnicoBbvaCat } from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
+import {
+  camposValoresDesdeLiquidadorBbvaCat,
+  sanitizarInformeUnicoBbvaCat,
+} from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
 
 const API_URL = `${BASE_URL}/api/bbva-cat-listado`;
 
@@ -137,11 +140,13 @@ const omitirMeta = (casoBase = {}) => {
 export const guardarLiquidadorEnCasoBbvaCatListado = async ({
   casoId,
   liquidador,
+  totales = {},
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
   return actualizarCasoBbvaCatListado(casoId, {
     ...omitirMeta(casoBase),
+    ...camposValoresDesdeLiquidadorBbvaCat(liquidador || {}, totales, casoBase),
     liquidador: liquidador || {},
   });
 };

@@ -11,6 +11,7 @@
  */
 
 import { normalizarRol, obtenerRolAlmacenado } from '../config/roles.js';
+import { identidadEsLiderDeFuente } from './lideresModuloCatastrofico.js';
 
 export const ROL_AJUSTADOR_LIDER = 'ajustador_lider';
 export const ROL_AJUSTADOR_CASO = 'ajustador';
@@ -93,6 +94,19 @@ export function esIdentidadConPermisoLiderSura(opts = {}) {
   return [opts.login, opts.cedula].some((v) => esLoginConPermisoLiderSura(v, modulo));
 }
 
+export function esIdentidadLiderDeModulo(opts = {}, modulo = opts.modulo || '') {
+  if (esIdentidadConPermisoLiderSura({ ...opts, modulo })) return true;
+  return identidadEsLiderDeFuente(
+    {
+      name: opts.name || opts.nombre,
+      nombre: opts.nombre || opts.name,
+      login: opts.login,
+      cedula: opts.cedula,
+    },
+    modulo
+  );
+}
+
 /** Sesión actual: Mario Pinilla tiene poderes de líder solo en SURA. */
 export function esSesionConPermisoLiderSura() {
   return esIdentidadConPermisoLiderSura(obtenerContextoPermisoCaso('sura'));
@@ -139,7 +153,9 @@ export function esCampoAsignacionCaso(campo) {
  */
 export function puedeEditarTodoElCaso(rol = obtenerRolAlmacenado(), opts = {}) {
   const r = normalizarRol(rol);
-  if (esRolAdminOSoporte(r) || r === ROL_AJUSTADOR_LIDER) return true;
+  if (esRolAdminOSoporte(r)) return true;
+  if (esIdentidadLiderDeModulo(opts, opts.modulo)) return true;
+  if (r === ROL_AJUSTADOR_LIDER && !opts.modulo) return true;
   if (esIdentidadConPermisoLiderSura(opts)) return true;
   if (r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR) return false;
   return true;
@@ -255,15 +271,18 @@ export function filtrarCasosAsignadosASesion(casos = [], ctx = obtenerContextoPe
  * En SURA, Mario (72288319) ve todos como el líder.
  */
 export function rolConVistaRestringidaAsignacion(rol = obtenerRolAlmacenado(), opts = {}) {
-  if (esIdentidadConPermisoLiderSura(opts)) return false;
+  const modulo = opts.modulo || '';
+  if (esRolAdminOSoporte(rol)) return false;
+  if (esIdentidadLiderDeModulo(opts, modulo)) return false;
   const r = normalizarRol(rol);
-  return r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR;
+  if (!modulo && r === ROL_AJUSTADOR_LIDER) return false;
+  return r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR || r === ROL_AJUSTADOR_LIDER;
 }
 
 /**
- * Filtra lista de casos Alfa/Sura según rol del usuario en localStorage.
- * Admin / soporte / líder / otros: sin filtro.
- * En SURA, Mario (72288319) sin filtro.
+ * Filtra lista de casos según rol del usuario en localStorage.
+ * Admin / líder de esa área: sin filtro.
+ * Ajustador e inspector: casos donde figuran como ajustador o inspector (una vez).
  */
 export function filtrarCasosPorAsignacionUsuario(casos = [], {
   rol = obtenerRolAlmacenado(),
@@ -272,13 +291,14 @@ export function filtrarCasosPorAsignacionUsuario(casos = [], {
   cedula = typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '',
   modulo = '',
 } = {}) {
-  if (!rolConVistaRestringidaAsignacion(rol, { login, cedula, modulo })) {
+  if (!rolConVistaRestringidaAsignacion(rol, { login, cedula, nombre, name: nombre, modulo })) {
     return Array.isArray(casos) ? casos : [];
   }
   const claves = [nombre, login, cedula].map((s) => String(s || '').trim()).filter(Boolean);
   if (!claves.length) return [];
-  const campo = normalizarRol(rol) === ROL_INSPECTOR ? 'inspector' : 'ajustador';
   return (Array.isArray(casos) ? casos : []).filter((caso) =>
-    claves.some((k) => coincidenPersonas(caso?.[campo], k))
+    claves.some(
+      (k) => coincidenPersonas(caso?.ajustador, k) || coincidenPersonas(caso?.inspector, k)
+    )
   );
 }

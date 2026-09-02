@@ -47,6 +47,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenAllianz(item, clave) {
   if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
@@ -254,6 +255,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteAllianz() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const soloChecklistLleno = false;
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -319,6 +322,8 @@ export default function ReporteAllianz() {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (!coincideFiltroCiudadAllianz(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
@@ -365,6 +370,8 @@ export default function ReporteAllianz() {
     filtroAjustador,
     fechaInicio,
     fechaFin,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -379,7 +386,7 @@ export default function ReporteAllianz() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -389,6 +396,7 @@ export default function ReporteAllianz() {
     setFiltroAjustador('');
     setFechaInicio('');
     setFechaFin('');
+    limpiarCasoUrl();
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -460,7 +468,8 @@ export default function ReporteAllianz() {
       filtroEstado ||
       filtroAjustador ||
       fechaInicio ||
-      fechaFin
+      fechaFin ||
+      filtroCasoUrl
   );
 
   return (

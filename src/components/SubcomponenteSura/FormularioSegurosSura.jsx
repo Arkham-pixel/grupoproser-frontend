@@ -26,6 +26,7 @@ import {
   SelectFenix,
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import CampoFranjaCoordinacion from '../AgendaCatastrofico/CampoFranjaCoordinacion.jsx';
 import {
   CAMPOS_NUMERICOS_SURA,
   ESTADOS_SURA,
@@ -572,13 +573,19 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
               onChange={setCampo('fechaLlamada')}
             />
           </Campo>
-          <Campo label={t('segurosSura.fields.fechaInspeccion')}>
-            <InputFenix
-              type="date"
-              value={form.fechaInspeccion}
-              onChange={setCampo('fechaInspeccion')}
-            />
-          </Campo>
+          <CampoFranjaCoordinacion
+            labelFecha={t('segurosSura.fields.fechaInspeccion')}
+            fecha={form.fechaInspeccion}
+            horaInicio={form.horaInicioCoordinacion}
+            horaFin={form.horaFinCoordinacion}
+            onFecha={setCampo('fechaInspeccion')}
+            onHoraInicio={setCampo('horaInicioCoordinacion')}
+            onHoraFin={setCampo('horaFinCoordinacion')}
+            ajustador={form.ajustador}
+            inspector={form.inspector}
+            casoId={initialData?._id}
+            disabled={attrsCampoCaso(rolUsuario, 'fechaInspeccion', ctxPermiso).disabled}
+          />
         </div>
         <Campo label={t('segurosSura.fields.observacionLlamada')} className="mt-4">
           <TextareaFenix

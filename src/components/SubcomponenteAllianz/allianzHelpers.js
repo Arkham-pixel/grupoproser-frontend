@@ -612,6 +612,8 @@ export const FORM_VACIO_ALLIANZ = {
   modalidadAtencion: '',
   fechaCasoNuevo: '',
   fechaCoordinandoInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaAnalisisCaso: '',
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',

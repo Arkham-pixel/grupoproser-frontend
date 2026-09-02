@@ -534,6 +534,8 @@ export const FORM_VACIO_EQUIDAD_CAT = {
   modalidadAtencion: '',
   fechaCasoNuevo: '',
   fechaCoordinandoInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaAnalisisCaso: '',
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',

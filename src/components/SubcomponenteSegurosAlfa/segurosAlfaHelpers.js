@@ -365,6 +365,8 @@ export const FORM_VACIO_ALFA = {
   fechaLlamada: '',
   observacionLlamada: '',
   fechaInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaUltimoDocumento: '',
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',

@@ -12,6 +12,7 @@
     "deploy": "powershell -ExecutionPolicy Bypass -File deploy-basic.ps1",
     "test:i18n": "node scripts/verify-plan-ui-gaps.mjs && node scripts/audit-remaining-i18n.mjs",
     "test:alfa-indemnizar": "node scripts/testIndemnizarAlfa.mjs",
+    "test:bbva-cat-listado-dashboard": "node scripts/testDashboardBbvaCatListadoStats.mjs",
     "verify:i18n-parity": "node ../grupoproser-backend/scripts/test-bilingual-quality.mjs"
   },
   "dependencies": {

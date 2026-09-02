@@ -91,8 +91,13 @@ const HEADER_MAP = {
   'VALOR RESERVA PREVENTIVA PROMEDIO': 'valorReservaPreventivaPromedio',
   'VALOR COMERCIAL INMUEBLE': 'valorComercialInmueble',
   RESERVA: 'reserva',
+  'VR CUANTIA PROBABLE': 'valorEstimadoAseguradora',
   'VALOR RECLAMADO': 'valorReclamado',
   'VALOR LIQUIDADO': 'valorLiquidado',
+  'RESERVA AJUSTADOR': 'valorLiquidado',
+  'VALOR A LIQUIDAR': 'valorALiquidar',
+  'OBSERVACION RESERVA': 'observacionReserva',
+  'OBSERVACION DE RESERVA': 'observacionReserva',
   'FECHA INSPECCION': 'fechaInspeccion',
   'FECHA ULTIMO DOCUMENTO': 'fechaUltimoDocumento',
   'FECHA LIQUIDADO': 'fechaLiquidado',
@@ -257,8 +262,10 @@ const CAMPOS_NUMERO = new Set([
   'valorReservaPreventivaPromedio',
   'valorComercialInmueble',
   'reserva',
+  'valorEstimadoAseguradora',
   'valorReclamado',
   'valorLiquidado',
+  'valorALiquidar',
   'severidadCat',
   'distanciaEpicentroKm',
 ]);
@@ -497,6 +504,20 @@ const HEADER_MAP_LISTADO = {
   INSPECTOR: 'inspector',
   AJUSTADOR: 'ajustador',
   ESTADO: 'estado',
+  RESERVA: 'reserva',
+  'VR CUANTIA PROBABLE': 'valorEstimadoAseguradora',
+  'VALOR ESTIMADO ASEGURADORA': 'valorEstimadoAseguradora',
+  'VALOR ASEGURADO INMUEBLE': 'valorAseguradoInmueble',
+  'VALOR ASEGURADO': 'valorAseguradoInmueble',
+  'VALOR ASEGURADO CONTENIDOS': 'valorAseguradoContenidos',
+  'VALOR RESERVA PREVENTIVA PROMEDIO': 'valorReservaPreventivaPromedio',
+  'VALOR COMERCIAL INMUEBLE': 'valorComercialInmueble',
+  'VALOR RECLAMADO': 'valorReclamado',
+  'VALOR LIQUIDADO': 'valorLiquidado',
+  'RESERVA AJUSTADOR': 'valorLiquidado',
+  'VALOR A LIQUIDAR': 'valorALiquidar',
+  'OBSERVACION RESERVA': 'observacionReserva',
+  'OBSERVACION DE RESERVA': 'observacionReserva',
   OBSERVACIONES: 'observaciones',
   OBSERVACION: 'observaciones',
   NOTAS: 'observaciones',
@@ -566,11 +587,35 @@ const parsearHojaListadoCliente = (sheet) => {
       fechaAsignacion: '',
       fechaVisita: '',
       estado: 'CASO NUEVO',
+      reserva: '',
+      valorEstimadoAseguradora: '',
+      valorAseguradoInmueble: '',
+      valorAseguradoContenidos: '',
+      valorReservaPreventivaPromedio: '',
+      valorComercialInmueble: '',
+      valorReclamado: '',
+      valorLiquidado: '',
+      valorALiquidar: '',
+      observacionReserva: '',
     };
     Object.entries(colMap).forEach(([colStr, campo]) => {
       const raw = row[Number(colStr)];
       if (campo === 'fechaAsignacion' || campo === 'fechaVisita') {
         caso[campo] = parseFechaCelda(raw) || '';
+        return;
+      }
+      if (
+        campo === 'reserva' ||
+        campo === 'valorEstimadoAseguradora' ||
+        campo === 'valorAseguradoInmueble' ||
+        campo === 'valorAseguradoContenidos' ||
+        campo === 'valorReservaPreventivaPromedio' ||
+        campo === 'valorComercialInmueble' ||
+        campo === 'valorReclamado' ||
+        campo === 'valorLiquidado' ||
+        campo === 'valorALiquidar'
+      ) {
+        caso[campo] = parseNumeroCelda(raw);
         return;
       }
       caso[campo] = limpiarTextoListado(raw);

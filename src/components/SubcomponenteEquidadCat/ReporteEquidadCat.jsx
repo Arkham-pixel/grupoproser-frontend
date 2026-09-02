@@ -45,6 +45,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenEquidadCat(item, clave) {
   if (clave === 'diasEnEstado') return diasEnEstadoEquidadCat(item);
@@ -155,6 +156,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteEquidadCat({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +199,8 @@ export default function ReporteEquidadCat({ modoAsignados = false }) {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
@@ -227,7 +232,7 @@ export default function ReporteEquidadCat({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin]);
+  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, casoIdUrl, coincideCasoUrl]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenEquidadCat),
@@ -241,7 +246,7 @@ export default function ReporteEquidadCat({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -250,6 +255,7 @@ export default function ReporteEquidadCat({ modoAsignados = false }) {
     setFiltroAjustador('');
     setFechaInicio('');
     setFechaFin('');
+    limpiarCasoUrl();
   };
 
   const FECHAS_LISTADO = new Set([
@@ -324,7 +330,7 @@ export default function ReporteEquidadCat({ modoAsignados = false }) {
   };
 
   const filtrosActivos = Boolean(
-    busqueda || filtroCiudad || filtroEstado || filtroAjustador || fechaInicio || fechaFin
+    busqueda || filtroCiudad || filtroEstado || filtroAjustador || fechaInicio || fechaFin || filtroCasoUrl
   );
 
   return (

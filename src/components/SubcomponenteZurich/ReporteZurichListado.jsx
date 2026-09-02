@@ -52,6 +52,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -158,6 +159,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteZurichListado({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const esClienteZurich = esRolContractorZurich();
   const nombreSesion = etiquetaSesionPersona();
   const columnas = esClienteZurich ? COLUMNAS.filter((col) => !col.interno) : COLUMNAS;
@@ -205,6 +208,8 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (!coincideFiltroCiudadZurich(c.ciudad, filtroCiudad)) return false;
       if (filtroEstado && homologarEstadoZurich(c.estado) !== filtroEstado) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
@@ -240,7 +245,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha]);
+  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, casoIdUrl, coincideCasoUrl]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
@@ -254,7 +259,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -265,6 +270,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     setFechaInicio('');
     setFechaFin('');
     setTipoFecha('createdAt');
+    limpiarCasoUrl();
   };
 
   const FECHAS_LISTADO = new Set([
@@ -365,7 +371,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   };
 
   const filtrosActivos = Boolean(
-    busqueda || filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || fechaInicio || fechaFin
+    busqueda || filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || fechaInicio || fechaFin || filtroCasoUrl
   );
 
   return (

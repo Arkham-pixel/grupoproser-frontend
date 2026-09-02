@@ -32,6 +32,7 @@ import {
   InputFenix,
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import CampoFranjaCoordinacion from '../AgendaCatastrofico/CampoFranjaCoordinacion.jsx';
 import {
   CAMPOS_NUMERICOS_BBVA_CAT,
   CAMPOS_DECIMAL_BBVA_CAT,
@@ -51,8 +52,11 @@ import {
   OPCIONES_SI_NO_BBVA_CAT,
   TIPOS_NEGOCIO_HOMOLOGADO_BBVA_CAT,
   construirFormDesdecasoBbvaCat,
+  diferenciaValoresProserBbvaCat,
+  formatCurrency,
   formatMilesInput,
   normalizeEvidenciaCat,
+  valorALiquidarEsCeroCalculadoBbvaCat,
 } from './bbvaCatHelpers.js';
 import CampoTomadorBbvaCat from './CampoTomadorBbvaCat.jsx';
 import ModalImportarExcelBbvaCat, {
@@ -312,6 +316,38 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
     />
   );
 
+  const labelCuantiaEstimado = (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {t('bbvaCat.fields.valorEstimadoAseguradora')}
+      <span className="rounded border border-dashed border-[#004481] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#004481] dark:border-sky-400 dark:text-sky-300">
+        {t('bbvaCat.fields.estimadoBadge')}
+      </span>
+    </span>
+  );
+
+  const diferenciaProser = useMemo(
+    () => diferenciaValoresProserBbvaCat(form.valorALiquidar, form.valorLiquidado),
+    [form.valorALiquidar, form.valorLiquidado]
+  );
+
+  const hintCeroALiquidar = valorALiquidarEsCeroCalculadoBbvaCat({
+    valorALiquidar: form.valorALiquidar,
+    liquidador: initialData?.liquidador,
+  });
+
+  const bloqueDiferenciaProser = (
+    <div className="md:col-span-2 lg:col-span-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/60">
+      <p className="font-body text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        {t('bbvaCat.fields.diferenciaProser')}
+      </p>
+      <p className="mt-1 font-accent text-base font-semibold text-gray-900 dark:text-white">
+        {diferenciaProser.comparable
+          ? formatCurrency(diferenciaProser.diferencia)
+          : t('bbvaCat.fields.diferenciaNoComparable')}
+      </p>
+    </div>
+  );
+
   const construirPayload = () => {
     if (esModuloListado) {
       const payload = {
@@ -338,6 +374,16 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
           .filter(Boolean)
           .join(' | '),
         observaciones: form.observaciones,
+        reserva: aNumero(form.reserva),
+        valorEstimadoAseguradora: aNumero(form.valorEstimadoAseguradora),
+        valorAseguradoInmueble: aNumero(form.valorAseguradoInmueble),
+        valorAseguradoContenidos: aNumero(form.valorAseguradoContenidos),
+        valorReservaPreventivaPromedio: aNumero(form.valorReservaPreventivaPromedio),
+        valorComercialInmueble: aNumero(form.valorComercialInmueble),
+        valorReclamado: aNumero(form.valorReclamado),
+        valorLiquidado: aNumero(form.valorLiquidado),
+        valorALiquidar: aNumero(form.valorALiquidar),
+        observacionReserva: form.observacionReserva,
         ciudad: form.ciudad,
         departamento: form.departamento,
         ajustadorLider: form.ajustadorLider,
@@ -348,6 +394,8 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
+        horaInicioCoordinacion: form.horaInicioCoordinacion,
+        horaFinCoordinacion: form.horaFinCoordinacion,
         fechaAnalisisCaso: form.fechaAnalisisCaso,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
@@ -491,9 +539,9 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>{t('bbvaCat.sections.listadoCliente')}</h3>
+        <h3 className={expressSectionTitle}>{t('bbvaCat.sections.datosAseguradora')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('bbvaCat.sections.listadoClienteHint')}
+          {t('bbvaCat.sections.datosAseguradoraHint')}
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label={t('bbvaCat.fields.zc')} required={esAltaCliente}>
@@ -607,6 +655,43 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </Campo>
+          <Campo label={t('bbvaCat.fields.observaciones')} className="md:col-span-2 lg:col-span-3">
+            <textarea
+              className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.observaciones}
+              onChange={setCampo('observaciones')}
+              placeholder={t('bbvaCat.placeholders.observaciones')}
+            />
+          </Campo>
+          {esModuloListado ? (
+            <>
+              <h4 className="md:col-span-2 lg:col-span-3 mb-0 font-heading text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                {t('bbvaCat.sections.valuesAseguradora')}
+              </h4>
+              <p className="md:col-span-2 lg:col-span-3 -mt-2 mb-1 font-body text-sm text-gray-500 dark:text-gray-400">
+                {t('bbvaCat.sections.valuesAseguradoraHint')}
+              </p>
+              <Campo label={t('bbvaCat.fields.valorAseguradoInmueble')}>
+                {inputMiles('valorAseguradoInmueble')}
+              </Campo>
+              <Campo label={t('bbvaCat.fields.valorReclamado')}>
+                {inputMiles('valorReclamado')}
+              </Campo>
+              <Campo label={t('bbvaCat.fields.reserva')}>{inputMiles('reserva')}</Campo>
+              <Campo label={labelCuantiaEstimado}>
+                {inputMiles('valorEstimadoAseguradora')}
+              </Campo>
+            </>
+          ) : null}
+        </div>
+      </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>{t('bbvaCat.sections.datosProser')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('bbvaCat.sections.datosProserHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label={t('bbvaCat.fields.estado')} required className="md:col-span-2 lg:col-span-3">
             <BarraEstadosBbvaCat
               valor={form.estado}
@@ -642,14 +727,6 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               onChange={setCampo('fechaVisita')}
             />
           </Campo>
-          <Campo label={t('bbvaCat.fields.observaciones')} className="md:col-span-2 lg:col-span-3">
-            <textarea
-              className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-              value={form.observaciones}
-              onChange={setCampo('observaciones')}
-              placeholder={t('bbvaCat.placeholders.observaciones')}
-            />
-          </Campo>
         </div>
         {soloInspector ? (
           <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
@@ -661,6 +738,48 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
         ) : null}
       </section>
 
+      {esModuloListado ? (
+        <section className={expressFormSection}>
+          <h3 className={expressSectionTitle}>{t('bbvaCat.sections.valuesProser')}</h3>
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('bbvaCat.sections.valuesProserHint')}
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Campo label={t('bbvaCat.fields.valorAseguradoContenidos')}>
+              {inputMiles('valorAseguradoContenidos')}
+            </Campo>
+            <Campo label={t('bbvaCat.fields.valorReservaPreventivaPromedio')}>
+              {inputMiles('valorReservaPreventivaPromedio')}
+            </Campo>
+            <Campo label={t('bbvaCat.fields.valorComercialInmueble')}>
+              {inputMiles('valorComercialInmueble')}
+            </Campo>
+            <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2 lg:col-span-3">
+              <Campo label={t('bbvaCat.fields.valorLiquidado')}>
+                {inputMiles('valorLiquidado')}
+              </Campo>
+              <Campo label={t('bbvaCat.fields.valorALiquidar')}>
+                {inputMiles('valorALiquidar')}
+                {hintCeroALiquidar ? (
+                  <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
+                    {t('bbvaCat.fields.valorALiquidarZeroHint')}
+                  </p>
+                ) : null}
+              </Campo>
+            </div>
+            {bloqueDiferenciaProser}
+            <Campo label={t('bbvaCat.fields.observacionReserva')} className="md:col-span-2 lg:col-span-3">
+              <textarea
+                className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                value={form.observacionReserva || ''}
+                onChange={setCampo('observacionReserva')}
+                placeholder={t('bbvaCat.placeholders.observacionReserva')}
+              />
+            </Campo>
+          </div>
+        </section>
+      ) : null}
+
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('bbvaCat.sections.actionDates')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
@@ -670,13 +789,19 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('bbvaCat.fields.fechaCasoNuevo')}>
             <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
           </Campo>
-          <Campo label={t('bbvaCat.fields.fechaCoordinandoInspeccion')}>
-            <InputFenix
-              type="date"
-              value={form.fechaCoordinandoInspeccion}
-              onChange={setCampo('fechaCoordinandoInspeccion')}
-            />
-          </Campo>
+          <CampoFranjaCoordinacion
+            labelFecha={t('bbvaCat.fields.fechaCoordinandoInspeccion')}
+            fecha={form.fechaCoordinandoInspeccion}
+            horaInicio={form.horaInicioCoordinacion}
+            horaFin={form.horaFinCoordinacion}
+            onFecha={setCampo('fechaCoordinandoInspeccion')}
+            onHoraInicio={setCampo('horaInicioCoordinacion')}
+            onHoraFin={setCampo('horaFinCoordinacion')}
+            ajustador={form.ajustador}
+            inspector={form.inspector}
+            casoId={initialData?._id}
+            disabled={attrsCampoCaso(rolUsuario, 'fechaCoordinandoInspeccion', ctxPermiso).disabled}
+          />
           <Campo label={t('bbvaCat.fields.fechaAnalisisCaso')}>
             <InputFenix
               type="date"
@@ -1036,12 +1161,33 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
 
           <section>
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-              {t('bbvaCat.sections.values')}
+              {t('bbvaCat.sections.valuesAseguradora')}
             </h4>
+            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
+              {t('bbvaCat.sections.valuesAseguradoraHint')}
+            </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Campo label={t('bbvaCat.fields.valorAseguradoInmueble')}>
                 {inputMiles('valorAseguradoInmueble')}
               </Campo>
+              <Campo label={t('bbvaCat.fields.valorReclamado')}>
+                {inputMiles('valorReclamado')}
+              </Campo>
+              <Campo label={t('bbvaCat.fields.reserva')}>{inputMiles('reserva')}</Campo>
+              <Campo label={labelCuantiaEstimado}>
+                {inputMiles('valorEstimadoAseguradora')}
+              </Campo>
+            </div>
+          </section>
+
+          <section>
+            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+              {t('bbvaCat.sections.valuesProser')}
+            </h4>
+            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
+              {t('bbvaCat.sections.valuesProserHint')}
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Campo label={t('bbvaCat.fields.valorAseguradoContenidos')}>
                 {inputMiles('valorAseguradoContenidos')}
               </Campo>
@@ -1051,12 +1197,27 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               <Campo label={t('bbvaCat.fields.valorComercialInmueble')}>
                 {inputMiles('valorComercialInmueble')}
               </Campo>
-              <Campo label={t('bbvaCat.fields.reserva')}>{inputMiles('reserva')}</Campo>
-              <Campo label={t('bbvaCat.fields.valorReclamado')}>
-                {inputMiles('valorReclamado')}
-              </Campo>
-              <Campo label={t('bbvaCat.fields.valorLiquidado')}>
-                {inputMiles('valorLiquidado')}
+              <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2 lg:col-span-3">
+                <Campo label={t('bbvaCat.fields.valorLiquidado')}>
+                  {inputMiles('valorLiquidado')}
+                </Campo>
+                <Campo label={t('bbvaCat.fields.valorALiquidar')}>
+                  {inputMiles('valorALiquidar')}
+                  {hintCeroALiquidar ? (
+                    <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
+                      {t('bbvaCat.fields.valorALiquidarZeroHint')}
+                    </p>
+                  ) : null}
+                </Campo>
+              </div>
+              {bloqueDiferenciaProser}
+              <Campo label={t('bbvaCat.fields.observacionReserva')} className="md:col-span-2 lg:col-span-3">
+                <textarea
+                  className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  value={form.observacionReserva || ''}
+                  onChange={setCampo('observacionReserva')}
+                  placeholder={t('bbvaCat.placeholders.observacionReserva')}
+                />
               </Campo>
             </div>
           </section>

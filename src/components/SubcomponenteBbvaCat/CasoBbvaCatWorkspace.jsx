@@ -303,6 +303,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
         ? await guardarLiquidadorEnCasoBbvaCatListado({
             casoId,
             liquidador,
+            totales,
             casoBase: {
               ...(casoBbvaCat || {}),
               informeUnico: informeState || casoBbvaCat?.informeUnico,

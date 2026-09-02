@@ -254,6 +254,8 @@ export const FORM_VACIO_SURA = {
   fechaLlamada: '',
   observacionLlamada: '',
   fechaInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaUltimoDocumento: '',
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',

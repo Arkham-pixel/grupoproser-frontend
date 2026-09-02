@@ -26,8 +26,11 @@ import {
   coincideFiltroTexto,
   etiquetaTipoPolizaBbvaCat,
   fechaEnRango,
+  formatCurrency,
   formatDate,
+  liquidadorGuardadoBbvaCat,
   normTexto,
+  numeroGuardadoBbvaCat,
 } from './bbvaCatHelpers.js';
 import {
   expressBadge,
@@ -51,6 +54,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -72,6 +76,16 @@ const COLUMNAS = [
   { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'estado', labelKey: 'estado' },
+  { clave: 'reserva', labelKey: 'reserva' },
+  { clave: 'valorEstimadoAseguradora', labelKey: 'valorEstimadoAseguradora' },
+  { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
+  { clave: 'valorReclamado', labelKey: 'valorReclamado' },
+  { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
+  { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
+  { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
+  { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
+  { clave: 'valorALiquidar', labelKey: 'valorALiquidar' },
+  { clave: 'observacionReserva', labelKey: 'observacionReserva' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
@@ -110,6 +124,16 @@ const buildExportRow = (caso) => ({
   'CORREO ASEGURADO': caso.correoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
   ESTADO: caso.estado ?? '',
+  RESERVA_BBVA: caso.reserva ?? '',
+  'VALOR ESTIMADO ASEGURADORA': caso.valorEstimadoAseguradora ?? '',
+  'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
+  'VALOR RECLAMADO BBVA': caso.valorReclamado ?? '',
+  'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
+  'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
+  'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
+  'RESERVA AJUSTADOR': caso.valorLiquidado ?? '',
+  'VALOR A LIQUIDAR': caso.valorALiquidar ?? '',
+  'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
@@ -135,6 +159,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const esAnalista = modo === 'analista';
   const esBbvaSolo = esRolSoloBbva();
   const nombreSesion = etiquetaSesionPersona();
@@ -206,6 +232,8 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
       (siniestrosBloqueSeleccionado || []).map((s) => String(s).trim()).filter(Boolean)
     );
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       const conArchivo = casoTieneArchivosBbvaCat(c);
       if (!modoAsignados) {
         if (esAnalista) {
@@ -266,6 +294,8 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
     esAnalista,
     incluirConArchivos,
     modoAsignados,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -292,6 +322,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
     incluirConArchivos,
     orden.campo,
     orden.asc,
+    casoIdUrl,
   ]);
 
   const marcarOrigenListado = () => {
@@ -331,6 +362,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
     setBloqueSeleccionadoId(null);
     setSiniestrosBloqueSeleccionado([]);
     setIncluirConArchivos(false);
+    limpiarCasoUrl();
   };
 
   const FECHAS_LISTADO = new Set([
@@ -351,6 +383,26 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
 
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaBbvaCat(item) || '—';
+    if (
+      clave === 'reserva' ||
+      clave === 'valorEstimadoAseguradora' ||
+      clave === 'valorAseguradoInmueble' ||
+      clave === 'valorReclamado' ||
+      clave === 'valorAseguradoContenidos' ||
+      clave === 'valorReservaPreventivaPromedio' ||
+      clave === 'valorComercialInmueble' ||
+      clave === 'valorLiquidado' ||
+      clave === 'valorALiquidar'
+    ) {
+      const n = numeroGuardadoBbvaCat(item[clave]);
+      if (n == null) {
+        if (clave === 'valorALiquidar' && liquidadorGuardadoBbvaCat(item)) {
+          return formatCurrency(0);
+        }
+        return '—';
+      }
+      return formatCurrency(n);
+    }
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
     if (FECHAS_LISTADO.has(clave)) return formatDate(valor) || '—';
@@ -409,7 +461,8 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
       fechaInicio ||
       fechaFin ||
       bloqueSeleccionadoId ||
-      (esAnalista && incluirConArchivos)
+      (esAnalista && incluirConArchivos) ||
+      filtroCasoUrl
   );
 
   return (

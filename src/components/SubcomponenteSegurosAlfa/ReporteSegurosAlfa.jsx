@@ -116,6 +116,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { filtrarCasosPorAsignacionUsuario, casoAsignadoASesionActual, esSesionColaFechaLlamadaAlfa, etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenAlfa(item, clave) {
   if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
@@ -272,6 +273,8 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const filtrosIniciales = useMemo(
     () => (modoAsignados ? { ...FILTROS_REPORTE_ALFA_DEFAULT } : cargarFiltrosReporteAlfa()),
     [modoAsignados]
@@ -331,7 +334,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       setCasos(
         modoAsignados
           ? filtrarCasosAsignadosASesion(data)
-          : filtrarCasosPorAsignacionUsuario(data)
+          : filtrarCasosPorAsignacionUsuario(data, { modulo: 'alfa' })
       );
     } catch (err) {
       setError(err.message || t('segurosAlfa.report.loadError'));
@@ -432,6 +435,8 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
         : 'fechaSiniestro';
 
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
@@ -515,6 +520,8 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     soloMisCasos,
     colaFechaLlamada,
     modoAsignados,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -555,6 +562,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     soloMisCasos,
     orden.campo,
     orden.asc,
+    casoIdUrl,
   ]);
 
   useEffect(() => {
@@ -628,6 +636,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     setBloqueSeleccionadoId(null);
     setIdsBloqueSeleccionado([]);
     setPagina(1);
+    limpiarCasoUrl();
   };
 
   const abrirPersonalizarColumnas = () => {
@@ -743,7 +752,8 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       filtroDocumento ||
       (!modoAsignados && soloMisCasos) ||
       bloqueSeleccionadoId ||
-      (tipoFecha && tipoFecha !== 'fechaSiniestro')
+      (tipoFecha && tipoFecha !== 'fechaSiniestro') ||
+      filtroCasoUrl
   );
 
   return (

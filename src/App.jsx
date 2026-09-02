@@ -39,6 +39,7 @@ import AlertasComplex from './components/AlertasComplex';
 import IndicadoresAlertasComplex from './components/IndicadoresAlertasComplex';
 import MisAlertasComplex from './components/MisAlertasComplex';
 import HelpCenterPage from './components/HelpCenter/HelpCenterPage';
+import AgendaCatastroficoPage from './components/AgendaCatastrofico/AgendaCatastroficoPage';
 import MatrizRiesgoAvanzada from './components/MatrizRiesgoAvanzada';
 import VistaReporteMatriz from './components/MatrizRiesgoAvanzada/VistaReporteMatriz';
 import ListaMatricesRiesgo from './components/ListaMatricesRiesgo';
@@ -547,6 +548,7 @@ export default function App() {
         >
           <Route path="inicio" element={<InicioOrRedirectPorRol />} />
           <Route path="ayuda" element={<HelpCenterPage />} />
+          <Route path="agenda-catastrofico" element={<AgendaCatastroficoPage />} />
           <Route
             path="complex/formulario"
             element={<FormularioCasoComplex onSave={guardarCasoComplex} />}

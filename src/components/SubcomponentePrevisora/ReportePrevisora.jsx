@@ -44,6 +44,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -234,6 +235,8 @@ const buildExportRow = (caso) => ({
 export default function ReportePrevisora() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const soloChecklistLleno = false;
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -299,6 +302,8 @@ export default function ReportePrevisora() {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
@@ -345,6 +350,8 @@ export default function ReportePrevisora() {
     filtroAjustador,
     fechaInicio,
     fechaFin,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -359,7 +366,7 @@ export default function ReportePrevisora() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -369,6 +376,7 @@ export default function ReportePrevisora() {
     setFiltroAjustador('');
     setFechaInicio('');
     setFechaFin('');
+    limpiarCasoUrl();
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -438,7 +446,8 @@ export default function ReportePrevisora() {
       filtroEstado ||
       filtroAjustador ||
       fechaInicio ||
-      fechaFin
+      fechaFin ||
+      filtroCasoUrl
   );
 
   return (

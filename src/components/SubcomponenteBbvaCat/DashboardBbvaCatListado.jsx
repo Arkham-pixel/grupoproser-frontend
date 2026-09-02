@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { FaCalculator, FaClipboardCheck, FaShieldAlt } from 'react-icons/fa';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  LabelList,
   Legend,
   Line,
   LineChart,
@@ -44,10 +44,15 @@ import {
   coincideFiltroTexto,
   etiquetaTipoPolizaBbvaCat,
   fechaEnRango,
+  formatCurrency,
+  formatEjeCop,
+  homologarEstadoBbvaCat,
 } from './bbvaCatHelpers.js';
 import {
   DIAS_ESTANCADO_BBVA_CAT,
   construirDashboardBbvaCatListado,
+  diasEnEstadoNumeroBbvaCat,
+  esCarteraAbiertaBbvaCat,
   fechaAltaListadoBbvaCat,
 } from './dashboardBbvaCatListadoStats.js';
 
@@ -160,6 +165,24 @@ export default function DashboardBbvaCatListado() {
 
   const stats = useMemo(() => construirDashboardBbvaCatListado(casosFiltrados), [casosFiltrados]);
   const { kpis } = stats;
+
+  const filasPorEstado = useMemo(() => {
+    const max = Math.max(1, ...stats.porEstado.map((fila) => Number(fila.cantidad) || 0));
+    const fueraAns = new Map();
+    for (const caso of casosFiltrados) {
+      const dias = diasEnEstadoNumeroBbvaCat(caso);
+      if (dias == null || dias < DIAS_ESTANCADO_BBVA_CAT) continue;
+      if (!esCarteraAbiertaBbvaCat(caso.estado)) continue;
+      const estado = homologarEstadoBbvaCat(caso.estado);
+      fueraAns.set(estado, (fueraAns.get(estado) || 0) + 1);
+    }
+    return stats.porEstado.map((fila) => ({
+      estado: fila.estado,
+      cantidad: Number(fila.cantidad) || 0,
+      pct: Math.round(((Number(fila.cantidad) || 0) / max) * 1000) / 10,
+      fueraAns: fueraAns.get(fila.estado) || 0,
+    }));
+  }, [stats.porEstado, casosFiltrados]);
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const tiposPoliza = useMemo(() => opcionesDesdeGetter(casos, etiquetaTipoPolizaBbvaCat), [casos]);
@@ -325,36 +348,110 @@ export default function DashboardBbvaCatListado() {
           />
         </section>
 
+        <section className="grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="min-w-0 space-y-3">
+            <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-[#004481] dark:text-sky-300">
+              {td('moneyGroupBbva')}
+            </h2>
+            <MoneyCard
+              variant="bbva"
+              icon={<FaCalculator aria-hidden="true" />}
+              label={td('kpis.cuantia')}
+              value={
+                kpis.casosConEstimado && kpis.estimadoPorCaso != null
+                  ? formatCurrency(kpis.estimadoPorCaso)
+                  : td('kpis.cuantiaEmpty')
+              }
+              hint={td('kpis.cuantiaHint')}
+              title={kpis.casosConEstimado ? formatCurrency(kpis.estimadoPorCaso) : undefined}
+            />
+          </div>
+          <div className="min-w-0 space-y-3 lg:col-span-2">
+            <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-fenix-primario">
+              {td('moneyGroupProser')}
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <MoneyCard
+                variant="proser-reserva"
+                icon={<FaShieldAlt aria-hidden="true" />}
+                label={td('kpis.adjusterReserve')}
+                value={
+                  kpis.casosConLiquidado
+                    ? formatCurrency(kpis.valorLiquidado)
+                    : td('kpis.adjusterReserveEmpty')
+                }
+                hint={td('kpis.adjusterReserveHint')}
+                title={kpis.casosConLiquidado ? formatCurrency(kpis.valorLiquidado) : undefined}
+              />
+              <MoneyCard
+                variant="proser-liquidar"
+                icon={<FaClipboardCheck aria-hidden="true" />}
+                label={td('kpis.toSettle')}
+                value={textoValorALiquidarKpi(kpis, td, formatCurrency)}
+                hint={td('kpis.toSettleHint')}
+                title={
+                  kpis.casosConValorALiquidar ? formatCurrency(kpis.valorALiquidar) : undefined
+                }
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className={`${expressTableWrap} min-w-0 p-4 sm:p-5`}>
+          <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+            {td('completeness.title')}
+          </h2>
+          <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">{td('completeness.hint')}</p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <CompletitudCard label={td('completeness.none')} value={kpis.completitud?.ninguno ?? 0} />
+            <CompletitudCard
+              label={td('completeness.onlyReserve')}
+              value={kpis.completitud?.soloReserva ?? 0}
+            />
+            <CompletitudCard
+              label={td('completeness.onlySettle')}
+              value={kpis.completitud?.soloALiquidar ?? 0}
+            />
+            <CompletitudCard label={td('completeness.both')} value={kpis.completitud?.ambos ?? 0} />
+          </div>
+        </section>
+
         <ChartCard
           title={td('charts.byStatus')}
           hint={td('charts.byStatusHint')}
           empty={kpis.totalCasos === 0}
         >
-          <ExpressChartPlot height={Math.max(380, stats.porEstado.length * 40)}>
-            <BarChart
-              data={stats.porEstado}
-              layout="vertical"
-              margin={{ top: 4, right: 36, left: 4, bottom: 4 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-              <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
-              <YAxis
-                type="category"
-                dataKey="estado"
-                width={188}
-                interval={0}
-                tick={{ fill: tickColor, fontSize: 10 }}
-              />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="cantidad" name={td('kpis.cases')} radius={[0, 4, 4, 0]}>
-                {stats.porEstado.map((entry, index) => (
-                  <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
-                ))}
-                <LabelList dataKey="cantidad" position="right" fill={tickColor} fontSize={11} />
-              </Bar>
-            </BarChart>
-          </ExpressChartPlot>
+          <CasosPorEstadoList filas={filasPorEstado} />
         </ChartCard>
+
+        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          <HorizontalBars
+            title={td('charts.reserveByStatus')}
+            hint={td('charts.reserveByStatusHint')}
+            data={stats.reservaPorEstado}
+            dataKey="valor"
+            isDark={isDark}
+            tickColor={tickColor}
+            gridStroke={gridStroke}
+            tooltipStyle={tooltipStyle}
+            seriesName={td('kpis.adjusterReserve')}
+            formatTick={formatEjeCop}
+            formatValue={formatCurrency}
+          />
+          <HorizontalBars
+            title={td('charts.reserveByCity')}
+            hint={td('charts.reserveByCityHint')}
+            data={stats.reservaPorCiudad}
+            dataKey="valor"
+            isDark={isDark}
+            tickColor={tickColor}
+            gridStroke={gridStroke}
+            tooltipStyle={tooltipStyle}
+            seriesName={td('kpis.adjusterReserve')}
+            formatTick={formatEjeCop}
+            formatValue={formatCurrency}
+          />
+        </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <HorizontalBars
@@ -377,15 +474,28 @@ export default function DashboardBbvaCatListado() {
           />
         </section>
 
-        <ChartCard title={td('charts.monthlyTrend')} empty={stats.tendenciaMensual.length === 0}>
+        <ChartCard title={td('charts.monthlyTrend')} hint={td('charts.monthlyTrendHint')} empty={stats.tendenciaMensual.length === 0}>
           <ExpressChartPlot height={360}>
             <LineChart data={stats.tendenciaMensual} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
               <XAxis dataKey="etiqueta" tick={{ fill: tickColor, fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} width={36} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <YAxis yAxisId="casos" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} width={36} />
+              <YAxis
+                yAxisId="reserva"
+                orientation="right"
+                tickFormatter={formatEjeCop}
+                tick={{ fill: tickColor, fontSize: 10 }}
+                width={52}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(value, name) =>
+                  name === td('kpis.adjusterReserve') ? formatCurrency(value) : value
+                }
+              />
               <Legend wrapperStyle={{ color: tickColor, fontSize: 12 }} />
               <Line
+                yAxisId="casos"
                 type="monotone"
                 dataKey="altas"
                 name={td('charts.newCases')}
@@ -395,12 +505,22 @@ export default function DashboardBbvaCatListado() {
                 activeDot={{ r: 6, fill: lineColors.casos }}
               />
               <Line
+                yAxisId="casos"
                 type="monotone"
                 dataKey="pagados"
                 name={td('charts.paidCases')}
                 stroke={getFenixChartColor(3, isDark)}
                 strokeWidth={2.5}
                 dot={{ fill: getFenixChartColor(3, isDark), r: 3 }}
+              />
+              <Line
+                yAxisId="reserva"
+                type="monotone"
+                dataKey="reserva"
+                name={td('kpis.adjusterReserve')}
+                stroke="#DC2626"
+                strokeWidth={2}
+                dot={{ fill: '#DC2626', r: 3 }}
               />
             </LineChart>
           </ExpressChartPlot>
@@ -427,21 +547,96 @@ export default function DashboardBbvaCatListado() {
           />
         </section>
 
-        <ChartCard title={td('charts.aging')} empty={stats.antigüedad.every((r) => r.cantidad === 0)}>
+        <ChartCard title={td('charts.aging')} hint={td('charts.agingHint')} empty={stats.antigüedad.every((r) => r.cantidad === 0)}>
             <ExpressChartPlot height={320}>
               <BarChart data={stats.antigüedad} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                 <XAxis dataKey="rango" tick={{ fill: tickColor, fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} width={36} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name={td('kpis.open')} radius={[4, 4, 0, 0]}>
+                <YAxis yAxisId="casos" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} width={36} />
+                <YAxis
+                  yAxisId="reserva"
+                  orientation="right"
+                  tickFormatter={formatEjeCop}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  width={52}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value, name) =>
+                    name === td('kpis.adjusterReserve') ? formatCurrency(value) : value
+                  }
+                />
+                <Legend wrapperStyle={{ color: tickColor, fontSize: 12 }} />
+                <Bar yAxisId="casos" dataKey="cantidad" name={td('kpis.open')} radius={[4, 4, 0, 0]}>
                   {stats.antigüedad.map((entry, index) => (
                     <Cell key={entry.rango} fill={getFenixChartColor(index, isDark)} />
                   ))}
                 </Bar>
+                <Bar
+                  yAxisId="reserva"
+                  dataKey="reserva"
+                  name={td('kpis.adjusterReserve')}
+                  fill="#DC2626"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ExpressChartPlot>
         </ChartCard>
+
+        <section className={`${expressTableWrap} min-w-0`}>
+          <div className="border-b border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5">
+            <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+              {td('pareto.title')}
+            </h3>
+            <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">{td('pareto.hint')}</p>
+          </div>
+          {stats.grandesPerdidas.length === 0 ? (
+            <p className="px-4 py-6 font-body text-sm text-gray-500 dark:text-gray-400 sm:px-5">
+              {td('pareto.empty')}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className={expressTableHead}>
+                  <tr>
+                    <th className="px-4 py-3">{t('bbvaCat.fields.zc')}</th>
+                    <th className="px-4 py-3">{t('bbvaCat.fields.asegurado')}</th>
+                    <th className="px-4 py-3">{t('bbvaCat.fields.ciudad')}</th>
+                    <th className="px-4 py-3">{t('bbvaCat.fields.estado')}</th>
+                    <th className="px-4 py-3">{t('bbvaCat.fields.valorLiquidado')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.grandesPerdidas.map((row) => (
+                    <tr
+                      key={String(row.id || `${row.zc}-${row.siniestro}`)}
+                      className="border-t border-gray-100 dark:border-gray-800"
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                        {row.id ? (
+                          <Link
+                            to={`/bbva-cat/listado/caso?casoId=${row.id}`}
+                            className="text-fenix-primario hover:underline"
+                          >
+                            {row.zc || row.siniestro || '—'}
+                          </Link>
+                        ) : (
+                          row.zc || '—'
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{truncar(row.asegurado, 36)}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.ciudad || '—'}</td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.estado}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
+                        {formatCurrency(row.reserva)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section className={`${expressTableWrap} min-w-0`}>
           <div className="border-b border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5">
@@ -508,6 +703,47 @@ export default function DashboardBbvaCatListado() {
   );
 }
 
+function CasosPorEstadoList({ filas = [] }) {
+  const { t } = useTranslation();
+  const max = Math.max(1, ...filas.map((fila) => fila.cantidad || 0));
+  return (
+    <ul className="space-y-4">
+      {filas.map((fila) => {
+        const ancho = Math.max(0, Math.min(100, (fila.cantidad / max) * 100));
+        const fueraAns = Number(fila.fueraAns) > 0;
+        return (
+          <li
+            key={fila.estado}
+            className="grid grid-cols-[minmax(7.5rem,11.5rem)_1fr_auto] items-center gap-3 sm:gap-4"
+          >
+            <p className="truncate font-body text-sm text-gray-800 dark:text-gray-100" title={fila.estado}>
+              {fila.estado}
+            </p>
+            <div className="h-3.5 overflow-hidden rounded-full bg-gray-200 dark:bg-[#3F3F3F]">
+              <div
+                className={`h-full rounded-full ${fueraAns ? 'bg-[#E07070]' : 'bg-[#E8A0A0]'}`}
+                style={{ width: `${ancho}%` }}
+              />
+            </div>
+            <p
+              className={`min-w-[4.75rem] text-right font-body text-sm tabular-nums ${
+                fueraAns ? 'font-semibold text-[#E07070]' : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              {fila.cantidad}
+              {fueraAns ? (
+                <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide">
+                  {t('bbvaCat.listadoDashboard.charts.outOfSla')} {fila.fueraAns}
+                </span>
+              ) : null}
+            </p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function ChartCard({ title, hint, empty, children }) {
   const { t } = useTranslation();
   return (
@@ -525,13 +761,30 @@ function ChartCard({ title, hint, empty, children }) {
   );
 }
 
-function HorizontalBars({ title, data, isDark, tickColor, gridStroke, tooltipStyle, seriesName }) {
+function HorizontalBars({
+  title,
+  hint,
+  data,
+  dataKey = 'cantidad',
+  isDark,
+  tickColor,
+  gridStroke,
+  tooltipStyle,
+  seriesName,
+  formatTick,
+  formatValue,
+}) {
   return (
-    <ChartCard title={title} empty={!data.length}>
+    <ChartCard title={title} hint={hint} empty={!data.length}>
       <ExpressChartPlot height={Math.max(280, data.length * 34)}>
         <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-          <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            tick={{ fill: tickColor, fontSize: 11 }}
+            tickFormatter={formatTick}
+          />
           <YAxis
             type="category"
             dataKey="nombre"
@@ -539,8 +792,11 @@ function HorizontalBars({ title, data, isDark, tickColor, gridStroke, tooltipSty
             tick={{ fill: tickColor, fontSize: 10 }}
             tickFormatter={(v) => truncar(v, 24)}
           />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="cantidad" name={seriesName} radius={[0, 4, 4, 0]}>
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value) => (formatValue ? formatValue(value) : value)}
+          />
+          <Bar dataKey={dataKey} name={seriesName} radius={[0, 4, 4, 0]}>
             {data.map((entry, index) => (
               <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
             ))}
@@ -548,5 +804,42 @@ function HorizontalBars({ title, data, isDark, tickColor, gridStroke, tooltipSty
         </BarChart>
       </ExpressChartPlot>
     </ChartCard>
+  );
+}
+
+function textoValorALiquidarKpi(kpis, td, formatear) {
+  if (!kpis.casosConValorALiquidar) return td('kpis.toSettleEmpty');
+  if (Number(kpis.valorALiquidar) === 0) return td('kpis.toSettleZero');
+  return formatear(kpis.valorALiquidar);
+}
+
+function MoneyCard({ variant, icon, label, value, hint, title }) {
+  const estilos = {
+    bbva:
+      'border-2 border-dashed border-[#004481] bg-sky-50/80 dark:border-sky-400 dark:bg-sky-950/30',
+    'proser-reserva':
+      'border-2 border-solid border-fenix-primario bg-white dark:border-red-500 dark:bg-[#1A1A1A]',
+    'proser-liquidar':
+      'border-2 border-fenix-primario bg-[repeating-linear-gradient(-45deg,transparent,transparent_7px,rgba(220,38,38,0.08)_7px,rgba(220,38,38,0.08)_14px)] dark:border-red-500 dark:bg-[repeating-linear-gradient(-45deg,transparent,transparent_7px,rgba(220,38,38,0.16)_7px,rgba(220,38,38,0.16)_14px)]',
+  };
+  const colorIcono = variant === 'bbva' ? 'text-[#004481] dark:text-sky-300' : 'text-fenix-primario';
+  return (
+    <div className={`rounded-xl p-4 shadow-sm ${estilos[variant] || estilos.bbva}`} title={title}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-body text-sm font-medium leading-snug text-gray-600 dark:text-gray-300">{label}</p>
+        <span className={`mt-0.5 shrink-0 text-lg ${colorIcono}`}>{icon}</span>
+      </div>
+      <p className="mt-2 font-accent text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+      {hint ? <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">{hint}</p> : null}
+    </div>
+  );
+}
+
+function CompletitudCard({ label, value }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-[#1A1A1A]">
+      <p className="font-body text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mt-2 font-accent text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+    </div>
   );
 }

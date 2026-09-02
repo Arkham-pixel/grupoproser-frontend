@@ -874,6 +874,8 @@ export const FORM_VACIO_ZURICH = {
   modalidadAtencion: '',
   fechaCasoNuevo: '',
   fechaCoordinandoInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaInspeccionado: '',
   fechaVerificado: '',
   fechaAnalisisCaso: '',

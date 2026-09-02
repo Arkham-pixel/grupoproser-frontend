@@ -510,6 +510,8 @@ export const FORM_VACIO_PREVISORA = {
   modalidadAtencion: '',
   fechaCasoNuevo: '',
   fechaCoordinandoInspeccion: '',
+  horaInicioCoordinacion: '',
+  horaFinCoordinacion: '',
   fechaAnalisisCaso: '',
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',

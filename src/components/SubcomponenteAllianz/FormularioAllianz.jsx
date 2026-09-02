@@ -32,6 +32,7 @@ import {
   InputFenix,
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import CampoFranjaCoordinacion from '../AgendaCatastrofico/CampoFranjaCoordinacion.jsx';
 import {
   CAMPOS_NUMERICOS_ALLIANZ,
   CAMPOS_DECIMAL_ALLIANZ,
@@ -373,6 +374,8 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
+        horaInicioCoordinacion: form.horaInicioCoordinacion,
+        horaFinCoordinacion: form.horaFinCoordinacion,
         fechaAnalisisCaso: form.fechaAnalisisCaso,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
@@ -758,13 +761,19 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('allianz.fields.fechaCasoNuevo')}>
             <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
           </Campo>
-          <Campo label={t('allianz.fields.fechaCoordinandoInspeccion')}>
-            <InputFenix
-              type="date"
-              value={form.fechaCoordinandoInspeccion}
-              onChange={setCampo('fechaCoordinandoInspeccion')}
-            />
-          </Campo>
+          <CampoFranjaCoordinacion
+            labelFecha={t('allianz.fields.fechaCoordinandoInspeccion')}
+            fecha={form.fechaCoordinandoInspeccion}
+            horaInicio={form.horaInicioCoordinacion}
+            horaFin={form.horaFinCoordinacion}
+            onFecha={setCampo('fechaCoordinandoInspeccion')}
+            onHoraInicio={setCampo('horaInicioCoordinacion')}
+            onHoraFin={setCampo('horaFinCoordinacion')}
+            ajustador={form.ajustador}
+            inspector={form.inspector}
+            casoId={initialData?._id}
+            disabled={attrsCampoCaso(rolUsuario, 'fechaCoordinandoInspeccion', ctxPermiso).disabled}
+          />
           <Campo label={t('allianz.fields.fechaAnalisisCaso')}>
             <InputFenix
               type="date"

@@ -51,6 +51,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -252,6 +253,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteZurich() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const soloChecklistLleno = esRolContractorZurich();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -320,6 +323,8 @@ export default function ReporteZurich() {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (!coincideFiltroCiudadZurich(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (filtroEstado && homologarEstadoZurich(c.estado) !== filtroEstado) return false;
@@ -374,6 +379,8 @@ export default function ReporteZurich() {
     fechaInicio,
     fechaFin,
     tipoFecha,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -388,7 +395,7 @@ export default function ReporteZurich() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -400,6 +407,7 @@ export default function ReporteZurich() {
     setFechaInicio('');
     setFechaFin('');
     setTipoFecha('fechaSiniestro');
+    limpiarCasoUrl();
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -477,7 +485,8 @@ export default function ReporteZurich() {
       filtroAjustador ||
       filtroInspector ||
       fechaInicio ||
-      fechaFin
+      fechaFin ||
+      filtroCasoUrl
   );
 
   return (

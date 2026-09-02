@@ -1,4 +1,6 @@
 /** Normaliza texto para comparar ciudades (sin acentos / mayúsculas). */
+import { needlesLiderModulo } from './lideresModuloCatastrofico.js';
+
 export function normCiudadCatastrofico(valor) {
   return String(valor ?? '')
     .normalize('NFD')
@@ -152,14 +154,7 @@ export const LIDER_ZURICH = 'Ladys Andrea Escalante';
 
 /** Needle de nombre para el líder fijo por módulo. */
 export function needleLiderPorModulo(modulo = '') {
-  const m = String(modulo || '').toLowerCase();
-  if (m === 'alfa') return 'SILVIA';
-  if (m === 'sura') return 'BERNARDO';
-  if (m === 'zurich' || m === 'zurich-listado' || m === 'zurichlistado') return 'LADYS';
-  if (m === 'bbvacat' || m === 'bbva' || m === 'bbva-cat' || m === 'bbva-cat-listado') {
-    return 'BAEZ';
-  }
-  return '';
+  return needlesLiderModulo(modulo)[0] || '';
 }
 
 function claveModuloCatalogo(valor) {
@@ -217,7 +212,9 @@ export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
 
 /**
  * Líder recomendado por módulo (default al crear):
- * Alfa → Silvia; Sura → Bernardo y Mario Pinilla; BBVA → Miguel Báez; Zurich → Ladys.
+ * Zurich Ladys, Sura Bernardo, Previsora Iskharly, Allianz Mario Pinilla,
+ * BBVA Miguel Báez, Equidad Arnaldo, Alfa Silvia.
+
  * El select de Gestionar usa `opcionesLideresParaSelect` (lista completa).
  */
 export function filtrarLideresPorModulo(lideres = [], modulo = '') {
@@ -245,6 +242,21 @@ export function filtrarLideresPorModulo(lideres = [], modulo = '') {
   if (esModuloZurich(modulo)) {
     return lideres.filter((l) =>
       normCiudadCatastrofico(`${l.label || ''} ${l.value || ''}`).includes('LADYS')
+    );
+  }
+  if (claveModuloCatalogo(modulo).includes('previsora')) {
+    return lideres.filter((l) =>
+      normCiudadCatastrofico(l.label || l.value).includes('ISKHARLY')
+    );
+  }
+  if (claveModuloCatalogo(modulo).includes('allianz')) {
+    return lideres.filter((l) =>
+      normCiudadCatastrofico(l.label || l.value).includes('PINILLA')
+    );
+  }
+  if (claveModuloCatalogo(modulo).includes('equidad')) {
+    return lideres.filter((l) =>
+      normCiudadCatastrofico(l.label || l.value).includes('ARNALDO')
     );
   }
   const needle = needleLiderPorModulo(modulo);

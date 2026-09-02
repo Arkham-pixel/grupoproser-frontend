@@ -33,7 +33,6 @@ import {
   FaSun,
   FaShip,
   FaFolderOpen,
-  FaBell,
   FaClock,
   FaChartLine,
   FaDownload,
@@ -64,14 +63,12 @@ import LogoutButton from './LogoutButton';
 import Aviso2FAPrompt from './Aviso2FAPrompt';
 import ArnaldBorradoresPendientesModal from './ArnaldBorradoresPendientesModal';
 import LanguageSelector from './LanguageSelector';
+import NotificacionesOperativasMenu from './NotificacionesOperativasMenu';
+import AgendaCatastroficoMenu from './AgendaCatastrofico/AgendaCatastroficoMenu';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
-import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado } from '../config/roles';
-import {
-  obtenerMisAlertas,
-  obtenerResumenAlertas,
-} from '../services/alertasComplexService.js';
+import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado, puedeVerAgendaCatastrofico } from '../config/roles';
 import { useIsMobileShell } from '../hooks/useMediaQuery';
 import { apiRequest } from '../config/apiConfig.js';
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
@@ -380,7 +377,6 @@ export default function Layout() {
   });
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [contadorAlertas, setContadorAlertas] = useState(0);
   const [contadorSubtareas, setContadorSubtareas] = useState(0);
   const fotoUsuario = fotoUsuarioQueue[0] || null;
   const location = useLocation();
@@ -426,17 +422,6 @@ export default function Layout() {
     let activo = true;
     const cargarContador = async () => {
       try {
-        if (esAdminOSoporte) {
-          const res = await obtenerResumenAlertas();
-          if (activo) setContadorAlertas(res?.totalAlertas ?? 0);
-        } else {
-          const res = await obtenerMisAlertas();
-          if (activo) setContadorAlertas(res?.totalAlertas ?? 0);
-        }
-      } catch {
-        /* sin contador */
-      }
-      try {
         const resSub = await obtenerMisSubtareas();
         if (activo) setContadorSubtareas(resSub?.total ?? 0);
       } catch {
@@ -449,11 +434,12 @@ export default function Layout() {
       activo = false;
       clearInterval(intervalo);
     };
-  }, [accesoRestringido, esAdminOSoporte, location.pathname]);
+  }, [accesoRestringido, location.pathname]);
 
   const routeTitles = useMemo(() => ({
     '/inicio': t('nav.pageTitles.home'),
     '/ayuda': t('nav.pageTitles.help'),
+    '/agenda-catastrofico': t('nav.pageTitles.agendaCatastrofico', { defaultValue: 'Agenda catastrófica' }),
     '/formularioinspeccion': t('nav.pageTitles.inspectionForm'),
     '/formulario-inspeccion-propiedades': t('nav.pageTitles.propertiesInspectionForm'),
     '/complex/agregar': t('nav.pageTitles.complexAdd'),
@@ -803,6 +789,7 @@ export default function Layout() {
           { path: '/complex/agregar', icon: FaPlus, label: t('nav.addCases') },
           { path: '/complex/dashboard', icon: FaChartLine, label: t('nav.dashboard') },
           { path: '/complex/indicadores-alertas', icon: FaChartBar, label: t('nav.indicators') },
+          { path: '/complex/mis-alertas', icon: FaExclamationTriangle, label: t('nav.myAlerts') },
           { path: '/complex/excel', icon: FaTable, label: t('nav.completeReport') },
           { path: '/complex/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/complex/mis-subtareas', icon: FaTasks, label: t('nav.myTasks') },
@@ -1414,40 +1401,23 @@ export default function Layout() {
             )}
 
             {!accesoRestringido && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => navigate('/complex/mis-subtareas')}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
-                  title={t('nav.myComplexTasks')}
-                >
-                  <FaTasks className="text-lg" />
-                  {contadorSubtareas > 0 && (
-                    <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                      {contadorSubtareas > 99 ? '99+' : contadorSubtareas}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      esAdminOSoporte
-                        ? '/complex/alertas'
-                        : '/complex/mis-alertas'
-                    )
-                  }
-                  className="relative flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
-                  title={esAdminOSoporte ? t('nav.alertSystem') : t('nav.myAlerts')}
-                >
-                  <FaBell className="text-lg" />
-                  {contadorAlertas > 0 && (
-                    <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-fenix-primario px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                      {contadorAlertas > 99 ? '99+' : contadorAlertas}
-                    </span>
-                  )}
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => navigate('/complex/mis-subtareas')}
+                className="relative flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
+                title={t('nav.myComplexTasks')}
+              >
+                <FaTasks className="text-lg" />
+                {contadorSubtareas > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                    {contadorSubtareas > 99 ? '99+' : contadorSubtareas}
+                  </span>
+                )}
+              </button>
+            )}
+            {puedeVerAgendaCatastrofico(rolNorm) && <AgendaCatastroficoMenu />}
+            {!esVisualizador && !esPuertos && rolNorm !== 'externo' && (
+              <NotificacionesOperativasMenu />
             )}
 
             {!esContractor && (

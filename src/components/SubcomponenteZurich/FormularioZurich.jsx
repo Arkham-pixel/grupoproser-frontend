@@ -32,6 +32,7 @@ import {
   InputFenix,
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import CampoFranjaCoordinacion from '../AgendaCatastrofico/CampoFranjaCoordinacion.jsx';
 import {
   CAMPOS_NUMERICOS_ZURICH,
   CAMPOS_DECIMAL_ZURICH,
@@ -396,6 +397,8 @@ const FormularioZurich = ({
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
+        horaInicioCoordinacion: form.horaInicioCoordinacion,
+        horaFinCoordinacion: form.horaFinCoordinacion,
         fechaAnalisisCaso: form.fechaAnalisisCaso,
         fechaInspeccionado: form.fechaInspeccionado,
         fechaVerificado: form.fechaVerificado,
@@ -834,13 +837,19 @@ const FormularioZurich = ({
           <Campo label={t('zurich.fields.fechaCasoNuevo')}>
             <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
           </Campo>
-          <Campo label={t('zurich.fields.fechaCoordinandoInspeccion')}>
-            <InputFenix
-              type="date"
-              value={form.fechaCoordinandoInspeccion}
-              onChange={setCampo('fechaCoordinandoInspeccion')}
-            />
-          </Campo>
+          <CampoFranjaCoordinacion
+            labelFecha={t('zurich.fields.fechaCoordinandoInspeccion')}
+            fecha={form.fechaCoordinandoInspeccion}
+            horaInicio={form.horaInicioCoordinacion}
+            horaFin={form.horaFinCoordinacion}
+            onFecha={setCampo('fechaCoordinandoInspeccion')}
+            onHoraInicio={setCampo('horaInicioCoordinacion')}
+            onHoraFin={setCampo('horaFinCoordinacion')}
+            ajustador={form.ajustador}
+            inspector={form.inspector}
+            casoId={initialData?._id}
+            disabled={attrsCampoCaso(rolUsuario, 'fechaCoordinandoInspeccion', ctxPermiso).disabled}
+          />
           <Campo label={t('zurich.fields.fechaAnalisisCaso')}>
             <InputFenix
               type="date"

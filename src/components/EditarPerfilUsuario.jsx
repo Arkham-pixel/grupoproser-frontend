@@ -223,6 +223,7 @@ if (!esAdminOSoporte) {
                 <option value="contractor_solo_express">{t('roles.contractor_solo_express', 'Express')}</option>
                 <option value="contractor_solo_previsora">{t('roles.contractor_solo_previsora', 'Previsora')}</option>
                 <option value="contractor_catastroficos">{t('roles.contractor_catastroficos', 'Catastróficos')}</option>
+                <option value="contractor_era">{t('roles.contractor_era', 'ERA')}</option>
                 <option value="soporte">{t('roles.soporte')}</option>
                 <option value="admin">{t('roles.admin')}</option>
               </select>

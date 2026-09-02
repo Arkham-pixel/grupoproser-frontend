@@ -52,6 +52,7 @@ import {
   filtrarCasosPorAsignacionUsuario,
 } from '../../utils/permisosCasoPorRol.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
+import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenSura(item, clave) {
   if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
@@ -172,6 +173,8 @@ const buildExportRow = (caso) => ({
 export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
+    useFiltroCasoExclusivo();
   const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -230,6 +233,8 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (!coincideCasoUrl(c)) return false;
+      if (casoIdUrl) return true;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (filtroEstado) {
@@ -288,6 +293,8 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
     filtroDocs,
     fechaInicio,
     fechaFin,
+    casoIdUrl,
+    coincideCasoUrl,
   ]);
 
   const casosOrdenados = useMemo(
@@ -316,6 +323,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
     fechaFin,
     orden.campo,
     orden.asc,
+    casoIdUrl,
   ]);
 
   const limpiarFiltros = () => {
@@ -330,6 +338,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
     setFiltroDocs(soloDocumentacion ? 'con' : '');
     setFechaInicio('');
     setFechaFin('');
+    limpiarCasoUrl();
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -424,7 +433,8 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
       filtroZona ||
       (filtroDocs && !soloDocumentacion) ||
       fechaInicio ||
-      fechaFin
+      fechaFin ||
+      filtroCasoUrl
   );
 
   return (
