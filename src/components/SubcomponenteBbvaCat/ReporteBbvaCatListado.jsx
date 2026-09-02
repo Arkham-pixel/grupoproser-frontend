@@ -737,7 +737,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                         }`}
                       >
                         <AccionesBbvaCatMenu
-                          docsCount={item.archivos?.length || 0}
+                          docsCount={item.nArchivos ?? item.archivos?.length ?? 0}
                           tieneLiquidador={!!item.liquidador}
                           tieneInforme={!!item.informeUnico}
                           onGestionar={() => setCasoEdicion(item)}

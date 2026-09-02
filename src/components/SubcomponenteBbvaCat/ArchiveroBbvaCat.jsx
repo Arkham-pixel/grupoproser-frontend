@@ -52,6 +52,24 @@ function inferirEtiqueta(nombre, fallback, permitidas) {
   return candidata;
 }
 
+/** El GET de listado no trae archivos; solo un conteo que el front convierte en `{}`. */
+function esArchivoVisible(arch) {
+  if (!arch || typeof arch !== 'object') return false;
+  return Boolean(arch.ruta || arch.nombreOriginal || arch.nombreArchivo);
+}
+
+function archivosVisibles(lista) {
+  return (Array.isArray(lista) ? lista : []).filter(esArchivoVisible);
+}
+
+function nombreArchivoMostrar(arch) {
+  return String(arch?.nombreOriginal || arch?.nombreArchivo || '').trim();
+}
+
+function tamañoArchivo(arch) {
+  return arch?.tamaño ?? arch?.tamano ?? arch?.size;
+}
+
 export default function ArchiveroBbvaCat({
   caso,
   onClose,
@@ -66,19 +84,41 @@ export default function ArchiveroBbvaCat({
   const opcionesEtiqueta =
     etiquetas ||
     (origen === 'listado' ? ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO : ETIQUETAS_ARCHIVO_BBVA_CAT);
-  const [archivos, setArchivos] = useState(() => caso?.archivos || []);
+  const [archivos, setArchivos] = useState(() => archivosVisibles(caso?.archivos));
   const [etiqueta, setEtiqueta] = useState(etiquetaInicial || 'GENERAL');
   const [pendientes, setPendientes] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
   const [progreso, setProgreso] = useState(null);
   const [arrastrando, setArrastrando] = useState(false);
+  const [cargando, setCargando] = useState(() => Boolean(caso?._id));
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const dragCountRef = useRef(0);
 
   useEffect(() => {
-    setArchivos(caso?.archivos || []);
-  }, [caso?._id, caso?.archivos]);
+    if (!caso?._id) {
+      setArchivos([]);
+      setCargando(false);
+      return undefined;
+    }
+    setArchivos(archivosVisibles(caso?.archivos));
+    setCargando(true);
+    let cancelado = false;
+    (async () => {
+      try {
+        const actualizado = await api.getById(caso._id);
+        if (cancelado) return;
+        setArchivos(archivosVisibles(actualizado.archivos));
+      } catch {
+        /* el listado no trae archivos; el getById los hidrata */
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [caso?._id, api]);
 
   useEffect(() => {
     if (etiquetaInicial) setEtiqueta(etiquetaInicial);
@@ -86,7 +126,7 @@ export default function ArchiveroBbvaCat({
 
   const refrescar = async () => {
     const actualizado = await api.getById(caso._id);
-    setArchivos(actualizado.archivos || []);
+    setArchivos(archivosVisibles(actualizado.archivos));
     if (onChanged) onChanged(actualizado);
     return actualizado;
   };
@@ -163,6 +203,7 @@ export default function ArchiveroBbvaCat({
   };
 
   const handleDelete = async (archivoId) => {
+    if (!archivoId) return;
     if (!window.confirm(t('bbvaCat.archive.confirmDelete'))) return;
     setError(null);
     setExito(null);
@@ -381,19 +422,26 @@ export default function ArchiveroBbvaCat({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
-            {archivos.length === 0 ? (
+            {cargando && archivos.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-6 text-center font-body text-sm text-gray-500">
+                  {t('bbvaCat.workspace.loading')}
+                </td>
+              </tr>
+            ) : archivos.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center font-body text-sm text-gray-500">
                   {t('bbvaCat.archive.empty')}
                 </td>
               </tr>
             ) : (
-              archivos.map((arch) => {
+              archivos.map((arch, idx) => {
                 const url = api.url(arch.ruta);
+                const nombre = nombreArchivoMostrar(arch);
                 return (
-                  <tr key={arch._id}>
+                  <tr key={arch._id || arch.ruta || `archivo-${idx}`}>
                     <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
-                      {arch.nombreOriginal}
+                      {nombre || '—'}
                     </td>
                     <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {t(`bbvaCat.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
@@ -401,7 +449,7 @@ export default function ArchiveroBbvaCat({
                       })}
                     </td>
                     <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {formatBytes(arch.tamaño)}
+                      {formatBytes(tamañoArchivo(arch))}
                     </td>
                     <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {formatDate(arch.fechaSubida) || '—'}
@@ -413,21 +461,23 @@ export default function ArchiveroBbvaCat({
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            download={arch.nombreOriginal}
+                            download={nombre || undefined}
                             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
                           >
                             <FaDownload />
                             {t('bbvaCat.archive.download')}
                           </a>
                         )}
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
-                          onClick={() => handleDelete(arch._id)}
-                        >
-                          <FaTrash />
-                          {t('bbvaCat.report.delete')}
-                        </button>
+                        {arch._id ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
+                            onClick={() => handleDelete(arch._id)}
+                          >
+                            <FaTrash />
+                            {t('bbvaCat.report.delete')}
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

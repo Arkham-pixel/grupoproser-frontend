@@ -38,7 +38,12 @@ export function ordenarBloquesPorVolumenBbvaCat(bloques = []) {
 }
 
 export function casoTieneArchivosBbvaCat(caso) {
-  return Array.isArray(caso?.archivos) && caso.archivos.length > 0;
+  const n = Number(caso?.nArchivos);
+  if (Number.isFinite(n) && n > 0) return true;
+  return (
+    Array.isArray(caso?.archivos) &&
+    caso.archivos.some((a) => a && (a.ruta || a.nombreOriginal || a.nombreArchivo))
+  );
 }
 
 export function indiceColorBloqueBbvaCat(bloque, fallback = 0) {

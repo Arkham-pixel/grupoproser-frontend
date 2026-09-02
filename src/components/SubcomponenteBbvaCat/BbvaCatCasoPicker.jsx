@@ -45,8 +45,8 @@ export default function BbvaCatCasoPicker({
         return blob.includes(q);
       })
       .sort((a, b) => {
-        const da = a.archivos?.length || 0;
-        const db = b.archivos?.length || 0;
+        const da = Number(a.nArchivos) || a.archivos?.length || 0;
+        const db = Number(b.nArchivos) || b.archivos?.length || 0;
         if (db !== da) return db - da;
         return String(a.zc || a.siniestro || '').localeCompare(
           String(b.zc || b.siniestro || ''),
@@ -100,7 +100,7 @@ export default function BbvaCatCasoPicker({
       {filtrados.length > 0 ? (
         <ul className="max-h-72 overflow-auto rounded-lg border border-amber-200 bg-white dark:border-amber-800 dark:bg-gray-950">
           {filtrados.map((c) => {
-            const n = Array.isArray(c.archivos) ? c.archivos.length : 0;
+            const n = Number(c.nArchivos) || (Array.isArray(c.archivos) ? c.archivos.length : 0);
             const activo = String(c._id) === String(casoIdActivo);
             return (
               <li key={c._id}>

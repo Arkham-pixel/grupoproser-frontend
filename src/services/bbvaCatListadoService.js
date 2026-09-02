@@ -20,7 +20,11 @@ const authHeaders = () => {
 export const normalizeBbvaCatListadoItem = (item = {}) => {
   const estado = homologarEstadoBbvaCat(item.estado);
   const caso = { ...item, estado };
-  const nArchivos = Number(item.nArchivos);
+  const nArchivos = Number.isFinite(Number(item.nArchivos))
+    ? Number(item.nArchivos)
+    : Array.isArray(item.archivos)
+      ? item.archivos.length
+      : 0;
   return {
     ...caso,
     zc: item.zc ?? '',
@@ -60,9 +64,10 @@ export const normalizeBbvaCatListadoItem = (item = {}) => {
         : item.tieneInforme
           ? { _presente: true }
           : null,
+    nArchivos,
     archivos: Array.isArray(item.archivos)
       ? item.archivos
-      : Number.isFinite(nArchivos) && nArchivos > 0
+      : nArchivos > 0
         ? Array.from({ length: nArchivos }, () => ({}))
         : [],
   };
