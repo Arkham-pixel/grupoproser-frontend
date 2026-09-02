@@ -107,9 +107,9 @@ export const CONFIG_SOLO_EQUIDAD = {
 };
 
 export const CONFIG_SOLO_EQUIDAD_CAT = {
-  seccionesMenu: ['equidadCat'],
+  seccionesMenu: ['equidadCat', 'allianz'],
   inicio: '/equidad-cat/reporte',
-  prefijosRuta: ['/equidad-cat', '/agenda-catastrofico'],
+  prefijosRuta: ['/equidad-cat', '/allianz', '/allias', '/agenda-catastrofico'],
   etiqueta: 'Equidad CAT',
 };
 
