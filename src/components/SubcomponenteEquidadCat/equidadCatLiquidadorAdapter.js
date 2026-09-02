@@ -2,6 +2,24 @@ import { mapCasoFdmALiquidador } from '../SubcomponenteEquidadFdm/liquidadorEqui
 
 /** Convierte un caso Equidad CAT al shape que espera el liquidador FDM. */
 export function casoEquidadCatComoFdm(caso = {}) {
+  const guardado = caso.liquidador && typeof caso.liquidador === 'object' ? caso.liquidador : null;
+  const pctCaso = Number(caso.deducibleMaxPct);
+  const smmlvCaso = Number(caso.deducibleSmmlv);
+  const tienePct = caso.deducibleMaxPct !== '' && caso.deducibleMaxPct != null && Number.isFinite(pctCaso);
+  const tieneSmmlv =
+    caso.deducibleSmmlv !== '' && caso.deducibleSmmlv != null && Number.isFinite(smmlvCaso);
+
+  let liquidador = guardado;
+  if (!guardado?.deducible && (tienePct || tieneSmmlv)) {
+    liquidador = {
+      ...(guardado || {}),
+      deducible: {
+        ...(tienePct ? { porcentaje: pctCaso } : {}),
+        ...(tieneSmmlv ? { cantidadSMMLV: smmlvCaso } : {}),
+      },
+    };
+  }
+
   return {
     ...caso,
     nombre: caso.asegurado || caso.nombre || '',
@@ -16,7 +34,7 @@ export function casoEquidadCatComoFdm(caso = {}) {
     cobertura: caso.producto || caso.causa || caso.cobertura || '',
     evento: caso.producto || caso.causa || caso.evento || '',
     tomadorLiquidador: caso.tomador || 'SEGUROS LA EQUIDAD',
-    liquidador: caso.liquidador,
+    liquidador,
   };
 }
 

@@ -32,6 +32,7 @@ import {
   resumenCotizacionesPdfAlfa,
   serializarCotizacionesPdfAlfa,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { scoreContenidoLiquidadorNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 /** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
 export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.2;
@@ -66,6 +67,28 @@ El movimiento generó afectaciones en edificaciones, viviendas e infraestructura
 Posterior al evento principal se han presentado diferentes réplicas, por lo que las autoridades y organismos técnicos han mantenido labores de inspección y evaluación de las construcciones afectadas, con el propósito de identificar posibles condiciones de riesgo y determinar su seguridad para la ocupación.
 
 Este evento sísmico constituye el antecedente general bajo el cual se desarrollan las inspecciones y evaluaciones de daños objeto del presente informe.`;
+
+export function pesosEnterosAlfa(valor) {
+  if (valor == null || valor === '') return null;
+  const n = typeof valor === 'number' ? valor : parsearNumero(valor);
+  if (!Number.isFinite(n)) return null;
+  if (Math.abs(n) >= 1_000_000_000) return Math.round(n / 100);
+  return Math.round(n);
+}
+
+/** Si el candidato está inflado ×10 o ×100 vs la referencia del liquidador, usa la referencia. */
+export function elegirMontoSinInflarAlfa(candidato, referencia) {
+  const a = Number(typeof candidato === 'number' ? candidato : parsearNumero(candidato));
+  const b = Number(typeof referencia === 'number' ? referencia : parsearNumero(referencia));
+  if (Number.isFinite(b) && b > 0 && Number.isFinite(a) && a > 0) {
+    const ratio = a / b;
+    if (ratio > 50 && ratio < 150) return b;
+    if (ratio > 5 && ratio < 15) return b;
+  }
+  if (Number.isFinite(a) && a > 0) return a;
+  if (Number.isFinite(b) && b > 0) return b;
+  return 0;
+}
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
@@ -674,7 +697,7 @@ export function calcularLiquidacionAlfa(liquidador = {}, opciones = {}) {
     totalIndemnizar,
     totalIndemnizable: totalIndemnizar,
     totalPerdida: totalDaniosCat,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || totalDaniosCat,
+    totalReclamado: elegirMontoSinInflarAlfa(liquidador.valorReclamadoCaso, totalDaniosCat),
     deducibleAplicado: dedAlfa.deducibleAplicado,
     deducibleRequiereValorAsegurado: Boolean(dedAlfa.requiereValorAsegurado),
     deducibleTexto: dedAlfa.texto,
@@ -717,6 +740,21 @@ export function resolverMontoIndemnizarAlfa(liquidador = {}, totalesDesfasados =
     });
   }
   return { totales, totalIndemnizar };
+}
+
+/**
+ * Reclamado / liquidado oficiales del liquidador (números, no texto con puntos).
+ * Null si el liquidador está vacío.
+ */
+export function montosCasoDesdeLiquidadorAlfa(liquidador = {}) {
+  if (scoreContenidoLiquidadorNsr(liquidador) === 0) return null;
+  const { totales, totalIndemnizar } = resolverMontoIndemnizarAlfa(liquidador);
+  const reclamado = elegirMontoSinInflarAlfa(totales.totalReclamado, totales.totalDanios);
+  const liquidado = Number(totalIndemnizar);
+  return {
+    valorReclamado: pesosEnterosAlfa(reclamado),
+    valorLiquidado: pesosEnterosAlfa(liquidado),
+  };
 }
 
 /** Filas planas del presupuesto NSR (para resúmenes). */

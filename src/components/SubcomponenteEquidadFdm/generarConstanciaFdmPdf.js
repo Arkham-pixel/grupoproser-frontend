@@ -282,7 +282,10 @@ export async function generarLiquidadorFdmPdfBlob(liquidador, totalesParam) {
   y += subH + 4;
 
   // Bloque inferior
-  const smmlvOk = totales.usaSMMLV;
+  const smmlvOk = Boolean(totales.usaSMMLV) && !totales.usaManual;
+  const pctOk = !totales.usaSMMLV && !totales.usaManual;
+  const qtyLabel = String(totales.cantidadSMMLV ?? 0.75).replace('.', ',');
+  const pctLabel = `${String(totales.porcentaje ?? 10).replace('.', ',')}%`;
   const bottomTop = y;
 
   // Izquierda: subsidio / SMMLV / deducible
@@ -310,7 +313,6 @@ export async function generarLiquidadorFdmPdfBlob(liquidador, totalesParam) {
   ly += 2;
 
   const dedH = 6;
-  // 0.75 SMMLV
   const row1Y = ly;
   if (smmlvOk) fill(doc, leftX, row1Y, colW, dedH, [230, 255, 235]);
   strokeRect(doc, leftX, row1Y, 18, dedH, 0.25);
@@ -318,16 +320,15 @@ export async function generarLiquidadorFdmPdfBlob(liquidador, totalesParam) {
   strokeRect(doc, leftX + colW - 14, row1Y, 14, dedH, 0.25);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text('0,75', leftX + 9, row1Y + 4.1, { align: 'center' });
+  doc.text(qtyLabel, leftX + 9, row1Y + 4.1, { align: 'center' });
   doc.text(money(totales.deducibleSMMLV, { emptyDash: false }), leftX + colW - 16, row1Y + 4.1, {
     align: 'right',
   });
   drawCheck(doc, leftX + colW - 7, row1Y + 3.2, smmlvOk);
   doc.setTextColor(...INK);
 
-  // 10%
   const row2Y = row1Y + dedH;
-  if (!smmlvOk) {
+  if (pctOk) {
     fill(doc, leftX, row2Y, colW, dedH, BLUE_SEL);
   }
   strokeRect(doc, leftX, row2Y, 18, dedH, 0.25);
@@ -335,15 +336,15 @@ export async function generarLiquidadorFdmPdfBlob(liquidador, totalesParam) {
   strokeRect(doc, leftX + colW - 14, row2Y, 14, dedH, 0.25);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(...(!smmlvOk ? [255, 255, 255] : INK));
-  doc.text('10%', leftX + 9, row2Y + 4.1, { align: 'center' });
+  doc.setTextColor(...(pctOk ? [255, 255, 255] : INK));
+  doc.text(pctLabel, leftX + 9, row2Y + 4.1, { align: 'center' });
   doc.text(
     money(totales.deduciblePorcentajeExcel, { emptyDash: false }),
     leftX + colW - 16,
     row2Y + 4.1,
     { align: 'right' }
   );
-  drawCheck(doc, leftX + colW - 7, row2Y + 3.2, !smmlvOk);
+  drawCheck(doc, leftX + colW - 7, row2Y + 3.2, pctOk);
   doc.setTextColor(...INK);
 
   // Derecha: liquidación

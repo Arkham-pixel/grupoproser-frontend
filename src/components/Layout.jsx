@@ -1037,7 +1037,10 @@ export default function Layout() {
             key,
             title: t(`nav.sections.${key}`),
             icon: ICONOS_ASEGURADORA[key] || (key === 'equidadFdm' || key === 'equidadCat' ? FaHandHoldingHeart : FaFileAlt),
-            items: menuItems[key],
+            items: (menuItems[key] || []).filter((item) => {
+              const excluidas = configContractor.rutasExcluidas || [];
+              return !excluidas.some((ex) => item.path === ex || item.path.startsWith(`${ex}/`));
+            }),
           }))
       : !esVisualizador
         ? [

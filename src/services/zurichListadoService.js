@@ -187,6 +187,16 @@ const omitirMeta = (casoBase = {}) => {
   return payload;
 };
 
+/** Al guardar informe/presupuesto no reenviar huecos de ficha (vacío pisa Gestionar). */
+const fichaSinHuecos = (casoBase = {}) => {
+  const payload = omitirMeta(casoBase);
+  for (const [k, v] of Object.entries(payload)) {
+    if (k === 'liquidador' || k === 'informeUnico') continue;
+    if (v === '' || v == null) delete payload[k];
+  }
+  return payload;
+};
+
 export const guardarLiquidadorEnCasoZurichListado = async ({
   casoId,
   liquidador,
@@ -194,7 +204,7 @@ export const guardarLiquidadorEnCasoZurichListado = async ({
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
   return actualizarCasoZurichListado(casoId, {
-    ...omitirMeta(casoBase),
+    ...fichaSinHuecos(casoBase),
     ...camposPolizaParaCasoZurich(liquidador || {}, casoBase),
     liquidador: sanitizarLiquidadorZurich(liquidador || {}),
   });
@@ -210,7 +220,7 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
   const reservaPerito = reservaSugeridaZurich(sanitizado);
   if (reservaPerito > 0) sanitizado.reservaSugerida = String(reservaPerito);
   const payload = {
-    ...omitirMeta(casoBase),
+    ...fichaSinHuecos(casoBase),
     ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
     informeUnico: sanitizado,
     ...fechasInformeParaCasoZurich(sanitizado, casoBase),

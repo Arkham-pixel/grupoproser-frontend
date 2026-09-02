@@ -3,7 +3,14 @@ import {
   fusionarLiquidadorSinPerderPresupuestoNsr,
   scoreContenidoLiquidadorNsr,
 } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
-import { resolverMontoIndemnizarAlfa, liquidadorAlfaParaPersistir } from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
+import { CAMPOS_NUMERICOS_ALFA, pesosOficialesAlfa } from '../components/SubcomponenteSegurosAlfa/segurosAlfaHelpers.js';
+import {
+  resolverMontoIndemnizarAlfa,
+  liquidadorAlfaParaPersistir,
+  parsearNumero,
+  montosCasoDesdeLiquidadorAlfa,
+  pesosEnterosAlfa,
+} from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
 import { authFetch } from './authFetch.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
@@ -29,8 +36,18 @@ const jsonHeaders = () => ({
 export const normalizeAlfaItem = (item = {}) => {
   const liquidadorObj = item.liquidador && typeof item.liquidador === 'object';
   const informeObj = item.informeUnico && typeof item.informeUnico === 'object';
+  const montos = montosCasoDesdeLiquidadorAlfa(item.liquidador);
+  const numeros = {};
+  for (const clave of CAMPOS_NUMERICOS_ALFA) {
+    if (item[clave] == null || item[clave] === '') continue;
+    const p = pesosOficialesAlfa(item[clave]);
+    if (p != null) numeros[clave] = p;
+  }
+  if (montos?.valorReclamado != null) numeros.valorReclamado = montos.valorReclamado;
+  if (montos?.valorLiquidado != null) numeros.valorLiquidado = montos.valorLiquidado;
   return {
     ...item,
+    ...numeros,
     siniestro: item.siniestro ?? '',
     identificacion: item.identificacion ?? '',
     tomador: item.tomador ?? '',
@@ -481,19 +498,22 @@ export const guardarLiquidadorEnCasoAlfa = async ({
     liquidadorSeguro,
     totales
   );
+  const sidLiquidador = parsearNumero(
+    liquidadorSeguro?.encabezado?.valorAseguradoSid ??
+      liquidadorSeguro?.liquidacionCatastrofico?.valorAsegurado
+  );
 
   const payload = {
     ...casoBase,
     liquidador: liquidadorSeguro,
-    valorAseguradoSid:
-      liquidadorSeguro?.encabezado?.valorAseguradoSid ??
-      liquidadorSeguro?.liquidacionCatastrofico?.valorAsegurado ??
-      casoBase.valorAseguradoSid,
+    valorAseguradoSid: sidLiquidador || casoBase.valorAseguradoSid,
     valorReclamado:
-      totalesFrescos.totalReclamado != null
-        ? totalesFrescos.totalReclamado
-        : casoBase.valorReclamado,
-    valorLiquidado: totalIndemnizar,
+      pesosEnterosAlfa(
+        totalesFrescos.totalReclamado != null
+          ? totalesFrescos.totalReclamado
+          : casoBase.valorReclamado
+      ) ?? casoBase.valorReclamado,
+    valorLiquidado: pesosEnterosAlfa(totalIndemnizar) ?? totalIndemnizar,
   };
 
   // Conservar informe: no mandar null/vacío que lo borre

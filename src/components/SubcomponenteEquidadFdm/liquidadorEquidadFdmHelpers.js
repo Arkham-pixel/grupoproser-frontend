@@ -38,6 +38,7 @@ export const DEFAULT_LIQUIDADOR_FDM = {
     valorSMMLV: SMMLV_DEFAULT,
     cantidadSMMLV: 0.75,
     porcentaje: 10,
+    montoManual: '',
   },
   subsidio: 0,
 };
@@ -156,8 +157,8 @@ export function numDeducible(valor, defaultVal) {
  *   AE30 = N28+AE28               → pérdida establecida
  *   H34  = XLOOKUP(año)           → valor SMMLV
  *   H35  = H34*F35                → deducible SMMLV
- *   H36  = AE30*F36               → deducible % (referencia)
- *   AE31 = MAX(F35*H34, AE30*0.1) → deducible aplicado (Excel usa 0.1 fijo)
+ *   H36  = AE30*F36               → deducible %
+ *   AE31 = MAX(F35*H34, AE30*F36) → deducible aplicado (o monto manual)
  *   AE32 = IF(AE30-AE31<0,0,AE30-AE31)
  *   AE33 = H33                    → subsidio
  *   AE34 = AE32+AE33              → indemnización
@@ -177,17 +178,22 @@ export function calcularLiquidacionFdm(liquidador = {}) {
     liquidador.deducible?.valorSMMLV ?? SMMLV_POR_ANIO[anioSMMLV] ?? SMMLV_DEFAULT
   ); // H34
   const porcentajeUi = numDeducible(liquidador.deducible?.porcentaje, 10); // F36 * 100
-  const tasaPctExcel = 0.1; // AE31 usa AE30*0.1 (fijo en el Excel original)
+  const tasaPct = porcentajeUi / 100;
 
   // H35 = H34*F35
   const deducibleSMMLV = valorSMMLV * cantidadSMMLV;
-  // Rama % de AE31 (siempre 10% como en Excel)
-  const deduciblePorcentajeExcel = totalPerdida * tasaPctExcel;
-  // H36 = AE30*F36 (lo que muestra el campo % editable)
-  const deduciblePorcentaje = totalPerdida * (porcentajeUi / 100);
-  // AE31 = MAX(F35*H34, AE30*0.1)
-  const deducibleAplicado = Math.max(deducibleSMMLV, deduciblePorcentajeExcel);
-  const usaSMMLV = deducibleSMMLV >= deduciblePorcentajeExcel;
+  // H36 / rama % de AE31: porcentaje diligenciado (ya no 10% fijo)
+  const deduciblePorcentaje = totalPerdida * tasaPct;
+  const deduciblePorcentajeExcel = deduciblePorcentaje;
+  const calculado = Math.max(deducibleSMMLV, deduciblePorcentaje);
+
+  const montoManualRaw = liquidador.deducible?.montoManual;
+  const usaManual =
+    montoManualRaw !== '' &&
+    montoManualRaw != null &&
+    String(montoManualRaw).trim() !== '';
+  const deducibleAplicado = usaManual ? parsearNumero(montoManualRaw) : calculado;
+  const usaSMMLV = !usaManual && deducibleSMMLV >= deduciblePorcentaje;
 
   const subsidio = parsearNumero(liquidador.subsidio); // H33
   // AE32
@@ -204,6 +210,7 @@ export function calcularLiquidacionFdm(liquidador = {}) {
     deducibleSMMLV,
     deducibleAplicado,
     usaSMMLV,
+    usaManual,
     porcentaje: porcentajeUi,
     cantidadSMMLV,
     valorSMMLV,
@@ -355,9 +362,11 @@ export function letrasCartaCobertura(letras) {
 
 export function buildConstanciaPreview(liquidador, totales) {
   const h = liquidador.encabezado || {};
-  const tasaTxt = totales.usaSMMLV
-    ? `${String(totales.cantidadSMMLV).replace('.', ',')} SMMLV`
-    : '10%';
+  const tasaTxt = totales.usaManual
+    ? 'monto diligenciado'
+    : totales.usaSMMLV
+      ? `${String(totales.cantidadSMMLV).replace('.', ',')} SMMLV`
+      : `${String(totales.porcentaje ?? 10).replace('.', ',')}%`;
 
   return {
     tomador: h.tomador || 'FUNDACION DE LA MUJER',

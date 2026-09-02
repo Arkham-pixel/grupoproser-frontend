@@ -148,7 +148,10 @@ export const CONFIG_CATASTROFICOS = {
 };
 
 export const CONFIG_ERA = {
-  ...CONFIG_CATASTROFICOS,
+  seccionesMenu: ['alfa'],
+  inicio: '/seguros-alfa/reporte',
+  prefijosRuta: ['/seguros-alfa', '/agenda-catastrofico'],
+  rutasExcluidas: ['/seguros-alfa/carga', '/seguros-alfa/bloques'],
   etiqueta: 'ERA',
 };
 
@@ -219,8 +222,7 @@ export function esRolSoloPrevisora(rol = obtenerRolAlmacenado()) {
 }
 
 export function esRolCatastroficos(rol = obtenerRolAlmacenado()) {
-  const r = normalizarRol(rol);
-  return r === ROL_CATASTROFICOS || r === ROL_ERA;
+  return normalizarRol(rol) === ROL_CATASTROFICOS;
 }
 
 export function esRolEra(rol = obtenerRolAlmacenado()) {

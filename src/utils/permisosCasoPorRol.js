@@ -10,8 +10,9 @@
  * Excepción SURA: login 72288319 (Mario Pinilla) = poderes de líder solo en SURA.
  */
 
-import { normalizarRol, obtenerRolAlmacenado } from '../config/roles.js';
+import { normalizarRol, obtenerRolAlmacenado, esRolEra } from '../config/roles.js';
 import { identidadEsLiderDeFuente } from './lideresModuloCatastrofico.js';
+import { esIdentidadEra, esIdentidadLiderEra, identidadSesionEra } from './jerarquiaEra.js';
 
 export const ROL_AJUSTADOR_LIDER = 'ajustador_lider';
 export const ROL_AJUSTADOR_CASO = 'ajustador';
@@ -157,6 +158,9 @@ export function puedeEditarTodoElCaso(rol = obtenerRolAlmacenado(), opts = {}) {
   if (esIdentidadLiderDeModulo(opts, opts.modulo)) return true;
   if (r === ROL_AJUSTADOR_LIDER && !opts.modulo) return true;
   if (esIdentidadConPermisoLiderSura(opts)) return true;
+  if (esRolEra(r) || esIdentidadEra(opts)) {
+    return esIdentidadLiderEra({ ...opts, rol: r });
+  }
   if (r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR) return false;
   return true;
 }
@@ -166,6 +170,12 @@ export function puedeEditarCampoCaso(rol = obtenerRolAlmacenado(), campo, opts =
   const key = String(campo || '');
   if (!key) return false;
   if (puedeEditarTodoElCaso(r, opts)) return true;
+  if (esRolEra(r) || esIdentidadEra(opts)) {
+    const modo = modoEdicionEraDelCaso(opts.caso, { ...opts, rol: r });
+    if (modo === 'inspector') return key === 'estado';
+    if (modo === 'ajustador') return !esCampoAsignacionCaso(key);
+    return false;
+  }
   if (r === ROL_INSPECTOR) return key === 'estado';
   if (r === ROL_AJUSTADOR_CASO) return !esCampoAsignacionCaso(key);
   return true;
@@ -181,8 +191,32 @@ export function attrsCampoCaso(rol = obtenerRolAlmacenado(), campo, opts = {}) {
  */
 export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}) {
   const r = normalizarRol(rol);
-  if (puedeEditarTodoElCaso(r, opts)) {
+  const identidad = { ...opts, rol: r };
+  if (puedeEditarTodoElCaso(r, identidad)) {
     return { payload: { ...payload }, soloEstado: false };
+  }
+  if (esRolEra(r) || esIdentidadEra(identidad)) {
+    const modo = modoEdicionEraDelCaso(opts.caso || base, identidad);
+    if (modo === 'inspector') {
+      return {
+        payload: {
+          estado: payload.estado != null ? payload.estado : base.estado,
+        },
+        soloEstado: true,
+      };
+    }
+    if (modo === 'ajustador') {
+      const next = { ...payload };
+      for (const campo of CAMPOS_ASIGNACION_CASO) {
+        if (Object.prototype.hasOwnProperty.call(base, campo)) {
+          next[campo] = base[campo];
+        } else {
+          delete next[campo];
+        }
+      }
+      return { payload: next, soloEstado: false };
+    }
+    return { payload: {}, soloEstado: false, denegado: true };
   }
   if (r === ROL_INSPECTOR) {
     return {
@@ -244,6 +278,23 @@ export function clavesSesionPersona(ctx = obtenerContextoPermisoCaso()) {
   return [ctx.nombre, ctx.login, ctx.cedula]
     .map((s) => String(s || '').trim())
     .filter(Boolean);
+}
+
+export function modoEdicionEraDelCaso(caso = {}, identidad = {}) {
+  const id = {
+    ...identidadSesionEra(),
+    ...identidad,
+    rol: identidad.rol || identidad.role || identidadSesionEra().rol,
+  };
+  if (!esIdentidadEra(id) && !esRolEra(id.rol)) return null;
+  if (esIdentidadLiderEra(id)) return 'lider';
+  const claves = [id.name, id.nombre, id.login, id.cedula]
+    .map((s) => String(s || '').trim())
+    .filter(Boolean);
+  if (!claves.length) return null;
+  if (claves.some((k) => coincidenPersonas(caso?.ajustador, k))) return 'ajustador';
+  if (claves.some((k) => coincidenPersonas(caso?.inspector, k))) return 'inspector';
+  return null;
 }
 
 /**

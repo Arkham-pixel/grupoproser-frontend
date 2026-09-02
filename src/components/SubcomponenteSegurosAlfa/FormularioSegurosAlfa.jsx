@@ -39,7 +39,9 @@ import {
   PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE,
   construirFormDesdeCasoAlfa,
   estadoGestionDesdeEstadoAlfa,
+  formatMiles,
   formatMilesInput,
+  pesosOficialesAlfa,
   homologarEstadoAlfa,
   casoAlfaVenceSla2Dias,
   casoTieneEvidenciaComunicacionBajoDeducible,
@@ -52,13 +54,15 @@ import ModalImportarExcelAlfa, {
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectBuscable from '../SelectBuscable.jsx';
-import { obtenerRolAlmacenado } from '../../config/roles.js';
+import { esRolEra, obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
   esRolInspector,
   filtrarPayloadCasoPorRol,
+  modoEdicionEraDelCaso,
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
+import { identidadSesionEra } from '../../utils/jerarquiaEra.js';
 import {
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
@@ -67,13 +71,43 @@ import {
 } from '../../utils/catalogosAsignacionCatastrofico.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import { montosCasoDesdeLiquidadorAlfa } from './liquidadorAlfaHelpers.js';
 
 const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
 const aNumero = (valor) => {
   if (valor === '' || valor === null || valor === undefined) return null;
-  const n = Number(String(valor).replace(/\./g, '').replace(/[^\d-]/g, ''));
-  return Number.isNaN(n) ? null : n;
+  return pesosOficialesAlfa(valor);
+};
+
+const formDesdeCasoAlfa = (caso) => {
+  const form = construirFormDesdeCasoAlfa(caso || {});
+  const montos = montosCasoDesdeLiquidadorAlfa(caso?.liquidador);
+  if (!montos) return form;
+  return {
+    ...form,
+    ...(montos.valorReclamado != null
+      ? { valorReclamado: formatMiles(montos.valorReclamado) }
+      : {}),
+    ...(montos.valorLiquidado != null
+      ? { valorLiquidado: formatMiles(montos.valorLiquidado) }
+      : {}),
+  };
+};
+
+const restaurarFormConLiquidador = (draftData, caso) => {
+  const base = { ...formDesdeCasoAlfa(caso), ...(draftData || {}) };
+  const montos = montosCasoDesdeLiquidadorAlfa(caso?.liquidador);
+  if (!montos) return base;
+  return {
+    ...base,
+    ...(montos.valorReclamado != null
+      ? { valorReclamado: formatMiles(montos.valorReclamado) }
+      : {}),
+    ...(montos.valorLiquidado != null
+      ? { valorLiquidado: formatMiles(montos.valorLiquidado) }
+      : {}),
+  };
 };
 
 const normTxt = (valor) =>
@@ -92,12 +126,20 @@ const opcionHuerfana = (valor, opciones = []) => {
 const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onSaved }) => {
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
-  const soloInspector = esRolInspector(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
   const puedeImportarExcel = esUsuarioAlfaExcelActualizar();
   const [form, setForm] = useState(() =>
-    initialData ? construirFormDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA }
+    initialData ? formDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA }
   );
+  const sesionEra = identidadSesionEra();
+  const ctxPermiso = {
+    modulo: 'alfa',
+    ...sesionEra,
+    caso: form,
+  };
+  const modoEra = esRolEra(rolUsuario) ? modoEdicionEraDelCaso(form, ctxPermiso) : null;
+  const soloInspector = esRolInspector(rolUsuario) || modoEra === 'inspector';
+  const eraNoPuedeCrear = esRolEra(rolUsuario) && !esEdicion;
   const [guardando, setGuardando] = useState(false);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const [modalPredioOpen, setModalPredioOpen] = useState(false);
@@ -135,7 +177,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   });
 
   useEffect(() => {
-    setForm(initialData ? construirFormDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA });
+    setForm(initialData ? formDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA });
     setError(null);
     setExito(null);
     setResumenImport(null);
@@ -249,13 +291,13 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   );
 
   const setCampo = (clave) => (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
+    if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: valor }));
   };
 
   const setDepartamento = (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, 'departamento')) return;
+    if (!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => {
       const siguiente = { ...prev, departamento: valor };
@@ -272,29 +314,47 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   };
 
   const setCampoMiles = (clave) => (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
+    if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: formatMilesInput(valor) }));
   };
 
   const camposNumericos = useMemo(() => CAMPOS_NUMERICOS_ALFA, []);
-
-  const inputMiles = (clave) => (
-    <InputFenix
-      type="text"
-      inputMode="numeric"
-      value={form[clave]}
-      onChange={setCampoMiles(clave)}
-      placeholder="0"
-      {...attrsCampoCaso(rolUsuario, clave)}
-    />
+  const montosLiquidador = useMemo(
+    () => montosCasoDesdeLiquidadorAlfa(initialData?.liquidador),
+    [initialData?.liquidador]
   );
+  const camposDesdeLiquidador = Boolean(montosLiquidador);
+
+  const inputMiles = (clave) => {
+    const fromLiq =
+      camposDesdeLiquidador && (clave === 'valorReclamado' || clave === 'valorLiquidado');
+    return (
+      <InputFenix
+        type="text"
+        inputMode="numeric"
+        value={form[clave]}
+        onChange={fromLiq ? undefined : setCampoMiles(clave)}
+        placeholder="0"
+        {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
+        readOnly={fromLiq}
+      />
+    );
+  };
 
   const construirPayload = () => {
     const payload = { ...form };
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
     });
+    if (montosLiquidador) {
+      if (montosLiquidador.valorReclamado != null) {
+        payload.valorReclamado = montosLiquidador.valorReclamado;
+      }
+      if (montosLiquidador.valorLiquidado != null) {
+        payload.valorLiquidado = montosLiquidador.valorLiquidado;
+      }
+    }
     // Asegurar campos ARNALD de llamada (no dependen de Excel/SharePoint)
     payload.fechaLlamada = form.fechaLlamada ? String(form.fechaLlamada).trim() : '';
     payload.observacionLlamada =
@@ -313,6 +373,15 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     e.preventDefault();
     setError(null);
     setExito(null);
+    if (eraNoPuedeCrear) {
+      setError(
+        t('segurosAlfa.permissions.eraCannotCreate', {
+          defaultValue:
+            'ERA no crea casos. Trabaje los que Proser le asigne; use Mis casos asignados.',
+        })
+      );
+      return;
+    }
 
     if (!form.identificacion.trim()) {
       setError(t('segurosAlfa.validation.identificacionRequired'));
@@ -353,11 +422,26 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     setGuardando(true);
     try {
       const bruto = construirPayload();
-      const { payload } = filtrarPayloadCasoPorRol(
+      const { payload, denegado } = filtrarPayloadCasoPorRol(
         rolUsuario,
         bruto,
-        esEdicion ? initialData || {} : {}
+        esEdicion ? initialData || {} : {},
+        ctxPermiso
       );
+      if (denegado || eraNoPuedeCrear) {
+        setError(
+          eraNoPuedeCrear
+            ? t('segurosAlfa.permissions.eraCannotCreate', {
+                defaultValue:
+                  'ERA no crea casos. Trabaje los que Proser le asigne; use Mis casos asignados.',
+              })
+            : t('segurosAlfa.permissions.eraCannotEdit', {
+                defaultValue: 'Solo puede modificar los casos que le asignaron como ajustador o inspector.',
+              })
+        );
+        setGuardando(false);
+        return;
+      }
       let guardado;
       if (esEdicion) {
         guardado = await actualizarCasoAlfa(initialData._id, payload);
@@ -379,7 +463,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           : t('segurosAlfa.messages.caseCreated', { caseNumber: guardado.consecutivo || '' })
       );
       if (esEdicion) {
-        setForm(construirFormDesdeCasoAlfa(guardado));
+        setForm(formDesdeCasoAlfa(guardado));
       } else {
         setForm({ ...FORM_VACIO_ALFA });
       }
@@ -394,7 +478,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   };
 
   const limpiar = () => {
-    setForm(initialData ? construirFormDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA });
+    setForm(initialData ? formDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA });
     setError(null);
     setExito(null);
   };
@@ -403,7 +487,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     <SelectFenix
       value={form[clave]}
       onChange={setCampo(clave)}
-      {...attrsCampoCaso(rolUsuario, clave)}
+      {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
     >
       <option value="">{placeholder}</option>
       {opciones.map((op) => (
@@ -421,6 +505,11 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
+      {eraNoPuedeCrear ? (
+        <div className={expressAlertError}>
+          ERA no crea casos. Use el reporte Alfa y Mis casos asignados cuando Proser les asigne el cupo.
+        </div>
+      ) : null}
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('segurosAlfa.sections.identification')}</h3>
@@ -501,7 +590,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               value={form.ciudad || ''}
               onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
               disabled={
-                attrsCampoCaso(rolUsuario, 'ciudad').disabled ||
+                attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
                 (cargandoCatalogos && ciudadesFiltradas.length === 0)
               }
               placeholder={
@@ -561,9 +650,9 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             <Campo label={t('segurosAlfa.fields.estado')} required>
               <BarraEstadosSegurosAlfa
                 valor={form.estado}
-                disabled={!puedeEditarCampoCaso(rolUsuario, 'estado')}
+                disabled={!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)}
                 onChange={(estado) => {
-                  if (!puedeEditarCampoCaso(rolUsuario, 'estado')) return;
+                  if (!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)) return;
                   setForm((prev) => ({ ...prev, estado }));
                 }}
               />
@@ -690,11 +779,19 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       </section>
 
       <fieldset
-        disabled={soloInspector}
+        disabled={soloInspector || eraNoPuedeCrear}
         className="min-w-0 space-y-5 border-0 p-0 m-0 disabled:opacity-80"
       >
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('segurosAlfa.sections.values')}</h3>
+        {camposDesdeLiquidador ? (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t('segurosAlfa.sections.valuesFromLiquidador', {
+              defaultValue:
+                'Valor reclamado y valor liquidado salen del liquidador (pesos enteros). Esos mismos números se envían al Excel.',
+            })}
+          </p>
+        ) : null}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label={t('segurosAlfa.fields.valorAseguradoSid', { defaultValue: 'Valor asegurado SID' })}>
             {inputMiles('valorAseguradoSid')}
@@ -748,7 +845,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             ajustador={form.ajustador}
             inspector={form.inspector}
             casoId={initialData?._id}
-            disabled={attrsCampoCaso(rolUsuario, 'fechaInspeccion').disabled}
+            disabled={attrsCampoCaso(rolUsuario, 'fechaInspeccion', ctxPermiso).disabled}
           />
         </div>
         <Campo label={t('segurosAlfa.fields.observacionLlamada')} className="mt-4">
@@ -920,7 +1017,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           showRestore={showDraftRestore}
           savedDataToRestore={draftToRestore}
           onRestore={() => {
-            if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+            if (draftToRestore?.data) setForm(restaurarFormConLiquidador(draftToRestore.data, initialData));
             setShowDraftRestore(false);
           }}
           onDiscard={() => {
@@ -984,7 +1081,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           </div>
         ) : null}
 
-        {puedeImportarExcel && !esEdicion && (
+        {puedeImportarExcel && !esEdicion && !esRolEra(rolUsuario) && (
           <section className={expressCard}>
             <div className={expressCardHeader}>
               <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
@@ -1064,7 +1161,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         showRestore={showDraftRestore}
         savedDataToRestore={draftToRestore}
         onRestore={() => {
-          if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+          if (draftToRestore?.data) setForm(restaurarFormConLiquidador(draftToRestore.data, initialData));
           setShowDraftRestore(false);
         }}
         onDiscard={() => {

@@ -316,6 +316,15 @@ const omitirCampos = (obj, claves) => {
   return out;
 };
 
+const fichaSinHuecos = (obj = {}) => {
+  const out = { ...obj };
+  for (const [k, v] of Object.entries(out)) {
+    if (k === 'liquidador' || k === 'informeUnico') continue;
+    if (v === '' || v == null) delete out[k];
+  }
+  return out;
+};
+
 /** Guarda inspección CAT y alimenta el cuadro de datos (afectación, grado, reserva, estado). */
 export const guardarCatEnCasoZurich = async ({
   casoId,
@@ -354,7 +363,7 @@ export const guardarLiquidadorEnCasoZurich = async ({
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el liquidador.');
 
   const payload = {
-    ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
+    ...fichaSinHuecos(omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR)),
     ...camposPolizaParaCasoZurich(liquidador || {}, casoBase),
     liquidador: sanitizarLiquidadorZurich(liquidador || {}),
     valorReclamado:
@@ -383,7 +392,7 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   const reservaPerito = reservaSugeridaZurich(sanitizado);
   if (reservaPerito > 0) sanitizado.reservaSugerida = String(reservaPerito);
   const payload = {
-    ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
+    ...fichaSinHuecos(omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR)),
     ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
     informeUnico: sanitizado,
     ...fechasInformeParaCasoZurich(sanitizado, casoBase),

@@ -24,6 +24,7 @@ import {
   formatearMontoPlataformaZurich,
   formDataNsrDesdeLiquidadorZurich,
   mapcasoZurichALiquidador,
+  fusionarEncabezadoDesdeFichaZurich,
   migrarLiquidadorDeducibleTerremotoZurich,
 } from './liquidadorZurichHelpers.js';
 import { descargarFiniquitoZurichWord } from './generarFiniquitoZurichWord.js';
@@ -80,6 +81,22 @@ export default function LiquidadorZurich({
       )
     );
   }, [casoZurich?._id]);
+
+  useEffect(() => {
+    setLiquidador((prev) => fusionarEncabezadoDesdeFichaZurich(prev, casoZurich));
+  }, [
+    casoZurich?.tomador,
+    casoZurich?.asegurado,
+    casoZurich?.direccionPredio,
+    casoZurich?.numeroPoliza,
+    casoZurich?.fechaInicioPoliza,
+    casoZurich?.fechaFinPoliza,
+    casoZurich?.cobertura,
+    casoZurich?.ciudad,
+    casoZurich?.departamento,
+    casoZurich?.siniestro,
+    casoZurich?.zc,
+  ]);
 
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
   const desgloseDed = useMemo(

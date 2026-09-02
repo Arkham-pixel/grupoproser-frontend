@@ -879,6 +879,27 @@ export function encabezadoDesdecasoZurich(caso = {}) {
   };
 }
 
+/** Rellena huecos del encabezado con la ficha (Gestionar) sin borrar lo ya escrito. */
+export function fusionarEncabezadoDesdeFichaZurich(liquidador, caso) {
+  const prev = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  const prevEnc = prev.encabezado && typeof prev.encabezado === 'object' ? prev.encabezado : {};
+  const desdeFicha = encabezadoDesdecasoZurich(caso || {});
+  const nextEnc = { ...desdeFicha };
+  for (const [k, v] of Object.entries(prevEnc)) {
+    if (String(v ?? '').trim()) nextEnc[k] = v;
+  }
+  const claves = new Set([...Object.keys(prevEnc), ...Object.keys(nextEnc)]);
+  let igual = true;
+  for (const k of claves) {
+    if (String(prevEnc[k] ?? '') !== String(nextEnc[k] ?? '')) {
+      igual = false;
+      break;
+    }
+  }
+  if (igual) return prev;
+  return { ...prev, encabezado: nextEnc };
+}
+
 /** Prefill portada NSR desde caso Zurich */
 export function prefillNsrDesdecasoZurich(caso = {}, encabezado = {}) {
   return {

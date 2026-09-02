@@ -222,14 +222,13 @@ export function casoAlfaTieneFechaLlamada(caso = {}) {
 }
 
 export const formatCurrency = (value) => {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '—';
-  }
+  const n = pesosOficialesAlfa(value);
+  if (n == null) return '—';
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
     maximumFractionDigits: 0,
-  }).format(Number(value));
+  }).format(n);
 };
 
 export const formatDate = (value) => {
@@ -405,8 +404,60 @@ export const CAMPOS_NUMERICOS_ALFA = [
   'valorLiquidado',
 ];
 
-/** Formatea entero con puntos de miles (es-CO): 30000000 → 30.000.000 */
-export const formatMiles = (valor) => {
+/**
+ * Parsea COP sin concatenar centavos al entero.
+ * Acepta 36208706.98 | "36.208.706,98" | "36.208.707".
+ */
+export function parseMontoCopAlfa(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  let numero = String(valor).trim().replace(/[^\d.,-]/g, '');
+  if (!numero || numero === '-' || numero === '.' || numero === '-.') return null;
+  const neg = numero.startsWith('-');
+  if (neg) numero = numero.slice(1);
+  if (numero.includes(',') && numero.includes('.')) {
+    const lastComma = numero.lastIndexOf(',');
+    const lastDot = numero.lastIndexOf('.');
+    numero =
+      lastComma > lastDot
+        ? numero.replace(/\./g, '').replace(',', '.')
+        : numero.replace(/,/g, '');
+  } else if ((numero.match(/,/g) || []).length > 1) {
+    numero = numero.replace(/,/g, '');
+  } else if (numero.includes(',')) {
+    numero = numero.replace(',', '.');
+  } else if (numero.includes('.')) {
+    const partes = numero.split('.');
+    if (partes.length > 2 || (partes.length === 2 && partes[1].length === 3)) {
+      numero = numero.replace(/\./g, '');
+    }
+  }
+  const n = Number(numero);
+  if (!Number.isFinite(n)) return null;
+  return neg ? -n : n;
+}
+
+/**
+ * Pesos enteros: 36208706.98 → 36208707.
+ * Si concatenaron centavos (3.668.964.288), divide ×100.
+ */
+export function pesosOficialesAlfa(valor) {
+  const n = parseMontoCopAlfa(valor);
+  if (n == null || !Number.isFinite(n)) return null;
+  if (Math.abs(n) >= 1_000_000_000) return Math.round(n / 100);
+  return Math.round(n);
+}
+
+function formatEnteroConMiles(entero) {
+  const n = Math.trunc(entero);
+  if (!Number.isFinite(n)) return '';
+  if (n === 0) return '0';
+  const sign = n < 0 ? '-' : '';
+  return sign + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/** Al escribir: solo dígitos + puntos de miles (no interpreta decimales). */
+export const formatMilesInput = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '';
   const digitos = String(valor).replace(/[^\d]/g, '');
   if (!digitos) return '';
@@ -414,8 +465,21 @@ export const formatMiles = (valor) => {
   return sinCeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-/** Al escribir: solo dígitos + puntos de miles */
-export const formatMilesInput = (valor) => formatMiles(valor);
+/**
+ * Formatea pesos enteros con puntos de miles (es-CO).
+ * 36208706.98 → 36.208.707  (no 3.620.870.698)
+ */
+export const formatMiles = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const oficial =
+    typeof valor === 'number' && Number.isFinite(valor)
+      ? pesosOficialesAlfa(valor)
+      : parseMontoCopAlfa(valor) != null
+        ? pesosOficialesAlfa(valor)
+        : null;
+  if (oficial != null) return formatEnteroConMiles(oficial);
+  return formatMilesInput(valor);
+};
 
 export const construirFormDesdeCasoAlfa = (caso = {}) => {
   const base = {

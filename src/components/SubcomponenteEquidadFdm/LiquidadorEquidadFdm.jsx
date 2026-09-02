@@ -360,9 +360,12 @@ export default function LiquidadorEquidadFdm({
   const enc = liquidador.encabezado || {};
   const ded = liquidador.deducible || {};
   const qtySmmlv = String(totales.cantidadSMMLV).replace('.', ',');
-  const deductibleBasis = totales.usaSMMLV
-    ? t('equidadFdm.settlement.basisSmmlv')
-    : t('equidadFdm.settlement.basisPercent');
+  const pctTxt = String(totales.porcentaje ?? 10).replace('.', ',');
+  const deductibleBasis = totales.usaManual
+    ? t('equidadFdm.settlement.basisManual')
+    : totales.usaSMMLV
+      ? t('equidadFdm.settlement.basisSmmlv', { qty: qtySmmlv })
+      : t('equidadFdm.settlement.basisPercent', { pct: pctTxt });
 
   return (
     <div className="space-y-5">
@@ -588,6 +591,13 @@ export default function LiquidadorEquidadFdm({
               }
             />
           </Campo>
+          <Campo label={t('equidadFdm.settlement.deductibleAppliedManual')}>
+            <InputFenix
+              value={ded.montoManual ?? ''}
+              placeholder={t('equidadFdm.settlement.deductibleAppliedManualPlaceholder')}
+              onChange={(e) => actualizar('deducible.montoManual', e.target.value)}
+            />
+          </Campo>
           <Campo label={t('equidadFdm.fields.subsidy')}>
             <InputFenix
               value={liquidador.subsidio ?? 0}
@@ -600,7 +610,10 @@ export default function LiquidadorEquidadFdm({
           <FilaTotal label={t('equidadFdm.settlement.subtotalContents')} valor={totales.subtotalContenidos} />
           <FilaTotal label={t('equidadFdm.settlement.subtotalBuildings')} valor={totales.subtotalEdificios} />
           <FilaTotal label={t('equidadFdm.settlement.establishedLoss')} valor={totales.totalPerdida} />
-          <FilaTotal label={t('equidadFdm.settlement.deductiblePercentLine')} valor={totales.deduciblePorcentajeExcel} />
+          <FilaTotal
+            label={t('equidadFdm.settlement.deductiblePercentLine', { pct: pctTxt })}
+            valor={totales.deduciblePorcentajeExcel}
+          />
           <FilaTotal
             label={t('equidadFdm.settlement.deductibleSmmlvLine', { qty: qtySmmlv })}
             valor={totales.deducibleSMMLV}

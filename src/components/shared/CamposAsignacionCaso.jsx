@@ -60,6 +60,9 @@ export default function CamposAsignacionCaso({
     modulo: String(modulo || '').toLowerCase(),
     login: typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '',
     cedula: typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '',
+    nombre: typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '',
+    name: typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '',
+    caso: form,
   };
 
   return (

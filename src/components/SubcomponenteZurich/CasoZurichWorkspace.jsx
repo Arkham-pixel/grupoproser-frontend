@@ -29,7 +29,7 @@ import {
   guardarInformeUnicoEnCasoZurichListado,
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
-import { calcularLiquidacionZurich, defaultInformeUnicoZurich, etiquetaArchivoInformeZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
+import { calcularLiquidacionZurich, defaultInformeUnicoZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
@@ -203,6 +203,36 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
     return t(esModuloListado ? 'zurich.workspace.subtitleListado' : 'zurich.workspace.subtitle');
   }, [casoZurich, t, esModuloListado]);
 
+  const aplicarFichaAlWorkspace = useCallback((fresco, prevCaso) => {
+    const merged = {
+      ...(prevCaso || {}),
+      ...(fresco || {}),
+      liquidador: fresco?.liquidador || prevCaso?.liquidador,
+      informeUnico: fresco?.informeUnico || prevCaso?.informeUnico,
+      archivos: Array.isArray(fresco?.archivos) ? fresco.archivos : prevCaso?.archivos,
+    };
+    setCasoZurich(merged);
+    setLiquidadorState((prev) => {
+      if (!prev) return prev;
+      return fusionarEncabezadoDesdeFichaZurich(prev, merged);
+    });
+    return merged;
+  }, []);
+
+  const abrirGestionar = async () => {
+    if (casoId) {
+      try {
+        const fresco = esModuloListado
+          ? await getCasoZurichListadoById(casoId)
+          : await getCasoZurichById(casoId);
+        aplicarFichaAlWorkspace(fresco, casoZurich);
+      } catch {
+        /* se abre con lo que hay en memoria */
+      }
+    }
+    setGestionarAbierto(true);
+  };
+
   const casosFiltradosPicker = useMemo(() => {
     const q = String(busquedaCaso || '')
       .trim()
@@ -362,7 +392,14 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   };
 
   const onCasoDesdeAutosave = useCallback((actualizado) => {
-    if (actualizado) setCasoZurich(actualizado);
+    if (!actualizado) return;
+    setCasoZurich((prev) => ({
+      ...(prev || {}),
+      ...actualizado,
+      liquidador: actualizado.liquidador || prev?.liquidador,
+      informeUnico: actualizado.informeUnico || prev?.informeUnico,
+      archivos: Array.isArray(actualizado.archivos) ? actualizado.archivos : prev?.archivos,
+    }));
   }, []);
 
   useZurichCasoAutosave({
@@ -418,14 +455,16 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
             <h1 className="font-display text-2xl font-bold text-gray-900 dark:text-white">
               {t('zurich.workspace.title')}
             </h1>
-            <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
+            <p className="mt-1 font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {subtitulo}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {casoId && (
               <button
                 type="button"
                 className={expressBtnGhost}
-                onClick={() => setGestionarAbierto(true)}
+                onClick={() => abrirGestionar()}
               >
                 <FaEdit /> {t('zurich.report.manage')}
               </button>
@@ -620,16 +659,19 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                 setGestionarAbierto(false);
                 setTab(TABS_ZURICH.INFORME);
               }}
-              onSaved={(guardado) => {
-                setCasoZurich((prev) => ({
-                  ...(prev || {}),
-                  ...(guardado || {}),
-                  liquidador: guardado?.liquidador || prev?.liquidador,
-                  informeUnico: guardado?.informeUnico || prev?.informeUnico,
-                  archivos: Array.isArray(guardado?.archivos)
-                    ? guardado.archivos
-                    : prev?.archivos,
-                }));
+              onSaved={async (guardado) => {
+                aplicarFichaAlWorkspace(guardado, casoZurich);
+                try {
+                  const fresco = esModuloListado
+                    ? await getCasoZurichListadoById(casoId)
+                    : await getCasoZurichById(casoId);
+                  aplicarFichaAlWorkspace(fresco, {
+                    ...(casoZurich || {}),
+                    ...(guardado || {}),
+                  });
+                } catch {
+                  /* ya aplicamos el guardado */
+                }
               }}
             />
           </div>

@@ -93,7 +93,7 @@ function rellenarLiquidador(sheet, liquidador, totales) {
   setFormulaResult(sheet, 'N28', 'SUM(N18:Q27)', totales.subtotalContenidos);
   setFormulaResult(sheet, 'AE28', 'SUM(AE18:AH27)', totales.subtotalEdificios);
   setFormulaResult(sheet, 'AE30', 'SUM(N28+AE28)', totales.totalPerdida);
-  setFormulaResult(sheet, 'AE31', 'MAX(F35*H34,AE30*0.1)', totales.deducibleAplicado);
+  setFormulaResult(sheet, 'AE31', 'MAX(F35*H34,AE30*F36)', totales.deducibleAplicado);
   setFormulaResult(
     sheet,
     'AE32',

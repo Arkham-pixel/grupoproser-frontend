@@ -28,6 +28,7 @@ import {
   formDataNsrDesdeLiquidadorZurich,
   formatearMonto,
   formatDateLarga,
+  fusionarEncabezadoDesdeFichaZurich,
   mapcasoZurichALiquidador,
   migrarLiquidadorDeducibleTerremotoZurich,
   normalizarTipoInformeZurich,
@@ -348,6 +349,22 @@ export default function InformeUnicoZurich({
       )
     );
   }, [casoZurich?._id]);
+
+  useEffect(() => {
+    setLiquidador((prev) => fusionarEncabezadoDesdeFichaZurich(prev, casoZurich));
+  }, [
+    casoZurich?.tomador,
+    casoZurich?.asegurado,
+    casoZurich?.direccionPredio,
+    casoZurich?.numeroPoliza,
+    casoZurich?.fechaInicioPoliza,
+    casoZurich?.fechaFinPoliza,
+    casoZurich?.cobertura,
+    casoZurich?.ciudad,
+    casoZurich?.departamento,
+    casoZurich?.siniestro,
+    casoZurich?.zc,
+  ]);
 
   useEffect(() => {
     if (!tipoInformeExterno) return;
