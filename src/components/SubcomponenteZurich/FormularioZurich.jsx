@@ -408,10 +408,10 @@ const FormularioZurich = ({
         fechaFinalizado: form.fechaFinalizado,
         fechaObjecion: form.fechaObjecion,
         fechaLiquidado: form.fechaLiquidado,
-        documentoFaltante: form.documentoFaltante,
-        observacionPendienteDocumento: form.observacionPendienteDocumento,
-        motivoObjecion: form.motivoObjecion,
-        responsableAporteDocumento: form.responsableAporteDocumento,
+        documentoFaltante: form.documentoFaltante ?? '',
+        observacionPendienteDocumento: form.observacionPendienteDocumento ?? '',
+        motivoObjecion: form.motivoObjecion ?? '',
+        responsableAporteDocumento: form.responsableAporteDocumento ?? '',
         estado: homologarEstadoZurich(form.estado),
       };
       if (!String(payload.identificacion || '').trim()) {
@@ -906,30 +906,45 @@ const FormularioZurich = ({
             <InputFenix value={formatDate(ultimaGestionZurich(form)) || '—'} readOnly />
           </Campo>
           <Campo label={t('zurich.fields.documentoFaltante')} className="md:col-span-2 lg:col-span-3">
-            <InputFenix
-              value={form.documentoFaltante}
+            <textarea
+              className="min-h-[72px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.documentoFaltante || ''}
               onChange={setCampo('documentoFaltante')}
               placeholder={t('zurich.placeholders.documentoFaltante')}
+              {...attrsCampoCaso(rolUsuario, 'documentoFaltante', ctxPermiso)}
             />
+            {String(form.documentoFaltante || '').trim() &&
+            puedeEditarCampoCaso(rolUsuario, 'documentoFaltante', ctxPermiso) ? (
+              <button
+                type="button"
+                className="mt-1 text-xs font-medium text-gray-600 underline-offset-2 hover:underline dark:text-gray-300"
+                onClick={() => setCampo('documentoFaltante')({ target: { value: '' } })}
+              >
+                {t('zurich.actions.clear')}
+              </button>
+            ) : null}
           </Campo>
           <Campo label={t('zurich.fields.responsableAporteDocumento')}>
             <InputFenix
-              value={form.responsableAporteDocumento}
+              value={form.responsableAporteDocumento || ''}
               onChange={setCampo('responsableAporteDocumento')}
+              {...attrsCampoCaso(rolUsuario, 'responsableAporteDocumento', ctxPermiso)}
             />
           </Campo>
           <Campo label={t('zurich.fields.observacionPendienteDocumento')} className="md:col-span-2">
             <textarea
               className="min-h-[72px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-              value={form.observacionPendienteDocumento}
+              value={form.observacionPendienteDocumento || ''}
               onChange={setCampo('observacionPendienteDocumento')}
+              {...attrsCampoCaso(rolUsuario, 'observacionPendienteDocumento', ctxPermiso)}
             />
           </Campo>
           <Campo label={t('zurich.fields.motivoObjecion')} className="md:col-span-2 lg:col-span-3">
             <textarea
               className="min-h-[72px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-              value={form.motivoObjecion}
+              value={form.motivoObjecion || ''}
               onChange={setCampo('motivoObjecion')}
+              {...attrsCampoCaso(rolUsuario, 'motivoObjecion', ctxPermiso)}
             />
           </Campo>
         </div>
