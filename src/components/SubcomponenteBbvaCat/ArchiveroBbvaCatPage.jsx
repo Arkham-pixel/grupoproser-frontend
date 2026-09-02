@@ -50,7 +50,7 @@ export default function ArchiveroBbvaCatPage() {
   useEffect(() => {
     let cancelado = false;
     setCargandoLista(true);
-    fetchAllCasosBbvaCatListado(2000)
+    fetchAllCasosBbvaCatListado(2000, { completo: true })
       .then((data) => {
         if (!cancelado) setListaCasos(Array.isArray(data) ? data : []);
       })

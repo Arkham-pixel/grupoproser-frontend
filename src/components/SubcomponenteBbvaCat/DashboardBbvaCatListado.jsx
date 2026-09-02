@@ -98,7 +98,7 @@ export default function DashboardBbvaCatListado() {
       } catch (err) {
         console.error('Error cargando dashboard listado BBVA CAT:', err);
         if (!cancelado) {
-          setError(err.message || td('loadError'));
+          setError(err.message || 'No fue posible cargar el dashboard.');
           setCasos([]);
         }
       } finally {
@@ -108,7 +108,7 @@ export default function DashboardBbvaCatListado() {
     return () => {
       cancelado = true;
     };
-  }, [t]);
+  }, []);
 
   const filtrosAplicados = Boolean(
     filtroCiudad ||
@@ -630,63 +630,6 @@ export default function DashboardBbvaCatListado() {
                       <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
                         {formatCurrency(row.reserva)}
                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className={`${expressTableWrap} min-w-0`}>
-          <div className="border-b border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5">
-            <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
-              {td('stalled.title', { days: DIAS_ESTANCADO_BBVA_CAT })}
-            </h3>
-            <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">{td('stalled.hint')}</p>
-          </div>
-          {stats.estancados.length === 0 ? (
-            <p className="px-4 py-6 font-body text-sm text-gray-500 dark:text-gray-400 sm:px-5">
-              {td('stalled.empty')}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className={expressTableHead}>
-                  <tr>
-                    <th className="px-4 py-3">{t('bbvaCat.fields.zc')}</th>
-                    <th className="px-4 py-3">{t('bbvaCat.fields.siniestro')}</th>
-                    <th className="px-4 py-3">{t('bbvaCat.fields.asegurado')}</th>
-                    <th className="px-4 py-3">{t('bbvaCat.fields.ciudad')}</th>
-                    <th className="px-4 py-3">{t('bbvaCat.fields.estado')}</th>
-                    <th className="px-4 py-3">{td('stalled.days')}</th>
-                    <th className="px-4 py-3">{td('stalled.reason')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.estancados.map((row) => (
-                    <tr
-                      key={String(row.id || `${row.zc}-${row.siniestro}`)}
-                      className="border-t border-gray-100 dark:border-gray-800"
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                        {row.id ? (
-                          <Link
-                            to={`/bbva-cat/listado/caso?casoId=${row.id}`}
-                            className="text-fenix-primario hover:underline"
-                          >
-                            {row.zc || td('stalled.openCase')}
-                          </Link>
-                        ) : (
-                          row.zc || '—'
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.siniestro || '—'}</td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{truncar(row.asegurado, 32)}</td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.ciudad || '—'}</td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.estado}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{row.dias}</td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{truncar(row.motivo, 48)}</td>
                     </tr>
                   ))}
                 </tbody>

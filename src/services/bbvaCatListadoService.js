@@ -20,6 +20,7 @@ const authHeaders = () => {
 export const normalizeBbvaCatListadoItem = (item = {}) => {
   const estado = homologarEstadoBbvaCat(item.estado);
   const caso = { ...item, estado };
+  const nArchivos = Number(item.nArchivos);
   return {
     ...caso,
     zc: item.zc ?? '',
@@ -47,17 +48,32 @@ export const normalizeBbvaCatListadoItem = (item = {}) => {
     estado,
     diasEnEstado: diasEnEstadoBbvaCat(caso),
     ultimaGestion: ultimaGestionBbvaCat(caso),
-    liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
-    informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
-    archivos: Array.isArray(item.archivos) ? item.archivos : [],
+    liquidador:
+      item.liquidador && typeof item.liquidador === 'object'
+        ? item.liquidador
+        : item.tieneLiquidador
+          ? { _presente: true }
+          : null,
+    informeUnico:
+      item.informeUnico && typeof item.informeUnico === 'object'
+        ? item.informeUnico
+        : item.tieneInforme
+          ? { _presente: true }
+          : null,
+    archivos: Array.isArray(item.archivos)
+      ? item.archivos
+      : Number.isFinite(nArchivos) && nArchivos > 0
+        ? Array.from({ length: nArchivos }, () => ({}))
+        : [],
   };
 };
 
 const normalizeArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeBbvaCatListadoItem(item ?? {})) : [];
 
-export const getCasosBbvaCatListadoPaginado = async ({ page = 1, limit = 100 } = {}) => {
+export const getCasosBbvaCatListadoPaginado = async ({ page = 1, limit = 100, completo = false } = {}) => {
   const qs = new URLSearchParams({ page, limit, _t: Date.now() });
+  if (completo) qs.set('completo', '1');
   const response = await fetch(`${API_URL}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
@@ -72,12 +88,12 @@ export const getCasosBbvaCatListadoPaginado = async ({ page = 1, limit = 100 } =
   return payload;
 };
 
-export const fetchAllCasosBbvaCatListado = async (batchSize = 2000) => {
+export const fetchAllCasosBbvaCatListado = async (batchSize = 2000, { completo = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
   while (true) {
-    const respuesta = await getCasosBbvaCatListadoPaginado({ page, limit: batchSize });
+    const respuesta = await getCasosBbvaCatListadoPaginado({ page, limit: batchSize, completo });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') total = respuesta.total;
     if (!lote.length) break;

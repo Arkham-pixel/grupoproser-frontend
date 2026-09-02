@@ -10,7 +10,6 @@ import {
 } from './bbvaCatHelpers.js';
 
 export const DIAS_ESTANCADO_BBVA_CAT = 15;
-export const LIMITE_ESTANCADOS_BBVA_CAT = 20;
 export const LIMITE_GRANDES_PERDIDAS_BBVA_CAT = 10;
 
 const ESTADOS_CERRADOS = new Set(['PAGADO', 'OBJETADO']);
@@ -122,17 +121,6 @@ function montoPositivo(valor) {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function motivoEstancado(caso = {}) {
-  const estado = claveEstado(caso.estado);
-  if (estado === 'PENDIENTE DE DOCUMENTO') {
-    return String(caso.documentoFaltante || caso.observacionPendienteDocumento || '').trim();
-  }
-  if (estado === 'OBJECIÓN' || estado === 'OBJETADO') {
-    return String(caso.motivoObjecion || '').trim();
-  }
-  return String(caso.observaciones || '').trim();
-}
-
 /**
  * KPIs y series del dashboard de cartera (vista cliente BBVA).
  * Cuantía probable = mediana por caso. Reserva ajustador = suma de valorLiquidado.
@@ -149,8 +137,8 @@ export function construirDashboardBbvaCatListado(casos = []) {
   const cubetas = new Map(CUBETAS_ANTIGUEDAD.map((r) => [r, 0]));
   const cubetasReserva = new Map(CUBETAS_ANTIGUEDAD.map((r) => [r, 0]));
   const diasAbiertos = [];
-  const estancados = [];
   const grandesPerdidas = [];
+  let nEstancados = 0;
 
   let carteraAbierta = 0;
   let enTramite = 0;
@@ -239,18 +227,7 @@ export function construirDashboardBbvaCatListado(casos = []) {
       if (reservaAjustador > 0) {
         cubetasReserva.set(cubeta, (cubetasReserva.get(cubeta) || 0) + reservaAjustador);
       }
-      if (dias >= DIAS_ESTANCADO_BBVA_CAT) {
-        estancados.push({
-          id: caso._id,
-          zc: caso.zc || '',
-          siniestro: caso.siniestro || '',
-          asegurado: caso.asegurado || '',
-          ciudad: homologarCiudadBbvaCat(caso.ciudad) || caso.ciudad || '',
-          estado,
-          dias,
-          motivo: motivoEstancado(caso),
-        });
-      }
+      if (dias >= DIAS_ESTANCADO_BBVA_CAT) nEstancados += 1;
     }
 
     if (abierto && reservaAjustador > 0) {
@@ -286,7 +263,6 @@ export function construirDashboardBbvaCatListado(casos = []) {
     }
   }
 
-  estancados.sort((a, b) => b.dias - a.dias || String(a.zc).localeCompare(String(b.zc), 'es'));
   grandesPerdidas.sort((a, b) => b.reserva - a.reserva || String(a.zc).localeCompare(String(b.zc), 'es'));
 
   const estimadosUnicos = [...new Set(estimadosPorCaso)];
@@ -314,7 +290,7 @@ export function construirDashboardBbvaCatListado(casos = []) {
       objetados,
       listosPago,
       pagados,
-      estancados: estancados.length,
+      estancados: nEstancados,
       medianaDias: mediana(diasAbiertos),
       porcentajePagados: totalCasos === 0 ? 0 : Math.round((pagados / totalCasos) * 100),
       reservaAbierta,
@@ -356,7 +332,6 @@ export function construirDashboardBbvaCatListado(casos = []) {
       cantidad: cubetas.get(rango) || 0,
       reserva: cubetasReserva.get(rango) || 0,
     })),
-    estancados: estancados.slice(0, LIMITE_ESTANCADOS_BBVA_CAT),
     grandesPerdidas: grandesPerdidas.slice(0, LIMITE_GRANDES_PERDIDAS_BBVA_CAT),
   };
 }
