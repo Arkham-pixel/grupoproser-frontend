@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { FaArrowDown, FaArrowUp, FaCloudUploadAlt, FaGripVertical, FaTrash, FaImage } from 'react-icons/fa';
 import { getPuertosImagenDisplayUrl } from './puertosCasoImagenUtils';
 
-const MAX_FOTOS = 20;
-
 export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = false }) {
   const { t } = useTranslation();
   const puedeEditar = typeof onChange === 'function' && !soloLectura;
@@ -16,38 +14,30 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
     (acceptedFiles) => {
       if (!puedeEditar || !acceptedFiles.length) return;
 
-      const disponibles = MAX_FOTOS - fotos.length;
-      if (disponibles <= 0) return;
-
-      const archivos = acceptedFiles.slice(0, disponibles);
-
-      archivos.forEach((file) => {
+      acceptedFiles.forEach((file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          onChange((prev) => {
-            if (prev.length >= MAX_FOTOS) return prev;
-            return [
-              ...prev,
-              {
-                id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-                src: e.target.result,
-                nombre: file.name,
-                descripcion: '',
-              },
-            ];
-          });
+          onChange((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              src: e.target.result,
+              nombre: file.name,
+              descripcion: '',
+            },
+          ]);
         };
         reader.readAsDataURL(file);
       });
     },
-    [fotos.length, onChange, puedeEditar]
+    [onChange, puedeEditar]
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.jpeg', '.jpg', '.jfif', '.png', '.gif', '.webp'] },
     multiple: true,
-    disabled: !puedeEditar || fotos.length >= MAX_FOTOS,
+    disabled: !puedeEditar,
     noClick: arrastrandoId != null,
     noKeyboard: arrastrandoId != null,
   });
@@ -85,8 +75,6 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
     });
   };
 
-  const lleno = fotos.length >= MAX_FOTOS;
-
   return (
     <section className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
       <header className="flex items-center gap-3 px-5 py-4 bg-slate-100 dark:bg-slate-700/80 border-b border-slate-200 dark:border-slate-600">
@@ -98,16 +86,16 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
             {t('ports.ui.actas.photos.title')}
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('ports.ui.actas.photos.subtitle', { max: MAX_FOTOS })}
+            {t('ports.ui.actas.photos.subtitle')}
           </p>
         </div>
         <span className="ml-auto rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-200">
-          {fotos.length} / {MAX_FOTOS}
+          {t('ports.ui.actas.photos.count', { count: fotos.length })}
         </span>
       </header>
 
       <div className="p-5 space-y-5">
-        {!lleno && (
+        {puedeEditar && (
           <div
             {...getRootProps()}
             className={`
@@ -136,15 +124,6 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                 </p>
               </>
             )}
-            <p className="mt-3 text-xs text-slate-400">
-              {t('ports.ui.actas.photos.remaining', { count: MAX_FOTOS - fotos.length })}
-            </p>
-          </div>
-        )}
-
-        {lleno && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            {t('ports.ui.actas.photos.limitReached', { max: MAX_FOTOS })}
           </div>
         )}
 

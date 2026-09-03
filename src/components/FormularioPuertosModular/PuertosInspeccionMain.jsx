@@ -22,11 +22,6 @@ import {
   casoToFormDataInspeccionAseguradoConMeta,
   sanitizarFormDataParaGuardado,
 } from '../PuertosActas/puertosInspeccionAseguradoMapper.js';
-import {
-  validarLimiteFotosInspeccion,
-  MAX_FOTOS_SECCION_INSPECCION_ASEGURADO,
-  recortarFotosInspeccionAlLimite,
-} from '../PuertosActas/puertosFotosLimites.js';
 import { esCasoInspeccionAsegurado } from '../PuertosActas/puertosTipoRegistro.js';
 import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
 
@@ -357,14 +352,12 @@ await generarManualPuertos();
       const casoId = idActual || data._id || 'borrador';
 
       let formProcesado;
-      const { datos: dataLimite } = recortarFotosInspeccionAlLimite(data);
       try {
-        if (hayImagenesPendientesInspeccion(dataLimite)) {
-          validarLimiteFotosInspeccion(dataLimite);
+        if (hayImagenesPendientesInspeccion(data)) {
           setProgresoSubida({ lote: 0, totalLotes: 1, subidas: 0, total: 0 });
-          formProcesado = await procesarInspeccionPuertosImagenes(dataLimite, casoId, setProgresoSubida);
+          formProcesado = await procesarInspeccionPuertosImagenes(data, casoId, setProgresoSubida);
         } else {
-          formProcesado = sanitizarFormDataParaGuardado(dataLimite);
+          formProcesado = sanitizarFormDataParaGuardado(data);
         }
       } catch (uploadError) {
         console.error('❌ Error subiendo fotos:', uploadError);
@@ -487,13 +480,8 @@ await generarManualPuertos();
         navigate('/puertos/actas');
         return;
       }
-      const { datos, huboRecorte } = casoToFormDataInspeccionAseguradoConMeta(caso);
+      const { datos } = casoToFormDataInspeccionAseguradoConMeta(caso);
       setFormData((prev) => ({ ...prev, ...datos }));
-      if (huboRecorte) {
-        alert(
-          t('ports.ui.inspeccion.alerts.fotosRecortadas', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })
-        );
-      }
       setFormularioId(casoId);
       setModoEdicion(true);
       setTipoInforme('riicp004');

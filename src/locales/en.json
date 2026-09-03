@@ -8082,7 +8082,8 @@
         },
         "photos": {
           "title": "Report photos",
-          "subtitle": "Drag images to upload · drag each photo to reorder · max {{max}} photos",
+          "subtitle": "Drag images to upload · drag each photo to reorder",
+          "count": "{{count}} photo(s)",
           "dropHere": "Drop images here…",
           "dragDrop": "Drag and drop your photos",
           "orClick": "or click to select — JPG, JFIF, PNG, GIF, WebP",
@@ -8657,19 +8658,19 @@
           },
           "informeFotografico": {
             "titulo": "3 — PHOTOGRAPHIC REPORT",
-            "intro": "Storage, model and VIN photos. Maximum {{max}} photos per block. Saved to S3 when the report is saved.",
+            "intro": "Storage, model and VIN photos. Saved to S3 when the report is saved.",
             "aspectoAlmacenamiento": "Storage aspect",
             "placeholderAlmacenamiento": "Drag general yard / storage photos",
-            "notaS3Almacenamiento": "Max. {{max}} · Caption: ASPECTO DEL ALMACENAMIENTO",
+            "notaS3Almacenamiento": "Caption: ASPECTO DEL ALMACENAMIENTO",
             "aspectoModelo": "Model aspect",
             "placeholderModelo": "Drag photos by vehicle model",
-            "notaS3Modelo": "Max. {{max}} · Caption: ASPECTO MODELO",
+            "notaS3Modelo": "Caption: ASPECTO MODELO",
             "fotosPorVin": "Photos by VIN (damage)",
             "agregarVin": "Add VIN",
             "descripcionDano": "Damage description (Word caption)",
             "danoPlaceholder": "Shows impact on front fender",
             "placeholderVin": "Drag photos for this VIN",
-            "notaS3Vin": "Max. {{max}} photos per VIN",
+            "notaS3Vin": "Photos per VIN",
             "empty": "Optional: add VIN with specific damage photos."
           },
           "conclusiones": {
@@ -8722,13 +8723,13 @@
           },
           "informeFotografico": {
             "titulo": "3 — PHOTOGRAPHIC REPORT",
-            "intro": "Storage and model photos. Max {{max}} photos per block. Saved to S3 on save.",
+            "intro": "Storage and model photos. Saved to S3 on save.",
             "aspectoAlmacenamiento": "Storage aspect",
             "placeholderAlmacenamiento": "Drag general yard / storage photos",
-            "notaS3Almacenamiento": "Max {{max}} · Caption: STORAGE ASPECT",
+            "notaS3Almacenamiento": "Caption: STORAGE ASPECT",
             "aspectoModelo": "Model aspect",
             "placeholderModelo": "Drag photos by vehicle model",
-            "notaS3Modelo": "Max {{max}} · Caption: MODEL ASPECT"
+            "notaS3Modelo": "Caption: MODEL ASPECT"
           },
           "conclusiones": {
             "titulo": "5 — CONCLUSIONS",

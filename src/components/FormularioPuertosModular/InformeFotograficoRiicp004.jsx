@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
-import { MAX_FOTOS_SECCION_INSPECCION_ASEGURADO } from '../PuertosActas/puertosFotosLimites.js';
 
 /** Sección 3 — INFORME FOTOGRÁFICO (formato RII-CP-004) */
 export default function InformeFotograficoRiicp004({ formData, onInputChange, cargando }) {
@@ -56,7 +55,7 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
         {t('ports.ui.formulario.riicp004.informeFotografico.titulo')}
       </h3>
       <p className="text-xs mb-6" style={{ color: textSecondary }}>
-        {t('ports.ui.formulario.riicp004.informeFotografico.intro', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
+        {t('ports.ui.formulario.riicp004.informeFotografico.intro')}
       </p>
 
       <div className="mb-8">
@@ -67,9 +66,8 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
           imagenes={imagenesAlmacenamiento}
           onChange={(nuevas) => onInputChange('imagenesAspectoAlmacenamiento', nuevas)}
           cargando={cargando}
-          max={MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}
           placeholder={t('ports.ui.formulario.riicp004.informeFotografico.placeholderAlmacenamiento')}
-          notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Almacenamiento', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
+          notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Almacenamiento')}
         />
       </div>
 
@@ -81,9 +79,8 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
           imagenes={imagenesModelo}
           onChange={(nuevas) => onInputChange('imagenesAspectoModelo', nuevas)}
           cargando={cargando}
-          max={MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}
           placeholder={t('ports.ui.formulario.riicp004.informeFotografico.placeholderModelo')}
-          notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Modelo', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
+          notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Modelo')}
         />
       </div>
 
@@ -150,9 +147,8 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
               imagenes={registro.fotos || []}
               onChange={(fotos) => actualizarFotosRegistro(registro.id, fotos)}
               cargando={cargando}
-              max={MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}
               placeholder={t('ports.ui.formulario.riicp004.informeFotografico.placeholderVin')}
-              notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Vin', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
+              notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Vin')}
               mostrarContador={false}
             />
           </div>

@@ -13,7 +13,7 @@ export default function PuertosDragDropFotos({
   imagenes = [],
   onChange,
   cargando = false,
-  max = 15,
+  max = null,
   placeholder: placeholderProp,
   notaS3: notaS3Prop,
   mostrarContador = true,
@@ -54,9 +54,10 @@ export default function PuertosDragDropFotos({
         }
         return true;
       });
-      const disponibles = max - (imagenes?.length || 0);
-      const slice = validas.slice(0, disponibles);
-      if (validas.length > disponibles) {
+      const limitado = Number.isFinite(max) && max > 0;
+      const disponibles = limitado ? max - (imagenes?.length || 0) : validas.length;
+      const slice = limitado ? validas.slice(0, Math.max(0, disponibles)) : validas;
+      if (limitado && validas.length > disponibles) {
         alert(t('ports.ui.formulario.dragDrop.alertMaxFotos', { max }));
       }
       const convertidas = [];
@@ -71,12 +72,15 @@ export default function PuertosDragDropFotos({
     [aplicarCambio, imagenes?.length, max, t]
   );
 
+  const limitado = Number.isFinite(max) && max > 0;
+  const lleno = limitado && (imagenes?.length || 0) >= max;
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp', '.heic', '.heif'] },
     multiple: true,
     maxSize: 5 * 1024 * 1024,
-    disabled: cargando || (imagenes?.length || 0) >= max,
+    disabled: cargando || lleno,
   });
 
   const eliminarImagen = (id) => {
@@ -127,7 +131,7 @@ export default function PuertosDragDropFotos({
       )}
 
       <div className="space-y-4">
-        {(imagenes?.length || 0) < max && (
+        {!lleno && (
           <div
             {...getRootProps()}
             className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-8 transition-colors"
@@ -142,7 +146,9 @@ export default function PuertosDragDropFotos({
               {isDragActive ? t('ports.ui.formulario.dragDrop.sueltaAqui') : placeholder}
             </span>
             <span className="mt-1 text-xs text-center" style={{ color: textSecondary }}>
-              {imagenes?.length || 0} / {max} · {notaS3}
+              {limitado
+                ? `${imagenes?.length || 0} / ${max} · ${notaS3}`
+                : `${imagenes?.length || 0} · ${notaS3}`}
             </span>
           </div>
         )}

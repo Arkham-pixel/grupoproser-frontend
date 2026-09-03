@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
-import { MAX_FOTOS_SECCION_INSPECCION_ASEGURADO } from '../PuertosActas/puertosFotosLimites.js';
 
 /** Sección 3 — INFORME FOTOGRAFICO (Motorysa: almacenamiento + modelo) */
 export default function InformeFotograficoMotorysa({ formData, onInputChange, cargando }) {
@@ -14,7 +13,6 @@ export default function InformeFotograficoMotorysa({ formData, onInputChange, ca
 
   const imagenesAlmacenamiento = formData.imagenesAspectoAlmacenamiento || [];
   const imagenesModelo = formData.imagenesAspectoModelo || [];
-  const max = MAX_FOTOS_SECCION_INSPECCION_ASEGURADO;
 
   return (
     <div
@@ -28,7 +26,7 @@ export default function InformeFotograficoMotorysa({ formData, onInputChange, ca
         {t('ports.ui.formulario.motorysa.informeFotografico.titulo')}
       </h3>
       <p className="text-xs mb-6" style={{ color: textSecondary }}>
-        {t('ports.ui.formulario.motorysa.informeFotografico.intro', { max })}
+        {t('ports.ui.formulario.motorysa.informeFotografico.intro')}
       </p>
 
       <div className="mb-8">
@@ -39,9 +37,8 @@ export default function InformeFotograficoMotorysa({ formData, onInputChange, ca
           imagenes={imagenesAlmacenamiento}
           onChange={(nuevas) => onInputChange('imagenesAspectoAlmacenamiento', nuevas)}
           cargando={cargando}
-          max={max}
           placeholder={t('ports.ui.formulario.motorysa.informeFotografico.placeholderAlmacenamiento')}
-          notaS3={t('ports.ui.formulario.motorysa.informeFotografico.notaS3Almacenamiento', { max })}
+          notaS3={t('ports.ui.formulario.motorysa.informeFotografico.notaS3Almacenamiento')}
         />
       </div>
 
@@ -53,9 +50,8 @@ export default function InformeFotograficoMotorysa({ formData, onInputChange, ca
           imagenes={imagenesModelo}
           onChange={(nuevas) => onInputChange('imagenesAspectoModelo', nuevas)}
           cargando={cargando}
-          max={max}
           placeholder={t('ports.ui.formulario.motorysa.informeFotografico.placeholderModelo')}
-          notaS3={t('ports.ui.formulario.motorysa.informeFotografico.notaS3Modelo', { max })}
+          notaS3={t('ports.ui.formulario.motorysa.informeFotografico.notaS3Modelo')}
         />
       </div>
     </div>

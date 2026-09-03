@@ -2,10 +2,6 @@
 
 import { normalizarImagenCargada, serializarImagenPersistida } from './puertosCasoImagenUtils.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
-import {
-  MAX_FOTOS_SECCION_INSPECCION_ASEGURADO,
-  recortarFotosInspeccionAlLimite,
-} from './puertosFotosLimites.js';
 
 function normalizarListaImagenes(lista) {
   if (!Array.isArray(lista)) return [];
@@ -104,31 +100,11 @@ export function casoToFormDataInspeccionAsegurado(caso) {
     codiEstdo: caso.codiEstdo,
     creadoPor: caso.creadoPor,
   };
-  return recortarFotosInspeccionAlLimite(base, MAX_FOTOS_SECCION_INSPECCION_ASEGURADO).datos;
+  return base;
 }
 
-/** Igual que casoToFormDataInspeccionAsegurado pero indica si hubo recorte por exceso de fotos. */
+/** Igual que casoToFormDataInspeccionAsegurado; se conserva por compatibilidad. */
 export function casoToFormDataInspeccionAseguradoConMeta(caso) {
   if (!caso) return { datos: {}, huboRecorte: false };
-  const informe = caso.informeInspeccionAsegurado || {};
-  const base = {
-    ...informe,
-    imagenesInspeccionBordo: normalizarListaImagenes(informe.imagenesInspeccionBordo),
-    imagenesInspeccionDescargue: normalizarListaImagenes(informe.imagenesInspeccionDescargue),
-    imagenesAspectoAlmacenamiento: normalizarListaImagenes(informe.imagenesAspectoAlmacenamiento),
-    imagenesAspectoModelo: normalizarListaImagenes(informe.imagenesAspectoModelo),
-    imagenesRegistro: normalizarListaImagenes(informe.imagenesRegistro),
-    registrosPorVin: (informe.registrosPorVin || []).map((registro) => ({
-      ...registro,
-      fotos: normalizarListaImagenes(registro.fotos),
-    })),
-    plantillaInforme: 'riicp004',
-    _id: caso._id,
-    consecutivo: caso.consecutivo || informe.consecutivo,
-    codigoReferencia: caso.consecutivo || informe.codigoReferencia,
-    descripcionEstado: caso.descripcionEstado,
-    codiEstdo: caso.codiEstdo,
-    creadoPor: caso.creadoPor,
-  };
-  return recortarFotosInspeccionAlLimite(base, MAX_FOTOS_SECCION_INSPECCION_ASEGURADO);
+  return { datos: casoToFormDataInspeccionAsegurado(caso), huboRecorte: false };
 }

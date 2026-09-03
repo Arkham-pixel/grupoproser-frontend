@@ -2,10 +2,6 @@
 
 import { normalizarImagenCargada, serializarImagenPersistida } from './puertosCasoImagenUtils.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
-import {
-  MAX_FOTOS_SECCION_INSPECCION_ASEGURADO,
-  recortarFotosInspeccionAlLimite,
-} from './puertosFotosLimites.js';
 
 function normalizarListaImagenes(lista) {
   if (!Array.isArray(lista)) return [];
@@ -104,16 +100,10 @@ function baseDesdeCaso(caso) {
 
 export function casoToFormDataInspeccionMotorysa(caso) {
   if (!caso) return {};
-  return recortarFotosInspeccionAlLimite(
-    baseDesdeCaso(caso),
-    MAX_FOTOS_SECCION_INSPECCION_ASEGURADO
-  ).datos;
+  return baseDesdeCaso(caso);
 }
 
 export function casoToFormDataInspeccionMotorysaConMeta(caso) {
   if (!caso) return { datos: {}, huboRecorte: false };
-  return recortarFotosInspeccionAlLimite(
-    baseDesdeCaso(caso),
-    MAX_FOTOS_SECCION_INSPECCION_ASEGURADO
-  );
+  return { datos: baseDesdeCaso(caso), huboRecorte: false };
 }

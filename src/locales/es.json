@@ -8109,7 +8109,8 @@
         },
         "photos": {
           "title": "Fotos del acta",
-          "subtitle": "Arrastra imágenes para subir · arrastra cada foto para cambiar el orden · máximo {{max}} fotos",
+          "subtitle": "Arrastra imágenes para subir · arrastra cada foto para cambiar el orden",
+          "count": "{{count}} foto(s)",
           "dropHere": "Suelta las imágenes aquí…",
           "dragDrop": "Arrastra y suelta tus fotos",
           "orClick": "o haz clic para seleccionar — JPG, JFIF, PNG, GIF, WebP",
@@ -8684,19 +8685,19 @@
           },
           "informeFotografico": {
             "titulo": "3 — INFORME FOTOGRÁFICO",
-            "intro": "Fotos del almacenamiento, por modelo y por VIN. Máximo {{max}} fotos por cada bloque. Se guardan en S3 al grabar el informe.",
+            "intro": "Fotos del almacenamiento, por modelo y por VIN. Se guardan en S3 al grabar el informe.",
             "aspectoAlmacenamiento": "Aspecto del almacenamiento",
             "placeholderAlmacenamiento": "Arrastra fotos generales del patio / almacenamiento",
-            "notaS3Almacenamiento": "Máx. {{max}} · Leyenda: ASPECTO DEL ALMACENAMIENTO",
+            "notaS3Almacenamiento": "Leyenda: ASPECTO DEL ALMACENAMIENTO",
             "aspectoModelo": "Aspecto modelo",
             "placeholderModelo": "Arrastra fotos por modelo de vehículo",
-            "notaS3Modelo": "Máx. {{max}} · Leyenda: ASPECTO MODELO",
+            "notaS3Modelo": "Leyenda: ASPECTO MODELO",
             "fotosPorVin": "Fotos por VIN (daños)",
             "agregarVin": "Agregar VIN",
             "descripcionDano": "Descripción del daño (leyenda en Word)",
             "danoPlaceholder": "Presenta golpe en guardabarros delantero",
             "placeholderVin": "Arrastra fotos de este VIN",
-            "notaS3Vin": "Máx. {{max}} fotos por VIN",
+            "notaS3Vin": "Fotos por VIN",
             "empty": "Opcional: agregue VIN con fotos de daños específicos."
           },
           "conclusiones": {
@@ -8749,13 +8750,13 @@
           },
           "informeFotografico": {
             "titulo": "3 — INFORME FOTOGRÁFICO",
-            "intro": "Fotos del almacenamiento y del modelo. Máximo {{max}} fotos por bloque. Se guardan en S3 al grabar.",
+            "intro": "Fotos del almacenamiento y del modelo. Se guardan en S3 al grabar.",
             "aspectoAlmacenamiento": "Aspecto almacenamiento",
             "placeholderAlmacenamiento": "Arrastra fotos generales del patio / almacenamiento",
-            "notaS3Almacenamiento": "Máx. {{max}} · Leyenda: ASPECTO ALMACENAMIENTO",
+            "notaS3Almacenamiento": "Leyenda: ASPECTO ALMACENAMIENTO",
             "aspectoModelo": "Aspecto modelo",
             "placeholderModelo": "Arrastra fotos por modelo de vehículo",
-            "notaS3Modelo": "Máx. {{max}} · Leyenda: ASPECTO MODELO"
+            "notaS3Modelo": "Leyenda: ASPECTO MODELO"
           },
           "conclusiones": {
             "titulo": "5 — CONCLUSIONES",
