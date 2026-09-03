@@ -86,11 +86,16 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
             {t('ports.ui.actas.photos.title')}
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('ports.ui.actas.photos.subtitle')}
+            {t('ports.ui.actas.photos.subtitleUnlimited', {
+              defaultValue: 'Arrastra imágenes para subir · arrastra cada foto para cambiar el orden · sin límite de cantidad',
+            })}
           </p>
         </div>
         <span className="ml-auto rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-200">
-          {t('ports.ui.actas.photos.count', { count: fotos.length })}
+          {t('ports.ui.actas.photos.countUnlimited', {
+            count: fotos.length,
+            defaultValue: '{{count}} foto(s)',
+          })}
         </span>
       </header>
 
