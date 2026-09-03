@@ -872,6 +872,36 @@ export function itemsPlanosSura(liquidador = {}) {
     }));
 }
 
+export function presupuestoNsrTieneDatosSura(liquidador = {}) {
+  const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
+  return (Array.isArray(items) ? items : []).some(
+    (it) =>
+      String(it?.actividad || it?.componente || it?.capitulo || '').trim() ||
+      Number(it?.cantidad) > 0 ||
+      Number(it?.valorUnitario) > 0 ||
+      Number(it?.total) > 0
+  );
+}
+
+export function contenidosNsrTienenDatosSura(liquidador = {}) {
+  const items = liquidador?.evaluacionSismicaNSR10?.contenidos?.items;
+  return (Array.isArray(items) ? items : []).some(
+    (it) =>
+      String(it?.articulo || it?.categoria || '').trim() ||
+      Number(it?.cantidad) > 0 ||
+      Number(it?.valorUnitario) > 0 ||
+      Number(it?.total) > 0
+  );
+}
+
+export function gastosLiquidadorTienenDatosSura(totales = {}) {
+  if (Number(totales?.diagrama?.gastosHospedaje) > 0) return true;
+  if (Number(totales?.totalOtrosAmparos) > 0) return true;
+  return (Array.isArray(totales?.otrosAmparos) ? totales.otrosAmparos : []).some(
+    (it) => Number(it?.valor) > 0
+  );
+}
+
 export function mapCasoSuraALiquidador(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   const encabezado = encabezadoDesdeCasoSura(c);

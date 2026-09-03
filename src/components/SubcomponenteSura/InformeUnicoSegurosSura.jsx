@@ -161,6 +161,8 @@ function TablaFilasSura({
 export default function InformeUnicoSegurosSura({
   casoSura = null,
   fotosAgil = null,
+  informeAgil = null,
+  salvamento = null,
   onEstadoChange,
   onLiquidadorChange,
   onGuardarEnCaso,
@@ -178,7 +180,7 @@ export default function InformeUnicoSegurosSura({
   );
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
-  const [descargando, setDescargando] = useState(false);
+  const [descargando, setDescargando] = useState('');
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
   const [importandoFotosArchivero, setImportandoFotosArchivero] = useState(false);
 
@@ -343,7 +345,8 @@ export default function InformeUnicoSegurosSura({
     setCampo('infoEvento', INFO_EVENTO_DEFAULT_SURA);
   };
 
-  const handleDescargar = async () => {
+  const handleDescargar = async (formato = 'word') => {
+    const usarExcel = formato === 'excel';
     if (esUnico) {
       const faltantes = camposFaltantesInformeUnicoSura(informe, casoSura || {});
       if (faltantes.length) {
@@ -356,17 +359,21 @@ export default function InformeUnicoSegurosSura({
         return;
       }
     }
-    setDescargando(true);
+    setDescargando(usarExcel ? 'excel' : 'word');
     setError('');
     setMensaje('');
     const mimeExcel = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const mimeWord =
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     try {
-      const resultado = esUnico
+      const resultado = usarExcel
         ? await descargarInformeUnicoSuraExcel({
             caso: casoSura || {},
             informe,
+            liquidador,
+            fotosAgil,
+            informeAgil: informeAgil || casoSura?.informeAgil,
+            salvamento: salvamento || casoSura?.salvamento,
           })
         : await descargarWordInformeSura({
             caso: casoSura || {},
@@ -376,7 +383,7 @@ export default function InformeUnicoSegurosSura({
       const casoId = casoSura?._id;
       if (!casoId) {
         setMensaje(
-          esUnico
+          usarExcel
             ? t('segurosSura.reportUnique.excelNeedsCase')
             : t('segurosSura.reportUnique.wordNeedsCase')
         );
@@ -386,12 +393,12 @@ export default function InformeUnicoSegurosSura({
       const nombre =
         resultado?.nombre ||
         resultado?.filename ||
-        (esUnico
+        (usarExcel
           ? `Informe_Unico_Sura_${casoSura.siniestro || casoSura.consecutivo || 'caso'}.xlsx`
           : `Informe_Sura_${casoSura.siniestro || casoSura.consecutivo || 'caso'}.docx`);
       if (!blob) {
         setMensaje(
-          esUnico
+          usarExcel
             ? t('segurosSura.reportUnique.excelNeedsCase')
             : t('segurosSura.reportUnique.wordNeedsCase')
         );
@@ -399,7 +406,7 @@ export default function InformeUnicoSegurosSura({
       }
       try {
         const file = new File([blob], nombre, {
-          type: esUnico ? mimeExcel : mimeWord,
+          type: usarExcel ? mimeExcel : mimeWord,
         });
         const creado = await subirArchivoSura(
           casoId,
@@ -408,14 +415,14 @@ export default function InformeUnicoSegurosSura({
         );
         appendArchivosAlCaso([creado]);
         setMensaje(
-          esUnico
+          usarExcel
             ? t('segurosSura.reportUnique.excelSavedArchive')
             : t('segurosSura.reportUnique.wordSavedArchive')
         );
       } catch (errArchivo) {
         console.warn('No se pudo guardar el informe en el archivero:', errArchivo);
         setError(
-          esUnico
+          usarExcel
             ? t('segurosSura.reportUnique.excelArchiveError')
             : t('segurosSura.reportUnique.wordArchiveError')
         );
@@ -423,12 +430,12 @@ export default function InformeUnicoSegurosSura({
     } catch (err) {
       console.error(err);
       setError(
-        esUnico
+        usarExcel
           ? t('segurosSura.reportUnique.excelError')
           : t('segurosSura.reportUnique.wordError')
       );
     } finally {
-      setDescargando(false);
+      setDescargando('');
     }
   };
 
@@ -542,7 +549,7 @@ export default function InformeUnicoSegurosSura({
             className={`${cardBase} ${tipoInforme === 'unico' ? cardActive : cardIdle}`}
             onClick={() => elegirTipoInforme('unico')}
           >
-            <FaFileExcel className="mb-2 text-fenix-primario" />
+            <FaFileWord className="mb-2 text-fenix-primario" />
             <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
               {t('segurosSura.reportUnique.typeUnico')}
             </span>
@@ -1251,14 +1258,29 @@ export default function InformeUnicoSegurosSura({
         <button
           type="button"
           className={expressBtnSecondary}
-          disabled={descargando}
-          onClick={handleDescargar}
+          disabled={Boolean(descargando)}
+          onClick={() => handleDescargar('word')}
         >
-          {esUnico ? <FaFileExcel /> : <FaFileWord />}{' '}
-          {esUnico
-            ? t('segurosSura.reportUnique.downloadExcel')
+          <FaFileWord />{' '}
+          {descargando === 'word'
+            ? t('segurosSura.reportUnique.generatingWord', {
+                defaultValue: 'Generando Word…',
+              })
             : t('segurosSura.reportUnique.downloadWord')}
         </button>
+        {esUnico && (
+          <button
+            type="button"
+            className={expressBtnSecondary}
+            disabled={Boolean(descargando)}
+            onClick={() => handleDescargar('excel')}
+          >
+            <FaFileExcel />{' '}
+            {descargando === 'excel'
+              ? t('segurosSura.reportUnique.generatingExcel')
+              : t('segurosSura.reportUnique.downloadExcel')}
+          </button>
+        )}
       </div>
     </div>
   );

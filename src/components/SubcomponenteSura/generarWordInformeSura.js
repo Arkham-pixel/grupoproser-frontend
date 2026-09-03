@@ -33,6 +33,9 @@ import {
   normalizarTipoInformeSura,
   parsearNumero,
   prefijoArchivoInformeSura,
+  presupuestoNsrTieneDatosSura,
+  contenidosNsrTienenDatosSura,
+  gastosLiquidadorTienenDatosSura,
   RAZON_SOCIAL_SURA,
   reservaSugeridaSura,
   resumenLiquidacionIndependienteSura,
@@ -632,7 +635,9 @@ function construirCuadroPrincipal({
       ? [['RESERVA SUGERIDA', money(reserva)]]
       : [
           ['RESERVA PRELIMINAR', money(reserva)],
-          ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
+          ...(Number(totales.totalIndemnizar) > 0
+            ? [['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)]]
+            : []),
         ]),
   ];
 
@@ -1241,9 +1246,9 @@ function tablaAnalisisPolizaSura(filas = []) {
 }
 
 /**
- * Informe preliminar o final Seguros Sura — misma fórmula visual que Catastrófico/Puertos:
+ * Informe preliminar, final o único Seguros Sura — misma fórmula visual:
  * encabezado formal, título según tipo, cuadro ficha, secciones y cuadros sin relleno.
- * El informe único se descarga como Excel (descargarInformeUnicoSuraExcel).
+ * El único también sale en Word (liquidador + fotos) y en Excel (formato ágil).
  */
 export async function descargarWordInformeSura({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoSura(caso);
@@ -1252,8 +1257,6 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
   const tipoNorm = normalizarTipoInformeSura(info.tipoInforme, 'preliminar');
   const tipoEtiqueta =
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
-  const seccionFotos = esPreliminar ? 5 : 7;
-  const seccionRecomendacion = esPreliminar ? 6 : 8;
   const liq = liquidador || mapCasoSuraALiquidador(caso);
   const totales = calcularLiquidacionSura(liq);
   const enc = liq.encabezado || {};
@@ -1319,21 +1322,28 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       : fotosArchivos
   );
 
-  // Embebidas y layout de dos en dos (mismo patrón que Informe de Ajuste)
-  const fotosEmbebidas = [];
-  for (const archivo of fotosParaWord.slice(0, 12)) {
-    const img = await resolverBytesFoto(archivo, fotosArchivos);
-    if (!img?.bytes?.length) {
-      console.warn('Foto no embebida en Word Sura:', archivo?.nombreOriginal || archivo?.nombre);
-      continue;
-    }
-    fotosEmbebidas.push({
-      bytes: img.bytes,
-      type: img.type === 'png' ? 'png' : 'jpg',
-      leyenda:
-        String(archivo.descripcion || '').trim() || `Foto ${fotosEmbebidas.length + 1}`,
-    });
-  }
+  // Embebidas en paralelo (más rápido) y layout de dos en dos
+  const topeFotos = tipoNorm === 'unico' ? 24 : 12;
+  const embebidasResueltas = await Promise.all(
+    fotosParaWord.slice(0, topeFotos).map(async (archivo) => {
+      const img = await resolverBytesFoto(archivo, fotosArchivos);
+      if (!img?.bytes?.length) {
+        console.warn('Foto no embebida en Word Sura:', archivo?.nombreOriginal || archivo?.nombre);
+        return null;
+      }
+      return {
+        bytes: img.bytes,
+        type: img.type === 'png' ? 'png' : 'jpg',
+        leyenda: String(archivo.descripcion || '').trim() || '',
+      };
+    })
+  );
+  const fotosEmbebidas = embebidasResueltas
+    .filter(Boolean)
+    .map((foto, idx) => ({
+      ...foto,
+      leyenda: foto.leyenda || `Foto ${idx + 1}`,
+    }));
   const fotosIncluidas = fotosEmbebidas.length;
 
   const fotoParrafos = [];
@@ -1690,6 +1700,32 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
     size: SIZE_NSR,
   });
 
+  const tienePresupuestoNsr =
+    filasConDatos.length > 0 || presupuestoNsrTieneDatosSura(liq);
+  const tieneContenidosNsr = contenidosNsrTienenDatosSura(liq);
+  const tieneEdificio =
+    tienePresupuestoNsr ||
+    Number(totales.subtotal) > 0 ||
+    Number(totales.totalPresupuesto ?? totales.presupuesto?.total) > 0;
+  const tieneContenidosResumen =
+    tieneContenidosNsr || Number(totales.totalContenidos) > 0;
+  const tieneGastos = gastosLiquidadorTienenDatosSura(totales);
+  const tieneObservacionesLiq = Boolean(String(liq.observaciones || '').trim());
+  const tieneResumenLiquidacion =
+    tieneEdificio || tieneContenidosResumen || tieneGastos;
+  const tieneBloqueLiquidador =
+    !esPreliminar &&
+    (tienePresupuestoNsr ||
+      tieneContenidosNsr ||
+      tieneResumenLiquidacion ||
+      tieneObservacionesLiq);
+  const tieneRelacionReclamado = !esPreliminar && items.length > 0;
+  const seccionFotos =
+    5 + (tieneBloqueLiquidador ? 1 : 0) + (tieneRelacionReclamado ? 1 : 0);
+  const seccionRecomendacion = seccionFotos + 1;
+  const numLiquidador = 5;
+  const numRelacion = tieneBloqueLiquidador ? 6 : 5;
+
   const firmasParrafos = await construirZonaFirmasSura({ caso, enc, info });
   const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionSura({ info, caso });
 
@@ -1788,19 +1824,23 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
     },
   ];
 
-  if (!esPreliminar) {
-    sections.push({
-      properties: { page: pageLandscape },
-      headers: { default: header },
-      children: [
-        heading('5. Liquidación de pérdidas (liquidador NSR-10)'),
+  if (tieneBloqueLiquidador) {
+    const hijosLiquidador = [
+      heading(`${numLiquidador}. Liquidación de pérdidas (liquidador NSR-10)`),
+    ];
+    if (tienePresupuestoNsr) {
+      hijosLiquidador.push(
         p(
           mostrarImprevistos || mostrarImpuestos
             ? 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.'
             : 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (único recargo; imprevistos e impuestos van incluidos).',
           { after: 120 }
         ),
-        tablaLiquidadorCompleto,
+        tablaLiquidadorCompleto
+      );
+    }
+    if (tieneContenidosNsr) {
+      hijosLiquidador.push(
         p('Contenidos del inmueble (bienes muebles)', {
           bold: true,
           before: 180,
@@ -1813,80 +1853,104 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
             : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
           { after: 100 }
         ),
-        tablaContenidos,
-        p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-        ...(tablaResumenDictamen ? [tablaResumenDictamen] : []),
-        p('Deducible de edificio (presupuesto)', {
-          bold: true,
-          before: tablaResumenDictamen ? 160 : 40,
-          after: 80,
-          size: SIZE_12,
-        }),
-        tablaResumenEdificio,
-        p(resumenInd.notaEdificio, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
-        p('Deducible de contenidos (por artículo de póliza)', {
-          bold: true,
-          before: 160,
-          after: 80,
-          size: SIZE_12,
-        }),
-        tablaResumenContenidos,
-        ...(tablaArticulosContenidos
-          ? [
-              p('Desglose por artículo de póliza', {
-                bold: true,
-                before: 120,
-                after: 60,
-                size: SIZE_12,
-              }),
-              tablaArticulosContenidos,
-            ]
-          : []),
-        p(resumenInd.notaContenidos, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
-        p('Gastos y amparos sin deducible', {
-          bold: true,
-          before: 160,
-          after: 80,
-          size: SIZE_12,
-        }),
-        tablaResumenGastos,
-        p(resumenInd.notaGastos, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
-        p('Consolidado', { bold: true, before: 160, after: 80, size: SIZE_12 }),
-        tablaResumenConsolidado,
-        ...(liq.observaciones
-          ? [
-              p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
-              p(liq.observaciones, { after: 80 }),
-            ]
-          : []),
-      ],
-    });
+        tablaContenidos
+      );
+    }
+    if (tieneResumenLiquidacion) {
+      hijosLiquidador.push(
+        p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 })
+      );
+      if (tablaResumenDictamen) hijosLiquidador.push(tablaResumenDictamen);
+      if (tieneEdificio) {
+        hijosLiquidador.push(
+          p('Deducible de edificio (presupuesto)', {
+            bold: true,
+            before: tablaResumenDictamen ? 160 : 40,
+            after: 80,
+            size: SIZE_12,
+          }),
+          tablaResumenEdificio,
+          p(resumenInd.notaEdificio, { before: 80, after: 80, size: SIZE_META, color: '555555' })
+        );
+      }
+      if (tieneContenidosResumen) {
+        hijosLiquidador.push(
+          p('Deducible de contenidos (por artículo de póliza)', {
+            bold: true,
+            before: 160,
+            after: 80,
+            size: SIZE_12,
+          }),
+          tablaResumenContenidos,
+          ...(tablaArticulosContenidos
+            ? [
+                p('Desglose por artículo de póliza', {
+                  bold: true,
+                  before: 120,
+                  after: 60,
+                  size: SIZE_12,
+                }),
+                tablaArticulosContenidos,
+              ]
+            : []),
+          p(resumenInd.notaContenidos, { before: 80, after: 80, size: SIZE_META, color: '555555' })
+        );
+      }
+      if (tieneGastos) {
+        hijosLiquidador.push(
+          p('Gastos y amparos sin deducible', {
+            bold: true,
+            before: 160,
+            after: 80,
+            size: SIZE_12,
+          }),
+          tablaResumenGastos,
+          p(resumenInd.notaGastos, { before: 80, after: 80, size: SIZE_META, color: '555555' })
+        );
+      }
+      if (tieneEdificio || tieneContenidosResumen || tieneGastos) {
+        hijosLiquidador.push(
+          p('Consolidado', { bold: true, before: 160, after: 80, size: SIZE_12 }),
+          tablaResumenConsolidado
+        );
+      }
+    }
+    if (tieneObservacionesLiq) {
+      hijosLiquidador.push(
+        p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
+        p(liq.observaciones, { after: 80 })
+      );
+    }
     sections.push({
-      properties: { page: pagePortrait },
+      properties: { page: pageLandscape },
       headers: { default: header },
-      children: [
-        heading('6. Relación de valores reclamados vs. valores indemnizables'),
-        new Table({
-          width: { size: 9000, type: WidthType.DXA },
-          columnWidths: [600, 4000, 2200, 2200],
-          borders: bordersCuadro,
-          rows: filasCuadro,
-        }),
-        p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
-          before: 100,
-          after: 160,
-          size: SIZE_12,
-        }),
-        ...seccionFotosFirmas,
-      ],
-    });
-  } else {
-    sections.push({
-      properties: { page: pagePortrait },
-      headers: { default: header },
-      children: seccionFotosFirmas,
+      children: hijosLiquidador,
     });
   }
+
+  const hijosCierre = [];
+  if (tieneRelacionReclamado) {
+    hijosCierre.push(
+      heading(`${numRelacion}. Relación de valores reclamados vs. valores indemnizables`),
+      new Table({
+        width: { size: 9000, type: WidthType.DXA },
+        columnWidths: [600, 4000, 2200, 2200],
+        borders: bordersCuadro,
+        rows: filasCuadro,
+      }),
+      p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
+        before: 100,
+        after: 160,
+        size: SIZE_12,
+      })
+    );
+  }
+  hijosCierre.push(...seccionFotosFirmas);
+  sections.push({
+    properties: { page: pagePortrait },
+    headers: { default: header },
+    children: hijosCierre,
+  });
 
   const doc = new Document({
     sections,

@@ -564,6 +564,8 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
               <InformeUnicoSegurosSura
                 casoSura={casoSura}
                 fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
+                informeAgil={informeAgilState || casoSura?.informeAgil}
+                salvamento={salvamentoState || casoSura?.salvamento}
                 liquidadorInicial={liquidadorState}
                 forzarTipoUnico={forzarTipoUnico}
                 onEstadoChange={setInformeState}

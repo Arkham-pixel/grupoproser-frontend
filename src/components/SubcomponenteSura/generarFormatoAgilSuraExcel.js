@@ -1,5 +1,4 @@
 import { saveAs } from 'file-saver';
-import ExcelJS from 'exceljs';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
@@ -14,7 +13,7 @@ import {
   fusionarFotosArchiveroEnGaleria,
   valorCeldaInformeAgil,
 } from './informeAgilSuraHelpers.js';
-import { calcularLiquidacionSura, defaultInformeUnicoSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { calcularLiquidacionSura, defaultInformeUnicoSura, mapCasoSuraALiquidador, presupuestoNsrTieneDatosSura } from './liquidadorSuraHelpers.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 
 const HEADER_FILL = {
@@ -307,6 +306,7 @@ async function rellenarFotos(workbook, sheet, fotos = []) {
     sheet.getCell(3, 1).alignment = { ...ALINEACION_TEXTO };
     return;
   }
+  const buffers = await Promise.all(fotos.map((item) => resolverBufferFoto(item)));
   const cellW = pxAnchoCol(40);
   let row = 3;
   for (let i = 0; i < fotos.length; i += 2) {
@@ -330,7 +330,7 @@ async function rellenarFotos(workbook, sheet, fotos = []) {
       cap.alignment = { ...ALINEACION_TEXTO };
       cap.border = BORDER;
       cap.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
-      const img = await resolverBufferFoto(item);
+      const img = buffers[i + c];
       if (!img) continue;
       const dims = await dimensionesImagenBuffer(img.buffer, img.extension);
       const imageId = workbook.addImage({
@@ -515,7 +515,9 @@ function ordenarHojasFormatoAgil(workbook) {
   });
 }
 
-export async function descargarFormatoAgilSuraExcel({
+const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+export async function generarWorkbookFormatoAgilSura({
   casoSura = {},
   informeAgil = null,
   liquidador = null,
@@ -542,30 +544,66 @@ export async function descargarFormatoAgilSuraExcel({
   workbook.created = new Date();
 
   rellenarInformeAgil(workbook.addWorksheet('InformeAgil'), agil);
-  anexarResumenIndemnizacion(workbook.getWorksheet('Presupuesto'), tot);
+  const hojaPresupuesto = workbook.getWorksheet('Presupuesto');
+  if (presupuestoNsrTieneDatosSura(liq) && hojaPresupuesto) {
+    anexarResumenIndemnizacion(hojaPresupuesto, tot);
+  }
   await rellenarFotos(workbook, workbook.addWorksheet('FOTOS'), fotos);
   await rellenarDocumentos(workbook, workbook.addWorksheet('DOCUMENTOS'), informe, casoSura);
   rellenarSalvamento(workbook.addWorksheet('SALVAMENTO'), sal);
   ordenarHojasFormatoAgil(workbook);
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  const nro = casoSura.siniestro || casoSura.consecutivo || 'SURA';
-  saveAs(blob, `Formato_Agil_SURA_${String(nro).replace(/[^\w.-]+/g, '_')}.xlsx`);
+  if (!presupuestoNsrTieneDatosSura(liq)) {
+    ['Presupuesto', 'Evaluación', 'Dictamen'].forEach((nombre) => {
+      const ws = workbook.getWorksheet(nombre);
+      if (ws) ws.state = 'hidden';
+    });
+  }
+  return workbook;
 }
 
-const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export async function descargarFormatoAgilSuraExcel({
+  casoSura = {},
+  informeAgil = null,
+  liquidador = null,
+  totales = null,
+  informeUnico = null,
+  salvamento = null,
+  fotosAgil = null,
+} = {}) {
+  const workbook = await generarWorkbookFormatoAgilSura({
+    casoSura,
+    informeAgil,
+    liquidador,
+    totales,
+    informeUnico,
+    salvamento,
+    fotosAgil,
+  });
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: MIME_XLSX });
+  const nro = casoSura.siniestro || casoSura.consecutivo || 'SURA';
+  saveAs(blob, `Formato_Agil_SURA_${String(nro).replace(/[^\w.-]+/g, '_')}.xlsx`);
+  return { blob };
+}
 
-/** Excel del informe único (ficha INFORME ÚNICO: ajustador, mapa, daños, cobertura, conclusiones). */
-export async function descargarInformeUnicoSuraExcel({ caso = {}, informe = null } = {}) {
-  const info = informe || defaultInformeUnicoSura(caso);
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Grupo Proser';
-  workbook.created = new Date();
-  await rellenarDocumentos(workbook, workbook.addWorksheet('INFORME ÚNICO'), info, caso, {
-    nombreHoja: 'INFORME ÚNICO',
+/** Excel del informe único: liquidador, fotos, documentos, ágil y salvamento. */
+export async function descargarInformeUnicoSuraExcel({
+  caso = {},
+  informe = null,
+  liquidador = null,
+  fotosAgil = null,
+  informeAgil = null,
+  salvamento = null,
+  totales = null,
+} = {}) {
+  const workbook = await generarWorkbookFormatoAgilSura({
+    casoSura: caso,
+    informeAgil,
+    liquidador,
+    totales,
+    informeUnico: informe,
+    salvamento,
+    fotosAgil,
   });
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: MIME_XLSX });
