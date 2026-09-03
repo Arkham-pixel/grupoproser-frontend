@@ -8,6 +8,7 @@
  * - resto (usuario, etc.): todo (compatibilidad)
  *
  * Excepción SURA: login 72288319 (Mario Pinilla) = poderes de líder solo en SURA.
+ * Excepción agenda CAT: login 1130615470 ve todos los calendarios generales como admin.
  */
 
 import { normalizarRol, obtenerRolAlmacenado, esRolEra } from '../config/roles.js';
@@ -50,6 +51,9 @@ export const ALFA_LOGINS_COLA_FECHA_LLAMADA = Object.freeze(['1098662033']);
  */
 export const ALLIANZ_LOGINS_REPORTE_INFORMES = Object.freeze(['72288319']);
 
+/** Logins que ven toda la agenda CAT (todos los módulos), como admin/soporte. */
+export const AGENDA_LOGINS_VISTA_GLOBAL = Object.freeze(['1130615470']);
+
 export function obtenerContextoPermisoCaso(modulo = '') {
   return {
     modulo: String(modulo || '').toLowerCase(),
@@ -88,6 +92,22 @@ export function esLoginColaFechaLlamadaAlfa(login) {
 
 export function esIdentidadColaFechaLlamadaAlfa(opts = {}) {
   return [opts.login, opts.cedula].some((v) => esLoginColaFechaLlamadaAlfa(v));
+}
+
+export function esLoginConVistaGlobalAgenda(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return AGENDA_LOGINS_VISTA_GLOBAL.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+/** Login o cédula: ve todos los calendarios generales CAT, sin ser admin. */
+export function esIdentidadConVistaGlobalAgenda(opts = {}) {
+  return [opts.login, opts.cedula].some((v) => esLoginConVistaGlobalAgenda(v));
+}
+
+export function esSesionConVistaGlobalAgenda() {
+  const ctx = obtenerContextoPermisoCaso();
+  return esIdentidadConVistaGlobalAgenda(ctx);
 }
 
 /** Sesión actual: Leyna (1098662033) ve cola Alfa sin fecha de llamada. */
