@@ -15,6 +15,10 @@ import ModalImportarExcelAllianz, {
 import {
   ALLIANZ_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
+  casoAllianzCoincideFiltroDocumento,
+  casoAllianzEnReporteInformes,
+  casoAllianzTieneInforme,
+  casoAllianzTieneLiquidador,
   coincideFiltroCiudadAllianz,
   coincideFiltroTexto,
   etiquetaTipoPolizaAllianz,
@@ -23,6 +27,7 @@ import {
   diasEnEstadoAllianz,
   ultimaGestionAllianz,
   normTexto,
+  textoDocumentosAllianz,
 } from './allianzHelpers.js';
 import {
   expressBadge,
@@ -45,15 +50,27 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
-import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
+import {
+  etiquetaSesionPersona,
+  esSesionReporteInformesAllianz,
+  filtrarCasosAsignadosASesion,
+} from '../../utils/permisosCasoPorRol.js';
 import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenAllianzListado(item, clave) {
   if (clave === 'tipoPoliza') return etiquetaTipoPolizaAllianz(item);
   if (clave === 'diasEnEstado') return diasEnEstadoAllianz(item);
   if (clave === 'ultimaGestion') return ultimaGestionAllianz(item);
+  if (clave === 'documentos') return textoDocumentosAllianz(item);
   return item[clave];
 }
+
+const COLUMNA_DOCUMENTOS = { clave: 'documentos', labelKey: 'documentos' };
+
+const navLinkAllianz =
+  'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
+const navActiveAllianz =
+  'inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -97,7 +114,8 @@ const COLUMNAS = [
   { clave: 'observaciones', labelKey: 'observaciones' },
 ];
 
-const buildExportRow = (caso) => ({
+const buildExportRow = (caso, { incluirDocumentos = false } = {}) => ({
+  ...(incluirDocumentos ? { Documentos: textoDocumentosAllianz(caso) || '' } : {}),
   Consecutivo: caso.consecutivo ?? '',
   Siniestro: caso.siniestro ?? '',
   'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
@@ -137,12 +155,13 @@ const buildExportRow = (caso) => ({
   'Fecha creación': formatDate(caso.createdAt),
 });
 
-export default function ReporteAllianzListado({ modoAsignados = false }) {
+export default function ReporteAllianzListado({ modoAsignados = false, soloInformes = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
     useFiltroCasoExclusivo();
   const nombreSesion = etiquetaSesionPersona();
+  const puedeVerInformes = esSesionReporteInformesAllianz();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -150,6 +169,7 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroDocumento, setFiltroDocumento] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -159,18 +179,31 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteAllianz();
 
+  const columnas = useMemo(
+    () => (soloInformes ? [COLUMNA_DOCUMENTOS, ...COLUMNAS] : COLUMNAS),
+    [soloInformes]
+  );
+
+  useEffect(() => {
+    if (soloInformes && !puedeVerInformes) {
+      navigate('/allianz/listado/reporte', { replace: true });
+    }
+  }, [soloInformes, puedeVerInformes, navigate]);
+
   const recargar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchAllCasosAllianzListado(2000);
-      setCasos(modoAsignados ? filtrarCasosAsignadosASesion(data) : data);
+      let lista = modoAsignados ? filtrarCasosAsignadosASesion(data) : data;
+      if (soloInformes) lista = lista.filter(casoAllianzEnReporteInformes);
+      setCasos(lista);
     } catch (err) {
       setError(err.message || t('allianz.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t, modoAsignados]);
+  }, [t, modoAsignados, soloInformes]);
 
   useEffect(() => {
     recargar();
@@ -183,6 +216,8 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
+      if (soloInformes && !casoAllianzEnReporteInformes(c)) return false;
+      if (soloInformes && !casoAllianzCoincideFiltroDocumento(c, filtroDocumento)) return false;
       if (!coincideCasoUrl(c)) return false;
       if (casoIdUrl) return true;
       if (!coincideFiltroCiudadAllianz(c.ciudad, filtroCiudad)) return false;
@@ -213,12 +248,25 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
         c.ajustador,
         c.inspector,
         c.observaciones,
+        textoDocumentosAllianz(c),
       ]
         .map(normTexto)
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, casoIdUrl, coincideCasoUrl]);
+  }, [
+    casos,
+    busqueda,
+    filtroCiudad,
+    filtroEstado,
+    filtroAjustador,
+    filtroDocumento,
+    fechaInicio,
+    fechaFin,
+    casoIdUrl,
+    coincideCasoUrl,
+    soloInformes,
+  ]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenAllianzListado),
@@ -232,13 +280,25 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
+  }, [
+    busqueda,
+    filtroCiudad,
+    filtroEstado,
+    filtroAjustador,
+    filtroDocumento,
+    fechaInicio,
+    fechaFin,
+    orden.campo,
+    orden.asc,
+    casoIdUrl,
+  ]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setFiltroCiudad('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroDocumento('');
     setFechaInicio('');
     setFechaFin('');
     limpiarCasoUrl();
@@ -262,6 +322,7 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
   ]);
 
   const obtenerValorCelda = (item, clave) => {
+    if (clave === 'documentos') return textoDocumentosAllianz(item) || '—';
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaAllianz(item) || '—';
     if (clave === 'diasEnEstado') return diasEnEstadoAllianz(item) || '—';
     if (clave === 'ultimaGestion') return formatDate(ultimaGestionAllianz(item)) || '—';
@@ -281,9 +342,14 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
       return;
     }
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(casosOrdenados.map(buildExportRow));
-    XLSX.utils.book_append_sheet(wb, ws, 'Listado Allianz');
-    XLSX.writeFile(wb, `allianz-listado-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(
+      casosOrdenados.map((caso) => buildExportRow(caso, { incluirDocumentos: soloInformes }))
+    );
+    XLSX.utils.book_append_sheet(wb, ws, soloInformes ? 'Informes Allianz' : 'Listado Allianz');
+    XLSX.writeFile(
+      wb,
+      `${soloInformes ? 'allianz-informes' : 'allianz-listado'}-${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
   };
 
   const solicitarEliminar = (item) => {
@@ -316,69 +382,74 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
   };
 
   const filtrosActivos = Boolean(
-    busqueda || filtroCiudad || filtroEstado || filtroAjustador || fechaInicio || fechaFin || filtroCasoUrl
+    busqueda ||
+      filtroCiudad ||
+      filtroEstado ||
+      filtroAjustador ||
+      filtroDocumento ||
+      fechaInicio ||
+      fechaFin ||
+      filtroCasoUrl
   );
+
+  if (soloInformes && !puedeVerInformes) return null;
 
   return (
     <div className={`${expressScope} ${root}`}>
       <div className={wrap}>
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
-            <span className={expressBadge}>Allianz · Listado</span>
+            <span className={expressBadge}>{soloInformes ? 'Allianz · Informes' : 'Allianz · Listado'}</span>
             <div>
               <h1 className={expressPageTitle}>
                 {modoAsignados
                   ? `${t('allianz.listadoReport.title')} — ${t('nav.assignedCases')}`
-                  : t('allianz.listadoReport.title')}
+                  : soloInformes
+                    ? t('allianz.listadoReport.informesTitle')
+                    : t('allianz.listadoReport.title')}
               </h1>
               <p className={expressPageSubtitle}>
                 {modoAsignados
                   ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
-                  : t('allianz.listadoReport.subtitle')}
+                  : soloInformes
+                    ? t('allianz.listadoReport.informesSubtitle')
+                    : t('allianz.listadoReport.subtitle')}
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
-              <Link
-                to="/allianz/carga"
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-              >
+              <Link to="/allianz/carga" className={navLinkAllianz}>
                 <FaPlus />
                 {t('nav.allianzAddCase')}
               </Link>
-              <Link
-                to="/allianz/listado/dashboard"
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-              >
+              <Link to="/allianz/listado/dashboard" className={navLinkAllianz}>
                 {t('nav.allianzListadoDashboard')}
               </Link>
-              {modoAsignados ? (
-                <Link
-                  to="/allianz/listado/reporte"
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                >
+              {modoAsignados || soloInformes ? (
+                <Link to="/allianz/listado/reporte" className={navLinkAllianz}>
                   {t('nav.allianzListadoReport')}
                 </Link>
               ) : (
-                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                  {t('nav.allianzListadoReport')}
-                </span>
+                <span className={navActiveAllianz}>{t('nav.allianzListadoReport')}</span>
               )}
+              {puedeVerInformes &&
+                (soloInformes ? (
+                  <span className={navActiveAllianz}>{t('nav.allianzInformesReport')}</span>
+                ) : (
+                  <Link to="/allianz/listado/informes" className={navLinkAllianz}>
+                    {t('nav.allianzInformesReport')}
+                  </Link>
+                ))}
               {modoAsignados ? (
-                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                  {t('nav.assignedCases')}
-                </span>
+                <span className={navActiveAllianz}>{t('nav.assignedCases')}</span>
               ) : (
-                <Link
-                  to="/allianz/listado/mis-casos"
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                >
+                <Link to="/allianz/listado/mis-casos" className={navLinkAllianz}>
                   {t('nav.assignedCases')}
                 </Link>
               )}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeImportarExcel && !modoAsignados && (
+            {puedeImportarExcel && !modoAsignados && !soloInformes && (
               <button
                 type="button"
                 className={expressBtnPrimary}
@@ -442,6 +513,20 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
                 ))}
               </SelectFenix>
             </Campo>
+            {soloInformes && (
+              <Campo label={t('allianz.listadoReport.filterDocumentos')}>
+                <SelectFenix
+                  value={filtroDocumento}
+                  onChange={(e) => setFiltroDocumento(e.target.value)}
+                >
+                  <option value="">{t('allianz.report.all')}</option>
+                  <option value="unico">{t('allianz.listadoReport.doc.unico')}</option>
+                  <option value="final">{t('allianz.listadoReport.doc.final')}</option>
+                  <option value="preliminar">{t('allianz.listadoReport.doc.preliminar')}</option>
+                  <option value="liquidador">{t('allianz.listadoReport.doc.liquidador')}</option>
+                </SelectFenix>
+              </Campo>
+            )}
             <Campo label={t('allianz.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
@@ -468,7 +553,7 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
                   <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('allianz.report.actions')}
                   </th>
-                  {COLUMNAS.map((col) => (
+                  {columnas.map((col) => (
                     <ThOrdenable
                       key={col.clave}
                       campo={col.clave}
@@ -477,7 +562,9 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
                     >
                       {col.clave === 'consecutivo'
                         ? t('allianz.report.consecutivo')
-                        : t(`allianz.fields.${col.labelKey}`)}
+                        : col.clave === 'documentos'
+                          ? t('allianz.listadoReport.documentos')
+                          : t(`allianz.fields.${col.labelKey}`)}
                     </ThOrdenable>
                   ))}
                 </tr>
@@ -485,20 +572,22 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={columnas.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
                       {t('allianz.report.loadingCases')}
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
+                    <td colSpan={columnas.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
                       {error}
                     </td>
                   </tr>
                 ) : filtrados.length === 0 ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                      {t('allianz.report.noCases')}
+                    <td colSpan={columnas.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                      {soloInformes
+                        ? t('allianz.listadoReport.noInformes')
+                        : t('allianz.report.noCases')}
                     </td>
                   </tr>
                 ) : (
@@ -506,8 +595,8 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesAllianzMenu
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico}
+                          tieneLiquidador={casoAllianzTieneLiquidador(item)}
+                          tieneInforme={casoAllianzTieneInforme(item)}
                           onGestionar={() => setCasoEdicion(item)}
                           onLiquidador={() =>
                             navigate(`/allianz/listado/caso?casoId=${item._id}&tab=liquidador`, {
@@ -527,7 +616,7 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
                           onEliminar={() => solicitarEliminar(item)}
                         />
                       </td>
-                      {COLUMNAS.map((col) => (
+                      {columnas.map((col) => (
                         <td
                           key={col.clave}
                           className="whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200"

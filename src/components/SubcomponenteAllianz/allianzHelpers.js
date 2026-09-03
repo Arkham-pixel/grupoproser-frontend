@@ -805,3 +805,62 @@ export const construirFormDesdecasoAllianz = (caso = {}) => {
   if (ub.departamento) base.departamento = ub.departamento;
   return base;
 };
+
+const TIPOS_INFORME_REPORTE_ALLIANZ = new Set(['unico', 'final', 'preliminar']);
+
+function claveTipoInformeReporteAllianz(valor) {
+  return String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+/** Tipo de informe guardado (único / final / preliminar). Vacío si no hay informe. */
+export function tipoInformeCasoAllianz(caso = {}) {
+  const inf = caso.informeUnico;
+  if (!inf || typeof inf !== 'object') return '';
+  const clave = claveTipoInformeReporteAllianz(inf.tipoInforme);
+  if (TIPOS_INFORME_REPORTE_ALLIANZ.has(clave)) return clave;
+  return Object.keys(inf).length ? 'unico' : '';
+}
+
+export function casoAllianzTieneLiquidador(caso = {}) {
+  return Boolean(caso?.liquidador && typeof caso.liquidador === 'object');
+}
+
+export function casoAllianzTieneInforme(caso = {}) {
+  return Boolean(tipoInformeCasoAllianz(caso));
+}
+
+export function clavesDocumentosAllianz(caso = {}) {
+  const claves = [];
+  const tipo = tipoInformeCasoAllianz(caso);
+  if (tipo) claves.push(tipo);
+  if (casoAllianzTieneLiquidador(caso)) claves.push('liquidador');
+  return claves;
+}
+
+export function casoAllianzEnReporteInformes(caso = {}) {
+  return clavesDocumentosAllianz(caso).length > 0;
+}
+
+export function casoAllianzCoincideFiltroDocumento(caso, filtro) {
+  if (!filtro) return true;
+  return clavesDocumentosAllianz(caso).includes(filtro);
+}
+
+export function etiquetaDocumentoAllianz(clave) {
+  if (clave === 'preliminar') return 'Informe preliminar';
+  if (clave === 'final') return 'Informe final';
+  if (clave === 'unico') return 'Informe único';
+  if (clave === 'liquidador') return 'Liquidador';
+  return '';
+}
+
+export function textoDocumentosAllianz(caso = {}) {
+  return clavesDocumentosAllianz(caso)
+    .map(etiquetaDocumentoAllianz)
+    .filter(Boolean)
+    .join(', ');
+}

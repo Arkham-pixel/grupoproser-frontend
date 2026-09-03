@@ -496,6 +496,7 @@
       "adminCatastrophicInspectors": "Inspectores catastróficos",
       "allianzAdd": "Agregar caso Allianz",
       "allianzListadoReport": "Reporte listado Allianz",
+      "allianzInformesReport": "Informes Allianz",
       "allianzMyCases": "Mis casos Allianz",
       "allianzListadoDashboard": "Torre de control Allianz",
       "allianzReport": "Reporte CAT Allianz",
@@ -563,6 +564,7 @@
     "catastrophicInspectors": "Inspectores catastróficos",
     "allianzAddCase": "Agregar caso",
     "allianzListadoReport": "Reporte listado",
+    "allianzInformesReport": "Informes",
     "allianzListadoDashboard": "Torre de control",
     "allianzReport": "Reporte CAT",
     "allianzDashboard": "Dashboard CAT",
@@ -12553,7 +12555,8 @@
       "responsableAporteDocumento": "Responsable de aportar",
       "fechaObjetado": "Fecha OBJETADO",
       "fechaCasoPagado": "Fecha PAGADO",
-      "fechaAnulado": "Fecha ANULADO"
+      "fechaAnulado": "Fecha ANULADO",
+      "documentos": "Documentos"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -12671,7 +12674,18 @@
     "listadoReport": {
       "title": "Reporte listado Allianz",
       "subtitle": "Casos del listado cliente (siniestro, asegurado y contactos). Base independiente de la inspección CAT.",
-      "searchPlaceholder": "Siniestro, asegurado, ciudad…"
+      "searchPlaceholder": "Siniestro, asegurado, ciudad…",
+      "informesTitle": "Informes Allianz",
+      "informesSubtitle": "Solo casos con informe único, informe final, informe preliminar o liquidador.",
+      "documentos": "Documentos",
+      "filterDocumentos": "Tipo de documento",
+      "noInformes": "No hay casos con informe único, final, preliminar o liquidador.",
+      "doc": {
+        "unico": "Informe único",
+        "final": "Informe final",
+        "preliminar": "Informe preliminar",
+        "liquidador": "Liquidador"
+      }
     },
     "listadoDashboard": {
       "title": "Torre de control CAT Allianz",

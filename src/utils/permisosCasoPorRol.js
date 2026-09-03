@@ -44,6 +44,12 @@ export const SURA_LOGINS_EXCEL_VERIFICACION = Object.freeze(['72134505', '106501
  */
 export const ALFA_LOGINS_COLA_FECHA_LLAMADA = Object.freeze(['1098662033']);
 
+/**
+ * Allianz: ventana de informes (único / final / preliminar / liquidador).
+ * Mario Alberto Pinilla de la Torre.
+ */
+export const ALLIANZ_LOGINS_REPORTE_INFORMES = Object.freeze(['72288319']);
+
 export function obtenerContextoPermisoCaso(modulo = '') {
   return {
     modulo: String(modulo || '').toLowerCase(),
@@ -123,6 +129,22 @@ export function esLoginExcelVerificacionSura(login) {
 export function esSesionExcelVerificacionSura() {
   const ctx = obtenerContextoPermisoCaso('sura');
   return [ctx.login, ctx.cedula].some((v) => esLoginExcelVerificacionSura(v));
+}
+
+export function esLoginReporteInformesAllianz(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return ALLIANZ_LOGINS_REPORTE_INFORMES.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+/**
+ * Ventana Allianz de informes: Mario Pinilla (72288319).
+ * Admin/soporte también entran para soporte; el resto del equipo no la ve.
+ */
+export function esSesionReporteInformesAllianz() {
+  if (esRolAdminOSoporte()) return true;
+  const ctx = obtenerContextoPermisoCaso('allianz');
+  return [ctx.login, ctx.cedula].some((v) => esLoginReporteInformesAllianz(v));
 }
 
 export function esRolAjustadorLider(rol = obtenerRolAlmacenado()) {

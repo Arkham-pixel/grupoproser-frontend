@@ -672,6 +672,7 @@ export default function App() {
 
           <Route path="allianz/carga" element={<FormularioAllianz origen="listado" />} />
           <Route path="allianz/listado/reporte" element={<ReporteAllianzListado />} />
+          <Route path="allianz/listado/informes" element={<ReporteAllianzListado soloInformes />} />
           <Route path="allianz/listado/mis-casos" element={<ReporteAllianzListado modoAsignados />} />
           <Route path="allianz/listado/dashboard" element={<DashboardAllianzListado />} />
           <Route path="allianz/listado/caso" element={<RedirectAllianzListadoWorkspace />} />

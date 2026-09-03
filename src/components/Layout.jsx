@@ -72,6 +72,7 @@ import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, es
 import { useIsMobileShell } from '../hooks/useMediaQuery';
 import { apiRequest } from '../config/apiConfig.js';
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
+import { esSesionReporteInformesAllianz } from '../utils/permisosCasoPorRol.js';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 /** Aviso interno (modal de plataforma) 30 minutos antes del cierre automático */
@@ -537,6 +538,7 @@ export default function Layout() {
     '/previsora/archivero': t('nav.pageTitles.previsoraArchive'),
     '/allianz/carga': t('nav.pageTitles.allianzAdd'),
     '/allianz/listado/reporte': t('nav.pageTitles.allianzListadoReport'),
+    '/allianz/listado/informes': t('nav.pageTitles.allianzInformesReport'),
     '/allianz/listado/mis-casos': t('nav.pageTitles.allianzMyCases'),
     '/allianz/listado/dashboard': t('nav.pageTitles.allianzListadoDashboard'),
     '/allianz/listado/caso': t('nav.pageTitles.allianzCase'),
@@ -931,6 +933,9 @@ export default function Layout() {
           { path: '/allianz/carga', icon: FaPlus, label: t('nav.allianzAddCase') },
           { path: '/allianz/listado/dashboard', icon: FaChartBar, label: t('nav.allianzListadoDashboard') },
           { path: '/allianz/listado/reporte', icon: FaTable, label: t('nav.allianzListadoReport') },
+          ...(esSesionReporteInformesAllianz()
+            ? [{ path: '/allianz/listado/informes', icon: FaFileInvoice, label: t('nav.allianzInformesReport') }]
+            : []),
           { path: '/allianz/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/allianz/archivero', icon: FaFolderOpen, label: t('nav.allianzArchive') },
         ]

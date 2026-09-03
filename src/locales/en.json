@@ -496,6 +496,7 @@
       "adminCatastrophicInspectors": "Catastrophic inspectors",
       "allianzAdd": "Add Allianz case",
       "allianzListadoReport": "Allianz listing report",
+      "allianzInformesReport": "Allianz reports",
       "allianzMyCases": "My Allianz cases",
       "allianzListadoDashboard": "Allianz control tower",
       "allianzReport": "Allianz report",
@@ -563,6 +564,7 @@
     "catastrophicInspectors": "Catastrophic inspectors",
     "allianzAddCase": "Add case",
     "allianzListadoReport": "Listing report",
+    "allianzInformesReport": "Reports",
     "allianzListadoDashboard": "Control tower",
     "allianzReport": "CAT report",
     "allianzDashboard": "CAT dashboard",
@@ -12526,7 +12528,8 @@
       "responsableAporteDocumento": "Party responsible for providing it",
       "fechaObjetado": "OBJECTED date",
       "fechaCasoPagado": "PAID date",
-      "fechaAnulado": "CANCELLED date"
+      "fechaAnulado": "CANCELLED date",
+      "documentos": "Documents"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -12644,7 +12647,18 @@
     "listadoReport": {
       "title": "Allianz list report",
       "subtitle": "Client list cases (claim number, insured and contacts). Independent from CAT inspection.",
-      "searchPlaceholder": "Claim, insured, city…"
+      "searchPlaceholder": "Claim, insured, city…",
+      "informesTitle": "Allianz reports",
+      "informesSubtitle": "Only cases with a unique, final or preliminary report, or a settlement.",
+      "documentos": "Documents",
+      "filterDocumentos": "Document type",
+      "noInformes": "There are no cases with a unique, final or preliminary report, or a settlement.",
+      "doc": {
+        "unico": "Unique report",
+        "final": "Final report",
+        "preliminar": "Preliminary report",
+        "liquidador": "Settlement"
+      }
     },
     "listadoDashboard": {
       "title": "Allianz CAT control tower",
