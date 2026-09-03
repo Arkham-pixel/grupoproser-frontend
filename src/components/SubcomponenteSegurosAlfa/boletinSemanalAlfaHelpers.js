@@ -76,7 +76,8 @@ export function esLiquidadoEstado(estado) {
 }
 
 export function esActivo(estado) {
-  return normEstado(estado) !== 'CERRADO';
+  const e = normEstado(estado);
+  return e !== 'CERRADO' && e !== 'OBJETADO' && e !== 'DESISTIDO';
 }
 
 export function num(v) {

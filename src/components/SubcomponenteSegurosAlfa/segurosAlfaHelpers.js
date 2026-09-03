@@ -15,6 +15,8 @@ export const ESTADOS_ALFA = [
   'LIQUIDADO',
   'ENVIADO ASEGURADORA',
   'CERRADO',
+  'OBJETADO',
+  'DESISTIDO',
 ];
 
 /** @deprecated Usar ESTADOS_ALFA (un solo eje). */
@@ -43,6 +45,12 @@ export const GRUPOS_BARRA_ESTADOS_ALFA = [
     label: 'Cierre',
     estados: ['LIQUIDADO', 'ENVIADO ASEGURADORA', 'CERRADO'],
   },
+  {
+    id: 'cierre_sin_pago',
+    label: 'Objeción / desistimiento',
+    hint: 'En SharePoint (ESTADO SINIESTRO) se escribe CERRADO.',
+    estados: ['OBJETADO', 'DESISTIDO'],
+  },
 ];
 
 export const ESTADOS_REQUIEREN_OBS_ALFA = new Set([
@@ -66,6 +74,12 @@ const LEGACY_ESTADO_A_UNIFICADO = {
   LIQUIDADO: 'LIQUIDADO',
   'ENVIADO ASEGURADORA': 'ENVIADO ASEGURADORA',
   CERRADO: 'CERRADO',
+  OBJETADO: 'OBJETADO',
+  'CASO OBJETADO': 'OBJETADO',
+  OBJECION: 'OBJETADO',
+  'OBJECIÓN': 'OBJETADO',
+  DESISTIDO: 'DESISTIDO',
+  DESISTIMIENTO: 'DESISTIDO',
 };
 
 function normKeyEstado(value) {
@@ -168,7 +182,28 @@ export function isAlfaEstadoDefinido(estado) {
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .toUpperCase();
-  return n.includes('LIQUIDADO') || n.includes('ENVIADO') || n === 'CERRADO';
+  return (
+    n.includes('LIQUIDADO') ||
+    n.includes('ENVIADO') ||
+    n === 'CERRADO' ||
+    n === 'OBJETADO' ||
+    n === 'DESISTIDO'
+  );
+}
+
+/** ESTADO SINIESTRO en SharePoint: OBJETADO y DESISTIDO se reportan como CERRADO. */
+export function estadoAlfaParaSharePoint(estado) {
+  const n = String(estado || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+  if (n === 'OBJETADO' || n === 'DESISTIDO' || n === 'CASO OBJETADO' || n === 'OBJECION') {
+    return 'CERRADO';
+  }
+  if (n === 'DESISTIMIENTO') return 'CERRADO';
+  return String(estado || '').trim();
 }
 
 export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {

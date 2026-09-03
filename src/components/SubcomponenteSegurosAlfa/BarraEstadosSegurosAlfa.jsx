@@ -34,18 +34,24 @@ export default function BarraEstadosSegurosAlfa({
     <div className="space-y-3">
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
         Un solo estado por caso: gestión operativa y cierre de liquidación.
+        OBJETADO y DESISTIDO se guardan en ARNALD; en SharePoint quedan como CERRADO.
       </p>
       {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => (
         <div key={grupo.id}>
           <p className="mb-1.5 font-heading text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
             {grupo.label}
           </p>
+          {grupo.hint ? (
+            <p className="mb-1.5 font-body text-[11px] text-gray-500 dark:text-gray-400">
+              {grupo.hint}
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-1.5">
             {grupo.estados.map((estado, idx) => {
               const activo = actual === estado;
               return (
                 <React.Fragment key={estado}>
-                  {idx > 0 ? (
+                  {idx > 0 && grupo.id !== 'cierre_sin_pago' ? (
                     <span
                       aria-hidden="true"
                       className="hidden text-gray-300 sm:inline dark:text-gray-600"

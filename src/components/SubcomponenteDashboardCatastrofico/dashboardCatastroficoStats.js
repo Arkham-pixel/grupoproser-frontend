@@ -83,7 +83,13 @@ export function esCasoLiquidado(caso = {}, estado) {
 export function esActivo(estado) {
   const e = normEstado(estado);
   if (esLiquidadoEstado(e)) return false;
-  return e !== 'CERRADO' && e !== 'ANULADO' && e !== 'FINALIZADO';
+  return (
+    e !== 'CERRADO' &&
+    e !== 'ANULADO' &&
+    e !== 'FINALIZADO' &&
+    e !== 'OBJETADO' &&
+    e !== 'DESISTIDO'
+  );
 }
 
 export function esCasoActivo(caso = {}, estado) {

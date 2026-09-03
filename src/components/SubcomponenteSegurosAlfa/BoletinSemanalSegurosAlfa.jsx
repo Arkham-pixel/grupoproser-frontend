@@ -234,7 +234,7 @@ export default function BoletinSemanalSegurosAlfa() {
           <ExpressMetricCard
             label="Definidos"
             value={String(kpisGestion.definidos)}
-            hint="LIQUIDADO + ENVIADO + CERRADO"
+            hint="LIQUIDADO + ENVIADO + CERRADO + OBJETADO + DESISTIDO"
           />
         </section>
 
