@@ -505,8 +505,14 @@ const HEADER_MAP_LISTADO = {
   SINIESTRO: 'siniestro',
   'N SINIESTRO': 'siniestro',
   'NO SINIESTRO': 'siniestro',
+  NOSINIESTRO: 'siniestro',
+  'NUMERO SINIESTRO': 'siniestro',
+  'NUMERO DE SINIESTRO': 'siniestro',
   'NO CASO': 'noCaso',
   'N CASO': 'noCaso',
+  NOCASO: 'noCaso',
+  'NUMERO CASO': 'noCaso',
+  'NUMERO DE CASO': 'noCaso',
   ITEMDATE: 'fechaCasoNuevo',
   'ITEM DATE': 'fechaCasoNuevo',
   ASEGURADO: 'asegurado',
@@ -602,6 +608,20 @@ const limpiarTextoListado = (raw) => {
     .trim();
 };
 
+/** Conserva ceros a la izquierda (Excel a menudo guarda No_Caso / No_Siniestro como texto). */
+const textoIdentificadorListado = (raw) => {
+  if (raw === null || raw === undefined || raw === '') return '';
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    if (Math.abs(raw) < 1e-9) return '';
+    const redondeado = Math.round(raw);
+    if (Math.abs(raw - redondeado) < 1e-9) return String(redondeado);
+    return String(raw);
+  }
+  return limpiarTextoListado(raw).replace(/^'+/, '');
+};
+
+const CAMPOS_IDENTIFICADOR_LISTADO = new Set(['noCaso', 'siniestro', 'zc']);
+
 const parsearHojaListadoCliente = (sheet) => {
   const matriz = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
   if (!matriz.length) return { casos: [], headerRowIdx: -1, formato: 'listado' };
@@ -683,13 +703,14 @@ const parsearHojaListadoCliente = (sheet) => {
         caso[campo] = parseFecha(raw) || '';
         return;
       }
-      caso[campo] = limpiarTextoListado(raw);
+      caso[campo] = CAMPOS_IDENTIFICADOR_LISTADO.has(campo)
+        ? textoIdentificadorListado(raw)
+        : limpiarTextoListado(raw);
     });
     if (/^pendiente$/i.test(caso.fechaVisita)) caso.fechaVisita = '';
     if (!caso.ciudad) caso.ciudad = caso.ciudadSiniestro || '';
     delete caso.ciudadSiniestro;
     caso.asegurado = limpiarNombreAsegurado(caso.asegurado);
-    if (!caso.siniestro) caso.siniestro = caso.noCaso || '';
     if (caso.tipoPoliza) {
       const poliza = homologarTipoPolizaExcel(caso.tipoPoliza);
       caso.tipoPoliza = poliza.tipoPoliza || caso.tipoPoliza;

@@ -692,17 +692,21 @@ function itemsDetalleDesdeLiquidador(liquidador, totales) {
       });
     });
   }
-  const hospedaje = parsearNumero(totales?.diagrama?.gastosHospedaje);
-  if (hospedaje > 0) {
+  const hospManual = parsearNumero(liquidador?.liquidacionCatastrofico?.hospedajeManual);
+  const yaHayHosp = filas.some((f) => {
+    const d = String(f.descripcion || '').toLowerCase();
+    return d.includes('hospedaje') || d.includes('alojamiento temporal');
+  });
+  if (hospManual > 0 && !yaHayHosp) {
     filas.push({
       descripcion: 'Gastos de hospedaje / alojamiento temporal',
       valorAsegurado: '',
       indiceVariable: 0,
       valorAseguradoFecha: '',
       valorAsegurable: '',
-      valorPerdida: hospedaje,
+      valorPerdida: hospManual,
       demerito: 0,
-      valorReal: hospedaje,
+      valorReal: hospManual,
     });
   }
   return filas;

@@ -3,7 +3,7 @@ import {
   fusionarLiquidadorSinPerderPresupuestoNsr,
   scoreContenidoLiquidadorNsr,
 } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
-import { CAMPOS_NUMERICOS_ALFA, pesosOficialesAlfa } from '../components/SubcomponenteSegurosAlfa/segurosAlfaHelpers.js';
+import { CAMPOS_NUMERICOS_ALFA, pesosOficialesAlfa, pareceIdentificacionComoMontoAlfa } from '../components/SubcomponenteSegurosAlfa/segurosAlfaHelpers.js';
 import {
   resolverMontoIndemnizarAlfa,
   liquidadorAlfaParaPersistir,
@@ -40,7 +40,14 @@ export const normalizeAlfaItem = (item = {}) => {
   const numeros = {};
   for (const clave of CAMPOS_NUMERICOS_ALFA) {
     if (item[clave] == null || item[clave] === '') continue;
-    const p = pesosOficialesAlfa(item[clave]);
+    if (
+      (clave === 'valorReclamado' || clave === 'valorLiquidado') &&
+      pareceIdentificacionComoMontoAlfa(item[clave], item.identificacion)
+    ) {
+      numeros[clave] = null;
+      continue;
+    }
+    const p = pesosOficialesAlfa(item[clave], item.identificacion);
     if (p != null) numeros[clave] = p;
   }
   if (montos?.valorReclamado != null) numeros.valorReclamado = montos.valorReclamado;

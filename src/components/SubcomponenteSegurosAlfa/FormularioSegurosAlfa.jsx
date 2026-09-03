@@ -7,6 +7,7 @@ import {
   crearCasoAlfa,
   actualizarCasoAlfa,
   crearPredioVinculadoAlfa,
+  getCasoAlfaById,
 } from '../../services/segurosAlfaService.js';
 import {
   expressAlertError,
@@ -184,6 +185,31 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     // Solo al cambiar de caso (no en cada re-render del objeto initialData)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData?._id]);
+
+  // El listado no trae liquidador: reclamar/liquidado pueden venir inflados (×100).
+  useEffect(() => {
+    if (!esEdicion || !initialData?._id) return undefined;
+    let cancelado = false;
+    (async () => {
+      try {
+        const caso = await getCasoAlfaById(initialData._id);
+        if (cancelado || !caso) return;
+        const montos = montosCasoDesdeLiquidadorAlfa(caso.liquidador);
+        const rec = montos?.valorReclamado ?? caso.valorReclamado;
+        const liq = montos?.valorLiquidado ?? caso.valorLiquidado;
+        setForm((prev) => ({
+          ...prev,
+          ...(rec != null && rec !== '' ? { valorReclamado: formatMiles(rec) } : {}),
+          ...(liq != null && liq !== '' ? { valorLiquidado: formatMiles(liq) } : {}),
+        }));
+      } catch {
+        /* se queda el valor del listado */
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [esEdicion, initialData?._id]);
 
   useEffect(() => {
     let cancelado = false;

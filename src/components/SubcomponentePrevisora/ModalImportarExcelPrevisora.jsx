@@ -131,7 +131,7 @@ export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted
             <p className="mt-1 font-body text-sm text-gray-500">
               {modo === 'cat'
                 ? 'Formato BASE Previsora / consolidado: se crean o actualizan expedientes (liquidador e informe) por siniestro o identificación.'
-                : 'Listado Previsora: No_Caso, No_Siniestro, asegurado, póliza, ciudad y contactos. Si el siniestro o el No. caso ya existe, se actualiza; si no, se crea.'}
+                : 'Listado Previsora: No_Siniestro o No_Caso (a veces el Excel solo trae número de caso). Si coincide alguno se actualiza; si no, se crea. Si vienen los dos, el par evita duplicar.'}
             </p>
           </div>
           <button type="button" className={expressBtnGhost} onClick={handleClose}>
@@ -210,6 +210,18 @@ export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted
                 <p className="text-xl font-bold">{resultado.totals?.skipped ?? 0}</p>
               </div>
             </div>
+            {Array.isArray(resultado.errores) && resultado.errores.length > 0 && (
+              <ul className="mt-4 max-h-36 overflow-auto rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                {resultado.errores.slice(0, 8).map((item) => (
+                  <li key={`${item.fila}-${item.motivo}`}>
+                    Fila {item.fila}: {item.motivo}
+                  </li>
+                ))}
+                {resultado.errores.length > 8 ? (
+                  <li>… y {resultado.errores.length - 8} más</li>
+                ) : null}
+              </ul>
+            )}
             <div className="mt-5 flex justify-end">
               <button type="button" className={expressBtnPrimary} onClick={handleClose}>
                 Cerrar

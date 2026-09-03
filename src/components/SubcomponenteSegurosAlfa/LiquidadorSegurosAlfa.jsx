@@ -388,6 +388,12 @@ export default function LiquidadorSegurosAlfa({
             : '',
       cantidad: base[index].cantidad === '' || base[index].cantidad == null ? 1 : base[index].cantidad,
     });
+    if (base[index].id === 'hospedaje') {
+      const desc = String(base[index].descripcion || '').toLowerCase();
+      if (!desc.includes('hospedaje') && !desc.includes('alojamiento')) {
+        base[index] = { ...base[index], id: nuevoItemDetalleLiquidacionCat().id };
+      }
+    }
     setDetalle(base);
   };
 

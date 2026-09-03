@@ -82,8 +82,9 @@ export function elegirMontoSinInflarAlfa(candidato, referencia) {
   const b = Number(typeof referencia === 'number' ? referencia : parsearNumero(referencia));
   if (Number.isFinite(b) && b > 0 && Number.isFinite(a) && a > 0) {
     const ratio = a / b;
-    if (ratio > 50 && ratio < 150) return b;
-    if (ratio > 5 && ratio < 15) return b;
+    const cerca = (factor) => Math.abs(a / factor - b) / Math.max(b, 1) < 0.2;
+    if (ratio > 50 && ratio < 150 && cerca(100)) return b;
+    if (ratio > 5 && ratio < 15 && cerca(10)) return b;
   }
   if (Number.isFinite(a) && a > 0) return a;
   if (Number.isFinite(b) && b > 0) return b;
@@ -106,6 +107,29 @@ export function parsearNumero(valor) {
   }
   const n = parseFloat(numero);
   return Number.isNaN(n) ? 0 : n;
+}
+
+/**
+ * Hospedaje real del Formato CAT: descripción de alojamiento, o id hospedaje
+ * sin otra descripción (fila fantasma del 1% SID). Un ítem de catálogo que
+ * reutilizó id "hospedaje" (demolición, cerámica, etc.) NO cuenta.
+ */
+export function esFilaHospedajeAlfa(it = {}) {
+  const blob = [it?.descripcion, it?.actividad, it?.componente, it?.concepto, it?.item, it?.capitulo]
+    .map((x) => String(x || '').trim().toLowerCase())
+    .filter(Boolean)
+    .join(' ');
+  if (blob.includes('hospedaje') || blob.includes('alojamiento temporal')) return true;
+  const descPropia = String(it?.descripcion || it?.actividad || '').trim();
+  return String(it?.id || '').toLowerCase() === 'hospedaje' && !descPropia;
+}
+
+/** Si el usuario pisó la fila auto-hospedaje con un ítem real, cambia el id. */
+export function retagFilaHospedajeSiItemReal(it = {}) {
+  if (!it || typeof it !== 'object') return it;
+  if (String(it.id || '') !== 'hospedaje') return it;
+  if (esFilaHospedajeAlfa(it)) return it;
+  return { ...it, id: `det-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
 }
 
 export function formatearMonto(valor, { decimals = 0 } = {}) {
@@ -629,21 +653,12 @@ export function calcularLiquidacionAlfa(liquidador = {}, opciones = {}) {
     tomador: tomadorCalculo,
   });
 
-  // Hospedaje: en Formato CAT Alfa solo cuenta si está como ítem del detalle
-  // o con valor manual. NO aplicar el % automático del diagrama NSR (infla el total).
-  const hospedajeYaEnItems = (detalle || presupuesto.items || []).some((it) => {
-    const id = String(it?.id || '');
-    const desc = String(it?.descripcion || it?.actividad || '').toLowerCase();
-    return id === 'hospedaje' || desc.includes('hospedaje');
-  });
+  // Hospedaje: solo ítem explícito o valor manual. Nunca el 1% automático del SID.
+  const hospedajeYaEnItems = (detalle || presupuesto.items || []).some((it) =>
+    esFilaHospedajeAlfa(it)
+  );
   const hospedajeManual = parsearNumero(liq.hospedajeManual);
-  const hospedaje = usaCotiz
-    ? 0
-    : hospedajeYaEnItems
-      ? 0
-      : usarDetalle
-        ? hospedajeManual
-        : parsearNumero(diagrama.gastosHospedaje);
+  const hospedaje = usaCotiz || hospedajeYaEnItems ? 0 : hospedajeManual;
   const otrosAmparos = Array.isArray(liquidador.otrosAmparos)
     ? liquidador.otrosAmparos
     : [];
@@ -682,6 +697,12 @@ export function calcularLiquidacionAlfa(liquidador = {}, opciones = {}) {
     totalDanios: totalDaniosCat,
     diagrama: {
       ...diagrama,
+      gastosHospedaje: hospedajeYaEnItems
+        ? (detalle || presupuesto.items || []).reduce(
+            (acc, it) => acc + (esFilaHospedajeAlfa(it) ? parsearNumero(it.valorPerdida ?? it.total) : 0),
+            0
+          )
+        : hospedaje,
       valorAsegurado,
       deducibleAplicado: dedAlfa.deducibleAplicado,
       sumaDeducibles: dedAlfa.deducibleAplicado,
@@ -773,9 +794,8 @@ export function itemsPlanosAlfa(liquidador = {}) {
     }));
 }
 
-/** Construye filas del FORMATO LIQUIDACIÓN desde presupuesto NSR + hospedaje. */
-export function detalleLiquidacionCatDesdePresupuesto(liquidador = {}, totales = null) {
-  const tot = totales || calcularLiquidacionAlfa(liquidador);
+/** Construye filas del FORMATO LIQUIDACIÓN desde presupuesto NSR + hospedaje manual. */
+export function detalleLiquidacionCatDesdePresupuesto(liquidador = {}, _totales = null) {
   const filas = [];
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   if (Array.isArray(items)) {
@@ -805,8 +825,9 @@ export function detalleLiquidacionCatDesdePresupuesto(liquidador = {}, totales =
       });
     });
   }
-  const hospedaje = parsearNumero(tot?.diagrama?.gastosHospedaje);
-  if (hospedaje > 0) {
+  const liq = liquidador.liquidacionCatastrofico || {};
+  const hospedaje = parsearNumero(liq.hospedajeManual);
+  if (hospedaje > 0 && !filas.some((it) => esFilaHospedajeAlfa(it))) {
     filas.push({
       id: 'hospedaje',
       catalogoId: '',
@@ -885,7 +906,8 @@ export function recalcularTotalesFilaDetalleCat(fila = {}) {
 export function sincronizarDetalleCatConPresupuestoNsr(liquidador = {}, filasDetalle = []) {
   const evalData = liquidador.evaluacionSismicaNSR10 || {};
   const presupuesto = evalData.presupuesto || {};
-  const items = (filasDetalle || [])
+  const filas = (filasDetalle || []).map((it) => retagFilaHospedajeSiItemReal(it));
+  const items = filas
     .filter((it) => String(it?.descripcion || '').trim() || it?.catalogoId)
     .map((it) => ({
       id: it.id,
@@ -904,7 +926,7 @@ export function sincronizarDetalleCatConPresupuestoNsr(liquidador = {}, filasDet
     }));
   return {
     ...liquidador,
-    detalleLiquidacionCat: filasDetalle,
+    detalleLiquidacionCat: filas,
     evaluacionSismicaNSR10: {
       ...evalData,
       presupuesto: {
