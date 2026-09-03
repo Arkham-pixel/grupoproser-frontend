@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileAlt, FaFileExcel, FaFileSignature, FaFileWord, FaInfoCircle, FaMapMarkerAlt, FaPlus, FaRedo, FaSave, FaTrash } from 'react-icons/fa';
+import { FaFileAlt, FaFileExcel, FaFileSignature, FaFileWord, FaImages, FaInfoCircle, FaMapMarkerAlt, FaPlus, FaRedo, FaSave, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -28,10 +28,11 @@ import {
   reservaSugeridaSura,
   resumenLiquidacionIndependienteSura,
 } from './liquidadorSuraHelpers.js';
-import { fusionarFotosAgilEnInforme, informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
+import { fusionarFotosAgilEnInforme, fotosArchiveroPendientesEnInformeSura, informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
 import { descargarWordInformeSura } from './generarWordInformeSura.js';
 import { descargarInformeUnicoSuraExcel } from './generarFormatoAgilSuraExcel.js';
 import { subirArchivoSura } from '../../services/segurosSuraService.js';
+import { importarFotosArchiveroAlInformeCaso } from './syncFotosNsrAlInformeSura.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -179,6 +180,7 @@ export default function InformeUnicoSegurosSura({
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
+  const [importandoFotosArchivero, setImportandoFotosArchivero] = useState(false);
 
   const totales = useMemo(() => calcularLiquidacionSura(liquidador), [liquidador]);
   const criterio = totales.criterio || {};
@@ -453,6 +455,44 @@ export default function InformeUnicoSegurosSura({
       );
       return { ...prev, archivos: list };
     });
+  };
+
+  const fotosPendientesArchivero = useMemo(
+    () =>
+      fotosArchiveroPendientesEnInformeSura(casoSura || {}, [
+        ...(Array.isArray(fotosAgil) ? fotosAgil : []),
+        ...(informe.fotosInspeccion || []),
+      ]),
+    [casoSura, fotosAgil, informe.fotosInspeccion]
+  );
+
+  const handleTraerFotosArchivero = async () => {
+    if (!casoSura?._id) return;
+    setImportandoFotosArchivero(true);
+    setError('');
+    try {
+      const result = await importarFotosArchiveroAlInformeCaso({
+        casoId: casoSura._id,
+        casoBase: casoSura,
+      });
+      if (result?.caso) onCasoChange?.(result.caso);
+      if (result?.imported > 0) {
+        setInforme((prev) => ({
+          ...prev,
+          fotosInspeccion: fusionarFotosAgilEnInforme(
+            prev.fotosInspeccion || [],
+            result.fotosAgil || []
+          ),
+        }));
+        setMensaje(t('segurosSura.archive.importToReportOk', { count: result.imported }));
+      } else {
+        setMensaje(t('segurosSura.archive.importToReportNone'));
+      }
+    } catch (err) {
+      setError(err.message || t('segurosSura.archive.importToReportError'));
+    } finally {
+      setImportandoFotosArchivero(false);
+    }
   };
 
   const nFotos = esPreliminar ? 5 : 7;
@@ -1111,13 +1151,37 @@ export default function InformeUnicoSegurosSura({
       )}
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {nFotos}. {t('segurosSura.reportUnique.sectionPhotos')}
-        </h3>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <h3 className={`${expressSectionTitle} mb-0`}>
+            {nFotos}. {t('segurosSura.reportUnique.sectionPhotos')}
+          </h3>
+          {casoSura?._id && fotosPendientesArchivero.length > 0 && (
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              disabled={importandoFotosArchivero || guardandoCaso}
+              onClick={handleTraerFotosArchivero}
+            >
+              <FaImages />
+              {importandoFotosArchivero
+                ? t('segurosSura.archive.importToReportWorking')
+                : t('segurosSura.archive.importToReport', {
+                    count: fotosPendientesArchivero.length,
+                  })}
+            </button>
+          )}
+        </div>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           Las fotos de la pestaña Fotos aparecen aquí. También puede arrastrar, tomar o seleccionar más
           imágenes. Deben listarse abajo en «Imágenes Cargadas» para poner descripción y generar el Word.
         </p>
+        {fotosPendientesArchivero.length > 0 && (
+          <p className="mb-3 font-body text-xs text-amber-800 dark:text-amber-200">
+            {t('segurosSura.archive.importToReportHint', {
+              count: fotosPendientesArchivero.length,
+            })}
+          </p>
+        )}
         <FotosInspeccionSura
           casoId={casoSura?._id}
           fotosInforme={informe.fotosInspeccion || []}

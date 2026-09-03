@@ -11,6 +11,7 @@ import {
   defaultSalvamentoSura,
   enriquecerFotosConDescripcion,
   fotosNsrDesdeLiquidador,
+  fusionarFotosArchiveroEnGaleria,
   valorCeldaInformeAgil,
 } from './informeAgilSuraHelpers.js';
 import { calcularLiquidacionSura, defaultInformeUnicoSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
@@ -287,7 +288,10 @@ function listaFotosParaExcel(fotosAgil, liquidador, caso) {
     ? fotosAgil.filter((f) => f?.ruta || f?.fotoRuta || f?.preview || f?.fotoPreview || f?._id)
     : [];
   const lista = propias.length ? propias : fotosNsrDesdeLiquidador(liquidador);
-  return enriquecerFotosConDescripcion(lista, caso);
+  return enriquecerFotosConDescripcion(
+    fusionarFotosArchiveroEnGaleria(lista, caso?.archivos),
+    caso
+  );
 }
 
 async function rellenarFotos(workbook, sheet, fotos = []) {

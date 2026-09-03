@@ -41,7 +41,10 @@ import {
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
-import { fusionarFotosAgilEnInforme } from './informeAgilSuraHelpers.js';
+import {
+  fusionarFotosAgilEnInforme,
+  fusionarFotosArchiveroEnGaleria,
+} from './informeAgilSuraHelpers.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -1284,13 +1287,16 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre)
     );
   });
-  const fotosInforme = fusionarFotosAgilEnInforme(
-    Array.isArray(info?.fotosInspeccion)
-      ? info.fotosInspeccion
-      : Array.isArray(informe?.fotosInspeccion)
-        ? informe.fotosInspeccion
-        : [],
-    Array.isArray(caso.fotosAgil) ? caso.fotosAgil : []
+  const fotosInforme = fusionarFotosArchiveroEnGaleria(
+    fusionarFotosAgilEnInforme(
+      Array.isArray(info?.fotosInspeccion)
+        ? info.fotosInspeccion
+        : Array.isArray(informe?.fotosInspeccion)
+          ? informe.fotosInspeccion
+          : [],
+      Array.isArray(caso.fotosAgil) ? caso.fotosAgil : []
+    ),
+    caso.archivos
   );
   const archivosById = new Map(
     fotosArchivos.filter((a) => a?._id).map((a) => [String(a._id), a])

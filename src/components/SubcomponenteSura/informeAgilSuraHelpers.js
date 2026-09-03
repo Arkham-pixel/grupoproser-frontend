@@ -464,11 +464,96 @@ export function enriquecerFotosConDescripcion(fotos = [], caso = {}) {
   });
 }
 
+const ETIQUETAS_FOTO_EXCLUIDAS_INFORME = new Set([
+  'SALVAMENTO',
+  'POLIZA',
+  'LIQUIDACION',
+  'INFORME',
+  'INFORME_PRELIMINAR',
+  'INFORME_FINAL',
+  'INFORME_UNICO',
+  'COTIZACION',
+]);
+
+/** Imagen del archivero que puede pasar a la galería del informe (no salvamento ni PDFs). */
+export function esFotoArchiveroParaInformeSura(archivo = {}) {
+  const et = String(archivo?.etiqueta || archivo?.tipo || archivo?.documentType || '')
+    .trim()
+    .toUpperCase();
+  if (ETIQUETAS_FOTO_EXCLUIDAS_INFORME.has(et)) return false;
+  const nombre = String(
+    archivo?.nombreOriginal || archivo?.nombreArchivo || archivo?.nombre || ''
+  );
+  const mime = String(archivo?.tipoMime || '');
+  return mime.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre);
+}
+
+export function fotoGaleriaDesdeArchivoSura(archivo = {}, index = 0) {
+  return {
+    _id: archivo._id || archivo.archivoId || undefined,
+    ruta: archivo.ruta || archivo.downloadUrl || '',
+    nombre: archivo.nombreOriginal || archivo.nombre || `Foto ${index + 1}`,
+    nombreOriginal: archivo.nombreOriginal || archivo.nombre || `Foto ${index + 1}`,
+    descripcion: archivo.descripcion || '',
+    tipoMime: archivo.tipoMime || '',
+    etiqueta: archivo.etiqueta || archivo.tipo || 'FOTOS',
+    origen: 'archivero',
+  };
+}
+
+export function fotosGaleriaDesdeArchiveroSura(archivos = []) {
+  return (Array.isArray(archivos) ? archivos : [])
+    .filter(esFotoArchiveroParaInformeSura)
+    .map((a, i) => fotoGaleriaDesdeArchivoSura(a, i))
+    .filter((f) => f._id || f.ruta);
+}
+
+export function clavesFotosGaleriaSura(fotos = []) {
+  const keys = new Set();
+  for (const f of Array.isArray(fotos) ? fotos : []) {
+    if (f?._id || f?.archivoId) keys.add(`id:${String(f._id || f.archivoId)}`);
+    if (f?.ruta) keys.add(`ruta:${String(f.ruta)}`);
+  }
+  return keys;
+}
+
+export function fusionarFotosArchiveroEnGaleria(galeria = [], archivos = []) {
+  return anexarFotosGaleriaSinDup(galeria, fotosGaleriaDesdeArchiveroSura(archivos));
+}
+
+export function anexarFotosGaleriaSinDup(galeria = [], extras = []) {
+  const keys = clavesFotosGaleriaSura(galeria);
+  const nuevas = (Array.isArray(extras) ? extras : []).filter((f) => {
+    if (!f?._id && !f?.ruta) return false;
+    if (f._id && keys.has(`id:${String(f._id)}`)) return false;
+    if (f.ruta && keys.has(`ruta:${String(f.ruta)}`)) return false;
+    return true;
+  });
+  return [...(Array.isArray(galeria) ? galeria : []), ...nuevas];
+}
+
+/** Fotos del archivero que aún no están en la pestaña Fotos ni en el informe único. */
+export function fotosArchiveroPendientesEnInformeSura(caso = {}, galeriaExtra = []) {
+  const keys = clavesFotosGaleriaSura([
+    ...(Array.isArray(caso?.fotosAgil) ? caso.fotosAgil : []),
+    ...(Array.isArray(caso?.informeUnico?.fotosInspeccion)
+      ? caso.informeUnico.fotosInspeccion
+      : []),
+    ...(Array.isArray(galeriaExtra) ? galeriaExtra : []),
+  ]);
+  return fotosGaleriaDesdeArchiveroSura(caso?.archivos).filter((f) => {
+    if (f._id && keys.has(`id:${String(f._id)}`)) return false;
+    if (f.ruta && keys.has(`ruta:${String(f.ruta)}`)) return false;
+    return true;
+  });
+}
+
 export function defaultFotosAgilSura(caso = {}, liquidador = null) {
   const base = Array.isArray(caso?.fotosAgil)
     ? caso.fotosAgil
     : fotosAgilDesdeNsr(liquidador || caso?.liquidador || {});
-  return enriquecerFotosConDescripcion(base, caso);
+  const conArchivero = fusionarFotosArchiveroEnGaleria(base, caso?.archivos);
+  return enriquecerFotosConDescripcion(conArchivero, caso);
 }
 
 /** Quita File/blob antes de persistir el caso. */
@@ -529,7 +614,7 @@ export function fusionarFotosAgilEnInforme(fotosInforme = [], fotosAgil = []) {
   return [...sinDup, ...desdeAgil];
 }
 
-/** Informe único con las fotos de la pestaña 3 ya mezcladas. */
+/** Informe único con las fotos de la pestaña 3 y las del archivero ya mezcladas. */
 export function informeUnicoConFotosAgil(caso = {}, fotosAgilExtra = null) {
   const informe = defaultInformeUnicoSura(caso);
   const fotosAgil = Array.isArray(fotosAgilExtra)
@@ -537,9 +622,10 @@ export function informeUnicoConFotosAgil(caso = {}, fotosAgilExtra = null) {
     : Array.isArray(caso.fotosAgil)
       ? caso.fotosAgil
       : [];
+  const mezcladasAgil = fusionarFotosAgilEnInforme(informe.fotosInspeccion, fotosAgil);
   return {
     ...informe,
-    fotosInspeccion: fusionarFotosAgilEnInforme(informe.fotosInspeccion, fotosAgil),
+    fotosInspeccion: fusionarFotosArchiveroEnGaleria(mezcladasAgil, caso?.archivos),
   };
 }
 

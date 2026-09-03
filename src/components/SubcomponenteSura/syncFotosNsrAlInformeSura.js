@@ -4,12 +4,18 @@
 
 import {
   actualizarArchivoSura,
+  getCasoSuraById,
   guardarInformeUnicoEnCasoSura,
   guardarSeccionCasoSura,
   subirArchivoSura,
 } from '../../services/segurosSuraService.js';
 import { defaultInformeUnicoSura } from './liquidadorSuraHelpers.js';
-import { fusionarFotosAgilEnInforme, serializarFotosAgilSura } from './informeAgilSuraHelpers.js';
+import {
+  fusionarFotosAgilEnInforme,
+  anexarFotosGaleriaSinDup,
+  fotosGaleriaDesdeArchiveroSura,
+  serializarFotosAgilSura,
+} from './informeAgilSuraHelpers.js';
 
 export function descripcionFotoNsr(item = {}) {
   const codigo = String(item.codigo || '').trim();
@@ -136,4 +142,50 @@ export async function sincronizarFotosAgilEnInformeCaso({
     casoBase,
     patch: { fotosAgil: lista, informeUnico: informe },
   });
+}
+
+/**
+ * Copia fotos del archivero a fotosAgil e informeUnico.fotosInspeccion.
+ * `archivoIds` limita a esos archivos; si se omite, trae todas las pendientes.
+ */
+export async function importarFotosArchiveroAlInformeCaso({
+  casoId,
+  casoBase = {},
+  archivoIds = null,
+} = {}) {
+  if (!casoId) throw new Error('El caso debe estar guardado para traer fotos al informe.');
+  const fresco = await getCasoSuraById(casoId);
+  const archivos = Array.isArray(fresco?.archivos)
+    ? fresco.archivos
+    : Array.isArray(casoBase?.archivos)
+      ? casoBase.archivos
+      : [];
+  const galeria = Array.isArray(fresco?.fotosAgil)
+    ? fresco.fotosAgil
+    : Array.isArray(casoBase?.fotosAgil)
+      ? casoBase.fotosAgil
+      : [];
+  const idsFiltro = Array.isArray(archivoIds) && archivoIds.length
+    ? new Set(archivoIds.map((id) => String(id)))
+    : null;
+  const extra = fotosGaleriaDesdeArchiveroSura(archivos).filter((f) =>
+    idsFiltro ? idsFiltro.has(String(f._id)) : true
+  );
+  const mezcladas = anexarFotosGaleriaSinDup(galeria, extra);
+  const prevCount = serializarFotosAgilSura(galeria).length;
+  const nextCount = serializarFotosAgilSura(mezcladas).length;
+  const imported = Math.max(0, nextCount - prevCount);
+  if (imported === 0) {
+    return { caso: fresco, imported: 0, fotosAgil: galeria };
+  }
+  const actualizado = await sincronizarFotosAgilEnInformeCaso({
+    casoId,
+    casoBase: fresco,
+    fotosAgil: mezcladas,
+  });
+  return {
+    caso: actualizado,
+    imported,
+    fotosAgil: Array.isArray(actualizado?.fotosAgil) ? actualizado.fotosAgil : mezcladas,
+  };
 }

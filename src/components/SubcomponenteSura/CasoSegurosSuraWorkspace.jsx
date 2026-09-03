@@ -553,6 +553,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             ) : tabActivo === TABS_SURA.FOTOS ? (
               <FotosLiquidadorSura
                 casoId={casoId}
+                caso={casoSura}
                 fotos={fotosAgilState || []}
                 onFotosChange={setFotosAgilState}
                 onGuardarEnCaso={casoId ? () => handleGuardarFotosAgil() : undefined}
