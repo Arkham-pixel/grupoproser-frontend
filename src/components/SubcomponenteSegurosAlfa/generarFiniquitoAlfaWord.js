@@ -26,6 +26,7 @@ import { parrafosFirmaClienteAlfa } from './firmaClienteAlfaWord.js';
  * Finiquito oficial Seguros Alfa — plantilla
  * «FINIQUITO DE INDEMNIZACIÓN SINIESTRO SISMO»
  * (FINIQUITO DE GENERALES). Solo se reemplazan los campos marcados con X.
+ * Header: solo logo Seguros Alfa (sin Grupo Proser).
  */
 
 const thin = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
@@ -63,40 +64,20 @@ async function loadLogoBytes(url) {
   }
 }
 
+/** Solo logo Seguros Alfa (derecha). Sin logo Grupo Proser. */
 async function buildLogosHeader() {
   const base = import.meta.env.BASE_URL || '/';
-  let proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
-  if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
   const alfa = await loadLogoBytes(`${base}templates/logo-seguros-alfa.png`);
 
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [4680, 4680],
+    columnWidths: [9360],
     rows: [
       new TableRow({
         children: [
           new TableCell({
             borders: noBorders,
-            width: { size: 4680, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                spacing: { after: 0 },
-                children: proser
-                  ? [
-                      new ImageRun({
-                        data: proser.bytes,
-                        transformation: { width: 140, height: 45 },
-                        type: proser.type,
-                      }),
-                    ]
-                  : [new TextRun({ text: 'GRUPO PROSER', bold: true, font: 'Arial', size: 18 })],
-              }),
-            ],
-          }),
-          new TableCell({
-            borders: noBorders,
-            width: { size: 4680, type: WidthType.DXA },
+            width: { size: 9360, type: WidthType.DXA },
             verticalAlign: VerticalAlign.CENTER,
             children: [
               new Paragraph({
