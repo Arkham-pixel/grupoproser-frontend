@@ -312,16 +312,18 @@ export const construirFormDesdeCasoSura = (caso = {}) => ({
 });
 
 /**
- * Excel corto para cruzar reclamos con Control: siniestro SURA, consecutivo Proser y asegurado.
+ * Excel corto para cruzar reclamos con Control: siniestro SURA, consecutivo Proser, asegurado, estado e inspector.
  */
 export function descargarExcelVerificacionSura(casos = []) {
   const rows = (Array.isArray(casos) ? casos : []).map((c) => ({
     'No. de Reclamo': c?.siniestro ?? '',
     'Numero Interno Proser': c?.consecutivo ?? '',
     Asegurado: c?.asegurado ?? '',
+    Estado: normalizarEstadoSura(c?.estado),
+    Inspector: c?.inspector ?? '',
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 42 }];
+  ws['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 42 }, { wch: 36 }, { wch: 32 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Verificacion');
   const fecha = new Date().toISOString().slice(0, 10);

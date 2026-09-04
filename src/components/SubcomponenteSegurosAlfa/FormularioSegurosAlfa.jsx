@@ -38,6 +38,7 @@ import {
   ESTADOS_REQUIEREN_OBS_ALFA,
   FORM_VACIO_ALFA,
   PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE,
+  aplicarObservacionAutoCierreAlfa,
   construirFormDesdeCasoAlfa,
   estadoGestionDesdeEstadoAlfa,
   formatMiles,
@@ -72,7 +73,10 @@ import {
 } from '../../utils/catalogosAsignacionCatastrofico.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
-import { montosCasoDesdeLiquidadorAlfa } from './liquidadorAlfaHelpers.js';
+import {
+  camposControlLiquidacionDesdeLiquidadorAlfa,
+  montosCasoDesdeLiquidadorAlfa,
+} from './liquidadorAlfaHelpers.js';
 
 const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -84,31 +88,41 @@ const aNumero = (valor) => {
 const formDesdeCasoAlfa = (caso) => {
   const form = construirFormDesdeCasoAlfa(caso || {});
   const montos = montosCasoDesdeLiquidadorAlfa(caso?.liquidador);
-  if (!montos) return form;
-  return {
-    ...form,
-    ...(montos.valorReclamado != null
-      ? { valorReclamado: formatMiles(montos.valorReclamado) }
-      : {}),
-    ...(montos.valorLiquidado != null
-      ? { valorLiquidado: formatMiles(montos.valorLiquidado) }
-      : {}),
-  };
+  const control = camposControlLiquidacionDesdeLiquidadorAlfa(caso?.liquidador);
+  const extra = {};
+  if (montos?.valorReclamado != null) {
+    extra.valorReclamado = formatMiles(montos.valorReclamado);
+  }
+  if (montos?.valorLiquidado != null) {
+    extra.valorLiquidado = formatMiles(montos.valorLiquidado);
+  }
+  if (control) {
+    for (const [clave, valor] of Object.entries(control)) {
+      if (valor != null) extra[clave] = formatMiles(valor);
+    }
+  }
+  if (!Object.keys(extra).length) return form;
+  return { ...form, ...extra };
 };
 
 const restaurarFormConLiquidador = (draftData, caso) => {
   const base = { ...formDesdeCasoAlfa(caso), ...(draftData || {}) };
   const montos = montosCasoDesdeLiquidadorAlfa(caso?.liquidador);
-  if (!montos) return base;
-  return {
-    ...base,
-    ...(montos.valorReclamado != null
-      ? { valorReclamado: formatMiles(montos.valorReclamado) }
-      : {}),
-    ...(montos.valorLiquidado != null
-      ? { valorLiquidado: formatMiles(montos.valorLiquidado) }
-      : {}),
-  };
+  const control = camposControlLiquidacionDesdeLiquidadorAlfa(caso?.liquidador);
+  const extra = {};
+  if (montos?.valorReclamado != null) {
+    extra.valorReclamado = formatMiles(montos.valorReclamado);
+  }
+  if (montos?.valorLiquidado != null) {
+    extra.valorLiquidado = formatMiles(montos.valorLiquidado);
+  }
+  if (control) {
+    for (const [clave, valor] of Object.entries(control)) {
+      if (valor != null) extra[clave] = formatMiles(valor);
+    }
+  }
+  if (!Object.keys(extra).length) return base;
+  return { ...base, ...extra };
 };
 
 const normTxt = (valor) =>
@@ -186,7 +200,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData?._id]);
 
-  // El listado no trae liquidador: reclamar/liquidado pueden venir inflados (×100).
+  // El listado no trae liquidador: reclamar/liquidado y control salen del detalle.
   useEffect(() => {
     if (!esEdicion || !initialData?._id) return undefined;
     let cancelado = false;
@@ -195,13 +209,31 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         const caso = await getCasoAlfaById(initialData._id);
         if (cancelado || !caso) return;
         const montos = montosCasoDesdeLiquidadorAlfa(caso.liquidador);
+        const control = camposControlLiquidacionDesdeLiquidadorAlfa(caso.liquidador);
         const rec = montos?.valorReclamado ?? caso.valorReclamado;
         const liq = montos?.valorLiquidado ?? caso.valorLiquidado;
-        setForm((prev) => ({
-          ...prev,
+        const patch = {
           ...(rec != null && rec !== '' ? { valorReclamado: formatMiles(rec) } : {}),
           ...(liq != null && liq !== '' ? { valorLiquidado: formatMiles(liq) } : {}),
-        }));
+        };
+        if (control) {
+          for (const [clave, valor] of Object.entries(control)) {
+            if (valor != null) patch[clave] = formatMiles(valor);
+          }
+        } else {
+          for (const clave of [
+            'liquidadoCoberturaTerremo',
+            'deducibleTerremoto',
+            'valorLiquidacionCoberturasAdicionales',
+            'deducibleCoberturasAdicionales',
+            'valorTotalPagar',
+          ]) {
+            if (caso[clave] != null && caso[clave] !== '') {
+              patch[clave] = formatMiles(caso[clave]);
+            }
+          }
+        }
+        setForm((prev) => ({ ...prev, ...patch }));
       } catch {
         /* se queda el valor del listado */
       }
@@ -386,10 +418,12 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     payload.observacionLlamada =
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     payload.fueraDeZona = Boolean(form.fueraDeZona);
-    payload.observacionesGestion =
-      form.observacionesGestion != null ? String(form.observacionesGestion) : '';
     payload.estado = homologarEstadoAlfa(form.estado, form);
     payload.estadoGestion = estadoGestionDesdeEstadoAlfa(payload.estado);
+    payload.observacionesGestion = aplicarObservacionAutoCierreAlfa(
+      payload.estado,
+      form.observacionesGestion != null ? String(form.observacionesGestion) : ''
+    );
     payload.zonaAsignada = form.zonaAsignada || '';
     payload.noAceptacionOferta = Boolean(form.noAceptacionOferta);
     return payload;
@@ -679,7 +713,14 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
                 disabled={!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)}
                 onChange={(estado) => {
                   if (!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)) return;
-                  setForm((prev) => ({ ...prev, estado }));
+                  setForm((prev) => ({
+                    ...prev,
+                    estado,
+                    observacionesGestion: aplicarObservacionAutoCierreAlfa(
+                      estado,
+                      prev.observacionesGestion
+                    ),
+                  }));
                 }}
               />
             </Campo>
@@ -720,8 +761,13 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               value={form.observacionesGestion || ''}
               onChange={setCampo('observacionesGestion')}
               rows={3}
-              placeholder="No aceptación, falta de contacto, info pendiente, acceso, inconsistencias…"
+              placeholder="Al marcar OBJETADO o DESISTIDO se completa sola. También: no aceptación, falta de contacto, info pendiente…"
             />
+            {['OBJETADO', 'DESISTIDO'].includes(homologarEstadoAlfa(form.estado, form)) ? (
+              <p className="mt-1 font-body text-[11px] text-gray-500 dark:text-gray-400">
+                Observación completada automáticamente. Puede editarla si necesita más detalle.
+              </p>
+            ) : null}
           </Campo>
           <Campo label="No aceptación de oferta">
             <SelectFenix
@@ -840,6 +886,53 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           </Campo>
           <Campo label={t('segurosAlfa.fields.valorLiquidado')}>
             {inputMiles('valorLiquidado')}
+          </Campo>
+        </div>
+
+        {/* Campos de control de liquidación (solo lectura, derivados del liquidador) */}
+        <h4 className="mt-6 mb-2 font-display text-base font-semibold text-gray-800 dark:text-gray-100">
+          Control de liquidación
+        </h4>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label="Liquidado cobertura terremoto">
+            <InputFenix
+              type="text"
+              value={form.liquidadoCoberturaTerremo != null && form.liquidadoCoberturaTerremo !== '' ? formatMiles(form.liquidadoCoberturaTerremo) : 'Pendiente de liquidación'}
+              readOnly
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          </Campo>
+          <Campo label="Deducible terremoto">
+            <InputFenix
+              type="text"
+              value={form.deducibleTerremoto != null && form.deducibleTerremoto !== '' ? formatMiles(form.deducibleTerremoto) : 'Pendiente de liquidación'}
+              readOnly
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          </Campo>
+          <Campo label="Valor liquidación coberturas adicionales">
+            <InputFenix
+              type="text"
+              value={form.valorLiquidacionCoberturasAdicionales != null && form.valorLiquidacionCoberturasAdicionales !== '' ? formatMiles(form.valorLiquidacionCoberturasAdicionales) : 'Pendiente de liquidación'}
+              readOnly
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          </Campo>
+          <Campo label="Deducible coberturas adicionales">
+            <InputFenix
+              type="text"
+              value={form.deducibleCoberturasAdicionales != null ? formatMiles(form.deducibleCoberturasAdicionales) : '$0'}
+              readOnly
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          </Campo>
+          <Campo label="Valor total a pagar">
+            <InputFenix
+              type="text"
+              value={form.valorTotalPagar != null && form.valorTotalPagar !== '' ? formatMiles(form.valorTotalPagar) : 'Pendiente de liquidación'}
+              readOnly
+              className="bg-gray-50 dark:bg-gray-800 font-semibold text-fenix-primario"
+            />
           </Campo>
         </div>
       </section>

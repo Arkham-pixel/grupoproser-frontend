@@ -18,6 +18,12 @@ import {
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
 import {
+  fotosCotizacionDesdeLiquidador,
+  montoCotizacionPdf,
+  serializarCotizacionPdf,
+  serializarPaginasCotizacion,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import {
   aplicarTipoLiquidadorEnLiquidacionBbvaCat,
   esObservacionFiniquitoDefaultBbvaCat,
   inferirTipoLiquidadorBbvaCat,
@@ -26,12 +32,29 @@ import {
 } from './deduciblesBbvaCat.js';
 import {
   calcularTotalesFormatoExcelBbvaCat,
+  calcularLiquidacionCotizacionPdfBbvaCat,
   defaultDeducibleFormatoBbvaCat,
   resolverDeducibleFormatoBbvaCat,
   resolverDetalleLiquidacionBbvaCat,
 } from './formatoLiquidacionBbvaCat.js';
 
-export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoBbvaCat };
+export function sanitizarInformeUnicoBbvaCat(informe = {}) {
+  if (!informe || typeof informe !== 'object') return {};
+  const base = sanitizarInformeUnicoFotos(informe);
+  return {
+    ...base,
+    fotosCotizacion: serializarPaginasCotizacion(informe.fotosCotizacion),
+  };
+}
+
+/** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
+export function sanitizarLiquidadorBbvaCat(liquidador = {}) {
+  if (!liquidador || typeof liquidador !== 'object') return liquidador;
+  return {
+    ...liquidador,
+    cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
+  };
+}
 
 /** AIU único BBVA (25%). Imprevistos e impuestos no aplican. */
 export const AIU_PORCENTAJE_DEFAULT_BBVA_CAT = 0.25;
@@ -111,7 +134,11 @@ export function camposValoresDesdeLiquidadorBbvaCat(liquidador = {}, totales = {
   }
 
   if (montoHueco(casoBase.valorReclamado)) {
-    const rec = primerMontoPositivo(liquidador.valorReclamadoCaso);
+    const rec = primerMontoPositivo(
+      liquidador.valorReclamadoCaso,
+      tot.cotizacionMonto,
+      montoCotizacionPdf(liquidador.cotizacionPdf)
+    );
     if (rec > 0) out.valorReclamado = rec;
   }
 
@@ -297,6 +324,8 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
     mesFirma: '',
     anioFirma: '',
   },
+  cotizacionPdf: null,
+  liquidacionCotizacionPdf: null,
 };
 
 export function esLiquidadorNsrBbvaCat(liquidador = {}) {
@@ -322,6 +351,9 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
   const liq = liquidador.liquidacionCatastrofico || {};
   const enc = liquidador.encabezado || {};
   const excel = calcularTotalesFormatoExcelBbvaCat(liquidador);
+  const cotiz = calcularLiquidacionCotizacionPdfBbvaCat(liquidador);
+  const montoCotiz = cotiz.monto || montoCotizacionPdf(liquidador.cotizacionPdf);
+  const usaCotiz = Boolean(cotiz.activo);
   const valorAsegurado =
     excel.valorGlobal ||
     parsearNumero(liq.valorAsegurado) ||
@@ -344,54 +376,63 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
   const totalOtrosAmparos = diagrama.totalOtrosAmparos || 0;
+  const indemnizacionBase = usaCotiz ? cotiz.valorAIndemnizar : excel.valorAIndemnizar;
   const totalIndemnizar = Math.max(
     0,
-    Math.round((excel.valorAIndemnizar + totalOtrosAmparos) * 100) / 100
+    Math.round((indemnizacionBase + totalOtrosAmparos) * 100) / 100
   );
-  const tipos = excel.tiposDeducible || {};
+  const tipos = (usaCotiz ? cotiz.tiposDeducible : excel.tiposDeducible) || {};
+  const deducibleAplicado = usaCotiz ? cotiz.deducibleAplicable : excel.deducibleAplicable;
 
   return {
     modelo: 'nsr10',
+    origenLiquidacion: usaCotiz ? 'cotizacion' : 'formato',
     presupuesto: totalesPres,
     contenidos: resumen.contenidos,
     totalPresupuesto: resumen.totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    sumaCompleta: excel.sumaIndemnizable || resumen.sumaCompleta,
-    subtotal: excel.subTotal,
-    aiu: totalesPres.aiu,
+    sumaCompleta: usaCotiz ? cotiz.monto : excel.sumaIndemnizable || resumen.sumaCompleta,
+    subtotal: usaCotiz ? cotiz.subTotal : excel.subTotal,
+    aiu: usaCotiz ? cotiz.aiu : excel.aiu,
+    aiuPct: usaCotiz ? cotiz.aiuPct : excel.aiuPct,
     imprevistos: totalesPres.imprevistos,
     impuestos: totalesPres.impuestos,
-    totalDanios: excel.sumaIndemnizable || resumen.sumaCompleta,
+    totalDanios: usaCotiz ? cotiz.monto : excel.sumaIndemnizable || resumen.sumaCompleta,
     diagrama: {
       ...diagrama,
-      deducibleAplicado: excel.deducibleAplicable,
-      sumaDeducibles: excel.deducibleAplicable,
+      deducibleAplicado,
+      sumaDeducibles: deducibleAplicado,
       totalIndemnizar,
     },
     criterio,
     formatoExcel: excel,
+    liquidacionCotizacion: cotiz,
     totalIndemnizar,
     totalIndemnizable: totalIndemnizar,
-    totalPerdida: excel.sumaIndemnizable || resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || excel.sumaIndemnizable,
-    deducibleAplicado: excel.deducibleAplicable,
-    deducibleTexto: `Aplica el mayor de SMMLV / % / USD / pesos (${tipos.tipoAplicadoLabel || 'SMMLV'})`,
+    totalPerdida: usaCotiz ? cotiz.monto : excel.sumaIndemnizable || resumen.sumaCompleta,
+    totalReclamado:
+      parsearNumero(liquidador.valorReclamadoCaso) ||
+      (montoCotiz > 0 ? montoCotiz : excel.sumaIndemnizable),
+    cotizacionMonto: montoCotiz,
+    deducibleAplicado,
+    deducibleTexto: usaCotiz
+      ? cotiz.deducibleTexto
+      : `Aplica el mayor de SMMLV / % / USD / pesos (${tipos.tipoAplicadoLabel || 'SMMLV'})`,
     subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: excel.subTotal,
+    subtotalEdificios: usaCotiz ? cotiz.subTotal : excel.subTotal,
     diferencia: 0,
     usaSMMLV: tipos.tipoAplicado === 'smmlv',
     totalOtrosAmparos,
     otrosAmparos: diagrama.otrosAmparos || [],
-    deducibleRequiereValorAsegurado: !valorAsegurado,
-    valorAsegurado,
+    deducibleRequiereValorAsegurado: usaCotiz ? !(cotiz.valorGlobal > 0) : !valorAsegurado,
+    valorAsegurado: usaCotiz ? cotiz.valorGlobal || valorAsegurado : valorAsegurado,
   };
 }
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosBbvaCat(liquidador = {}) {
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
-  if (!Array.isArray(items) || !items.length) return [];
-  return items
+  const nsr = (Array.isArray(items) ? items : [])
     .filter((it) => String(it?.actividad || it?.componente || '').trim())
     .map((it) => ({
       id: it.id,
@@ -401,6 +442,20 @@ export function itemsPlanosBbvaCat(liquidador = {}) {
       cantidad: it.cantidad,
       valorUnitario: it.valorUnitario,
     }));
+  const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+  if (!(monto > 0)) return nsr;
+  const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
+  return [
+    {
+      id: 'cotizacion-pdf',
+      concepto: nombre
+        ? `Cotización del asegurado (${nombre})`
+        : 'Cotización del asegurado (PDF)',
+      valorReclamado: monto,
+      valorIndemnizable: '',
+    },
+    ...nsr,
+  ];
 }
 
 export function mapcasoBbvaCatALiquidador(caso = {}) {
@@ -444,6 +499,8 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
       ...base,
       encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
       observaciones: guardado.observaciones || '',
+      cotizacionPdf: guardado.cotizacionPdf || null,
+      liquidacionCotizacionPdf: guardado.liquidacionCotizacionPdf || null,
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
       otrosAmparos: Array.isArray(guardado.otrosAmparos)
         ? normalizarOtrosAmparos(guardado.otrosAmparos)
@@ -513,6 +570,8 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     deducibleFormato: resolverDeducibleFormatoBbvaCat({ ...guardado, tipoLiquidador: tipo }),
     liquidadoPor: guardado.liquidadoPor || caso.ajustador || '',
     areaLiquidador: guardado.areaLiquidador || 'Indemnizaciones Seguros Generales',
+    cotizacionPdf: guardado.cotizacionPdf || null,
+    liquidacionCotizacionPdf: guardado.liquidacionCotizacionPdf || null,
   };
 }
 
@@ -557,6 +616,7 @@ export function defaultInformeUnicoBbvaCat(caso = {}) {
     recomendacion: '',
     fotosSeleccionadas: [],
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -576,6 +636,7 @@ export function defaultInformeUnicoBbvaCat(caso = {}) {
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
   };
 }
 

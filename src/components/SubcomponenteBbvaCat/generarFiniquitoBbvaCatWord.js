@@ -21,6 +21,10 @@ import {
   formatDateLarga,
 } from './liquidadorBbvaCatHelpers.js';
 import {
+  calcularTotalesFormatoExcelBbvaCat,
+  etiquetaAiuBbvaCat,
+} from './formatoLiquidacionBbvaCat.js';
+import {
   inferirTipoLiquidadorBbvaCat,
   textosLetrerosBbvaCat,
 } from './deduciblesBbvaCat.js';
@@ -189,13 +193,17 @@ function tasaDeducibleTxt(totales) {
 }
 
 /**
- * Finiquito / Constancia de indemnización BbvaCat
- * (mismo esquema legal que Fundación de la Mujer / Equidad FDM),
- * con nombres de BbvaCat y logos Proser + BbvaCat.
+ * Finiquito / Constancia de indemnización BBVA CAT.
+ * Si hay cotización PDF, usa esa liquidación (monto + AIU opcional − deducible propio).
+ * Si no, usa el formato Excel (ítems + AIU opcional − deducible).
  */
 export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInput) {
   const enc = liquidador.encabezado || {};
   const totales = totalesInput || calcularLiquidacionBbvaCat(liquidador);
+  const excel = totales.formatoExcel || calcularTotalesFormatoExcelBbvaCat(liquidador);
+  const cotiz = totales.liquidacionCotizacion;
+  const usaPdf = Boolean(cotiz?.activo);
+  const fuente = usaPdf ? cotiz : excel;
 
   const tomador = enc.tomador || '—';
   const asegurado = enc.asegurado || enc.contacto || '—';
@@ -240,14 +248,26 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
   const observaciones = String(liquidador.observacionesFiniquito || '').trim();
   const tipoLabel = tipo === 'leasing' ? 'Liquidador leasing' : 'Liquidador deudores';
 
-  const totalPerdida = formatearMontoConstancia(
-    totales.totalDanios ?? totales.totalPerdida ?? totales.totalIndemnizable
+  const aiuPct = Number(fuente.aiuPct) || 0;
+  const hayAiu = aiuPct > 0 && Number(fuente.aiu) > 0;
+  const subTotalTxt = formatearMontoConstancia(fuente.subTotal ?? totales.subtotal);
+  const aiuTxt = formatearMontoConstancia(fuente.aiu);
+  const totalConAiuTxt = formatearMontoConstancia(fuente.totalConAiu);
+  const deducibleMonto = formatearMontoConstancia(
+    fuente.deducibleAplicable ?? totales.deducibleAplicado
   );
-  const deducible = String(totales.deducibleTexto || totales.diagrama?.deducible || 'No aplica');
-  const indemnizacion = formatearMontoConstancia(totales.totalIndemnizar);
-  const letras = letrasConstancia(montoALetrasFdm(totales.totalIndemnizar));
-  const tasaTxt = tasaDeducibleTxt(totales);
-  const hospedaje = formatearMontoConstancia(totales.diagrama?.gastosHospedaje || 0);
+  const indemnizacion = formatearMontoConstancia(
+    totales.totalIndemnizar ?? fuente.valorAIndemnizar
+  );
+  const letras = letrasConstancia(
+    montoALetrasFdm(totales.totalIndemnizar ?? fuente.valorAIndemnizar)
+  );
+  const tasaTxt = usaPdf
+    ? String(cotiz.deducibleTexto || totales.deducibleTexto || tasaDeducibleTxt(totales))
+    : tasaDeducibleTxt(totales);
+  const origenTxt = usaPdf
+    ? 'conforme a la cotización PDF (deducible y AIU independientes del formato Excel)'
+    : 'conforme a la liquidación de indemnización BBVA';
 
   const logosTable = await buildLogosHeader();
   const parrafosFirma = await parrafosFirmaClienteAlfa({
@@ -256,6 +276,23 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
     nombre: liquidador.nombreFirmante || asegurado,
     etiquetaFirma: 'FIRMA DEL CLIENTE',
   });
+
+  const filasLiquidacion = [
+    ...(usaPdf ? [filaDato('ORIGEN LIQUIDACIÓN:', 'Cotización PDF (independiente del formato Excel)')] : []),
+    filaDato(usaPdf ? 'MONTO COTIZACIÓN PDF:' : 'SUBTOTAL PÉRDIDA INDEMNIZABLE:', `$${subTotalTxt}`),
+    ...(hayAiu
+      ? [
+          filaDato(`${etiquetaAiuBbvaCat(aiuPct)}:`, `$${aiuTxt}`),
+          filaDato('TOTAL (SUBTOTAL + AIU):', `$${totalConAiuTxt}`),
+        ]
+      : [filaDato('AIU:', 'No aplica')]),
+    filaDato('DEDUCIBLE APLICADO:', `$${deducibleMonto} (${tasaTxt})`),
+    filaDato('TOTAL A INDEMNIZAR:', `$${indemnizacion}`),
+  ];
+
+  const segundo = hayAiu
+    ? `SEGUNDO. - Que recibiré de ${ASEGURADORA}, la suma de: ($${indemnizacion})-(${letras}), valor en que estimo los perjuicios sufridos, ${origenTxt}: subtotal ($${subTotalTxt}), ${etiquetaAiuBbvaCat(aiuPct)} ($${aiuTxt}), total ($${totalConAiuTxt}), con deducible ($${deducibleMonto}) (${tasaTxt}), para un total a indemnizar de: ($${indemnizacion}).`
+    : `SEGUNDO. - Que recibiré de ${ASEGURADORA}, la suma de: ($${indemnizacion})-(${letras}), valor en que estimo los perjuicios sufridos, ${origenTxt}: subtotal ($${subTotalTxt}), sin AIU, con deducible ($${deducibleMonto}) (${tasaTxt}), para un total a indemnizar de: ($${indemnizacion}).`;
 
   const doc = new Document({
     sections: [
@@ -305,14 +342,22 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
             { after: 140 }
           ),
 
-          p(
-            `SEGUNDO. - Que recibiré de ${ASEGURADORA}, la suma de: ($${indemnizacion})-(${letras}), valor en que estimo los perjuicios sufridos, dado que el total de daños según presupuesto NSR-10 es por valor de ($${totalPerdida}), más gastos de hospedaje ($${hospedaje}), con deducible: ${tasaTxt}, para un total a indemnizar de: ($${indemnizacion}).`,
-            { after: 140 }
-          ),
+          p(segundo, { after: 140 }),
 
-          p(`Deducibles. ${letreros.avisoDeducible}`, { after: 120 }),
+          new Table({
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [3200, 6160],
+            rows: filasLiquidacion,
+          }),
+
+          p(`Deducibles. ${letreros.avisoDeducible}`, { before: 160, after: 120 }),
           p(`Objeto de la póliza. ${letreros.objetoPoliza}`, { after: 140 }),
           p(letreros.pazYSalvo, { after: 140 }),
+
+          p(
+            `CUARTO. - De acuerdo con lo establecido por los artículos 15, 2.483 y concordantes del Código Civil Colombiano, renuncio y desisto de las acciones y derechos que me confieren las leyes civiles y penales, para iniciar en un futuro acción alguna que persiga el pago de perjuicios materiales y morales en contra de ${ASEGURADORA}, en consideración a que los daños fueron indemnizados en su totalidad.`,
+            { after: 140 }
+          ),
 
           p(
             `ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          RECHAZO INDEMNIZACIÓN  ( ${marcaRechazo} )`,
@@ -342,4 +387,6 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
     .slice(0, 50);
   const nombre = `Finiquito_Constancia_BbvaCat_${safe}.docx`;
   saveAs(blob, nombre);
+  return { blob, filename: nombre };
 }
+

@@ -160,6 +160,11 @@ const COLUMNAS = [
   { clave: 'reserva', labelKey: 'reserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
   { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
+  { clave: 'liquidadoCoberturaTerremo', labelKey: 'liquidadoCoberturaTerremo' },
+  { clave: 'deducibleTerremoto', labelKey: 'deducibleTerremoto' },
+  { clave: 'valorLiquidacionCoberturasAdicionales', labelKey: 'valorLiquidacionCoberturasAdicionales' },
+  { clave: 'deducibleCoberturasAdicionales', labelKey: 'deducibleCoberturasAdicionales' },
+  { clave: 'valorTotalPagar', labelKey: 'valorTotalPagar' },
   { clave: 'fechaInspeccion', labelKey: 'fechaInspeccion' },
   { clave: 'fechaUltimoDocumento', labelKey: 'fechaUltimoDocumento' },
   { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
@@ -189,6 +194,11 @@ const COLUMNAS_INICIALES_VISIBLES = [
   'reserva',
   'valorReclamado',
   'valorLiquidado',
+  'liquidadoCoberturaTerremo',
+  'deducibleTerremoto',
+  'valorLiquidacionCoberturasAdicionales',
+  'deducibleCoberturasAdicionales',
+  'valorTotalPagar',
   'estado',
   'docs',
 ];
@@ -211,6 +221,18 @@ const CAMPOS_MONEDA = new Set([
   'valorAseguradoContenidos',
   'valorReservaPreventivaPromedio',
   'valorComercialInmueble',
+  'liquidadoCoberturaTerremo',
+  'deducibleTerremoto',
+  'valorLiquidacionCoberturasAdicionales',
+  'deducibleCoberturasAdicionales',
+  'valorTotalPagar',
+]);
+const CAMPOS_CONTROL_LIQUIDACION = new Set([
+  'liquidadoCoberturaTerremo',
+  'deducibleTerremoto',
+  'valorLiquidacionCoberturasAdicionales',
+  'deducibleCoberturasAdicionales',
+  'valorTotalPagar',
 ]);
 const CAMPOS_FECHA = new Set([
   'fechaAviso',
@@ -223,51 +245,94 @@ const CAMPOS_FECHA = new Set([
   'fechaEnvioAseguradora',
 ]);
 
-/** Encabezados de export en el mismo orden/nombre que la hoja BD */
-const buildExportRow = (caso) => ({
-  Consecutivo: caso.consecutivo ?? '',
-  SINIESTRO: caso.siniestro ?? '',
-  IDENTIFICACIÓN: caso.identificacion ?? '',
-  ASEGURADO: caso.asegurado ?? '',
-  TOMADOR: caso.tomador ?? '',
-  'AJUSTADOR LÍDER': caso.ajustadorLider ?? '',
-  AJUSTADOR: caso.ajustador ?? '',
-  INSPECTOR: caso.inspector ?? '',
-  'N° PÓLIZA': caso.numeroPoliza ?? '',
-  'DIRECCIÓN PREDIO': caso.direccionPredio ?? '',
-  'N CRÉDITO': caso.numeroCredito ?? '',
-  'INFORMACION DE CONTACTO': caso.informacionContacto ?? '',
-  CORREO: caso.correo ?? '',
-  CELULAR: caso.celular ?? '',
-  'CANAL DE RADICACIÓN': caso.canalRadicacion ?? '',
-  CIUDAD: caso.ciudad ?? '',
-  DEPARTAMENTO: caso.departamento ?? '',
-  'FECHA AVISO': formatDate(caso.fechaAviso),
-  'FECHA SINIESTRO': formatDate(caso.fechaSiniestro),
-  'FECHA DE LLAMADA': formatDate(caso.fechaLlamada),
-  'OBSERVACIÓN LLAMADA': caso.observacionLlamada ?? '',
-  'VALOR ASEGURADO SID': caso.valorAseguradoSid ?? '',
-  'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
-  'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
-  COBERTURA: caso.cobertura ?? '',
-  'ESTADO PAGO PRIMAS': caso.estadoPagoPrimas ?? '',
-  'VALOR RESERVA ACTUARIAL': caso.valorReservaPreventivaPromedio ?? '',
-  'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
-  RESERVA: caso.reserva ?? '',
-  'VALOR RECLAMADO': caso.valorReclamado ?? '',
-  'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
-  'FECHA INSPECCIÓN': formatDate(caso.fechaInspeccion),
-  'FECHA ULTIMO DOCUMENTO': formatDate(caso.fechaUltimoDocumento),
-  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
-  'FECHA ACEPTACIÓN LIQUIDACIÓN': formatDate(caso.fechaAceptacionLiquidacion),
-  'FECHA ENVÍO A LA ASEGURADORA': formatDate(caso.fechaEnvioAseguradora),
-  'ESTADO GESTION': caso.estadoGestion ?? '',
-  'ESTADO SINIESTRO': homologarEstadoAlfa(caso.estado, caso),
-  OBSERVACION: caso.observacionesGestion ?? '',
-  ZONA: caso.zonaAsignada ?? '',
-  'FUERA DE ZONA': caso.fueraDeZona ? 'SI' : 'NO',
-  Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
-});
+/** Encabezados Excel en orden fijo (hoja BD + control de liquidación). */
+const EXPORT_COLUMNAS_ALFA = [
+  { header: 'Consecutivo', clave: 'consecutivo' },
+  { header: 'SINIESTRO', clave: 'siniestro' },
+  { header: 'IDENTIFICACIÓN', clave: 'identificacion' },
+  { header: 'ASEGURADO', clave: 'asegurado' },
+  { header: 'TOMADOR', clave: 'tomador' },
+  { header: 'AJUSTADOR LÍDER', clave: 'ajustadorLider' },
+  { header: 'AJUSTADOR', clave: 'ajustador' },
+  { header: 'INSPECTOR', clave: 'inspector' },
+  { header: 'N° PÓLIZA', clave: 'numeroPoliza' },
+  { header: 'DIRECCIÓN PREDIO', clave: 'direccionPredio' },
+  { header: 'N CRÉDITO', clave: 'numeroCredito' },
+  { header: 'INFORMACION DE CONTACTO', clave: 'informacionContacto' },
+  { header: 'CORREO', clave: 'correo' },
+  { header: 'CELULAR', clave: 'celular' },
+  { header: 'CANAL DE RADICACIÓN', clave: 'canalRadicacion' },
+  { header: 'CIUDAD', clave: 'ciudad' },
+  { header: 'DEPARTAMENTO', clave: 'departamento' },
+  { header: 'FECHA AVISO', clave: 'fechaAviso', tipo: 'fecha' },
+  { header: 'FECHA SINIESTRO', clave: 'fechaSiniestro', tipo: 'fecha' },
+  { header: 'FECHA DE LLAMADA', clave: 'fechaLlamada', tipo: 'fecha' },
+  { header: 'OBSERVACIÓN LLAMADA', clave: 'observacionLlamada' },
+  { header: 'VALOR ASEGURADO SID', clave: 'valorAseguradoSid', tipo: 'moneda' },
+  { header: 'VALOR ASEGURADO INMUEBLE', clave: 'valorAseguradoInmueble', tipo: 'moneda' },
+  { header: 'VALOR ASEGURADO CONTENIDOS', clave: 'valorAseguradoContenidos', tipo: 'moneda' },
+  { header: 'COBERTURA', clave: 'cobertura' },
+  { header: 'ESTADO PAGO PRIMAS', clave: 'estadoPagoPrimas' },
+  { header: 'VALOR RESERVA ACTUARIAL', clave: 'valorReservaPreventivaPromedio', tipo: 'moneda' },
+  { header: 'VALOR COMERCIAL INMUEBLE', clave: 'valorComercialInmueble', tipo: 'moneda' },
+  { header: 'RESERVA', clave: 'reserva', tipo: 'moneda' },
+  { header: 'VALOR RECLAMADO', clave: 'valorReclamado', tipo: 'moneda' },
+  { header: 'VALOR LIQUIDADO', clave: 'valorLiquidado', tipo: 'moneda' },
+  // Orden exacto solicitado para control de liquidación:
+  { header: 'LIQUIDADO COBERTURA TERREMOTO', clave: 'liquidadoCoberturaTerremo', tipo: 'moneda' },
+  { header: 'DEDUCIBLE TERREMOTO', clave: 'deducibleTerremoto', tipo: 'moneda' },
+  {
+    header: 'VALOR LIQUIDACIÓN COBERTURAS ADICIONALES',
+    clave: 'valorLiquidacionCoberturasAdicionales',
+    tipo: 'moneda',
+  },
+  {
+    header: 'DEDUCIBLE COBERTURAS ADICIONALES',
+    clave: 'deducibleCoberturasAdicionales',
+    tipo: 'moneda',
+  },
+  { header: 'VALOR TOTAL A PAGAR', clave: 'valorTotalPagar', tipo: 'moneda' },
+  { header: 'FECHA INSPECCIÓN', clave: 'fechaInspeccion', tipo: 'fecha' },
+  { header: 'FECHA ULTIMO DOCUMENTO', clave: 'fechaUltimoDocumento', tipo: 'fecha' },
+  { header: 'FECHA LIQUIDADO', clave: 'fechaLiquidado', tipo: 'fecha' },
+  { header: 'FECHA ACEPTACIÓN LIQUIDACIÓN', clave: 'fechaAceptacionLiquidacion', tipo: 'fecha' },
+  { header: 'FECHA ENVÍO A LA ASEGURADORA', clave: 'fechaEnvioAseguradora', tipo: 'fecha' },
+  { header: 'ESTADO GESTION', clave: 'estadoGestion' },
+  { header: 'ESTADO SINIESTRO', clave: 'estado', tipo: 'estado' },
+  { header: 'OBSERVACION', clave: 'observacionesGestion' },
+  { header: 'ZONA', clave: 'zonaAsignada' },
+  { header: 'FUERA DE ZONA', clave: 'fueraDeZona', tipo: 'siNo' },
+  { header: 'Documentos', clave: 'docs', tipo: 'docs' },
+];
+
+function valorExportAlfa(caso, col) {
+  if (col.tipo === 'fecha') return formatDate(caso[col.clave]) || '';
+  if (col.tipo === 'estado') return homologarEstadoAlfa(caso.estado, caso);
+  if (col.tipo === 'siNo') return caso.fueraDeZona ? 'SI' : 'NO';
+  if (col.tipo === 'docs') return Array.isArray(caso.archivos) ? caso.archivos.length : 0;
+  if (col.tipo === 'moneda') {
+    const v = caso[col.clave];
+    if (v === null || v === undefined || v === '') {
+      return CAMPOS_CONTROL_LIQUIDACION.has(col.clave) ? 0 : '';
+    }
+    const n = Number(v);
+    return Number.isFinite(n) ? n : v;
+  }
+  const v = caso[col.clave];
+  return v === null || v === undefined ? '' : v;
+}
+
+/** Fila Excel: array alineado al orden de EXPORT_COLUMNAS_ALFA. */
+const buildExportRowValues = (caso) => EXPORT_COLUMNAS_ALFA.map((col) => valorExportAlfa(caso, col));
+
+/** @deprecated compat — objeto con mismas claves/orden */
+const buildExportRow = (caso) => {
+  const row = {};
+  for (const col of EXPORT_COLUMNAS_ALFA) {
+    row[col.header] = valorExportAlfa(caso, col);
+  }
+  return row;
+};
 
 export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const { t } = useTranslation();
@@ -677,7 +742,10 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
     if (clave === 'estado') return homologarEstadoAlfa(item.estado, item);
     if (CAMPOS_MONEDA.has(clave)) {
-      return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
+      if (item[clave] === null || item[clave] === undefined || item[clave] === '') {
+        return CAMPOS_CONTROL_LIQUIDACION.has(clave) ? formatCurrency(0) : '—';
+      }
+      return formatCurrency(item[clave]);
     }
     if (CAMPOS_FECHA.has(clave)) return formatDate(item[clave]) || '—';
     const valor = item[clave];
@@ -690,8 +758,10 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       return;
     }
     try {
-      const rows = casosOrdenados.map(buildExportRow);
-      const ws = XLSX.utils.json_to_sheet(rows);
+      // Orden explícito de columnas (aoa) para que Excel respete el orden solicitado.
+      const headers = EXPORT_COLUMNAS_ALFA.map((c) => c.header);
+      const aoa = [headers, ...casosOrdenados.map(buildExportRowValues)];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Seguros Alfa');
       XLSX.writeFile(wb, `seguros-alfa-${new Date().toISOString().slice(0, 10)}.xlsx`);

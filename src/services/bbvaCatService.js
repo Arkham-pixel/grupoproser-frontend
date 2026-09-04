@@ -8,6 +8,7 @@ import {
 import {
   camposValoresDesdeLiquidadorBbvaCat,
   sanitizarInformeUnicoBbvaCat,
+  sanitizarLiquidadorBbvaCat,
 } from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
 
 const BBVA_CAT_API_URL = `${BASE_URL}/api/bbva-cat`;
@@ -332,7 +333,7 @@ export const guardarLiquidadorEnCasoBbvaCat = async ({
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
     ...camposValoresDesdeLiquidadorBbvaCat(liquidador || {}, totales, casoBase),
-    liquidador: liquidador || {},
+    liquidador: sanitizarLiquidadorBbvaCat(liquidador || {}),
   };
 
   delete payload._id;

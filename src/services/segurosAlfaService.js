@@ -1,4 +1,4 @@
-﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import {
   fusionarLiquidadorSinPerderPresupuestoNsr,
   scoreContenidoLiquidadorNsr,
@@ -521,6 +521,18 @@ export const guardarLiquidadorEnCasoAlfa = async ({
           : casoBase.valorReclamado
       ) ?? casoBase.valorReclamado,
     valorLiquidado: pesosEnterosAlfa(totalIndemnizar) ?? totalIndemnizar,
+    /** Campos de control de liquidación derivados del liquidador */
+    // Incluye gastosHospedaje si el liquidador los maneja como monto manual (evita que el total a pagar
+    // no cuadre con: (liquidadoCoberturaTerremo - deducibleTerremoto) + (otros amparos - 0)).
+    liquidadoCoberturaTerremo:
+      pesosEnterosAlfa(
+        (Number(totalesFrescos.totalDanios) || 0) + (Number(totalesFrescos?.diagrama?.gastosHospedaje) || 0)
+      ) ?? 0,
+    deducibleTerremoto: pesosEnterosAlfa(totalesFrescos.deducibleAplicado) ?? 0,
+    valorLiquidacionCoberturasAdicionales: pesosEnterosAlfa(totalesFrescos.totalOtrosAmparos) ?? 0,
+    deducibleCoberturasAdicionales: 0,
+    valorTotalPagar: pesosEnterosAlfa(totalIndemnizar) ?? 0,
+    reserva: pesosEnterosAlfa(totalIndemnizar) ?? casoBase.reserva ?? 0,
   };
 
   // Conservar informe: no mandar null/vacío que lo borre

@@ -27,6 +27,7 @@ import {
   defaultDeducibleFormatoBbvaCat,
   nuevoItemDetalleBbvaCat,
   patchFilaDetalleBbvaCat,
+  patchLiquidacionCotizacionPdfBbvaCat,
   resolverDetalleLiquidacionBbvaCat,
   sincronizarDetalleBbvaConPresupuestoNsr,
 } from './formatoLiquidacionBbvaCat.js';
@@ -37,6 +38,9 @@ import {
 } from './deduciblesBbvaCat.js';
 import { descargarWordInformeBbvaCat } from './generarWordInformeBbvaCat.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import LiquidacionCotizacionPdfBbvaCat from './LiquidacionCotizacionPdfBbvaCat.jsx';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
@@ -168,6 +172,14 @@ export default function InformeUnicoBbvaCat({
       }
       return next;
     });
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+    setInforme((prev) => ({
+      ...prev,
+      fotosCotizacion: serializarPaginasCotizacion(cotizacionPdf?.paginas),
+    }));
   };
 
   const restaurarInfoEvento = () => {
@@ -392,6 +404,49 @@ export default function InformeUnicoBbvaCat({
           Cauca.
         </p>
 
+        <div className="mb-4">
+          <CotizacionPdfLiquidacion
+            i18nPrefix="bbvaCat.settlement"
+            value={liquidador.cotizacionPdf}
+            onChange={handleCotizacionChange}
+            casoId={casoBbvaCat?._id}
+            api={api}
+            archivosCaso={casoBbvaCat?.archivos || []}
+            onArchivosCreados={appendArchivosAlCaso}
+            onArchivosEliminados={(ids) => {
+              const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+              if (!setIds.size) return;
+              onCasoChange?.((prev) => {
+                if (!prev) return prev;
+                const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+                return {
+                  ...prev,
+                  archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+                };
+              });
+            }}
+            disabled={guardandoCaso}
+            mostrarUsarComoBase={false}
+            usarComoBasePorDefecto={false}
+          />
+          <LiquidacionCotizacionPdfBbvaCat
+            liquidador={liquidador}
+            caso={casoBbvaCat || {}}
+            disabled={guardandoCaso}
+            onDeducibleChange={(dedPatch) =>
+              setLiquidador((prev) =>
+                patchLiquidacionCotizacionPdfBbvaCat(prev, { deducibleFormato: dedPatch })
+              )
+            }
+            onAiuChange={(aiuPorcentaje) =>
+              setLiquidador((prev) =>
+                patchLiquidacionCotizacionPdfBbvaCat(prev, { aiuPorcentaje })
+              )
+            }
+            onValorGlobalChange={(valor) => actualizarEncabezado('valorGlobal', valor)}
+          />
+        </div>
+
         <FormatoLiquidacionBbvaCat
           caso={casoBbvaCat || {}}
           encabezado={liquidador.encabezado || {}}
@@ -458,6 +513,7 @@ export default function InformeUnicoBbvaCat({
           onNombreFirmanteChange={(v) =>
             setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))
           }
+          onAiuChange={(aiuPorcentaje) => setLiquidador((prev) => ({ ...prev, aiuPorcentaje }))}
         />
       </section>
 

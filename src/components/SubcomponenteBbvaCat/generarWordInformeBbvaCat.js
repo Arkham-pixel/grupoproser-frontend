@@ -1028,6 +1028,121 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
       })
     );
   }
+  const fotosCotizacionRaw = [
+    ...(Array.isArray(info?.fotosCotizacion) ? info.fotosCotizacion : []),
+    ...(Array.isArray(liq?.cotizacionPdf?.paginas) ? liq.cotizacionPdf.paginas : []),
+  ].filter((f) => f && (f.ruta || f.file || f.preview || f._id));
+  const vistosCotiz = new Set();
+  const fotosCotizacion = [];
+  for (const f of fotosCotizacionRaw) {
+    const key = String(f._id || f.ruta || f.preview || '');
+    if (key && vistosCotiz.has(key)) continue;
+    if (key) vistosCotiz.add(key);
+    fotosCotizacion.push(f);
+  }
+  const cotizacionParrafos = [];
+  let cotizacionesIncluidas = 0;
+  for (const archivo of fotosCotizacion.slice(0, 12)) {
+    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoBbvaCat);
+    if (!img) continue;
+    cotizacionesIncluidas += 1;
+    const natW = Number(archivo.width) || 0;
+    const natH = Number(archivo.height) || 0;
+    let width = 500;
+    let height = 680;
+    if (natW > 0 && natH > 0) {
+      const scale = Math.min(500 / natW, 680 / natH, 1);
+      width = Math.max(120, Math.round(natW * scale));
+      height = Math.max(160, Math.round(natH * scale));
+    }
+    cotizacionParrafos.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 40 },
+        children: [
+          new ImageRun({
+            data: img.bytes,
+            transformation: { width, height },
+            type: img.type,
+          }),
+        ],
+      }),
+      p(
+        archivo.descripcion ||
+          archivo.nombreOriginal ||
+          archivo.nombre ||
+          `Cotización · página ${cotizacionesIncluidas}`,
+        {
+          alignment: AlignmentType.CENTER,
+          size: SIZE_12,
+          after: 120,
+        }
+      )
+    );
+  }
+  const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
+  const cotizLiq = totales.liquidacionCotizacion || {};
+  const filasLiqPdf = [];
+  if (cotizLiq.activo || Number(totales.cotizacionMonto) > 0) {
+    filasLiqPdf.push(
+      campoFila('Monto cotización PDF', money(cotizLiq.monto || totales.cotizacionMonto), {
+        labelW: 5000,
+        valueW: 5000,
+      })
+    );
+    if (Number(cotizLiq.aiuPct) > 0) {
+      filasLiqPdf.push(
+        campoFila(
+          `AIU cotización (${Math.round(Number(cotizLiq.aiuPct) * 10000) / 100}%)`,
+          money(cotizLiq.aiu),
+          { labelW: 5000, valueW: 5000 }
+        )
+      );
+    } else {
+      filasLiqPdf.push(
+        campoFila('AIU cotización', 'No aplica', { labelW: 5000, valueW: 5000 })
+      );
+    }
+    filasLiqPdf.push(
+      campoFila('Deducible de la cotización (independiente)', money(cotizLiq.deducibleAplicable), {
+        labelW: 5000,
+        valueW: 5000,
+      }),
+      campoFila('Valor a indemnizar (cotización)', money(cotizLiq.valorAIndemnizar), {
+        labelW: 5000,
+        valueW: 5000,
+        boldValue: true,
+      })
+    );
+  }
+  const seccionCotizacion =
+    cotizacionParrafos.length || Number(totales.cotizacionMonto) > 0
+      ? [
+          heading('Cotización de reparación'),
+          p(
+            cotizacionesIncluidas
+              ? `Soporte de la cotización presentada por el asegurado (${cotizacionesIncluidas} página(s)).${
+                  Number(totales.cotizacionMonto) > 0 ? ` Monto indicado: ${montoCotizTxt}.` : ''
+                } El deducible y el AIU de esta cotización son independientes del formato Excel.`
+              : `Cotización presentada por el asegurado.${
+                  Number(totales.cotizacionMonto) > 0 ? ` Monto indicado: ${montoCotizTxt}.` : ''
+                }`,
+            { after: 80, size: SIZE_12 }
+          ),
+          ...(filasLiqPdf.length
+            ? [
+                new Table({
+                  width: { size: 10000, type: WidthType.DXA },
+                  columnWidths: [5000, 5000],
+                  borders: bordersCuadro,
+                  rows: filasLiqPdf,
+                }),
+              ]
+            : []),
+          ...cotizacionParrafos,
+        ]
+      : [];
+
   if (!fotoParrafos.length) {
     fotoParrafos.push(
       p(
@@ -1463,6 +1578,7 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
         properties: { page: pagePortrait },
         headers: { default: header },
         children: [
+          ...seccionCotizacion,
           heading('5. Relación de valores reclamados vs. valores indemnizables'),
           new Table({
             width: { size: 9000, type: WidthType.DXA },

@@ -35,6 +35,7 @@ export default function BarraEstadosSegurosAlfa({
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
         Un solo estado por caso: gestión operativa y cierre de liquidación.
         OBJETADO y DESISTIDO se guardan en ARNALD; en SharePoint quedan como CERRADO.
+        La observación de gestión se completa sola.
       </p>
       {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => (
         <div key={grupo.id}>

@@ -8,6 +8,7 @@ import {
 import {
   camposValoresDesdeLiquidadorBbvaCat,
   sanitizarInformeUnicoBbvaCat,
+  sanitizarLiquidadorBbvaCat,
 } from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
 
 const API_URL = `${BASE_URL}/api/bbva-cat-listado`;
@@ -168,7 +169,7 @@ export const guardarLiquidadorEnCasoBbvaCatListado = async ({
   return actualizarCasoBbvaCatListado(casoId, {
     ...omitirMeta(casoBase),
     ...camposValoresDesdeLiquidadorBbvaCat(liquidador || {}, totales, casoBase),
-    liquidador: liquidador || {},
+    liquidador: sanitizarLiquidadorBbvaCat(liquidador || {}),
   });
 };
 

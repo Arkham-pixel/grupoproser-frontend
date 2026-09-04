@@ -5,6 +5,7 @@
  */
 
 import { parsearNumero } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+import { montoCotizacionPdf } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import {
   inferirTipoLiquidadorBbvaCat,
   reglaDeduciblePorTipoBbvaCat,
@@ -452,7 +453,7 @@ export function calcularTiposDeducibleBbvaCat({
 /**
  * Totales de plantilla:
  * Sub total = suma indemnizable de ítems.
- * AIU = 25% del subtotal.
+ * AIU = % editable del subtotal (default 25%; 0 = no aplica).
  * Total = subtotal + AIU (tope valor global si existe).
  * Deducible = MAX(SMMLV, %, USD, pesos) sobre la regla (2% del valor global, no de la pérdida).
  * Valor a indemnizar = MAX(0, total − min(deducible, total)).
@@ -474,7 +475,7 @@ export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
     parsearNumero(enc.valorAseguradoInmueble) ||
     parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
     0;
-  const aiuPct = AIU_PORCENTAJE_FORMATO_BBVA_CAT;
+  const aiuPct = resolverAiuPorcentajeBbvaCat(liquidador);
   const aiu = redondear(sumaIndemnizable * aiuPct);
   const subTotal = sumaIndemnizable;
   const totalConAiu = redondear(subTotal + aiu);
@@ -516,4 +517,128 @@ export const LOGO_BBVA_URL = `${import.meta.env.BASE_URL || '/'}templates/logo-b
 export const PLANTILLA_LIQUIDADOR_BBVA_URL = `${
   import.meta.env.BASE_URL || '/'
 }templates/Liquidador_BBVA_CAT.xlsx`;
+/** Default 25%. El ajustador puede bajarlo a 0 o cambiarlo. */
 export const AIU_PORCENTAJE_FORMATO_BBVA_CAT = 0.25;
+
+/**
+ * AIU del formato BBVA: fracción 0–1. Vacío en casos viejos → 25%.
+ * 0 es válido (sin AIU).
+ */
+export function resolverAiuPorcentajeBbvaCat(liquidador = {}) {
+  const cands = [
+    liquidador.aiuPorcentaje,
+    liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje,
+  ];
+  for (const raw of cands) {
+    if (raw === '' || raw == null) continue;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) continue;
+    return Math.max(0, n > 1 ? n / 100 : n);
+  }
+  return AIU_PORCENTAJE_FORMATO_BBVA_CAT;
+}
+
+export function etiquetaAiuBbvaCat(aiuPct) {
+  const pct = Number(aiuPct);
+  const n = Number.isFinite(pct) ? pct : AIU_PORCENTAJE_FORMATO_BBVA_CAT;
+  const ui = Math.round(n * 10000) / 100;
+  const txt = Number.isInteger(ui) ? String(ui) : String(ui);
+  return `AIU (${txt}%)`;
+}
+
+function aiuPorcentajeOpcionalBbva(raw, fallback = 0) {
+  if (raw === '' || raw == null) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.max(0, n > 1 ? n / 100 : n);
+}
+
+/** Liquidación propia del PDF: AIU opcional (0 = no aplica) y deducible independiente del formato Excel. */
+export function defaultLiquidacionCotizacionPdfBbvaCat(tipo, ramo = '') {
+  return {
+    aiuPorcentaje: 0,
+    deducibleFormato: defaultDeducibleFormatoBbvaCat(tipo, ramo),
+  };
+}
+
+export function normalizarLiquidacionCotizacionPdfBbvaCat(liquidador = {}) {
+  const enc = liquidador.encabezado || {};
+  const tipo = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: liquidador.tipoLiquidador,
+    encabezado: enc,
+  });
+  const ramo = enc.ramoAfectado || enc.cobertura || enc.evento || '';
+  const base = defaultLiquidacionCotizacionPdfBbvaCat(tipo, ramo);
+  const raw =
+    liquidador.liquidacionCotizacionPdf && typeof liquidador.liquidacionCotizacionPdf === 'object'
+      ? liquidador.liquidacionCotizacionPdf
+      : {};
+  const savedDed =
+    raw.deducibleFormato && typeof raw.deducibleFormato === 'object' ? raw.deducibleFormato : {};
+  return {
+    ...base,
+    ...raw,
+    aiuPorcentaje: aiuPorcentajeOpcionalBbva(raw.aiuPorcentaje, 0),
+    deducibleFormato: {
+      ...base.deducibleFormato,
+      ...savedDed,
+    },
+  };
+}
+
+/**
+ * Cotización PDF: monto + AIU opcional − deducible propio (4 tipos BBVA).
+ * No usa ítems ni el deducible del formato Excel.
+ */
+export function calcularLiquidacionCotizacionPdfBbvaCat(liquidador = {}, caso = {}) {
+  const enc = liquidador.encabezado || {};
+  const ctx = contextoFechasBbvaCat(enc, caso);
+  const cfg = normalizarLiquidacionCotizacionPdfBbvaCat(liquidador);
+  const monto = redondear(montoCotizacionPdf(liquidador.cotizacionPdf) || 0);
+  const aiuPct = cfg.aiuPorcentaje || 0;
+  const aiu = redondear(monto * aiuPct);
+  const totalConAiu = redondear(monto + aiu);
+  const valorGlobal =
+    parsearNumero(enc.valorGlobal) ||
+    parsearNumero(enc.valorAseguradoInmueble) ||
+    parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
+    0;
+  const tipos = calcularTiposDeducibleBbvaCat({
+    deducibleFormato: cfg.deducibleFormato,
+    anio: ctx.anio,
+    valorGlobal,
+    subTotal: totalConAiu,
+    sumaAsegurable: valorGlobal,
+    trm: enc.trm,
+  });
+  const deduciblePoliza = redondear(tipos.aplicable);
+  const deducibleAplicable = redondear(
+    Math.min(deduciblePoliza, totalConAiu || deduciblePoliza)
+  );
+  const valorAIndemnizar = redondear(Math.max(0, totalConAiu - deducibleAplicable));
+  return {
+    activo: monto > 0,
+    monto,
+    aiuPct,
+    aiu,
+    subTotal: monto,
+    totalConAiu,
+    valorGlobal,
+    tiposDeducible: tipos,
+    deducibleFormato: cfg.deducibleFormato,
+    deduciblePoliza,
+    deducibleAplicable,
+    valorAIndemnizar,
+    ctx,
+    deducibleTexto: `Aplica el mayor de SMMLV / % / USD / pesos (${tipos.tipoAplicadoLabel || 'SMMLV'})`,
+  };
+}
+
+export function patchLiquidacionCotizacionPdfBbvaCat(liquidador = {}, patch = {}) {
+  const actual = normalizarLiquidacionCotizacionPdfBbvaCat(liquidador);
+  const next = { ...actual, ...patch };
+  if (patch.deducibleFormato && typeof patch.deducibleFormato === 'object') {
+    next.deducibleFormato = { ...actual.deducibleFormato, ...patch.deducibleFormato };
+  }
+  return { ...liquidador, liquidacionCotizacionPdf: next };
+}

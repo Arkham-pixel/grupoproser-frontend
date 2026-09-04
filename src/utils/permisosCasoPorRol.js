@@ -33,10 +33,14 @@ export const CAMPOS_ASIGNACION_CASO = Object.freeze([
 export const SURA_LOGINS_PERMISO_LIDER = Object.freeze(['72288319']);
 
 /**
- * Excel de verificación SURA (No. de Reclamo, Número Interno Proser, Asegurado).
- * Bernardo Sojo y Oscar Atencia.
+ * Excel de verificación SURA (No. de Reclamo, Número Interno Proser, Asegurado, Estado, Inspector).
+ * Bernardo Sojo, Oscar Atencia y Ligia García (Catastróficos).
  */
-export const SURA_LOGINS_EXCEL_VERIFICACION = Object.freeze(['72134505', '1065012991']);
+export const SURA_LOGINS_EXCEL_VERIFICACION = Object.freeze([
+  '72134505',
+  '1065012991',
+  '66901947',
+]);
 
 /**
  * Alfa: estos logins ocultan del reporte los casos con fecha de llamada
@@ -145,7 +149,7 @@ export function esLoginExcelVerificacionSura(login) {
   return SURA_LOGINS_EXCEL_VERIFICACION.map(normalizarClaveDocumentoLogin).includes(clave);
 }
 
-/** Sesión actual: Bernardo Sojo o Oscar Atencia ven el Excel de verificación SURA. */
+/** Sesión actual: Bernardo Sojo, Oscar Atencia o Ligia García ven el Excel de verificación SURA. */
 export function esSesionExcelVerificacionSura() {
   const ctx = obtenerContextoPermisoCaso('sura');
   return [ctx.login, ctx.cedula].some((v) => esLoginExcelVerificacionSura(v));

@@ -6,7 +6,13 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { expressAlertError } from '../SubcomponenteExpress/expressFenixUi.js';
+import {
+  expressAlertError,
+  expressFormSection,
+} from '../SubcomponenteExpress/expressFenixUi.js';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 import {
   aplicarTipoLiquidadorEnLiquidacionBbvaCat,
   esObservacionFiniquitoDefaultBbvaCat,
@@ -18,9 +24,11 @@ import {
   defaultDeducibleFormatoBbvaCat,
   nuevoItemDetalleBbvaCat,
   patchFilaDetalleBbvaCat,
+  patchLiquidacionCotizacionPdfBbvaCat,
   resolverDetalleLiquidacionBbvaCat,
   sincronizarDetalleBbvaConPresupuestoNsr,
 } from './formatoLiquidacionBbvaCat.js';
+import LiquidacionCotizacionPdfBbvaCat from './LiquidacionCotizacionPdfBbvaCat.jsx';
 import {
   calcularLiquidacionBbvaCat,
   mapcasoBbvaCatALiquidador,
@@ -38,9 +46,13 @@ export default function LiquidadorBbvaCat({
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
+  onCasoChange,
+  onInformePatch,
+  origen = 'cat',
   liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
+  const api = useMemo(() => bbvaCatArchivosApi(origen), [origen]);
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {})
   );
@@ -133,6 +145,26 @@ export default function LiquidadorBbvaCat({
 
   const liquidadorExport = { ...liquidador, detalleLiquidacionCat: itemsDetalle };
 
+  const appendArchivosAlCaso = (creados = []) => {
+    const lista = (Array.isArray(creados) ? creados : [creados]).filter(Boolean);
+    if (!lista.length) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
+      if (!extra.length) return prev;
+      return { ...prev, archivos: [...actuales, ...extra] };
+    });
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+    onInformePatch?.({
+      fotosCotizacion: serializarPaginasCotizacion(cotizacionPdf?.paginas),
+    });
+  };
+
   const correrExport = async (tipo, fn) => {
     setError('');
     setExportando(tipo);
@@ -191,6 +223,47 @@ export default function LiquidadorBbvaCat({
 
       {error && <p className={expressAlertError}>{error}</p>}
 
+      <section className={expressFormSection}>
+        <CotizacionPdfLiquidacion
+          i18nPrefix="bbvaCat.settlement"
+          value={liquidador.cotizacionPdf}
+          onChange={handleCotizacionChange}
+          casoId={casoBbvaCat?._id}
+          api={api}
+          archivosCaso={casoBbvaCat?.archivos || []}
+          onArchivosCreados={appendArchivosAlCaso}
+          onArchivosEliminados={(ids) => {
+            const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+            if (!setIds.size) return;
+            onCasoChange?.((prev) => {
+              if (!prev) return prev;
+              const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+              return {
+                ...prev,
+                archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+              };
+            });
+          }}
+          disabled={!!exportando || guardandoCaso}
+          mostrarUsarComoBase={false}
+          usarComoBasePorDefecto={false}
+        />
+        <LiquidacionCotizacionPdfBbvaCat
+          liquidador={liquidador}
+          caso={casoBbvaCat || {}}
+          disabled={!!exportando || guardandoCaso}
+          onDeducibleChange={(dedPatch) =>
+            setLiquidador((prev) =>
+              patchLiquidacionCotizacionPdfBbvaCat(prev, { deducibleFormato: dedPatch })
+            )
+          }
+          onAiuChange={(aiuPorcentaje) =>
+            setLiquidador((prev) => patchLiquidacionCotizacionPdfBbvaCat(prev, { aiuPorcentaje }))
+          }
+          onValorGlobalChange={(valor) => actualizarEncabezado('valorGlobal', valor)}
+        />
+      </section>
+
       <FormatoLiquidacionBbvaCat
         caso={casoBbvaCat || {}}
         encabezado={enc}
@@ -223,6 +296,7 @@ export default function LiquidadorBbvaCat({
         }
         onFirmaClienteChange={(v) => setLiquidador((prev) => ({ ...prev, firmaCliente: v }))}
         onNombreFirmanteChange={(v) => setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))}
+        onAiuChange={(aiuPorcentaje) => setLiquidador((prev) => ({ ...prev, aiuPorcentaje }))}
       />
     </div>
   );

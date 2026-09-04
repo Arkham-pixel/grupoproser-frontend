@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { FaSave } from 'react-icons/fa';
@@ -183,6 +183,7 @@ export default function LiquidadorBbvaCatPage() {
                 casoBbvaCat={casoBbvaCat}
                 onEstadoChange={handleEstadoChange}
                 onGuardarEnCaso={casoId ? handleGuardarEnCaso : undefined}
+                onCasoChange={setcasoBbvaCat}
                 guardandoCaso={guardando}
               />
             )}

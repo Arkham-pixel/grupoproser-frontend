@@ -19,6 +19,7 @@ import {
   VALOR_GLOBAL,
   calcularFilaDetalleBbvaCat,
   calcularTotalesFormatoExcelBbvaCat,
+  etiquetaAiuBbvaCat,
   esValorGlobal,
   parsearPorcentajeDeducibleBbva,
 } from './formatoLiquidacionBbvaCat.js';
@@ -85,6 +86,7 @@ export default function FormatoLiquidacionBbvaCat({
   onDatosFiniquitoChange,
   onFirmaClienteChange,
   onNombreFirmanteChange,
+  onAiuChange,
 }) {
   const tipo = inferirTipoLiquidadorBbvaCat({
     tipoLiquidador: liquidador.tipoLiquidador,
@@ -650,19 +652,58 @@ export default function FormatoLiquidacionBbvaCat({
         </div>
 
         <div>
-          <div className="grid grid-cols-[1fr_140px] border border-gray-300 dark:border-gray-600">
+          <div className="grid grid-cols-[1fr_180px] border border-gray-300 dark:border-gray-600">
             <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
               Sub total
             </div>
             <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
               $ {formatearMonto(excel.subTotal)}
             </div>
-            <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
-              AIU (25%)
-            </div>
-            <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
-              $ {formatearMonto(excel.aiu)}
-            </div>
+            {soloLectura || !onAiuChange ? (
+              <>
+                <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
+                  {etiquetaAiuBbvaCat(excel.aiuPct)}
+                </div>
+                <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
+                  $ {formatearMonto(excel.aiu)}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
+                  AIU (%)
+                </div>
+                <div className={`${cellExcel} border-b border-gray-300`}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    className={`${bbvaCatInput} text-right`}
+                    title="Porcentaje opcional sobre el subtotal. 0 = no aplica."
+                    value={
+                      excel.aiuPct == null
+                        ? ''
+                        : String(Math.round(Number(excel.aiuPct) * 10000) / 100)
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        onAiuChange(0);
+                        return;
+                      }
+                      const pct = Number(raw);
+                      onAiuChange(Number.isFinite(pct) ? Math.max(0, pct) / 100 : 0);
+                    }}
+                  />
+                </div>
+                <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
+                  AIU ($)
+                </div>
+                <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
+                  $ {formatearMonto(excel.aiu)}
+                </div>
+              </>
+            )}
             <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
               Total
             </div>

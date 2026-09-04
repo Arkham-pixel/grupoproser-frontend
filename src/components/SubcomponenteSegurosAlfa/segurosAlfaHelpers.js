@@ -191,6 +191,42 @@ export function isAlfaEstadoDefinido(estado) {
   );
 }
 
+/** Observación que se escribe sola al marcar OBJETADO / DESISTIDO (Excel OBSERVACION). */
+export const OBSERVACIONES_AUTO_CIERRE_ALFA = {
+  OBJETADO: 'Caso objetado.',
+  DESISTIDO: 'Caso desistido.',
+};
+
+function normObsAutoAlfa(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
+
+const OBS_AUTO_CIERRE_ALFA_NORM = new Set(
+  Object.values(OBSERVACIONES_AUTO_CIERRE_ALFA).map((t) => normObsAutoAlfa(t))
+);
+
+export function observacionAutoCierreAlfa(estado) {
+  const e = homologarEstadoAlfa(estado);
+  return OBSERVACIONES_AUTO_CIERRE_ALFA[e] || '';
+}
+
+/**
+ * Completa o sustituye la observación automática de OBJETADO/DESISTIDO.
+ * No pisa un texto que haya escrito el ajustador.
+ */
+export function aplicarObservacionAutoCierreAlfa(estado, observacionActual = '') {
+  const plantilla = observacionAutoCierreAlfa(estado);
+  const actual = String(observacionActual || '').trim();
+  const actualEsAuto = !actual || OBS_AUTO_CIERRE_ALFA_NORM.has(normObsAutoAlfa(actual));
+  if (plantilla) return actualEsAuto ? plantilla : actual;
+  return actualEsAuto ? '' : actual;
+}
+
 /** ESTADO SINIESTRO en SharePoint: OBJETADO y DESISTIDO se reportan como CERRADO. */
 export function estadoAlfaParaSharePoint(estado) {
   const n = String(estado || '')
@@ -396,6 +432,11 @@ export const FORM_VACIO_ALFA = {
   reserva: '',
   valorReclamado: '',
   valorLiquidado: '',
+  liquidadoCoberturaTerremo: '',
+  deducibleTerremoto: '',
+  valorLiquidacionCoberturasAdicionales: '',
+  deducibleCoberturasAdicionales: '',
+  valorTotalPagar: '',
   fechaLlamada: '',
   observacionLlamada: '',
   fechaInspeccion: '',
@@ -437,6 +478,11 @@ export const CAMPOS_NUMERICOS_ALFA = [
   'reserva',
   'valorReclamado',
   'valorLiquidado',
+  'liquidadoCoberturaTerremo',
+  'deducibleTerremoto',
+  'valorLiquidacionCoberturasAdicionales',
+  'deducibleCoberturasAdicionales',
+  'valorTotalPagar',
 ];
 
 /**
@@ -553,13 +599,17 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
     fechaInspeccion: caso.fechaInspeccion,
     estadoGestion: caso.estadoGestion,
   });
+  base.observacionesGestion = aplicarObservacionAutoCierreAlfa(
+    base.estado,
+    base.observacionesGestion
+  );
   return base;
 };
 
 /** Persistencia filtros reporte Alfa (sobrevive al entrar/salir de un caso). */
 export const ALFA_REPORTE_FILTROS_STORAGE_KEY = 'alfa-reporte-filtros-v1';
-/** v2: columnas por defecto incluyen valores (reserva, reclamado, liquidado…). */
-export const ALFA_COLUMNAS_STORAGE_KEY = 'alfa-reporte-columnas-v2';
+/** v4: orden fijo de columnas de control de liquidación en reporte/Excel. */
+export const ALFA_COLUMNAS_STORAGE_KEY = 'alfa-reporte-columnas-v4';
 
 export const FILTROS_REPORTE_ALFA_DEFAULT = {
   busqueda: '',

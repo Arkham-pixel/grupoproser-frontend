@@ -778,6 +778,22 @@ export function montosCasoDesdeLiquidadorAlfa(liquidador = {}) {
   };
 }
 
+/** Campos de control de liquidación (terremoto, deducible, coberturas adicionales, total a pagar). */
+export function camposControlLiquidacionDesdeLiquidadorAlfa(liquidador = {}) {
+  if (scoreContenidoLiquidadorNsr(liquidador) === 0) return null;
+  const { totales, totalIndemnizar } = resolverMontoIndemnizarAlfa(liquidador);
+  const hospedaje = Number(totales?.diagrama?.gastosHospedaje) || 0;
+  return {
+    liquidadoCoberturaTerremo: pesosEnterosAlfa(
+      (Number(totales.totalDanios) || 0) + hospedaje
+    ),
+    deducibleTerremoto: pesosEnterosAlfa(totales.deducibleAplicado),
+    valorLiquidacionCoberturasAdicionales: pesosEnterosAlfa(totales.totalOtrosAmparos),
+    deducibleCoberturasAdicionales: 0,
+    valorTotalPagar: pesosEnterosAlfa(totalIndemnizar),
+  };
+}
+
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosAlfa(liquidador = {}) {
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;

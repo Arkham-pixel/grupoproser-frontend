@@ -29,6 +29,7 @@ import {
   guardarLiquidadorEnCasoBbvaCatListado,
 } from '../../services/bbvaCatListadoService.js';
 import { calcularLiquidacionBbvaCat } from './liquidadorBbvaCatHelpers.js';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import useBbvaCatCasoAutosave from '../../hooks/useBbvaCatCasoAutosave.js';
@@ -594,12 +595,24 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
               <LiquidadorBbvaCat
                 key={`liq-${casoId}-${restoreNonce}`}
                 casoBbvaCat={casoBbvaCat}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
                   setTotalesState(tot);
+                  if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
+                    setInformeState((prev) => {
+                      if (!prev) return prev;
+                      const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
+                      const prevKey = JSON.stringify(prev.fotosCotizacion || []);
+                      const nextKey = JSON.stringify(nextFotos);
+                      if (prevKey === nextKey) return prev;
+                      return { ...prev, fotosCotizacion: nextFotos };
+                    });
+                  }
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onCasoChange={setCasoBbvaCat}
                 guardandoCaso={guardando}
               />
             )}
