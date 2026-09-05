@@ -37,14 +37,28 @@ class HistorialService {
     this.uploadsURL = PROD_URL;
   }
 
-  // Comprimir imágenes antes de subirlas (estándar global para TODOS los formularios)
+  // Comprimir imágenes antes de subirlas (evita timeouts S3 con capturas PNG enormes)
   async comprimirImagenSiEsNecesario(file) {
     if (!file || !(file instanceof File)) return file;
+    const type = String(file.type || '').toLowerCase();
+    if (!type.startsWith('image/')) return file;
 
-    // ✅ Sin limitantes por peso:
-    // Subimos el archivo tal cual (sin compresión obligatoria) para que no importe cuánto pese.
-    // Si en algún momento quieres reactivar compresión para velocidad/costos, se puede reintroducir aquí.
-    return file;
+    try {
+      const { ImageCompression } = await import('../utils/imageCompression.js');
+      if (!ImageCompression.needsCompression(file, 700) && type === 'image/jpeg') {
+        return file;
+      }
+      const [compressed] = await ImageCompression.compressImages([file], {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.8,
+        maxSizeKB: 700,
+      });
+      return compressed || file;
+    } catch (error) {
+      console.warn('⚠️ Compresión previa a subida omitida:', error?.message || error);
+      return file;
+    }
   }
 
   // Función para convertir archivos a base64
