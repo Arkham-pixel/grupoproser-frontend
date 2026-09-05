@@ -16,6 +16,9 @@ import {
 } from './bbvaCatHelpers.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 
+/** Alineado con multer en bbvaCat / bbvaCatListado (25 MB). */
+const MAX_ARCHIVO_BYTES = 25 * 1024 * 1024;
+
 const formatBytes = (n) => {
   const num = Number(n);
   if (!num || Number.isNaN(num)) return '—';
@@ -133,24 +136,59 @@ export default function ArchiveroBbvaCat({
 
   const subirLote = async (lote) => {
     if (!lote?.length || !caso?._id) return;
-    setError(null);
-    setExito(null);
+
+    const demasiadoGrandes = lote.filter((item) => Number(item.file?.size) > MAX_ARCHIVO_BYTES);
+    const validos = lote.filter((item) => Number(item.file?.size) <= MAX_ARCHIVO_BYTES);
+
+    const mensajeDemasiadoGrandes = () => {
+      const nombres = demasiadoGrandes
+        .slice(0, 3)
+        .map((item) => `${item.file.name} (${formatBytes(item.file.size)})`)
+        .join(', ');
+      const extra =
+        demasiadoGrandes.length > 3
+          ? t('bbvaCat.archive.fileTooLargeMore', { count: demasiadoGrandes.length - 3 })
+          : '';
+      return t('bbvaCat.archive.fileTooLarge', {
+        maxMb: 25,
+        files: `${nombres}${extra}`,
+      });
+    };
+
+    if (demasiadoGrandes.length) {
+      setError(mensajeDemasiadoGrandes());
+      setExito(null);
+      setPendientes(validos);
+      if (!validos.length) return;
+    } else {
+      setError(null);
+      setExito(null);
+    }
+
     setSubiendo(true);
-    setProgreso({ current: 0, total: lote.length });
+    setProgreso({ current: 0, total: validos.length });
     try {
-      for (let i = 0; i < lote.length; i += 1) {
-        setProgreso({ current: i + 1, total: lote.length });
-        await api.subir(caso._id, lote[i].file, lote[i].etiqueta || etiqueta);
+      for (let i = 0; i < validos.length; i += 1) {
+        setProgreso({ current: i + 1, total: validos.length });
+        await api.subir(caso._id, validos[i].file, validos[i].etiqueta || etiqueta);
       }
       setPendientes([]);
       await refrescar();
       setExito(
-        lote.length === 1
+        validos.length === 1
           ? t('bbvaCat.archive.uploadOk')
-          : t('bbvaCat.archive.uploadOkMultiple', { count: lote.length })
+          : t('bbvaCat.archive.uploadOkMultiple', { count: validos.length })
       );
+      if (demasiadoGrandes.length) setError(mensajeDemasiadoGrandes());
     } catch (err) {
-      setError(err.message || t('bbvaCat.archive.uploadError'));
+      const msg = String(err?.message || '');
+      const esRed =
+        /failed to fetch|networkerror|load failed|network request failed/i.test(msg);
+      setError(
+        esRed
+          ? t('bbvaCat.archive.uploadNetworkError', { maxMb: 25 })
+          : msg || t('bbvaCat.archive.uploadError')
+      );
       try {
         await refrescar();
       } catch {
@@ -166,13 +204,39 @@ export default function ArchiveroBbvaCat({
     const files = copiarArchivos(fileList);
     if (!files.length || subiendo) return;
 
-    const nuevos = files.map((file) => ({
+    const demasiadoGrandes = files.filter((f) => Number(f.size) > MAX_ARCHIVO_BYTES);
+    const validos = files.filter((f) => Number(f.size) <= MAX_ARCHIVO_BYTES);
+
+    if (demasiadoGrandes.length) {
+      const nombres = demasiadoGrandes
+        .slice(0, 3)
+        .map((f) => `${f.name} (${formatBytes(f.size)})`)
+        .join(', ');
+      const extra =
+        demasiadoGrandes.length > 3
+          ? t('bbvaCat.archive.fileTooLargeMore', { count: demasiadoGrandes.length - 3 })
+          : '';
+      setError(
+        t('bbvaCat.archive.fileTooLarge', {
+          maxMb: 25,
+          files: `${nombres}${extra}`,
+        })
+      );
+      setExito(null);
+    } else {
+      setError(null);
+      setExito(null);
+    }
+
+    if (!validos.length) return;
+
+    const nuevos = validos.map((file) => ({
       id: claveArchivo(file),
       file,
       etiqueta: inferirEtiqueta(file.name, etiqueta, opcionesEtiqueta),
     }));
 
-    if (nuevos.length === 1 && pendientes.length === 0) {
+    if (nuevos.length === 1 && pendientes.length === 0 && !demasiadoGrandes.length) {
       await subirLote(nuevos);
       return;
     }
@@ -182,8 +246,6 @@ export default function ArchiveroBbvaCat({
       const extra = nuevos.filter((n) => !vistos.has(n.id));
       return extra.length ? [...prev, ...extra] : prev;
     });
-    setError(null);
-    setExito(null);
   };
 
   const handleUpload = async (e) => {
