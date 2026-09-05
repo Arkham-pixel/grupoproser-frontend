@@ -554,7 +554,10 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
               <FotosLiquidadorSura
                 casoId={casoId}
                 caso={casoSura}
-                fotos={fotosAgilState || []}
+                fotos={
+                  fotosAgilState ??
+                  defaultFotosAgilSura(casoSura || {}, liquidadorState)
+                }
                 onFotosChange={setFotosAgilState}
                 onGuardarEnCaso={casoId ? () => handleGuardarFotosAgil() : undefined}
                 onCasoChange={setCasoSura}
@@ -563,7 +566,11 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             ) : tabActivo === TABS_SURA.DOCUMENTOS ? (
               <InformeUnicoSegurosSura
                 casoSura={casoSura}
-                fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
+                fotosAgil={
+                  fotosAgilState ??
+                  casoSura?.fotosAgil ??
+                  defaultFotosAgilSura(casoSura || {}, liquidadorState)
+                }
                 informeAgil={informeAgilState || casoSura?.informeAgil}
                 salvamento={salvamentoState || casoSura?.salvamento}
                 liquidadorInicial={liquidadorState}

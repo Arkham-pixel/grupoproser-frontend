@@ -366,19 +366,29 @@ export default function InformeUnicoSegurosSura({
     const mimeWord =
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     try {
+      const casoParaExport = {
+        ...(casoSura || {}),
+        fotosAgil: Array.isArray(fotosAgil)
+          ? fotosAgil
+          : Array.isArray(casoSura?.fotosAgil)
+            ? casoSura.fotosAgil
+            : [],
+        archivos: Array.isArray(casoSura?.archivos) ? casoSura.archivos : [],
+      };
       const resultado = usarExcel
         ? await descargarInformeUnicoSuraExcel({
-            caso: casoSura || {},
+            caso: casoParaExport,
             informe,
             liquidador,
-            fotosAgil,
+            fotosAgil: casoParaExport.fotosAgil,
             informeAgil: informeAgil || casoSura?.informeAgil,
             salvamento: salvamento || casoSura?.salvamento,
           })
         : await descargarWordInformeSura({
-            caso: casoSura || {},
+            caso: casoParaExport,
             informe,
             liquidador,
+            fotosAgil: casoParaExport.fotosAgil,
           });
       const casoId = casoSura?._id;
       if (!casoId) {

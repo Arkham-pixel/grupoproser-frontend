@@ -43,7 +43,11 @@ async function fetchImageBuffer(url) {
   if (!url) return null;
   try {
     if (String(url).startsWith('blob:')) return await bufferDesdeBlobUrl(url);
-    const res = await fetch(url, { credentials: 'include' });
+    const token = localStorage.getItem('token');
+    const res = await fetch(url, {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) return null;
     const buffer = await res.arrayBuffer();
     const extension = detectarExtensionImagen(buffer);
@@ -75,7 +79,15 @@ async function bufferDesdeBlobUrl(blobUrl) {
   }
 }
 
-async function resolverBufferFoto(item = {}) {
+async function resolverBufferFoto(item = {}, archivosCaso = []) {
+  if (item.file && typeof item.file.arrayBuffer === 'function') {
+    try {
+      const buffer = await item.file.arrayBuffer();
+      return { buffer, extension: 'jpeg' };
+    } catch {
+      /* continue */
+    }
+  }
   if (item.fotoPreview && String(item.fotoPreview).startsWith('blob:')) {
     const fromBlob = await bufferDesdeBlobUrl(item.fotoPreview);
     if (fromBlob) return fromBlob;
@@ -84,7 +96,18 @@ async function resolverBufferFoto(item = {}) {
     const fromBlob = await bufferDesdeBlobUrl(item.preview);
     if (fromBlob) return fromBlob;
   }
-  const ruta = item.fotoRuta || item.ruta || '';
+  if (item.preview && String(item.preview).startsWith('data:')) {
+    const fromData = bufferDesdeDataUrl(item.preview);
+    if (fromData) return fromData;
+  }
+
+  let ruta = item.fotoRuta || item.ruta || '';
+  if (!ruta && (item._id || item.archivoId)) {
+    const arch = (archivosCaso || []).find(
+      (a) => String(a._id) === String(item._id || item.archivoId)
+    );
+    if (arch?.ruta) ruta = arch.ruta;
+  }
   if (!ruta) return null;
   const primary = urlDescargaArchivoSura(ruta);
   const candidatos = getUploadsUrlCandidates(ruta) || [];
@@ -284,16 +307,21 @@ function leyendaFotoExcel(item = {}, indice = 1) {
 
 function listaFotosParaExcel(fotosAgil, liquidador, caso) {
   const propias = Array.isArray(fotosAgil)
-    ? fotosAgil.filter((f) => f?.ruta || f?.fotoRuta || f?.preview || f?.fotoPreview || f?._id)
+    ? fotosAgil.filter((f) => f?.ruta || f?.fotoRuta || f?.preview || f?.fotoPreview || f?._id || f?.file)
     : [];
   const lista = propias.length ? propias : fotosNsrDesdeLiquidador(liquidador);
-  return enriquecerFotosConDescripcion(
+  const mezcladas = enriquecerFotosConDescripcion(
     fusionarFotosArchiveroEnGaleria(lista, caso?.archivos),
     caso
   );
+  // Preferir rutas persistidas para que Excel no se quede en previews rotos
+  return [...mezcladas].sort((a, b) => {
+    const score = (f) => ((f?.ruta || f?.fotoRuta) ? 2 : f?._id ? 1 : 0);
+    return score(b) - score(a);
+  });
 }
 
-async function rellenarFotos(workbook, sheet, fotos = []) {
+async function rellenarFotos(workbook, sheet, fotos = [], archivosCaso = []) {
   sheet.name = 'FOTOS';
   sheet.getColumn(1).width = 40;
   sheet.getColumn(2).width = 40;
@@ -306,7 +334,9 @@ async function rellenarFotos(workbook, sheet, fotos = []) {
     sheet.getCell(3, 1).alignment = { ...ALINEACION_TEXTO };
     return;
   }
-  const buffers = await Promise.all(fotos.map((item) => resolverBufferFoto(item)));
+  const buffers = await Promise.all(
+    fotos.map((item) => resolverBufferFoto(item, archivosCaso))
+  );
   const cellW = pxAnchoCol(40);
   let row = 3;
   for (let i = 0; i < fotos.length; i += 2) {
@@ -548,7 +578,12 @@ export async function generarWorkbookFormatoAgilSura({
   if (presupuestoNsrTieneDatosSura(liq) && hojaPresupuesto) {
     anexarResumenIndemnizacion(hojaPresupuesto, tot);
   }
-  await rellenarFotos(workbook, workbook.addWorksheet('FOTOS'), fotos);
+  await rellenarFotos(
+    workbook,
+    workbook.addWorksheet('FOTOS'),
+    fotos,
+    casoSura?.archivos || []
+  );
   await rellenarDocumentos(workbook, workbook.addWorksheet('DOCUMENTOS'), informe, casoSura);
   rellenarSalvamento(workbook.addWorksheet('SALVAMENTO'), sal);
   ordenarHojasFormatoAgil(workbook);

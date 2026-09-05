@@ -44,10 +44,23 @@ import {
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
+import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 import {
   fusionarFotosAgilEnInforme,
   fusionarFotosArchiveroEnGaleria,
 } from './informeAgilSuraHelpers.js';
+
+/** Prioriza fotos con ruta/_id (embebibles) frente a previews locales sin persistir. */
+function priorizarFotosEmbebibles(fotos = []) {
+  const score = (f) => {
+    if (f?.ruta || f?.fotoRuta) return 4;
+    if (f?._id || f?.archivoId) return 3;
+    if (f?.file) return 2;
+    if (f?.preview || f?.base64 || f?.fotoPreview) return 1;
+    return 0;
+  };
+  return [...(Array.isArray(fotos) ? fotos : [])].sort((a, b) => score(b) - score(a));
+}
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -1250,14 +1263,28 @@ function tablaAnalisisPolizaSura(filas = []) {
  * encabezado formal, título según tipo, cuadro ficha, secciones y cuadros sin relleno.
  * El único también sale en Word (liquidador + fotos) y en Excel (formato ágil).
  */
-export async function descargarWordInformeSura({ caso = {}, informe = null, liquidador = null } = {}) {
-  const info = informe || defaultInformeUnicoSura(caso);
+export async function descargarWordInformeSura({
+  caso = {},
+  informe = null,
+  liquidador = null,
+  fotosAgil = null,
+} = {}) {
+  const fotosAgilEfectivas = Array.isArray(fotosAgil)
+    ? fotosAgil
+    : Array.isArray(caso.fotosAgil)
+      ? caso.fotosAgil
+      : [];
+  const casoConFotos = {
+    ...caso,
+    fotosAgil: fotosAgilEfectivas,
+  };
+  const info = informe || defaultInformeUnicoSura(casoConFotos);
   const fechaGeneracion = new Date();
   const esPreliminar = esInformePreliminarSura(info);
   const tipoNorm = normalizarTipoInformeSura(info.tipoInforme, 'preliminar');
   const tipoEtiqueta =
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
-  const liq = liquidador || mapCasoSuraALiquidador(caso);
+  const liq = liquidador || mapCasoSuraALiquidador(casoConFotos);
   const totales = calcularLiquidacionSura(liq);
   const enc = liq.encabezado || {};
   const items = itemsPlanosSura(liq);
@@ -1279,71 +1306,77 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
   const mostrarImpuestos = impPct > 0 || Number(totales.impuestos) > 0;
   const criterio = totales.criterio || {};
 
-  const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
-    const et = String(a.etiqueta || '').toUpperCase();
-    const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
-    const mime = String(a.tipoMime || '');
-    return (
-      et === 'FOTOS' ||
-      et === 'INSPECCION' ||
-      mime.startsWith('image/') ||
-      /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre)
-    );
-  });
-  const fotosInforme = fusionarFotosArchiveroEnGaleria(
+  const fotosArchivos = (Array.isArray(casoConFotos.archivos) ? casoConFotos.archivos : []).filter(
+    (a) => {
+      const et = String(a.etiqueta || '').toUpperCase();
+      const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
+      const mime = String(a.tipoMime || '');
+      return (
+        et === 'FOTOS' ||
+        et === 'INSPECCION' ||
+        mime.startsWith('image/') ||
+        /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre)
+      );
+    }
+  );
+
+  const fotosMezcladas = fusionarFotosArchiveroEnGaleria(
     fusionarFotosAgilEnInforme(
       Array.isArray(info?.fotosInspeccion)
         ? info.fotosInspeccion
         : Array.isArray(informe?.fotosInspeccion)
           ? informe.fotosInspeccion
           : [],
-      Array.isArray(caso.fotosAgil) ? caso.fotosAgil : []
+      fotosAgilEfectivas
     ),
-    caso.archivos
+    casoConFotos.archivos
   );
+
+  const fotosParaWord = priorizarFotosEmbebibles(
+    fotosInformeDesdeCaso(casoConFotos, {
+      ...info,
+      fotosInspeccion: fotosMezcladas,
+    })
+  );
+
   const archivosById = new Map(
     fotosArchivos.filter((a) => a?._id).map((a) => [String(a._id), a])
   );
 
-  const fotosParaWord = (
-    fotosInforme.length
-      ? fotosInforme.map((f) => {
-          const arch = f._id ? archivosById.get(String(f._id)) : null;
-          return {
-            ...f,
-            nombreOriginal: f.nombre || f.nombreOriginal || arch?.nombreOriginal,
-            descripcion: f.descripcion || arch?.descripcion || '',
-            ruta: f.ruta || arch?.ruta || '',
-            preview: f.preview || f.base64 || '',
-            file: f.file || null,
-            tipoMime: f.tipoMime || arch?.tipoMime || '',
-          };
-        })
-      : fotosArchivos
-  );
+  const fotosEnriquecidas = fotosParaWord.map((f) => {
+    const arch =
+      (f._id && archivosById.get(String(f._id))) ||
+      (f.archivoId && archivosById.get(String(f.archivoId))) ||
+      null;
+    return {
+      ...f,
+      nombreOriginal: f.nombre || f.nombreOriginal || arch?.nombreOriginal,
+      descripcion: f.descripcion || arch?.descripcion || '',
+      ruta: f.ruta || f.fotoRuta || arch?.ruta || '',
+      preview: f.preview || f.base64 || f.fotoPreview || '',
+      file: f.file || null,
+      tipoMime: f.tipoMime || arch?.tipoMime || '',
+    };
+  });
 
-  // Embebidas en paralelo (más rápido) y layout de dos en dos
-  const topeFotos = tipoNorm === 'unico' ? 24 : 12;
-  const embebidasResueltas = await Promise.all(
-    fotosParaWord.slice(0, topeFotos).map(async (archivo) => {
-      const img = await resolverBytesFoto(archivo, fotosArchivos);
-      if (!img?.bytes?.length) {
-        console.warn('Foto no embebida en Word Sura:', archivo?.nombreOriginal || archivo?.nombre);
-        return null;
-      }
-      return {
-        bytes: img.bytes,
-        type: img.type === 'png' ? 'png' : 'jpg',
-        leyenda: String(archivo.descripcion || '').trim() || '',
-      };
-    })
-  );
-  const fotosEmbebidas = embebidasResueltas
-    .filter(Boolean)
-    .map((foto, idx) => ({
-      ...foto,
-      leyenda: foto.leyenda || `Foto ${idx + 1}`,
-    }));
+  // Embebidas: recorrer candidatas hasta llenar el tope (no cortar en stubs sin bytes)
+  const topeFotos = 40;
+  const fotosEmbebidas = [];
+  for (const archivo of fotosEnriquecidas) {
+    if (fotosEmbebidas.length >= topeFotos) break;
+    const img = await resolverBytesFoto(archivo, fotosArchivos);
+    if (!img?.bytes?.length) {
+      console.warn('Foto no embebida en Word Sura:', archivo?.nombreOriginal || archivo?.nombre);
+      continue;
+    }
+    fotosEmbebidas.push({
+      bytes: img.bytes,
+      type: img.type === 'png' ? 'png' : 'jpg',
+      leyenda:
+        String(archivo.descripcion || '').trim() ||
+        `Foto ${fotosEmbebidas.length + 1}`,
+    });
+  }
   const fotosIncluidas = fotosEmbebidas.length;
 
   const fotoParrafos = [];

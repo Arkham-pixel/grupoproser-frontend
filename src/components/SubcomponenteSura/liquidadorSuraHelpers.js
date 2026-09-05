@@ -23,6 +23,7 @@ import {
   parsearMontoInformeSeguro,
   sanitizarInformeUnicoCamposWord,
 } from '../../utils/limpiarTextoInformeWord.js';
+import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -1014,7 +1015,12 @@ export function defaultInformeUnicoSura(caso = {}) {
     actaAjustadorFirmaImagen: '',
     firmaAjustador: '',
   };
-  if (!guardado) return base;
+  if (!guardado) {
+    return {
+      ...base,
+      fotosInspeccion: fotosInformeDesdeCaso(caso, base),
+    };
+  }
   return sanitizarInformeUnicoCamposWord({
     ...base,
     ...guardado,
@@ -1047,9 +1053,7 @@ export function defaultInformeUnicoSura(caso = {}) {
       guardado.filasPresupuestoPreliminar,
       base.filasPresupuestoPreliminar
     ),
-    fotosInspeccion: Array.isArray(guardado.fotosInspeccion)
-      ? guardado.fotosInspeccion
-      : base.fotosInspeccion,
+    fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
   });
 }
 
