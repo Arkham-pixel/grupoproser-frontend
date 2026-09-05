@@ -45,6 +45,7 @@ import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
+import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 import {
   enriquecerFotosConDescripcion,
@@ -228,6 +229,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {}, fechaGeneracion = 
       margins: { top: 40, bottom: 40, left: 60, right: 60 },
       children: [
         new Paragraph({
+          alignment: AlignmentType.CENTER,
           children: [
             new TextRun({ text: texto, font: FONT, size: SIZE_META, color: '333333' }),
           ],
@@ -285,6 +287,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {}, fechaGeneracion = 
                 margins: { top: 80, bottom: 80, left: 120, right: 120 },
                 children: [
                   new Paragraph({
+                    alignment: AlignmentType.CENTER,
                     spacing: { after: 0 },
                     children: [
                       new TextRun({
@@ -297,6 +300,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {}, fechaGeneracion = 
                     ],
                   }),
                   new Paragraph({
+                    alignment: AlignmentType.CENTER,
                     spacing: { after: 40 },
                     children: [
                       new TextRun({
@@ -309,6 +313,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {}, fechaGeneracion = 
                     ],
                   }),
                   new Paragraph({
+                    alignment: AlignmentType.CENTER,
                     spacing: { after: 60 },
                     children: [
                       new TextRun({
@@ -2042,7 +2047,7 @@ export async function descargarWordInformeSura({
   });
 
   const doc = new Document({
-    sections,
+    sections: seccionesConEncabezadoUnico(sections, header),
   });
 
   const blob = await Packer.toBlob(doc);

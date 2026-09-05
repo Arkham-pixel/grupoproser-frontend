@@ -16,6 +16,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
+import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
@@ -1605,7 +1606,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
   }
 
   const doc = new Document({
-    sections,
+    sections: seccionesConEncabezadoUnico(sections, header),
   });
 
   const blob = await Packer.toBlob(doc);

@@ -16,6 +16,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
+import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import {
   defaultInformeUnicoEquidadCat,
   formatearMonto,
@@ -1411,7 +1412,7 @@ export async function descargarWordInformeEquidadCat({
   };
 
   const doc = new Document({
-    sections: [
+    sections: seccionesConEncabezadoUnico([
       {
         properties: { page: pagePortrait },
         headers: { default: header },
@@ -1528,7 +1529,7 @@ export async function descargarWordInformeEquidadCat({
           ...firmasParrafos,
         ],
       },
-    ],
+    ], header),
   });
 
   const blob = await Packer.toBlob(doc);
