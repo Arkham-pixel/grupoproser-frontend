@@ -46,13 +46,34 @@ function buildDraftBody({ formKey, modulo, recursoId, titulo, payload }) {
   };
 }
 
-/** Renueva el JWT antes de llamar si ya venció o está por vencer (evita 403 en consola). */
+/** True si el JWT ya expiró (o no se puede leer). */
+function tokenYaExpiro(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.exp) return false;
+    return payload.exp <= Math.floor(Date.now() / 1000);
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Renueva el JWT si está por vencer.
+ * A diferencia del flujo offline de refreshToken, aquí no devolvemos un token ya vencido
+ * (evita POST de telemetría → 403 en consola).
+ */
 async function asegurarTokenValido() {
   const token = localStorage.getItem('token');
   if (!token) return null;
   if (!isTokenNearExpiry(token, 1)) return token;
-  return (await refreshToken(true)) || localStorage.getItem('token');
+  const renovado = await refreshToken(true);
+  if (!renovado || tokenYaExpiro(renovado)) return null;
+  return renovado;
 }
+
+/** Tras un fallo de auth en telemetría, no seguir spameando la red esta sesión. */
+let telemetriaNavegacionPausada = false;
 
 /**
  * fetch con renovación preventiva y reintento ante 401/403.
@@ -230,27 +251,41 @@ export async function listarBorradoresAdminArnald(params = {}) {
 export async function registrarNavegacionArnald({ ruta, titulo, modulo } = {}) {
   const token = localStorage.getItem('token');
   if (!token || !ruta) return;
-  try {
-    // Evitar 403 en consola: renovar antes o saltar si la sesión ya murió
-    const fresco = await asegurarTokenValido();
-    if (!fresco) return;
 
-    await fetchConAuth(
-      `${BASE_URL}/api/arnald-logs/evento`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          accion: 'NAVIGATE',
-          ruta,
-          titulo: titulo || '',
-          modulo: modulo || '',
-          nombre: localStorage.getItem('nombre') || '',
-          resumen: titulo ? `${titulo} (${ruta})` : ruta,
-        }),
+  // Tras re-login en la misma pestaña, reanudar telemetría si el JWT ya es válido.
+  if (telemetriaNavegacionPausada && !tokenYaExpiro(token)) {
+    telemetriaNavegacionPausada = false;
+  }
+  if (telemetriaNavegacionPausada) return;
+
+  try {
+    const fresco = await asegurarTokenValido();
+    if (!fresco) {
+      telemetriaNavegacionPausada = true;
+      return;
+    }
+
+    // Un solo intento, sin reintentos: un 4xx no debe repetirse ni spamear consola.
+    const res = await fetch(`${BASE_URL}/api/arnald-logs/evento`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${fresco}`,
       },
-      { intentos: 1, renovar: true }
-    );
+      body: JSON.stringify({
+        accion: 'NAVIGATE',
+        ruta,
+        titulo: titulo || '',
+        modulo: modulo || '',
+        nombre: localStorage.getItem('nombre') || '',
+        resumen: titulo ? `${titulo} (${ruta})` : ruta,
+      }),
+    });
+    if (res.status === 401 || res.status === 403) {
+      telemetriaNavegacionPausada = true;
+    }
   } catch {
-    // Telemetría: nunca debe romper la UI ni llenar la consola
+    // Telemetría: nunca debe romper la UI
   }
 }
