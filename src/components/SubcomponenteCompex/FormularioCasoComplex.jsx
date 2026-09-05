@@ -162,6 +162,9 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     fchaSinstro: '',
     fchaInspccion: '',
     fchaContIni: '',
+    fechaInspeccion: '',
+    horaInicioCoordinacion: '',
+    horaFinCoordinacion: '',
     nombreCliente: esSura ? 'SEGUROS GENERALES SURAMERICANA S.A.' : '',
     nombreAseguradora: esSura ? 'SEGUROS GENERALES SURAMERICANA S.A.' : '',
 
@@ -550,6 +553,19 @@ const nuevoFormData = {
             nuevoFormData.nombreAseguradora ||
             initialData.nombreAseguradora ||
             'SEGUROS GENERALES SURAMERICANA S.A.';
+          nuevoFormData.fechaInspeccion =
+            formatearFechaParaInput(
+              initialData.fechaInspeccion ||
+                initialData.fchaProgInspeccion ||
+                initialData.fchaInspccion
+            ) ||
+            nuevoFormData.fchaProgInspeccion ||
+            nuevoFormData.fchaInspccion ||
+            '';
+          nuevoFormData.horaInicioCoordinacion =
+            initialData.horaInicioCoordinacion || nuevoFormData.horaInicioCoordinacion || '';
+          nuevoFormData.horaFinCoordinacion =
+            initialData.horaFinCoordinacion || nuevoFormData.horaFinCoordinacion || '';
         }
         
 // Verificación final: asegurar que las fechas formateadas no estén vacías si había una fecha raw
@@ -677,6 +693,15 @@ if (casoData && casoData._id) {
                 casoData.departamentoCiudad || casoData.departamento || '';
               normalizados.fchaSinstro = casoData.fchaSinstro || casoData.fechaSiniestro || '';
               normalizados.fchaInspccion = casoData.fchaInspccion || casoData.fechaInspeccion || '';
+              normalizados.fechaInspeccion =
+                casoData.fechaInspeccion ||
+                casoData.fchaProgInspeccion ||
+                casoData.fchaInspccion ||
+                '';
+              normalizados.horaInicioCoordinacion = casoData.horaInicioCoordinacion || '';
+              normalizados.horaFinCoordinacion = casoData.horaFinCoordinacion || '';
+              normalizados.ajustador = casoData.ajustador || casoData.codiRespnsble || '';
+              normalizados.inspector = casoData.inspector || '';
               normalizados.vlorResrva = casoData.vlorResrva ?? casoData.reserva;
               normalizados.vlorReclmo = casoData.vlorReclmo ?? casoData.valorReclamado;
             }
@@ -782,6 +807,16 @@ if (casoData && casoData._id) {
               fchaEnvioFiniquito: fchaEnvioFiniquitoFormateada,
               fchaCoordInspeccion: fchaCoordInspeccionFormateada,
               fchaProgInspeccion: fchaProgInspeccionFormateada,
+              fechaInspeccion: formatearFechaParaInput(
+                normalizados.fechaInspeccion ||
+                  casoData.fechaInspeccion ||
+                  fchaProgInspeccionFormateada ||
+                  casoData.fchaInspccion
+              ),
+              horaInicioCoordinacion:
+                normalizados.horaInicioCoordinacion || casoData.horaInicioCoordinacion || '',
+              horaFinCoordinacion:
+                normalizados.horaFinCoordinacion || casoData.horaFinCoordinacion || '',
               fchaControlHoras: fchaControlHorasFormateada,
               fechaControlHoras: fchaControlHorasFormateada,
               fecha_control_horas: fchaControlHorasFormateada, // Para el formulario
@@ -2940,6 +2975,17 @@ setFormData(prev => ({
       fchaContIni: formData.fchaContIni,
       fchaCoordInspeccion: formData.fchaCoordInspeccion !== undefined && formData.fchaCoordInspeccion !== null && formData.fchaCoordInspeccion !== '' ? formData.fchaCoordInspeccion : undefined,
       fchaProgInspeccion: formData.fchaProgInspeccion !== undefined && formData.fchaProgInspeccion !== null && formData.fchaProgInspeccion !== '' ? formData.fchaProgInspeccion : undefined,
+      ...(esSura
+        ? {
+            fechaInspeccion:
+              formData.fechaInspeccion ||
+              formData.fchaProgInspeccion ||
+              formData.fchaInspccion ||
+              '',
+            horaInicioCoordinacion: formData.horaInicioCoordinacion || '',
+            horaFinCoordinacion: formData.horaFinCoordinacion || '',
+          }
+        : {}),
 
       // Campos adicionales (observaciones y anexos)
       obseContIni: pick('obseContIni', 'obse_cont_ini'),

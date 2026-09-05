@@ -1537,8 +1537,16 @@ export async function descargarWordInformeSura({
     }),
   ];
 
+  // Sura: en esta relación el indemnizable debe coincidir con el reclamado.
+  const totalReclamadoCuadro = Number(totales.totalReclamado) || 0;
+  const totalIndemnizableCuadro = totalReclamadoCuadro;
+  const diferenciaCuadro = totalReclamadoCuadro - totalIndemnizableCuadro;
+
   if (items.length) {
     items.forEach((it, idx) => {
+      const reclamadoItem =
+        parsearNumero(it.valorReclamado) || parsearNumero(it.valorIndemnizable) || 0;
+      const indemnizableItem = reclamadoItem;
       filasCuadro.push(
         new TableRow({
           children: [
@@ -1548,12 +1556,12 @@ export async function descargarWordInformeSura({
               cuadro: true,
             }),
             cell(it.concepto || '—', { width: 4000, cuadro: true }),
-            cell(money(it.valorReclamado), {
+            cell(money(reclamadoItem), {
               width: 2200,
               alignment: AlignmentType.RIGHT,
               cuadro: true,
             }),
-            cell(money(it.valorIndemnizable), {
+            cell(money(indemnizableItem), {
               width: 2200,
               alignment: AlignmentType.RIGHT,
               cuadro: true,
@@ -1580,13 +1588,13 @@ export async function descargarWordInformeSura({
       children: [
         cell('', { width: 600, cuadro: true }),
         cell('TOTALES', { bold: true, width: 4000, cuadro: true }),
-        cell(money(totales.totalReclamado), {
+        cell(money(totalReclamadoCuadro), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
         }),
-        cell(money(totales.totalIndemnizable), {
+        cell(money(totalIndemnizableCuadro), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
@@ -2032,7 +2040,7 @@ export async function descargarWordInformeSura({
         borders: bordersCuadro,
         rows: filasCuadro,
       }),
-      p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
+      p(`Diferencia reclamado − indemnizable: ${money(diferenciaCuadro)}`, {
         before: 100,
         after: 160,
         size: SIZE_12,

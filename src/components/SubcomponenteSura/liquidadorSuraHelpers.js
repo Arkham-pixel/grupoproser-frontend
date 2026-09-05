@@ -863,14 +863,17 @@ export function itemsPlanosSura(liquidador = {}) {
   if (!Array.isArray(items) || !items.length) return [];
   return items
     .filter((it) => String(it?.actividad || it?.componente || '').trim())
-    .map((it) => ({
-      id: it.id,
-      concepto: it.actividad || it.componente || 'Ítem',
-      valorReclamado: '',
-      valorIndemnizable: it.total ?? '',
-      cantidad: it.cantidad,
-      valorUnitario: it.valorUnitario,
-    }));
+    .map((it) => {
+      const monto = it.total ?? '';
+      return {
+        id: it.id,
+        concepto: it.actividad || it.componente || 'Ítem',
+        valorReclamado: monto,
+        valorIndemnizable: monto,
+        cantidad: it.cantidad,
+        valorUnitario: it.valorUnitario,
+      };
+    });
 }
 
 export function presupuestoNsrTieneDatosSura(liquidador = {}) {

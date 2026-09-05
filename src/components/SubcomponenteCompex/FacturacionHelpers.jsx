@@ -230,8 +230,31 @@ export function Campo({ label, children, className = '' }) {
   );
 }
 
-export function InputFenix({ className = '', ...props }) {
-  return <input className={`${complexInput} ${className}`} {...props} />;
+/** HTML type="date" solo acepta yyyy-MM-dd; el backend a menudo manda ISO completo. */
+function valorInputFecha(type, value) {
+  if (value == null || value === '') return value ?? '';
+  const s = String(value);
+  if (type === 'date' && /^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (type === 'datetime-local' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
+    return s.slice(0, 16);
+  }
+  return value;
+}
+
+export function InputFenix({ className = '', type, value, defaultValue, ...props }) {
+  const valueNorm =
+    value !== undefined ? valorInputFecha(type, value) : undefined;
+  const defaultNorm =
+    defaultValue !== undefined ? valorInputFecha(type, defaultValue) : undefined;
+  return (
+    <input
+      className={`${complexInput} ${className}`}
+      type={type}
+      {...props}
+      {...(valueNorm !== undefined ? { value: valueNorm } : {})}
+      {...(defaultNorm !== undefined ? { defaultValue: defaultNorm } : {})}
+    />
+  );
 }
 
 export function SelectFenix({ children, className = '', ...props }) {
