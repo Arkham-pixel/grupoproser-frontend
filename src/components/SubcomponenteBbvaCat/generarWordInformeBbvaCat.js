@@ -15,6 +15,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
@@ -831,32 +832,18 @@ async function construirBloqueDaniosUbicacionBbvaCat({ info = {}, caso = {} } = 
     );
   }
 
-  if (coordenadas) {
+  const pieMapa = lineasPieMapaInforme({ direccion, coordenadas });
+  pieMapa.forEach((linea, idx) => {
+    const esFuente = /Fuente del mapa|© Google/i.test(linea);
     bloques.push(
-      p(`Coordenadas: ${coordenadas}`, {
+      p(linea, {
         alignment: AlignmentType.CENTER,
-        after: 60,
-        color: '0070C0',
+        after: idx === pieMapa.length - 1 ? 120 : 50,
+        size: esFuente ? SIZE_META : SIZE_12,
+        color: esFuente ? '666666' : (linea.startsWith('Coordenadas:') ? '0070C0' : undefined),
       })
     );
-  }
-  if (coords.latitud && coords.longitud) {
-    bloques.push(
-      p(`Latitud: ${coords.latitud}    Longitud: ${coords.longitud}`, {
-        alignment: AlignmentType.CENTER,
-        after: 80,
-        size: SIZE_META,
-      })
-    );
-  }
-  if (direccion) {
-    bloques.push(
-      p(`Dirección del riesgo: ${direccion}`, {
-        alignment: AlignmentType.CENTER,
-        after: 80,
-      })
-    );
-  }
+  });
 
   return bloques;
 }

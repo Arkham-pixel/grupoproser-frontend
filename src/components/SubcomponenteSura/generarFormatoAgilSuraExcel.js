@@ -1,5 +1,6 @@
 import { saveAs } from 'file-saver';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
 import { generarWorkbookLiquidadorSuraNsr, pintarResumenIndemnizacionSura } from './generarLiquidadorSuraExcel.js';
@@ -489,16 +490,30 @@ async function rellenarDocumentos(workbook, sheet, informe, caso, { nombreHoja =
   const bloquesAntes = [
     ['Ajustador', informe.ajustadorNombre || caso?.ajustador || ''],
     ['Fecha informe', informe.fechaInforme || ''],
-    ['Dirección riesgo', informe.direccionRiesgo || caso?.direccionPredio || ''],
-    ['Coordenadas', coords],
   ];
   bloquesAntes.forEach(([label, valor], idx) => {
     pintarBloqueInformeUnico(sheet, idx + 3, label, valor, { anchoTexto: 96 });
   });
 
   const mapa = await resolverBufferMapaInforme(informe);
-  pintarFilaMapaRiesgo(workbook, sheet, 7, mapa);
+  pintarFilaMapaRiesgo(workbook, sheet, 5, mapa);
 
+  const pieMapa = lineasPieMapaInforme({
+    direccion: informe.direccionRiesgo || caso?.direccionPredio || '',
+    coordenadas: coords,
+  });
+  pieMapa.forEach((linea, idx) => {
+    const esFuente = /Fuente del mapa|© Google/i.test(linea);
+    pintarBloqueInformeUnico(
+      sheet,
+      6 + idx,
+      esFuente ? 'Fuente del mapa' : linea.includes('Dirección') ? 'Dirección geográfica' : 'Ubicación',
+      linea.replace(/^[^:]+:\s*/, ''),
+      { anchoTexto: 96 }
+    );
+  });
+
+  const filaBase = 6 + pieMapa.length;
   const bloquesDespues = [
     ['Información del evento', informe.infoEvento || ''],
     ['Descripción de daños', informe.descripcionDanios || ''],
@@ -507,7 +522,7 @@ async function rellenarDocumentos(workbook, sheet, informe, caso, { nombreHoja =
     ['Recomendación', informe.recomendacion || ''],
   ];
   bloquesDespues.forEach(([label, valor], idx) => {
-    pintarBloqueInformeUnico(sheet, 8 + idx, label, valor, { anchoTexto: 96 });
+    pintarBloqueInformeUnico(sheet, filaBase + idx, label, valor, { anchoTexto: 96 });
   });
 }
 

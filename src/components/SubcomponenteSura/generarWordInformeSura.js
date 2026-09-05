@@ -44,6 +44,7 @@ import {
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
+import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 import {
   enriquecerFotosConDescripcion,
@@ -1033,6 +1034,8 @@ async function cargarMapaRiesgoDataUrl(info = {}) {
 async function construirBloqueDaniosUbicacionSura({ info = {}, caso = {} } = {}) {
   const bloques = [];
   const descripcion = txt(textoDescripcionDaniosSura(info), '');
+  const direccion = txt(info.direccionRiesgo || caso.direccionPredio || caso.direccion, '');
+  const coordenadas = txt(info.coordenadasRiesgo, '');
   const mapaDataUrl = await cargarMapaRiesgoDataUrl(info);
 
   bloques.push(heading('2. Descripción de los daños y/o perjuicios'));
@@ -1094,6 +1097,19 @@ async function construirBloqueDaniosUbicacionSura({ info = {}, caso = {} } = {})
       })
     );
   }
+
+  const pieMapa = lineasPieMapaInforme({ direccion, coordenadas });
+  pieMapa.forEach((linea, idx) => {
+    const esFuente = /Fuente del mapa|© Google/i.test(linea);
+    bloques.push(
+      p(linea, {
+        alignment: AlignmentType.CENTER,
+        after: idx === pieMapa.length - 1 ? 120 : 50,
+        size: esFuente ? SIZE_META : SIZE_12,
+        color: esFuente ? '666666' : undefined,
+      })
+    );
+  });
 
   return bloques;
 }
