@@ -46,6 +46,7 @@ import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 import {
+  enriquecerFotosConDescripcion,
   fusionarFotosAgilEnInforme,
   fusionarFotosArchiveroEnGaleria,
 } from './informeAgilSuraHelpers.js';
@@ -60,6 +61,33 @@ function priorizarFotosEmbebibles(fotos = []) {
     return 0;
   };
   return [...(Array.isArray(fotos) ? fotos : [])].sort((a, b) => score(b) - score(a));
+}
+
+/** Índice de descripciones desde la pestaña Fotos (por _id y ruta). */
+function mapaDescripcionesFotos(fotos = []) {
+  const byId = new Map();
+  const byRuta = new Map();
+  for (const f of Array.isArray(fotos) ? fotos : []) {
+    const desc = String(f?.descripcion || '').trim();
+    if (!desc) continue;
+    if (f?._id) byId.set(String(f._id), desc);
+    if (f?.archivoId) byId.set(String(f.archivoId), desc);
+    if (f?.ruta) byRuta.set(String(f.ruta), desc);
+    if (f?.fotoRuta) byRuta.set(String(f.fotoRuta), desc);
+  }
+  return { byId, byRuta };
+}
+
+function leyendaFotoWord(archivo = {}, mapaDesc = null, indice = 1) {
+  const id = archivo?._id || archivo?.archivoId;
+  const ruta = archivo?.ruta || archivo?.fotoRuta || '';
+  const desdeGaleria =
+    (id && mapaDesc?.byId?.get(String(id))) ||
+    (ruta && mapaDesc?.byRuta?.get(String(ruta))) ||
+    '';
+  const propia = String(archivo?.descripcion || '').trim();
+  const nombre = String(archivo?.nombreOriginal || archivo?.nombre || '').trim();
+  return desdeGaleria || propia || nombre || `Foto ${indice}`;
 }
 
 /** Bordes estilo informe catastrófico / Puertos */
@@ -1333,25 +1361,38 @@ export async function descargarWordInformeSura({
   );
 
   const fotosParaWord = priorizarFotosEmbebibles(
-    fotosInformeDesdeCaso(casoConFotos, {
-      ...info,
-      fotosInspeccion: fotosMezcladas,
-    })
+    enriquecerFotosConDescripcion(
+      fotosInformeDesdeCaso(casoConFotos, {
+        ...info,
+        fotosInspeccion: fotosMezcladas,
+      }),
+      casoConFotos
+    )
   );
 
   const archivosById = new Map(
     fotosArchivos.filter((a) => a?._id).map((a) => [String(a._id), a])
   );
+  const mapaDesc = mapaDescripcionesFotos([
+    ...fotosAgilEfectivas,
+    ...(Array.isArray(info?.fotosInspeccion) ? info.fotosInspeccion : []),
+  ]);
 
   const fotosEnriquecidas = fotosParaWord.map((f) => {
     const arch =
       (f._id && archivosById.get(String(f._id))) ||
       (f.archivoId && archivosById.get(String(f.archivoId))) ||
       null;
+    const descGaleria =
+      (f._id && mapaDesc.byId.get(String(f._id))) ||
+      (f.archivoId && mapaDesc.byId.get(String(f.archivoId))) ||
+      (f.ruta && mapaDesc.byRuta.get(String(f.ruta))) ||
+      '';
     return {
       ...f,
       nombreOriginal: f.nombre || f.nombreOriginal || arch?.nombreOriginal,
-      descripcion: f.descripcion || arch?.descripcion || '',
+      descripcion:
+        String(descGaleria || f.descripcion || arch?.descripcion || '').trim(),
       ruta: f.ruta || f.fotoRuta || arch?.ruta || '',
       preview: f.preview || f.base64 || f.fotoPreview || '',
       file: f.file || null,
@@ -1369,12 +1410,11 @@ export async function descargarWordInformeSura({
       console.warn('Foto no embebida en Word Sura:', archivo?.nombreOriginal || archivo?.nombre);
       continue;
     }
+    const nro = fotosEmbebidas.length + 1;
     fotosEmbebidas.push({
       bytes: img.bytes,
       type: img.type === 'png' ? 'png' : 'jpg',
-      leyenda:
-        String(archivo.descripcion || '').trim() ||
-        `Foto ${fotosEmbebidas.length + 1}`,
+      leyenda: leyendaFotoWord(archivo, mapaDesc, nro),
     });
   }
   const fotosIncluidas = fotosEmbebidas.length;

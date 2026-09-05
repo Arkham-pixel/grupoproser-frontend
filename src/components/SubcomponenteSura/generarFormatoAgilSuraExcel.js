@@ -293,16 +293,42 @@ function rellenarInformeAgil(sheet, informe) {
   });
 }
 
-function leyendaFotoExcel(item = {}, indice = 1) {
+function leyendaFotoExcel(item = {}, indice = 1, mapaDesc = null) {
+  const id = item?._id || item?.archivoId;
+  const ruta = item?.ruta || item?.fotoRuta || '';
+  const desdeGaleria =
+    (id && mapaDesc?.byId?.get(String(id))) ||
+    (ruta && mapaDesc?.byRuta?.get(String(ruta))) ||
+    '';
   const desc = String(
-    item.descripcion || item.leyenda || item.caption || item.comentario || ''
+    desdeGaleria ||
+      item.descripcion ||
+      item.leyenda ||
+      item.caption ||
+      item.comentario ||
+      ''
   ).trim();
   if (desc) return desc;
   if (item.origen === 'liquidador-nsr10' || item.codigo || item.elemento) {
     const nsr = descripcionFotoNsr(item);
     if (nsr && nsr !== 'Foto evaluación NSR-10') return nsr;
   }
-  return `Foto ${indice}`;
+  const nombre = String(item.nombreOriginal || item.nombre || '').trim();
+  return nombre || `Foto ${indice}`;
+}
+
+function mapaDescripcionesFotosExcel(fotos = []) {
+  const byId = new Map();
+  const byRuta = new Map();
+  for (const f of Array.isArray(fotos) ? fotos : []) {
+    const desc = String(f?.descripcion || '').trim();
+    if (!desc) continue;
+    if (f?._id) byId.set(String(f._id), desc);
+    if (f?.archivoId) byId.set(String(f.archivoId), desc);
+    if (f?.ruta) byRuta.set(String(f.ruta), desc);
+    if (f?.fotoRuta) byRuta.set(String(f.fotoRuta), desc);
+  }
+  return { byId, byRuta };
 }
 
 function listaFotosParaExcel(fotosAgil, liquidador, caso) {
@@ -334,6 +360,7 @@ async function rellenarFotos(workbook, sheet, fotos = [], archivosCaso = []) {
     sheet.getCell(3, 1).alignment = { ...ALINEACION_TEXTO };
     return;
   }
+  const mapaDesc = mapaDescripcionesFotosExcel(fotos);
   const buffers = await Promise.all(
     fotos.map((item) => resolverBufferFoto(item, archivosCaso))
   );
@@ -355,7 +382,7 @@ async function rellenarFotos(workbook, sheet, fotos = [], archivosCaso = []) {
       fotoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
       fotoCell.alignment = { vertical: 'middle', horizontal: 'center' };
       const cap = sheet.getCell(filaLeyenda, c + 1);
-      cap.value = `${nro}. ${leyendaFotoExcel(item, nro)}`;
+      cap.value = `${nro}. ${leyendaFotoExcel(item, nro, mapaDesc)}`;
       cap.font = { name: 'Calibri', size: 10, bold: true };
       cap.alignment = { ...ALINEACION_TEXTO };
       cap.border = BORDER;
