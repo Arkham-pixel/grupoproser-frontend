@@ -180,6 +180,7 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'PROSER AJUSTES';
+  workbook.calcProperties = { fullCalcOnLoad: true };
   const sheet = workbook.addWorksheet('Control de Horas', {
     pageSetup: {
       paperSize: 9,
@@ -249,35 +250,46 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
   });
   rowIdx += 1;
 
+  const primeraFilaDatos = rowIdx;
   filas.forEach((fila) => {
-    const totalFila =
-      Number(fila.horas_viaje || 0) +
-      Number(fila.horas_campo || 0) +
-      Number(fila.horas_oficina || 0) +
-      Number(fila.horas_secretaria || 0);
     const row = sheet.getRow(rowIdx);
     const largoDesc = String(fila.descripcion || '').length;
     const largoNombre = String(fila.nombre_funcionario || '').length;
     const maxLen = Math.max(largoDesc, largoNombre);
     row.height = maxLen > 80 ? 48 : maxLen > 45 ? 36 : 26;
-    const valores = [
+
+    const valoresTexto = [
       formatearFechaDisplay(fila.fecha),
       fila.descripcion,
       fila.nombre_funcionario,
       fila.cargo,
+    ];
+    valoresTexto.forEach((val, i) => {
+      const cell = row.getCell(i + 1);
+      cell.value = val ?? '';
+      cell.style = estiloCeldaTabla;
+    });
+
+    const horas = [
       Number(fila.horas_viaje || 0),
       Number(fila.horas_campo || 0),
       Number(fila.horas_oficina || 0),
       Number(fila.horas_secretaria || 0),
-      totalFila,
     ];
-    valores.forEach((val, i) => {
-      const cell = row.getCell(i + 1);
+    horas.forEach((val, i) => {
+      const cell = row.getCell(5 + i);
       cell.value = val;
-      cell.style = i >= 4 ? estiloCeldaNumero : estiloCeldaTabla;
+      cell.style = estiloCeldaNumero;
     });
+
+    // I = E+F+G+H (formulado)
+    const totalCell = row.getCell(9);
+    totalCell.value = { formula: `E${rowIdx}+F${rowIdx}+G${rowIdx}+H${rowIdx}` };
+    totalCell.style = estiloCeldaNumero;
+
     rowIdx += 1;
   });
+  const ultimaFilaDatos = rowIdx - 1;
 
   const totalRow = sheet.getRow(rowIdx);
   totalRow.height = 18;
@@ -288,27 +300,39 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     ...estiloHeaderTabla,
     alignment: { vertical: 'middle', horizontal: 'center' },
   };
-  totalRow.getCell(5).value = totales.viaje;
-  totalRow.getCell(6).value = totales.campo;
-  totalRow.getCell(7).value = totales.oficina;
-  totalRow.getCell(8).value = totales.secretaria;
-  totalRow.getCell(9).value = totales.total_horas;
-  [5, 6, 7, 8, 9].forEach((c) => {
-    totalRow.getCell(c).style = estiloTotalFila;
-  });
+
+  if (ultimaFilaDatos >= primeraFilaDatos) {
+    [5, 6, 7, 8, 9].forEach((col) => {
+      const colLetter = String.fromCharCode(64 + col); // E..I
+      const cell = totalRow.getCell(col);
+      cell.value = {
+        formula: `SUM(${colLetter}${primeraFilaDatos}:${colLetter}${ultimaFilaDatos})`,
+      };
+      cell.style = estiloTotalFila;
+    });
+  } else {
+    [5, 6, 7, 8, 9].forEach((c) => {
+      totalRow.getCell(c).value = 0;
+      totalRow.getCell(c).style = estiloTotalFila;
+    });
+  }
+  const filaTotalesHoras = rowIdx;
   rowIdx += 2;
 
   const filaHonorarios = sheet.getRow(rowIdx);
   filaHonorarios.getCell(1).value = 'HONORARIOS $';
   filaHonorarios.getCell(1).style = estiloResumenLabel;
-  filaHonorarios.getCell(2).value = totales.total_horas;
+  // Horas totales (referencia a I de totales)
+  filaHonorarios.getCell(2).value = { formula: `I${filaTotalesHoras}` };
   filaHonorarios.getCell(2).style = { ...estiloResumenMoneda, numFmt: '#,##0.00' };
   filaHonorarios.getCell(4).value = 'VALOR HORA';
   filaHonorarios.getCell(4).style = estiloResumenLabel;
   filaHonorarios.getCell(5).value = totales.valor_hora;
   filaHonorarios.getCell(5).style = estiloResumenMoneda;
-  filaHonorarios.getCell(7).value = totales.subtotal_honorarios;
+  // Subtotal honorarios = horas × valor hora
+  filaHonorarios.getCell(7).value = { formula: `B${rowIdx}*E${rowIdx}` };
   filaHonorarios.getCell(7).style = estiloResumenMoneda;
+  const filaHonorariosIdx = rowIdx;
   rowIdx += 1;
 
   const filaGastos = sheet.getRow(rowIdx);
@@ -316,12 +340,15 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
   filaGastos.getCell(1).style = estiloResumenLabel;
   filaGastos.getCell(7).value = totales.gastos;
   filaGastos.getCell(7).style = estiloResumenMoneda;
+  const filaGastosIdx = rowIdx;
   rowIdx += 1;
 
   const filaTotal = sheet.getRow(rowIdx);
   filaTotal.getCell(1).value = 'TOTAL';
   filaTotal.getCell(1).style = estiloResumenLabel;
-  filaTotal.getCell(7).value = totales.total;
+  filaTotal.getCell(7).value = {
+    formula: `G${filaHonorariosIdx}+G${filaGastosIdx}`,
+  };
   filaTotal.getCell(7).style = estiloTotalFinal;
 
   ajustarAnchosColumnas(sheet, filas, meta);
