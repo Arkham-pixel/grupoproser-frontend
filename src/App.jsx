@@ -120,6 +120,7 @@ import CasoAllianzWorkspace, {
 } from './components/SubcomponenteAllianz/CasoAllianzWorkspace';
 import { FormularioCasoSuraPage } from './components/SubcomponenteSura/FormularioCasoSura';
 import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
+import ReporteFacilitadoresSura from './components/SubcomponenteSura/ReporteFacilitadoresSura';
 import BoletinSemanalSegurosSura from './components/SubcomponenteSura/BoletinSemanalSegurosSura';
 import DashboardSegurosSura from './components/SubcomponenteSura/DashboardSegurosSura';
 import BloquesCercaniaSegurosSura from './components/SubcomponenteSura/BloquesCercaniaSegurosSura';
@@ -693,6 +694,7 @@ export default function App() {
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
           <Route path="sura/reporte" element={<ReporteSegurosSura />} />
+          <Route path="sura/facilitadores" element={<ReporteFacilitadoresSura />} />
           <Route path="sura/mis-casos" element={<ReporteSegurosSura modoAsignados />} />
           <Route path="sura/documentacion" element={<ReporteSegurosSura soloDocumentacion />} />
           <Route path="sura/dashboard" element={<DashboardSegurosSura />} />
