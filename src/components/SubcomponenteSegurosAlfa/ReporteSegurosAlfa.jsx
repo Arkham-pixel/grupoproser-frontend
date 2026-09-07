@@ -395,7 +395,8 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAllCasosAlfa(2000, { incluirExcluidos: modoAsignados });
+      // Sin tope artificial: trae todas las páginas (base ya > 2000)
+      const data = await fetchAllCasosAlfa(2500, { incluirExcluidos: modoAsignados });
       setCasos(
         modoAsignados
           ? filtrarCasosAsignadosASesion(data)
