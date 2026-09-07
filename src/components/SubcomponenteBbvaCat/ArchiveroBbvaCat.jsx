@@ -12,7 +12,9 @@ import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx'
 import {
   ETIQUETAS_ARCHIVO_BBVA_CAT,
   ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO,
+  esArchivoAjustadorBbvaCat,
   formatDate,
+  resolverOrigenCargaBbvaCat,
 } from './bbvaCatHelpers.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
@@ -79,12 +81,17 @@ export default function ArchiveroBbvaCat({
   onClose,
   onChanged,
   origen = 'cat',
+  origenCarga: origenCargaProp,
   etiquetas,
   etiquetaInicial = 'GENERAL',
 }) {
   const { t } = useTranslation();
   const inputRef = useRef(null);
   const api = useMemo(() => bbvaCatArchivosApi(origen), [origen]);
+  const origenCarga = useMemo(
+    () => resolverOrigenCargaBbvaCat(origenCargaProp),
+    [origenCargaProp]
+  );
   const opcionesEtiqueta =
     etiquetas ||
     (origen === 'listado' ? ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO : ETIQUETAS_ARCHIVO_BBVA_CAT);
@@ -98,6 +105,15 @@ export default function ArchiveroBbvaCat({
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const dragCountRef = useRef(0);
+
+  const archivosAnalista = useMemo(
+    () => archivos.filter((a) => !esArchivoAjustadorBbvaCat(a)),
+    [archivos]
+  );
+  const archivosAjustador = useMemo(
+    () => archivos.filter((a) => esArchivoAjustadorBbvaCat(a)),
+    [archivos]
+  );
 
   useEffect(() => {
     if (!caso?._id) {
@@ -171,7 +187,9 @@ export default function ArchiveroBbvaCat({
     try {
       for (let i = 0; i < validos.length; i += 1) {
         setProgreso({ current: i + 1, total: validos.length });
-        await api.subir(caso._id, validos[i].file, validos[i].etiqueta || etiqueta);
+        await api.subir(caso._id, validos[i].file, validos[i].etiqueta || etiqueta, {
+          origenCarga,
+        });
       }
       setPendientes([]);
       await refrescar();
@@ -332,6 +350,11 @@ export default function ArchiveroBbvaCat({
           {t(origen === 'listado' ? 'bbvaCat.archive.subtitleListado' : 'bbvaCat.archive.subtitle', {
             caseNumber: caso?.consecutivo || caso?.identificacion || '',
           })}
+        </p>
+        <p className="mt-1 font-body text-xs text-gray-600 dark:text-gray-300">
+          {origenCarga === 'analista'
+            ? t('bbvaCat.archive.uploadingAsAnalyst')
+            : t('bbvaCat.archive.uploadingAsAdjuster')}
         </p>
         {origen !== 'listado' && (
           <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
@@ -513,51 +536,140 @@ export default function ArchiveroBbvaCat({
                 </td>
               </tr>
             ) : (
-              archivos.map((arch, idx) => {
-                const nombre = nombreArchivoMostrar(arch);
-                return (
-                  <tr key={arch._id || arch.ruta || `archivo-${idx}`}>
-                    <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
-                      {nombre || '—'}
-                    </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {t(`bbvaCat.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
-                        defaultValue: arch.etiqueta || 'GENERAL',
-                      })}
-                    </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {formatBytes(tamañoArchivo(arch))}
-                    </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {formatDate(arch.fechaSubida) || '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="inline-flex gap-2">
-                        {arch.ruta && (
-                          <button
-                            type="button"
-                            onClick={() => handleDescargar(arch)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
-                          >
-                            <FaDownload />
-                            {t('bbvaCat.archive.download')}
-                          </button>
-                        )}
-                        {arch._id ? (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
-                            onClick={() => handleDelete(arch._id)}
-                          >
-                            <FaTrash />
-                            {t('bbvaCat.report.delete')}
-                          </button>
-                        ) : null}
-                      </div>
+              <>
+                <tr className="bg-sky-50/80 dark:bg-sky-950/30">
+                  <td
+                    colSpan={5}
+                    className="px-3 py-2 font-body text-xs font-bold uppercase tracking-wide text-sky-900 dark:text-sky-200"
+                  >
+                    {t('bbvaCat.archive.sectionAnalyst', {
+                      count: archivosAnalista.length,
+                    })}
+                  </td>
+                </tr>
+                {archivosAnalista.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-3 py-3 text-center font-body text-xs text-gray-500"
+                    >
+                      {t('bbvaCat.archive.emptyAnalyst')}
                     </td>
                   </tr>
-                );
-              })
+                ) : (
+                  archivosAnalista.map((arch, idx) => {
+                    const nombre = nombreArchivoMostrar(arch);
+                    return (
+                      <tr key={arch._id || arch.ruta || `analista-${idx}`}>
+                        <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
+                          {nombre || '—'}
+                        </td>
+                        <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                          {t(`bbvaCat.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
+                            defaultValue: arch.etiqueta || 'GENERAL',
+                          })}
+                        </td>
+                        <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                          {formatBytes(tamañoArchivo(arch))}
+                        </td>
+                        <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                          {formatDate(arch.fechaSubida) || '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <div className="inline-flex gap-2">
+                            {arch.ruta && (
+                              <button
+                                type="button"
+                                onClick={() => handleDescargar(arch)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
+                              >
+                                <FaDownload />
+                                {t('bbvaCat.archive.download')}
+                              </button>
+                            )}
+                            {arch._id ? (
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
+                                onClick={() => handleDelete(arch._id)}
+                              >
+                                <FaTrash />
+                                {t('bbvaCat.report.delete')}
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+                <tr className="bg-amber-50/80 dark:bg-amber-950/30">
+                  <td
+                    colSpan={5}
+                    className="px-3 py-2 font-body text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200"
+                  >
+                    {t('bbvaCat.archive.sectionAdjuster', {
+                      count: archivosAjustador.length,
+                    })}
+                  </td>
+                </tr>
+                {archivosAjustador.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-3 py-3 text-center font-body text-xs text-gray-500"
+                    >
+                      {t('bbvaCat.archive.emptyAdjuster')}
+                    </td>
+                  </tr>
+                ) : (
+                  archivosAjustador.map((arch, idx) => {
+                    const nombre = nombreArchivoMostrar(arch);
+                    return (
+                      <tr key={arch._id || arch.ruta || `ajustador-${idx}`}>
+                        <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
+                          {nombre || '—'}
+                        </td>
+                        <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                          {t(`bbvaCat.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
+                            defaultValue: arch.etiqueta || 'GENERAL',
+                          })}
+                        </td>
+                        <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                          {formatBytes(tamañoArchivo(arch))}
+                        </td>
+                        <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                          {formatDate(arch.fechaSubida) || '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <div className="inline-flex gap-2">
+                            {arch.ruta && (
+                              <button
+                                type="button"
+                                onClick={() => handleDescargar(arch)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
+                              >
+                                <FaDownload />
+                                {t('bbvaCat.archive.download')}
+                              </button>
+                            )}
+                            {arch._id ? (
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
+                                onClick={() => handleDelete(arch._id)}
+                              >
+                                <FaTrash />
+                                {t('bbvaCat.report.delete')}
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </>
             )}
           </tbody>
         </table>

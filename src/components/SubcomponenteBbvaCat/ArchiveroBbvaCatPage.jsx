@@ -158,7 +158,7 @@ export default function ArchiveroBbvaCatPage() {
             onSelect={elegirCaso}
             casoIdActivo={caso?._id || casoIdFromQuery}
             hint={t('bbvaCat.archive.pickCase')}
-            soloConArchivosInicial
+            soloConArchivosInicial={false}
           />
         )}
 

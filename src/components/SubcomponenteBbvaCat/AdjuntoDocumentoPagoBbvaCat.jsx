@@ -69,7 +69,9 @@ export default function AdjuntoDocumentoPagoBbvaCat({
     setSubiendo(true);
     try {
       for (const file of files) {
-        await api.subir(casoId, file, ETIQUETA_DOCUMENTO_PAGO_BBVA_CAT);
+        await api.subir(casoId, file, ETIQUETA_DOCUMENTO_PAGO_BBVA_CAT, {
+          origenCarga: 'ajustador',
+        });
       }
       await refrescar();
       setExito(t('bbvaCat.archive.uploadOk'));

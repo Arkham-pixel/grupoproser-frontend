@@ -258,6 +258,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
         const file = await asegurarJpeg(original);
         const creado = await subirArchivoBbvaCat(casoBbvaCat._id, file, 'FOTOS', {
           descripcion: '',
+          origenCarga: 'ajustador',
         });
         if (creado) subidos.push(creado);
       }

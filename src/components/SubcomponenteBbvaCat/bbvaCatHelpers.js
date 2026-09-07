@@ -46,6 +46,75 @@ export function casoTieneArchivosBbvaCat(caso) {
   );
 }
 
+/** Archivo del analista (legado sin origenCarga = analista). */
+export function esArchivoAnalistaBbvaCat(archivo) {
+  return String(archivo?.origenCarga || '').toLowerCase() !== 'ajustador';
+}
+
+export function esArchivoAjustadorBbvaCat(archivo) {
+  return String(archivo?.origenCarga || '').toLowerCase() === 'ajustador';
+}
+
+export function contarArchivosPorOrigenBbvaCat(caso = {}) {
+  if (Array.isArray(caso?.archivos) && caso.archivos.some((a) => a && (a.ruta || a.nombreOriginal))) {
+    let analista = 0;
+    let ajustador = 0;
+    for (const a of caso.archivos) {
+      if (!a || !(a.ruta || a.nombreOriginal || a.nombreArchivo)) continue;
+      if (esArchivoAjustadorBbvaCat(a)) ajustador += 1;
+      else analista += 1;
+    }
+    return { analista, ajustador, total: analista + ajustador };
+  }
+  const analista = Number(caso?.nArchivosAnalista);
+  const ajustador = Number(caso?.nArchivosAjustador);
+  const total = Number(caso?.nArchivos);
+  if (Number.isFinite(analista) || Number.isFinite(ajustador)) {
+    const a = Number.isFinite(analista) ? analista : 0;
+    const j = Number.isFinite(ajustador) ? ajustador : 0;
+    return {
+      analista: a,
+      ajustador: j,
+      total: Number.isFinite(total) ? total : a + j,
+    };
+  }
+  const n = Number.isFinite(total) ? total : 0;
+  return { analista: n, ajustador: 0, total: n };
+}
+
+/** Handoff cola: solo documentos del analista sacan el caso del reporte analista. */
+export function casoTieneArchivosAnalistaBbvaCat(caso) {
+  return contarArchivosPorOrigenBbvaCat(caso).analista > 0;
+}
+
+/**
+ * Quién carga al archivero según contexto (reporte / rol / prop).
+ * @returns {'analista'|'ajustador'}
+ */
+export function resolverOrigenCargaBbvaCat(explicit) {
+  const t = String(explicit || '')
+    .trim()
+    .toLowerCase();
+  if (t === 'analista' || t === 'ajustador') return t;
+  try {
+    if (sessionStorage.getItem(STORAGE_ORIGEN_LISTADO_BBVA_CAT) === 'analista') {
+      return 'analista';
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const raw = localStorage.getItem('usuario');
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (String(u?.rol || '') === 'contractor_solo_bbva') return 'analista';
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'ajustador';
+}
+
 export function indiceColorBloqueBbvaCat(bloque, fallback = 0) {
   const m = String(bloque?.id || '').match(/^bloque-(\d+)$/i);
   if (m) return Math.max(0, Number(m[1]) - 1);

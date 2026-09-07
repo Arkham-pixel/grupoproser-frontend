@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { casoTieneArchivosBbvaCat } from './bbvaCatHelpers.js';
+import { casoTieneArchivosAnalistaBbvaCat } from './bbvaCatHelpers.js';
 
 export default function BbvaCatCasoPicker({
   casos = [],
@@ -17,7 +17,7 @@ export default function BbvaCatCasoPicker({
   const { conArchivo, total } = useMemo(() => {
     let con = 0;
     casos.forEach((c) => {
-      if (casoTieneArchivosBbvaCat(c)) con += 1;
+      if (casoTieneArchivosAnalistaBbvaCat(c)) con += 1;
     });
     return { conArchivo: con, total: casos.length };
   }, [casos]);
@@ -28,7 +28,7 @@ export default function BbvaCatCasoPicker({
       .toLowerCase();
     const lista = [...casos]
       .filter((c) => {
-        if (soloConArchivos && !casoTieneArchivosBbvaCat(c)) return false;
+        if (soloConArchivos && !casoTieneArchivosAnalistaBbvaCat(c)) return false;
         if (!q) return true;
         const blob = [
           c.consecutivo,

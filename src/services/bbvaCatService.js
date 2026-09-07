@@ -216,6 +216,9 @@ export const subirArchivoBbvaCat = async (casoId, file, etiqueta = 'GENERAL', ex
   if (extras?.descripcion != null) {
     formData.append('descripcion', String(extras.descripcion));
   }
+  if (extras?.origenCarga) {
+    formData.append('origenCarga', String(extras.origenCarga));
+  }
   const response = await fetch(`${BBVA_CAT_API_URL}/${casoId}/archivos`, {
     method: 'POST',
     headers: { ...authHeaders() },

@@ -21,7 +21,7 @@ import {
   RADIO_KM_LISTADO_BBVA_CAT,
   STORAGE_ORIGEN_LISTADO_BBVA_CAT,
   buildOpcionesFiltro,
-  casoTieneArchivosBbvaCat,
+  casoTieneArchivosAnalistaBbvaCat,
   coincideFiltroCiudadBbvaCat,
   coincideFiltroTexto,
   etiquetaTipoPolizaBbvaCat,
@@ -221,7 +221,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
   const conteoArchivos = useMemo(() => {
     let con = 0;
     casos.forEach((c) => {
-      if (casoTieneArchivosBbvaCat(c)) con += 1;
+      if (casoTieneArchivosAnalistaBbvaCat(c)) con += 1;
     });
     return { total: casos.length, conArchivo: con, pendientes: casos.length - con };
   }, [casos]);
@@ -234,13 +234,15 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
     return casos.filter((c) => {
       if (!coincideCasoUrl(c)) return false;
       if (casoIdUrl) return true;
-      const conArchivo = casoTieneArchivosBbvaCat(c);
+      const conArchivoAnalista = casoTieneArchivosAnalistaBbvaCat(c);
       if (!modoAsignados) {
         if (esAnalista) {
+          // Solo docs del analista sacan el caso de la cola. Fotos del ajustador no.
           const buscarDocumentados = Boolean(q) || incluirConArchivos;
-          if (!buscarDocumentados && conArchivo) return false;
-        } else if (!conArchivo) {
-          return false;
+          if (!buscarDocumentados && conArchivoAnalista) return false;
+        } else if (!conArchivoAnalista) {
+          // Ajustador: cola = documentados por analista; con búsqueda encuentra sin docs.
+          if (!q) return false;
         }
       }
       if (bloqueSeleccionadoId) {

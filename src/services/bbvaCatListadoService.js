@@ -66,6 +66,12 @@ export const normalizeBbvaCatListadoItem = (item = {}) => {
           ? { _presente: true }
           : null,
     nArchivos,
+    nArchivosAnalista: Number.isFinite(Number(item.nArchivosAnalista))
+      ? Number(item.nArchivosAnalista)
+      : undefined,
+    nArchivosAjustador: Number.isFinite(Number(item.nArchivosAjustador))
+      ? Number(item.nArchivosAjustador)
+      : undefined,
     archivos: Array.isArray(item.archivos)
       ? item.archivos
       : nArchivos > 0
@@ -219,6 +225,9 @@ export const subirArchivoBbvaCatListado = async (casoId, file, etiqueta = 'GENER
   formData.append('etiqueta', etiqueta);
   if (extras?.descripcion != null) {
     formData.append('descripcion', String(extras.descripcion));
+  }
+  if (extras?.origenCarga) {
+    formData.append('origenCarga', String(extras.origenCarga));
   }
   const response = await fetch(`${API_URL}/${casoId}/archivos`, {
     method: 'POST',
