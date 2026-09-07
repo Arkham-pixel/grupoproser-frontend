@@ -44,6 +44,7 @@ import {
   totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
@@ -607,12 +608,21 @@ async function bytesDesdeFoto(foto = {}) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = [
+  const candidatos = [];
+  try {
+    if (foto?.ruta) {
+      const firmada = await resolverUrlArchivo(foto.ruta);
+      if (firmada) candidatos.push(firmada);
+    }
+  } catch {
+    /* proxy abajo */
+  }
+  candidatos.push(
     ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : []),
-    urlDescargaArchivoZurich(foto?.ruta),
-  ].filter(Boolean);
+    urlDescargaArchivoZurich(foto?.ruta)
+  );
   const vistos = new Set();
-  for (const url of candidatos) {
+  for (const url of candidatos.filter(Boolean)) {
     if (vistos.has(url)) continue;
     vistos.add(url);
     const img = await fetchImageBytes(url);

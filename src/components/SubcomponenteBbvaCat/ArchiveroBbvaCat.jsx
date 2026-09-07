@@ -15,6 +15,7 @@ import {
   formatDate,
 } from './bbvaCatHelpers.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
+import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 
 /** Alineado con multer en bbvaCat / bbvaCatListado (25 MB). */
 const MAX_ARCHIVO_BYTES = 25 * 1024 * 1024;
@@ -278,6 +279,21 @@ export default function ArchiveroBbvaCat({
     }
   };
 
+  const handleDescargar = async (arch) => {
+    if (!arch?.ruta) return;
+    setError(null);
+    try {
+      await abrirODescargarArchivo(arch.ruta, {
+        nombre: nombreArchivoMostrar(arch) || undefined,
+      });
+    } catch (err) {
+      setError(
+        err.message ||
+          t('bbvaCat.archive.downloadError', { defaultValue: 'No se pudo descargar el archivo' })
+      );
+    }
+  };
+
   const textoBotonSubida = () => {
     if (subiendo && progreso?.total > 1) {
       return t('bbvaCat.archive.uploadingCount', {
@@ -498,7 +514,6 @@ export default function ArchiveroBbvaCat({
               </tr>
             ) : (
               archivos.map((arch, idx) => {
-                const url = api.url(arch.ruta);
                 const nombre = nombreArchivoMostrar(arch);
                 return (
                   <tr key={arch._id || arch.ruta || `archivo-${idx}`}>
@@ -518,17 +533,15 @@ export default function ArchiveroBbvaCat({
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex gap-2">
-                        {url && (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={nombre || undefined}
+                        {arch.ruta && (
+                          <button
+                            type="button"
+                            onClick={() => handleDescargar(arch)}
                             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
                           >
                             <FaDownload />
                             {t('bbvaCat.archive.download')}
-                          </a>
+                          </button>
                         )}
                         {arch._id ? (
                           <button

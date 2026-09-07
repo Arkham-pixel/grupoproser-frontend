@@ -49,7 +49,8 @@ function storageFileUrl(baseUrl, ref) {
 
 /**
  * Devuelve candidatos de URL para recursos subidos (por ejemplo `/uploads/...` o `s3:legacy/...`).
- * - Referencias `s3:` → proxy `/api/storage/file?ref=...` (CSP no permite esquema s3:)
+ * - Referencias `s3:` → preferir `/api/storage/signed-url` (front); este helper sigue
+ *   armando el proxy `/api/storage/file?ref=...` como fallback (HEIC / legacy).
  * - En PROD: solo usa `BASE_URL`
  * - En DEV: intenta primero `BASE_URL` (localhost) y si no existe, permite fallback a `PROD_URL`
  */

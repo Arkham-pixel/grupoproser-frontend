@@ -14,6 +14,7 @@ import {
   formatDate,
 } from './zurichHelpers.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
+import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 
 const formatBytes = (n) => {
   const num = Number(n);
@@ -105,6 +106,21 @@ export default function ArchiveroZurich({
     }
   };
 
+  const handleDescargar = async (arch) => {
+    if (!arch?.ruta) return;
+    setError(null);
+    try {
+      await abrirODescargarArchivo(arch.ruta, {
+        nombre: arch.nombreOriginal || undefined,
+      });
+    } catch (err) {
+      setError(
+        err.message ||
+          t('zurich.archive.downloadError', { defaultValue: 'No se pudo descargar el archivo' })
+      );
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -183,7 +199,6 @@ export default function ArchiveroZurich({
               </tr>
             ) : (
               archivos.map((arch) => {
-                const url = api.url(arch.ruta);
                 return (
                   <tr key={arch._id}>
                     <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
@@ -202,17 +217,15 @@ export default function ArchiveroZurich({
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex gap-2">
-                        {url && (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={arch.nombreOriginal}
+                        {arch.ruta && (
+                          <button
+                            type="button"
+                            onClick={() => handleDescargar(arch)}
                             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
                           >
                             <FaDownload />
                             {t('zurich.archive.download')}
-                          </a>
+                          </button>
                         )}
                         <button
                           type="button"
