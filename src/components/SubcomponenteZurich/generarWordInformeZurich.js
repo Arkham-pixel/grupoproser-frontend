@@ -33,6 +33,7 @@ import {
   esInformePreliminarZurich,
   formatearMonto,
   formatDateLarga,
+  fotosInformeDesdeCasoZurich,
   itemsPlanosZurich,
   mapcasoZurichALiquidador,
   migrarLiquidadorDeducibleTerremotoZurich,
@@ -1270,16 +1271,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
   const seccionFotos = esPreliminar ? 5 : 7;
 
-  const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
-    const et = String(a.etiqueta || '').toUpperCase();
-    const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
-    if (et === 'COTIZACION') return false;
-    return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
-  });
-  const fotosInforme = Array.isArray(info?.fotosInspeccion)
-    ? info.fotosInspeccion.filter((f) => f && (f.ruta || f.file || f.preview || f._id))
-    : [];
-  const fotosParaWord = fotosInforme.length ? fotosInforme : fotosArchivos;
+  const fotosParaWord = fotosInformeDesdeCasoZurich(caso, info);
 
   const fotoParrafos = [];
   let fotosIncluidas = 0;
@@ -1301,6 +1293,10 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       continue;
     }
     fotosIncluidas += 1;
+    const leyenda =
+      String(archivo.descripcion || '').trim() ||
+      String(archivo.nombreOriginal || archivo.nombre || '').trim() ||
+      `Foto ${fotosIncluidas}`;
     fotoParrafos.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -1313,7 +1309,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           }),
         ],
       }),
-      p(archivo.descripcion || archivo.nombreOriginal || archivo.nombre || `Foto ${fotosIncluidas}`, {
+      p(leyenda, {
         alignment: AlignmentType.CENTER,
         size: SIZE_12,
         after: 120,

@@ -219,11 +219,19 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     persistirOrdenFotos(copia);
   };
 
+  const sincronizarArchivosEnCaso = (nextArchivos) => {
+    onCasoChange?.((prev) => (prev ? { ...prev, archivos: nextArchivos } : prev));
+  };
+
   const actualizarDescripcionFoto = (fotoId, descripcion) => {
     const clave = String(fotoId);
-    setArchivos((prev) =>
-      (prev || []).map((a, i) => (idFoto(a, i) === clave ? { ...a, descripcion } : a))
-    );
+    setArchivos((prev) => {
+      const next = (prev || []).map((a, i) =>
+        idFoto(a, i) === clave ? { ...a, descripcion } : a
+      );
+      sincronizarArchivosEnCaso(next);
+      return next;
+    });
 
     if (descripcionTimeoutRef.current[clave]) {
       clearTimeout(descripcionTimeoutRef.current[clave]);
@@ -244,9 +252,13 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       clearTimeout(descripcionTimeoutRef.current[clave]);
       delete descripcionTimeoutRef.current[clave];
     }
-    setArchivos((prev) =>
-      (prev || []).map((a, i) => (idFoto(a, i) === clave ? { ...a, descripcion } : a))
-    );
+    setArchivos((prev) => {
+      const next = (prev || []).map((a, i) =>
+        idFoto(a, i) === clave ? { ...a, descripcion } : a
+      );
+      sincronizarArchivosEnCaso(next);
+      return next;
+    });
     if (!casoZurich?._id || !clave || clave.startsWith('tmp-')) return;
     try {
       await actualizarArchivoZurich(casoZurich._id, clave, { descripcion });
