@@ -151,6 +151,7 @@ export function casoTieneEvidenciaComunicacionBajoDeducible(caso = {}) {
 export const TOMADORES_ALFA_DEFAULT = [
   'BANCO AV VILLAS',
   'BANCO BOGOTA',
+  'BANCO ITAU',
   'BANCO OCCIDENTE',
   'BANCO POPULAR',
   'BANCO W',

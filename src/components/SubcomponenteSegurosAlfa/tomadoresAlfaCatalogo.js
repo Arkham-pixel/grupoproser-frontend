@@ -217,6 +217,55 @@ export const OPCIONES_DEDUCIBLE_ALFA = [
     cantidadSMMLV: 2,
     texto: '10% del valor de la pérdida, mínimo 2 SMMLV (riesgos >30 años · demás eventos)',
   },
+  /**
+   * BANCO ITAÚ — §7 Deducibles (póliza).
+   * Gastos con ocasión del siniestro (arriendo, remoción, honorarios, etc.):
+   * sin deducible → se liquidan en «otros amparos».
+   */
+  {
+    id: 'itau-terremoto',
+    tomadorKey: 'BANCO ITAU',
+    tomadorLabel: 'BANCO ITAÚ',
+    poliza: 'GENERAL',
+    tipoCartera: 'TERREMOTO / TEMBLOR / ERUPCIÓN / MAREMOTO',
+    base: 'perdida',
+    porcentaje: 1,
+    cantidadSMMLV: 2,
+    texto: '1% del valor de la pérdida del ítem afectado, mínimo 2 SMMLV',
+  },
+  {
+    id: 'itau-asonada',
+    tomadorKey: 'BANCO ITAU',
+    tomadorLabel: 'BANCO ITAÚ',
+    poliza: 'GENERAL',
+    tipoCartera: 'ASONADA / MOTÍN / HUELGA',
+    base: 'perdida',
+    porcentaje: 5,
+    cantidadSMMLV: 0.5,
+    texto: '5% del valor de la pérdida, mínimo 0,5 SMMLV',
+  },
+  {
+    id: 'itau-amit',
+    tomadorKey: 'BANCO ITAU',
+    tomadorLabel: 'BANCO ITAÚ',
+    poliza: 'GENERAL',
+    tipoCartera: 'AMIT / TERRORISMO / SABOTAJE',
+    base: 'perdida',
+    porcentaje: 5,
+    cantidadSMMLV: 0.5,
+    texto: '5% del valor de la pérdida, mínimo 0,5 SMMLV',
+  },
+  {
+    id: 'itau-demas',
+    tomadorKey: 'BANCO ITAU',
+    tomadorLabel: 'BANCO ITAÚ',
+    poliza: 'GENERAL',
+    tipoCartera: 'DEMÁS EVENTOS',
+    base: 'perdida',
+    porcentaje: 0,
+    cantidadSMMLV: 0,
+    texto: 'Sin deducible',
+  },
   // BANCO POPULAR
   {
     id: 'pop-27405',
@@ -313,6 +362,24 @@ export const DEDUCIBLES_POR_TOMADOR_ALFA = {
     cantidadSMMLV: 0,
     texto: '1% del valor de la pérdida',
   },
+  'BANCO ITAU': {
+    base: 'perdida',
+    porcentaje: 1,
+    cantidadSMMLV: 2,
+    texto: '1% del valor de la pérdida del ítem afectado, mínimo 2 SMMLV',
+  },
+  'BANCO ITAÚ': {
+    base: 'perdida',
+    porcentaje: 1,
+    cantidadSMMLV: 2,
+    texto: '1% del valor de la pérdida del ítem afectado, mínimo 2 SMMLV',
+  },
+  'ITAU': {
+    base: 'perdida',
+    porcentaje: 1,
+    cantidadSMMLV: 2,
+    texto: '1% del valor de la pérdida del ítem afectado, mínimo 2 SMMLV',
+  },
   'BANCO AV VILLAS': { ...DEDUCIBLE_TOMADOR_ALFA_DEFAULT },
   'AV VILLAS': { ...DEDUCIBLE_TOMADOR_ALFA_DEFAULT },
   'BANCO POPULAR': { ...DEDUCIBLE_TOMADOR_ALFA_DEFAULT },
@@ -342,6 +409,7 @@ function claveTomadorCatalogo(tomador = '') {
   if (!key) return '';
   if (key.includes('OCCIDENTE')) return 'BANCO OCCIDENTE';
   if (key.includes('BOGOTA')) return 'BANCO BOGOTA';
+  if (key.includes('ITAU')) return 'BANCO ITAU';
   if (key.includes('VILLAS')) return 'AV VILLAS';
   if (key.includes('POPULAR')) return 'BANCO POPULAR';
   if (key.includes('BANCO W') || key === 'W') return 'BANCO W';
