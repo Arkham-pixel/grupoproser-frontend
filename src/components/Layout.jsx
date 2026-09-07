@@ -63,6 +63,7 @@ import { registrarNavegacionArnald } from '../services/arnaldPlataformaService.j
 import { flushArnaldDraftsNow } from '../services/arnaldDraftFlushRegistry.js';
 import LogoutButton from './LogoutButton';
 import Aviso2FAPrompt from './Aviso2FAPrompt';
+import NovedadesBanner from './NovedadesBanner';
 import ArnaldBorradoresPendientesModal from './ArnaldBorradoresPendientesModal';
 import LanguageSelector from './LanguageSelector';
 import NotificacionesOperativasMenu from './NotificacionesOperativasMenu';
@@ -1574,6 +1575,7 @@ export default function Layout() {
             contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-y-auto overflow-x-hidden overscroll-contain'
           }`}
         >
+          <NovedadesBanner />
           <Aviso2FAPrompt />
           <ArnaldBorradoresPendientesModal />
           <Outlet />

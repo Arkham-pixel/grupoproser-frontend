@@ -4,6 +4,14 @@
     "spanish": "Español",
     "english": "English"
   },
+  "novedades": {
+    "title": "Novedades de la plataforma",
+    "versionLabel": "Versión {{version}}",
+    "dismiss": "Cerrar aviso",
+    "refreshIntro": "Para ver los cambios al instante, fuerza una recarga sin caché:",
+    "refreshWindows": "Ctrl + Shift + R",
+    "refreshMac": "Cmd + Shift + R (⌘ + ⇧ + R)"
+  },
   "common": {
     "loading": "Cargando…",
     "save": "Guardar",
