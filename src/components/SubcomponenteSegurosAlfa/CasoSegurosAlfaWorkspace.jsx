@@ -55,9 +55,40 @@ function normalizarValorHuella(v) {
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 }
 
+function huellaCotizacionPdfAlfa(liq) {
+  if (!liq || typeof liq !== 'object') return { monto: 0, paginas: 0 };
+  const slots = [];
+  const raw = liq.cotizacionesPdf && typeof liq.cotizacionesPdf === 'object' ? liq.cotizacionesPdf : null;
+  if (raw) {
+    slots.push(raw.materiales, raw.manoObra, raw.completo || liq.cotizacionPdf);
+  } else if (liq.cotizacionPdf) {
+    slots.push(liq.cotizacionPdf);
+  }
+  let monto = 0;
+  let paginas = 0;
+  for (const slot of slots) {
+    if (!slot || typeof slot !== 'object') continue;
+    if (slot.usarComoBasePresupuesto === false) continue;
+    monto += normalizarValorHuella(slot.montoFinal);
+    if (Array.isArray(slot.paginas)) {
+      paginas += slot.paginas.filter((p) => p?.ruta || p?._id || p?.preview || p?.file).length;
+    }
+  }
+  return { monto: Math.round(monto * 100) / 100, paginas };
+}
+
 function resumenLiquidadorAlfa(liq) {
   if (!liq || typeof liq !== 'object') {
-    return { nDetalle: 0, sumaDetalle: 0, nPresup: 0, sumaPresup: 0, otros: [] };
+    return {
+      nDetalle: 0,
+      sumaDetalle: 0,
+      nPresup: 0,
+      sumaPresup: 0,
+      otros: [],
+      pdfMonto: 0,
+      pdfPaginas: 0,
+      score: 0,
+    };
   }
   const detalle = Array.isArray(liq.detalleLiquidacionCat) ? liq.detalleLiquidacionCat : [];
   const presup = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
@@ -86,21 +117,34 @@ function resumenLiquidadorAlfa(liq) {
     }))
     .filter((it) => it.valor > 0 || it.tipo)
     .sort((a, b) => a.tipo.localeCompare(b.tipo));
+  const pdf = huellaCotizacionPdfAlfa(liq);
   return {
     nDetalle: detalleConValor.length,
     sumaDetalle: Math.round(sumaDetalle * 100) / 100,
     nPresup: presupConValor.length,
     sumaPresup: Math.round(sumaPresup * 100) / 100,
     otros,
+    pdfMonto: pdf.monto,
+    pdfPaginas: pdf.paginas,
+    score: scoreContenidoLiquidadorNsr(liq),
   };
 }
 
-/** True si lo de BD refleja lo enviado (tolerante a formato / filas vacías). */
+/** True si lo de BD refleja lo enviado (tolerante a formato / filas vacías / solo PDF). */
 function liquidadorPersistidoOk(enviado, enDb) {
   const a = resumenLiquidadorAlfa(enviado);
   const b = resumenLiquidadorAlfa(enDb);
-  if (a.nDetalle === 0 && a.nPresup === 0 && a.otros.length === 0) return false;
-  if (b.nDetalle === 0 && b.nPresup === 0 && b.otros.length === 0) return false;
+  if (a.score === 0) return false;
+  if (b.score === 0) return false;
+
+  // Cotización PDF sola (sin ítems de presupuesto/detalle): comparar montos/páginas
+  const soloPdfA = a.nDetalle === 0 && a.nPresup === 0 && (a.pdfMonto > 0 || a.pdfPaginas > 0);
+  const soloPdfB = b.nDetalle === 0 && b.nPresup === 0 && (b.pdfMonto > 0 || b.pdfPaginas > 0);
+  if (soloPdfA || soloPdfB) {
+    if (a.pdfMonto > 0 && b.pdfMonto > 0 && Math.abs(a.pdfMonto - b.pdfMonto) <= 1) return true;
+    if (a.pdfPaginas > 0 && b.pdfPaginas > 0 && a.pdfPaginas === b.pdfPaginas) return true;
+    if (soloPdfA && soloPdfB) return false;
+  }
 
   const itemsA = Math.max(a.nDetalle, a.nPresup);
   const itemsB = Math.max(b.nDetalle, b.nPresup);
@@ -113,6 +157,8 @@ function liquidadorPersistidoOk(enviado, enDb) {
   const otrosA = a.otros.map((o) => `${o.tipo}:${o.valor}`).join('|');
   const otrosB = b.otros.map((o) => `${o.tipo}:${o.valor}`).join('|');
   if (otrosA && otrosB && otrosA !== otrosB) return false;
+
+  if (a.pdfMonto > 0 && b.pdfMonto > 0 && Math.abs(a.pdfMonto - b.pdfMonto) > 1) return false;
 
   return true;
 }
@@ -388,19 +434,24 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
 
       // Verificar en Mongo: re-leer y comprobar que el contenido quedó
       const verificado = await getCasoAlfaById(casoId);
-      const liqDb = verificado?.liquidador || actualizado?.liquidador;
-      if (!liquidadorPersistidoOk(liquidadorAGuardar, liqDb)) {
+      const liqDesdeGet = verificado?.liquidador;
+      const liqDesdePut = actualizado?.liquidador;
+      const okGet = liquidadorPersistidoOk(liquidadorAGuardar, liqDesdeGet);
+      const okPut = liquidadorPersistidoOk(liquidadorAGuardar, liqDesdePut);
+      if (!okGet && !okPut) {
         console.warn('Verificación liquidador Alfa', {
           enviado: resumenLiquidadorAlfa(liquidadorAGuardar),
-          enDb: resumenLiquidadorAlfa(liqDb),
+          enGet: resumenLiquidadorAlfa(liqDesdeGet),
+          enPut: resumenLiquidadorAlfa(liqDesdePut),
         });
         throw new Error(
           'El servidor respondió, pero la base de datos NO tiene el liquidador editado. No se perdió el trabajo en pantalla: vuelva a pulsar Guardar o revise permisos/rol.'
         );
       }
 
-      const liqConfirmado = mapCasoAlfaALiquidador(verificado);
-      setCasoAlfa(verificado);
+      const casoConfirmado = okGet ? verificado : { ...(verificado || {}), ...actualizado };
+      const liqConfirmado = mapCasoAlfaALiquidador(casoConfirmado);
+      setCasoAlfa(casoConfirmado);
       setLiquidadorState(liqConfirmado);
       setTotalesState(calcularLiquidacionAlfa(liqConfirmado));
 
@@ -418,10 +469,10 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
 
       try {
         const archivado = await archivarExcelCatTrasGuardar({
-          caso: verificado,
+          caso: casoConfirmado,
           liquidador: liqConfirmado,
           totales: calcularLiquidacionAlfa(liqConfirmado),
-          informe: informeState || verificado?.informeUnico,
+          informe: informeState || casoConfirmado?.informeUnico,
           etiqueta: 'LIQUIDACION',
         });
         if (String(liqConfirmado?.excelCatOrigen || '').toLowerCase() === 'manual') {

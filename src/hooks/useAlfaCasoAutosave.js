@@ -6,6 +6,7 @@ import {
   guardarInformeUnicoEnCasoAlfa,
   guardarLiquidadorEnCasoAlfa,
 } from '../services/segurosAlfaService.js';
+import { scoreContenidoLiquidadorNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_INFORME = 'informe';
 
@@ -90,6 +91,12 @@ export default function useAlfaCasoAutosave({
             });
             lastInfSnap.current = JSON.stringify(payload.data);
           } else {
+            // Cascarón vacío: no spamear error ni pisar BD
+            if (scoreContenidoLiquidadorNsr(payload.data) === 0) {
+              lastLiqSnap.current = JSON.stringify(payload.data);
+              setAutosaveUiStatus({ state: 'idle', message: '' });
+              return;
+            }
             actualizado = await guardarLiquidadorEnCasoAlfa({
               casoId,
               liquidador: payload.data,
@@ -166,6 +173,11 @@ export default function useAlfaCasoAutosave({
           });
           lastInfSnap.current = JSON.stringify(payload.data);
         } else {
+          if (scoreContenidoLiquidadorNsr(payload.data) === 0) {
+            lastLiqSnap.current = JSON.stringify(payload.data);
+            setAutosaveUiStatus({ state: 'idle', message: '' });
+            return;
+          }
           actualizado = await guardarLiquidadorEnCasoAlfa({
             casoId,
             liquidador: payload.data,
