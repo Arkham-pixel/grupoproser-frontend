@@ -13,7 +13,11 @@ import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { ImageCompression } from '../../utils/imageCompression.js';
 import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA } from '../../utils/heicToJpeg.js';
+import LazyGatedImage from '../shared/LazyGatedImage.jsx';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
+
+/** Subidas en paralelo sin saturar el proxy (no afecta el Word). */
+const SUBIDA_PARALELO = 3;
 
 const idImagen = (img, index = 0) =>
   String(img?.id ?? img?._id ?? img?.localId ?? img?.ruta ?? `idx-${index}`);
@@ -159,8 +163,7 @@ export default function FotosInspeccionZurich({
 
       persistir([...imagenes, ...nuevasImagenes]);
 
-      for (const nueva of nuevasImagenes) {
-        const actualizada = await subirAlServidor(nueva);
+      const aplicarSubida = (nueva, actualizada) => {
         setImagenes((prev) => {
           const next = prev.map((img) =>
             img.id === nueva.id ? { ...img, ...actualizada, preview: img.preview } : img
@@ -170,6 +173,16 @@ export default function FotosInspeccionZurich({
           queueMicrotask(() => onFotosInformeChange?.(next));
           return next;
         });
+      };
+
+      for (let i = 0; i < nuevasImagenes.length; i += SUBIDA_PARALELO) {
+        const lote = nuevasImagenes.slice(i, i + SUBIDA_PARALELO);
+        await Promise.all(
+          lote.map(async (nueva) => {
+            const actualizada = await subirAlServidor(nueva);
+            aplicarSubida(nueva, actualizada);
+          })
+        );
       }
     } catch (error) {
       console.error('❌ Error procesando imágenes Zurich:', error);
@@ -343,6 +356,10 @@ export default function FotosInspeccionZurich({
           <h4 className="mb-3 font-medium" style={{ color: textPrimary }}>
             Imágenes cargadas ({imagenes.length})
           </h4>
+          <p className="mb-3 text-xs" style={{ color: textSecondary }}>
+            Las miniaturas se cargan por tandas al hacer scroll; el informe Word usa las fotos
+            completas igual que antes.
+          </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {imagenes.map((imagen, index) => {
               const imageUrl = getImageUrl(imagen) || api.url(imagen.ruta);
@@ -403,10 +420,10 @@ export default function FotosInspeccionZurich({
                   </div>
                   <div className="relative">
                     {imageUrl ? (
-                      <img
+                      <LazyGatedImage
                         src={imageUrl}
                         alt={imagen.nombre}
-                        className="h-32 w-full cursor-pointer rounded-lg object-cover"
+                        className="h-32 w-full cursor-pointer overflow-hidden rounded-lg"
                         draggable={false}
                         onClick={() => setImagenSeleccionada(imagen)}
                         onError={createImageErrorHandler(imagen, () => {})}
