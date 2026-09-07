@@ -18,7 +18,8 @@ import {
   Footer,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { BASE_URL, PROD_URL, getUploadsUrlCandidates } from '../config/apiConfig';
+import { BASE_URL } from '../config/apiConfig';
+import { candidatosUrlArchivo, resolverUrlArchivo } from '../services/storageSignedUrl.js';
 import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
 import { appendUploadFile } from '../utils/sanitizeUploadFileName.js';
 import { obtenerFechaHoraActualISO } from '../utils/fechaUtils';
@@ -1215,8 +1216,8 @@ setFotosAreas(normalizarFotosAreas(fotosProcesadas));
 return [];
     }
     
-// Reusar helper global para /uploads (DEV -> PROD fallback)
-    const getImageUrlCandidates = (rutaOrUrl) => getUploadsUrlCandidates(rutaOrUrl);
+// Reusar helper de URLs firmadas S3 (+ fallbacks)
+    const getImageUrlCandidates = async (rutaOrUrl) => candidatosUrlArchivo(rutaOrUrl);
     
     return await Promise.all(
       fotos.map(async (foto, index) => {
@@ -1271,7 +1272,7 @@ return {
         // Si tiene ruta del servidor, cargar desde ahí
         if (foto.ruta && !foto.ruta.startsWith('data:')) {
           try {
-            const candidatos = getImageUrlCandidates(foto.ruta);
+            const candidatos = await getImageUrlCandidates(foto.ruta);
             let ultimoStatus = null;
 
             for (const imagenUrl of candidatos) {
@@ -1287,6 +1288,18 @@ return {
                 id: foto.id || Date.now() + Math.random(),
                 nombre: foto.nombre || tp('image'),
                 url,
+                ruta: foto.ruta,
+                descripcion: foto.descripcion || '',
+              };
+            }
+
+            // Si no se pudo fetch, al menos dejar ruta para StorageLazyImage / preview firmada
+            const firmada = await resolverUrlArchivo(foto.ruta);
+            if (firmada) {
+              return {
+                id: foto.id || Date.now() + Math.random(),
+                nombre: foto.nombre || tp('image'),
+                url: firmada,
                 ruta: foto.ruta,
                 descripcion: foto.descripcion || '',
               };

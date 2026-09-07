@@ -150,9 +150,9 @@ export default function ListaDocumentos() {
       setDocumentoVistaPrevia(documento);
       setMostrarVistaPrevia(true);
       
-      // Obtener la URL del archivo (maneja rutas /uploads y referencias s3: vía proxy)
-      const { getUploadsUrlCandidates } = await import('../../config/apiConfig');
-      const url = getUploadsUrlCandidates(documento.archivo.ruta)[0] || '';
+      // Obtener la URL firmada del archivo (S3)
+      const { resolverUrlArchivo } = await import('../../services/storageSignedUrl.js');
+      const url = (await resolverUrlArchivo(documento.archivo.ruta)) || '';
       setUrlVistaPrevia(url);
     } catch (error) {
       console.error('Error abriendo vista previa:', error);

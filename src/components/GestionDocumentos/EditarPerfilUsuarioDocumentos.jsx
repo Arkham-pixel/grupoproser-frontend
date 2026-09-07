@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { obtenerPerfil, actualizarPerfil } from '../../services/userService';
-import { getUploadsUrlCandidates, isDevelopmentEnv } from '../../config/apiConfig';
+import { abrirODescargarArchivo, resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { FaTimes, FaUpload, FaFile, FaTrash, FaDownload, FaEye, FaCalendar, FaUser, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 
@@ -454,23 +454,13 @@ setDocumentos(response.data.documentos || []);
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch {
-      // En DEV, si el documento fue subido en PROD, evitar fetch (CORS) y descargar por enlace directo.
+      // Fallback: URL firmada S3 / proxy
       try {
         const ruta = documento?.archivo?.ruta || '';
-        const candidatos = getUploadsUrlCandidates(ruta);
-        const ordenados = isDevelopmentEnv && candidatos.length > 1
-          ? [candidatos[candidatos.length - 1], ...candidatos.slice(0, -1)]
-          : candidatos;
-
-        if (ordenados.length > 0) {
-          const link = document.createElement('a');
-          link.href = ordenados[0];
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.setAttribute('download', documento?.archivo?.nombreOriginal || documento?.nombre || 'documento');
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
+        if (ruta) {
+          await abrirODescargarArchivo(ruta, {
+            nombre: documento?.archivo?.nombreOriginal || documento?.nombre || 'documento',
+          });
           return;
         }
       } catch {
@@ -482,13 +472,8 @@ setDocumentos(response.data.documentos || []);
 
   const handleVistaPrevia = async (documento) => {
     try {
-      const ruta = documento.archivo.ruta.startsWith('/') 
-        ? documento.archivo.ruta 
-        : `/${documento.archivo.ruta}`;
-      const candidatos = getUploadsUrlCandidates(ruta);
-      const url = isDevelopmentEnv && candidatos.length > 1
-        ? candidatos[candidatos.length - 1]
-        : (candidatos[0] || null);
+      const ruta = documento.archivo.ruta;
+      const url = await resolverUrlArchivo(ruta);
       if (!url) {
         setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.previewFailed') });
         return;

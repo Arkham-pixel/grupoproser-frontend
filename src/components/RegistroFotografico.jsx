@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef, useId } from "react";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { FaTimes, FaSearchPlus, FaUpload, FaCompress } from 'react-icons/fa';
-import { getUploadsUrlCandidates } from '../config/apiConfig';
 import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
 import { ImageCompression } from '../utils/imageCompression';
 import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA, esArchivoImagen } from '../utils/heicToJpeg.js';
+import StorageLazyImage from './shared/StorageLazyImage.jsx';
 
 export default function RegistroFotografico({
   onChange,
@@ -61,7 +61,7 @@ export default function RegistroFotografico({
     const previewNormalizado = imagen.preview ||
       imagen.base64 ||
       fileComoBase64 ||
-      (imagen.ruta ? (getUploadsUrlCandidates(imagen.ruta)[0] || null) : null);
+      null; // Remotas (ruta S3): StorageLazyImage resuelve URL firmada
 
     const base64Normalizado = imagen.base64 ||
       fileComoBase64 ||
@@ -481,8 +481,15 @@ setImagenes(imagenesProcesadas);
           ) : null}
           {imagenes.map((img, index) => {
               const imageUrl = getImageUrl(img);
-              
-              if (!imageUrl) {
+              const esLocal =
+                (typeof img.preview === 'string' &&
+                  (img.preview.startsWith('blob:') || img.preview.startsWith('data:'))) ||
+                (typeof img.base64 === 'string' && img.base64.startsWith('data:')) ||
+                (typeof imageUrl === 'string' &&
+                  (imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')));
+              const tieneRemota = !esLocal && Boolean(img.ruta);
+
+              if (!imageUrl && !tieneRemota) {
                 console.warn(`⚠️ RegistroFotografico: Imagen ${index} no tiene URL válida:`, {
                   tienePreview: !!img.preview,
                   tieneBase64: !!img.base64,
@@ -490,6 +497,20 @@ setImagenes(imagenesProcesadas);
                   img: img
                 });
               }
+
+              const abrirAmpliada = async () => {
+                if (esLocal && imageUrl) {
+                  setImagenAmpliada({ url: imageUrl, descripcion: img.descripcion });
+                  return;
+                }
+                if (tieneRemota) {
+                  const { resolverUrlImagen } = await import('../services/storageSignedUrl.js');
+                  const url = await resolverUrlImagen(img);
+                  if (url) setImagenAmpliada({ url, descripcion: img.descripcion });
+                } else if (imageUrl) {
+                  setImagenAmpliada({ url: imageUrl, descripcion: img.descripcion });
+                }
+              };
               
               return (
                 <div 
@@ -499,7 +520,7 @@ setImagenes(imagenesProcesadas);
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  {imageUrl ? (
+                  {esLocal && imageUrl ? (
                     <div className="relative group">
                       <img
                         src={imageUrl}
@@ -508,7 +529,7 @@ setImagenes(imagenesProcesadas);
                         style={{
                           border: `1px solid ${borderColor}`
                         }}
-                        onClick={() => setImagenAmpliada({ url: imageUrl, descripcion: img.descripcion })}
+                        onClick={abrirAmpliada}
                         onError={createImageErrorHandler(img, (imgElement) => {
                           // Callback cuando todas las URLs fallan
                           const container = imgElement.closest('.relative') || imgElement.parentElement;
@@ -529,13 +550,46 @@ setImagenes(imagenesProcesadas);
                       {/* Overlay al hacer hover */}
                       <div 
                         className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center cursor-pointer rounded"
-                        onClick={() => setImagenAmpliada({ url: imageUrl, descripcion: img.descripcion })}
+                        onClick={abrirAmpliada}
                       >
                         <FaSearchPlus 
                           className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
                           style={{ fontSize: '2rem' }}
                         />
                       </div>
+                    </div>
+                  ) : tieneRemota ? (
+                    <div className="relative group">
+                      <StorageLazyImage
+                        imagen={img}
+                        alt={`foto-${index}`}
+                        className="w-full h-40 object-cover rounded cursor-pointer transition-transform hover:scale-105"
+                        style={{
+                          border: `1px solid ${borderColor}`
+                        }}
+                        onClick={abrirAmpliada}
+                      />
+                      <div 
+                        className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center cursor-pointer rounded"
+                        onClick={abrirAmpliada}
+                      >
+                        <FaSearchPlus 
+                          className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ fontSize: '2rem' }}
+                        />
+                      </div>
+                    </div>
+                  ) : imageUrl ? (
+                    <div className="relative group">
+                      <img
+                        src={imageUrl}
+                        alt={`foto-${index}`}
+                        className="w-full h-40 object-cover rounded cursor-pointer transition-transform hover:scale-105"
+                        style={{
+                          border: `1px solid ${borderColor}`
+                        }}
+                        onClick={abrirAmpliada}
+                      />
                     </div>
                   ) : (
                     <div 

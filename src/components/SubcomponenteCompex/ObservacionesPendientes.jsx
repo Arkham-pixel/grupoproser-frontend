@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import React, { useState, useEffect, useRef } from 'react';
+import { BASE_URL } from '../../config/apiConfig.js';
+import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
   complexBtnSecondary,
@@ -82,28 +83,28 @@ export default function ObservacionesPendientes({
     }
   }, [historialDocs]);
 
-  const construirUrlDescarga = useCallback((valor) => {
-    if (!valor) return '';
-    if (typeof valor !== 'string') return '';
-    if (valor.startsWith('data:')) return valor;
-    return getUploadsUrlCandidates(valor)[0] || '';
-  }, []);
-
-  const descargarEvidencia = (evidencia) => {
-    const enlace = construirUrlDescarga(evidencia?.url || evidencia?.ruta || '');
-    if (!enlace) {
+  const descargarEvidencia = async (evidencia) => {
+    const ref = evidencia?.ruta || evidencia?.url || '';
+    if (!ref) {
       alert(t('complex.ui.observaciones_pendientes.no_descargar_evidencia'));
       return;
     }
-
-    const link = document.createElement('a');
-    link.href = enlace;
-    link.download = evidencia?.nombre || 'evidencia';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      if (typeof ref === 'string' && ref.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = ref;
+        link.download = evidencia?.nombre || 'evidencia';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      await abrirODescargarArchivo(ref, { nombre: evidencia?.nombre || 'evidencia' });
+    } catch {
+      alert(t('complex.ui.observaciones_pendientes.no_descargar_evidencia'));
+    }
   };
 
   const handleNuevaObservacionChange = (field, value) => {

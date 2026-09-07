@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useMemo, memo } from 'react';
 import Select from 'react-select';
 import { useTranslation } from 'react-i18next';
-import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { abrirODescargarArchivo, resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { useTheme } from '../../context/ThemeContext';
 import { diasHabilesColombiaEntre } from '../../utils/festivosColombia.js';
 
@@ -320,36 +320,54 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
     return '⏰';
   };
 
-  const construirUrlDescarga = useCallback((valor) => {
+  const construirUrlDescarga = useCallback(async (valor) => {
     if (!valor) return '';
     if (typeof valor !== 'string') return '';
     if (valor.startsWith('data:')) return valor;
-    return getUploadsUrlCandidates(valor)[0] || '';
+    return (await resolverUrlArchivo(valor)) || '';
   }, []);
 
-  const descargarDocumento = useCallback((documento, event) => {
+  const descargarDocumento = useCallback(async (documento, event) => {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
-    
-    const enlace = construirUrlDescarga(
-      documento?.url || documento?.ruta || documento?.path || documento?.data || ''
-    );
-    
-    if (!enlace) {
+
+    const ref = documento?.ruta || documento?.url || documento?.path || documento?.data || '';
+    if (!ref) {
       alert(t(`${NS}.error_descarga_url`));
       return false;
     }
 
-    const link = document.createElement('a');
-    link.href = enlace;
-    link.download = documento?.nombre || documento?.filename || t(`${NS}.documento_default`);
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+    try {
+      if (typeof ref === 'string' && ref.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = ref;
+        link.download = documento?.nombre || documento?.filename || t(`${NS}.documento_default`);
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return false;
+      }
+      await abrirODescargarArchivo(ref, {
+        nombre: documento?.nombre || documento?.filename || t(`${NS}.documento_default`),
+      });
+    } catch {
+      const enlace = await construirUrlDescarga(ref);
+      if (!enlace) {
+        alert(t(`${NS}.error_descarga_url`));
+        return false;
+      }
+      const link = document.createElement('a');
+      link.href = enlace;
+      link.download = documento?.nombre || documento?.filename || t(`${NS}.documento_default`);
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
     return false;
   }, [construirUrlDescarga, t]);
 

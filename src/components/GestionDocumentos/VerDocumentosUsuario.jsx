@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
-import { getUploadsUrlCandidates } from '../../config/apiConfig';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { FaTimes, FaDownload, FaEye, FaCalendar, FaFile, FaTag } from 'react-icons/fa';
 
 export default function VerDocumentosUsuario({ usuario, onCerrar }) {
@@ -65,8 +65,8 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
     try {
       setDocumentoVistaPrevia(documento);
       setMostrarVistaPrevia(true);
-      // Maneja rutas /uploads y referencias s3: vía proxy de storage
-      const url = getUploadsUrlCandidates(documento.archivo.ruta)[0] || '';
+      // Maneja rutas /uploads y referencias s3: vía URL firmada
+      const url = (await resolverUrlArchivo(documento.archivo.ruta)) || '';
       setUrlVistaPrevia(url);
     } catch (error) {
       console.error('Error abriendo vista previa:', error);

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import React, { useState, useRef, useCallback, useMemo, memo, useEffect } from 'react';
 import { FaFileAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
 import historialService from '../../services/historialService.js';
 import {
@@ -223,6 +223,7 @@ const Trazabilidad = memo(function Trazabilidad({
   historialDocs,
   updateHistorialDocs,
   construirUrlArchivo,
+  resolverUrlArchivoAsync,
   cargandoAdjuntos = {},
   errorAdjuntos = {},
   soloFechas = false,
@@ -744,13 +745,11 @@ const Trazabilidad = memo(function Trazabilidad({
     return Math.round(ms / (1000 * 60 * 60 * 24));
   }, [formData.fchaPresentacionCifras, formData.fchaAceptacionCifrasAseguradora]);
 
-  // Función para construir URL de descarga
-  const construirUrlDescarga = useCallback((valor) => {
+  // Función para construir URL de descarga (firmada S3)
+  const construirUrlDescarga = useCallback(async (valor) => {
     if (!valor || typeof valor !== 'string') return '';
     if (valor.startsWith('data:')) return valor;
-    // getUploadsUrlCandidates repara URLs antiguas tipo "https://backend/s3:..." vía proxy
-    const candidates = getUploadsUrlCandidates(valor);
-    return candidates[0] || '';
+    return (await resolverUrlArchivo(valor)) || '';
   }, []);
 
   const navigate = useNavigate();
@@ -782,7 +781,7 @@ const Trazabilidad = memo(function Trazabilidad({
   }, [navigate, t]);
 
   // Función para descargar documentos (mejorada)
-  const descargarDocumento = useCallback((documento, event) => {
+  const descargarDocumento = useCallback(async (documento, event) => {
     // Prevenir que el evento se propague y dispare el submit del formulario
     if (event) {
       event.preventDefault();
@@ -792,7 +791,7 @@ const Trazabilidad = memo(function Trazabilidad({
     
     // Preferir la ruta concreta del documento (cada versión apunta a su propio .docx).
     // Solo si no hay ruta directa, usar el endpoint protegido por formularioId.
-    const rutaDirecta = documento?.url || documento?.ruta || documento?.path || documento?.data || '';
+    const rutaDirecta = documento?.ruta || documento?.url || documento?.path || documento?.data || '';
     const esRutaAlmacenada = isStoredFileReference(rutaDirecta);
     const esRutaAbsoluta = typeof rutaDirecta === 'string' && /^https?:\/\//.test(rutaDirecta);
 
@@ -803,7 +802,7 @@ const Trazabilidad = memo(function Trazabilidad({
       return false;
     }
 
-    const enlace = construirUrlDescarga(
+    const enlace = await construirUrlDescarga(
       rutaDirecta ||
       (documento?.formularioId ? `/api/historial-formularios/${documento.formularioId}/descargar` : '') ||
       ''
@@ -1583,6 +1582,7 @@ const Trazabilidad = memo(function Trazabilidad({
           handleChange={handleChange}
           formData={formData}
           construirUrlArchivo={construirUrlArchivo}
+          resolverUrlArchivoAsync={resolverUrlArchivoAsync}
         />
       </BandejaDesplegable>
       )}
@@ -1772,6 +1772,7 @@ const Trazabilidad = memo(function Trazabilidad({
           handleChange={handleChange}
           formData={formData}
           construirUrlArchivo={construirUrlArchivo}
+          resolverUrlArchivoAsync={resolverUrlArchivoAsync}
         />
       </BandejaDesplegable>
       )}
@@ -1866,6 +1867,7 @@ const Trazabilidad = memo(function Trazabilidad({
           handleChange={handleChange}
           formData={formData}
           construirUrlArchivo={construirUrlArchivo}
+          resolverUrlArchivoAsync={resolverUrlArchivoAsync}
         />
       </BandejaDesplegable>
       )}

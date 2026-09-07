@@ -516,8 +516,8 @@ async function cargarMapaDataUrl(fd = {}) {
   }
   if (im && typeof im === 'object' && im.ruta) {
     try {
-      const { getUploadsUrlCandidates } = await import('../../config/apiConfig.js');
-      const urls = getUploadsUrlCandidates(im.ruta);
+      const { candidatosUrlArchivo } = await import('../../services/storageSignedUrl.js');
+      const urls = await candidatosUrlArchivo(im.ruta);
       for (const url of urls) {
         try {
           const resp = await fetch(url);

@@ -36,7 +36,7 @@ import {
   etiquetaFaseFlujoVisita,
   etiquetaPoliticaEntregaFlujoVisita,
   puedeGestionarSubtareasFrontend,
-  urlArchivoSubtarea,
+  urlArchivoSubtareaAsync,
 } from './subtareasComplexUtils.js';
 import {
   calcularFechaLimiteTrazabilidad,
@@ -612,15 +612,17 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                             ) : (
                                               <FaPaperclip className="text-gray-400" />
                                             )}
-                                            {urlArchivoSubtarea(a) ? (
-                                              <a
-                                                href={urlArchivoSubtarea(a)}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="font-semibold text-fenix-primario hover:underline"
+                                            {(a.url || a.ruta || a.filename) ? (
+                                              <button
+                                                type="button"
+                                                className="bg-transparent p-0 text-left font-semibold text-fenix-primario hover:underline"
+                                                onClick={async () => {
+                                                  const url = await urlArchivoSubtareaAsync(a);
+                                                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                                                }}
                                               >
                                                 {a.nombre}
-                                              </a>
+                                              </button>
                                             ) : (
                                               a.nombre
                                             )}

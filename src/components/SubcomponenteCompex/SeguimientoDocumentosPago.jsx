@@ -3,6 +3,7 @@ const t = i18n.t.bind(i18n);
 import React, { useEffect, useRef, useState } from 'react';
 import { FaCalendarAlt, FaCloudUploadAlt, FaFileAlt, FaMoneyCheckAlt, FaTrash } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
+import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
   complexBtnDanger,
@@ -112,20 +113,31 @@ export default function SeguimientoDocumentosPago({
     setRegistros(cargados);
   }, [historialDocs]);
 
-  const descargarDocumento = (documento) => {
-    const enlace = resolverUrl(documento?.ruta || documento?.url || '');
-    if (!enlace) {
+  const descargarDocumento = async (documento) => {
+    const ref = documento?.ruta || documento?.url || '';
+    if (!ref) {
       alert(t('complex.ui.seguimiento_documentos_pago.no_descargar_url'));
       return;
     }
-    const link = document.createElement('a');
-    link.href = enlace;
-    link.download = documento?.nombre || 'evidencia-correo-pago';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      await abrirODescargarArchivo(ref, {
+        nombre: documento?.nombre || 'evidencia-correo-pago',
+      });
+    } catch {
+      const enlace = resolverUrl(ref);
+      if (!enlace) {
+        alert(t('complex.ui.seguimiento_documentos_pago.no_descargar_url'));
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = enlace;
+      link.download = documento?.nombre || 'evidencia-correo-pago';
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const handleAgregar = async () => {

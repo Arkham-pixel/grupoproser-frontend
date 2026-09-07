@@ -18,7 +18,7 @@ import {
   faseFlujoVisita,
   politicaEntregaFlujoVisita,
   subtareaTieneActaVisita,
-  urlArchivoSubtarea,
+  urlArchivoSubtareaAsync,
 } from './subtareasComplexUtils.js';
 
 /**
@@ -237,15 +237,17 @@ export default function FlujoVisitaCoordinacionPanel({
                 <ul className="space-y-1 text-sm">
                   {docs.map((a, i) => (
                     <li key={a._id || i}>
-                      {urlArchivoSubtarea(a) ? (
-                        <a
-                          href={urlArchivoSubtarea(a)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-semibold text-fenix-primario hover:underline"
+                      {(a.url || a.ruta || a.filename) ? (
+                        <button
+                          type="button"
+                          className="bg-transparent p-0 text-left font-semibold text-fenix-primario hover:underline"
+                          onClick={async () => {
+                            const url = await urlArchivoSubtareaAsync(a);
+                            if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                          }}
                         >
                           {a.nombre}
-                        </a>
+                        </button>
                       ) : (
                         a.nombre
                       )}
@@ -263,15 +265,17 @@ export default function FlujoVisitaCoordinacionPanel({
                 <ul className="space-y-1 text-sm">
                   {formatos.map((a, i) => (
                     <li key={a._id || i}>
-                      {urlArchivoSubtarea(a) ? (
-                        <a
-                          href={urlArchivoSubtarea(a)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-semibold text-fenix-primario hover:underline"
+                      {(a.url || a.ruta || a.filename) ? (
+                        <button
+                          type="button"
+                          className="bg-transparent p-0 text-left font-semibold text-fenix-primario hover:underline"
+                          onClick={async () => {
+                            const url = await urlArchivoSubtareaAsync(a);
+                            if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                          }}
                         >
                           {a.nombre}
-                        </a>
+                        </button>
                       ) : (
                         a.nombre
                       )}

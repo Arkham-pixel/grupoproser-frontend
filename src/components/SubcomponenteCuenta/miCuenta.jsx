@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { obtenerPerfil, actualizarFoto } from "../../services/userService";
-import { resolveUploadsUrl } from '../../config/apiConfig';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { useTheme } from '../../context/ThemeContext';
 import RecortarFotoPerfilModal from './RecortarFotoPerfilModal.jsx';
 import Configurar2FA from './Configurar2FA.jsx';
@@ -133,11 +133,25 @@ export default function MiCuenta() {
   // Verificar si el usuario actual está autorizado (se establece cuando se carga el perfil)
   const usuarioAutorizado = usuario?.esAutorizado ?? false;
 
-  // Función para obtener la URL de la foto
-  const obtenerUrlFoto = (fotoUrlRelativa) => {
-    if (!fotoUrlRelativa) return '/img/placeholder.png';
-    return resolveUploadsUrl(fotoUrlRelativa) || '/img/placeholder.png';
-  };
+  // Función para obtener la URL de la foto (sync fallback placeholder; remotas vía state/StorageLazyImage)
+  const [fotoUrlFirmada, setFotoUrlFirmada] = useState('/img/placeholder.png');
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (!usuario?.foto) {
+        if (!cancelado) setFotoUrlFirmada('/img/placeholder.png');
+        return;
+      }
+      const url = (await resolverUrlArchivo(usuario.foto)) || '/img/placeholder.png';
+      if (!cancelado) setFotoUrlFirmada(url);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [usuario?.foto]);
+
+  const obtenerUrlFoto = () => fotoUrlFirmada || '/img/placeholder.png';
 
   // Función para manejar errores de carga de imagen
   const handleImageError = () => {
@@ -219,7 +233,7 @@ setUsuario(datosRespaldo);
 
   const handleAjustarFotoActual = () => {
     if (!usuario?.foto) return;
-    setCropImageSrc(obtenerUrlFoto(usuario.foto));
+    setCropImageSrc(obtenerUrlFoto());
     setCropModalOpen(true);
   };
 
@@ -343,7 +357,7 @@ setUsuario(datosRespaldo);
           ) : usuario.foto && !fotoError ? (
             // Foto del usuario desde la base de datos
             <img
-              src={obtenerUrlFoto(usuario.foto)}
+              src={obtenerUrlFoto()}
               alt={t('account.ui.cuenta.miCuenta.altProfile')}
                 className="w-40 h-40 sm:w-48 sm:h-48 lg:w-64 lg:h-64 xl:w-80 xl:h-80 rounded-full object-cover shadow-2xl transition-transform duration-300 group-hover:scale-105"
               onError={handleImageError}

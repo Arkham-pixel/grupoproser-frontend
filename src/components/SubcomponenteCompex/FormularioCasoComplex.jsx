@@ -11,7 +11,8 @@ import Facturacion from './Facturacion';
 import Honorarios from './Honorarios';
 import ObservacionesCliente from './ObservacionesCliente';
 import ObservacionesPendientes from './ObservacionesPendientes';
-import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { BASE_URL, resolveUploadsUrl } from '../../config/apiConfig.js';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import {
   complexFormRoot,
@@ -267,19 +268,27 @@ return '';
     );
   }, []);
 
+  /** Sync para normalizar historial (proxy). Para abrir/ver preferir resolverUrlArchivo async. */
   const construirUrlArchivo = useCallback((valor) => {
     if (!valor) return '';
     if (typeof valor !== 'string') return '';
     if (valor.startsWith('data:')) return valor;
-    // Referencias s3: van por el proxy /api/storage/file (no existen como ruta directa)
-    return getUploadsUrlCandidates(valor)[0] || '';
+    return resolveUploadsUrl(valor) || '';
+  }, []);
+
+  /** Abre/resuelve URL firmada S3 (usar en click/vista). */
+  const resolverUrlArchivoAsync = useCallback(async (valor) => {
+    if (!valor) return '';
+    if (typeof valor !== 'string') return '';
+    if (valor.startsWith('data:')) return valor;
+    return (await resolverUrlArchivo(valor)) || '';
   }, []);
 
   const normalizarHistorialDocs = useCallback((docs = []) => {
     if (!Array.isArray(docs)) return [];
     return docs.map((doc) => {
       if (!doc || typeof doc !== 'object') return doc;
-      const urlOriginal = doc.url || doc.ruta || doc.path || doc.data || '';
+      const urlOriginal = doc.ruta || doc.url || doc.path || doc.data || '';
       const urlAbsoluta = construirUrlArchivo(urlOriginal);
       const rutaRelativa = doc.ruta
         || (typeof doc.url === 'string' ? doc.url.replace(/^https?:\/\/[^/]+/i, '') : '')
@@ -3703,6 +3712,7 @@ if (!onSave) {
             historialDocs={formData.historialDocs}
             updateHistorialDocs={updateHistorialDocs}
             construirUrlArchivo={construirUrlArchivo}
+            resolverUrlArchivoAsync={resolverUrlArchivoAsync}
             cargandoAdjuntos={cargandoAdjuntos}
             errorAdjuntos={errorAdjuntos}
           />

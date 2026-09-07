@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { BASE_URL } from '../../config/apiConfig.js';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { normCatalogoLabel, resolverNombreCatalogo } from '../../services/expressCatalogoService.js';
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 import i18n from '../../i18n';
@@ -655,19 +656,18 @@ export function useExpressCatalogos() {
 }
 
 /** URL absoluta para anexo guardado en servidor o archivo local pendiente de subir */
-export function resolverUrlAnexoExpress(anexo) {
+export async function resolverUrlAnexoExpress(anexo) {
   if (!anexo) return null;
   if (anexo.file instanceof File || anexo.file instanceof Blob) {
     return URL.createObjectURL(anexo.file);
   }
   const url = anexo.url || anexo.ruta || '';
   if (!url) return null;
-  // Resuelve referencias s3: (vía proxy /api/storage/file), /uploads/... y URLs absolutas
-  return getUploadsUrlCandidates(url)[0] || null;
+  return (await resolverUrlArchivo(url)) || null;
 }
 
 export function puedeAccederAnexoExpress(anexo) {
-  return Boolean(anexo?.url || anexo?.file);
+  return Boolean(anexo?.url || anexo?.ruta || anexo?.file);
 }
 
 /** Extensiones que el navegador suele abrir sin forzar descarga (vista previa). */
@@ -680,8 +680,8 @@ export function anexoExpressSePuedePrevisualizar(anexo) {
   return /\.(pdf|png|jpe?g|gif|webp|bmp|svg|txt|csv)$/i.test(nombre);
 }
 
-export function verAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
-  const enlace = resolverUrlAnexoExpress(anexo);
+export async function verAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
+  const enlace = await resolverUrlAnexoExpress(anexo);
   if (!enlace) {
     return { ok: false, error: t('express.ui.attachments.viewUnavailable') };
   }
@@ -689,8 +689,8 @@ export function verAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
   return { ok: true };
 }
 
-export function descargarAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
-  const enlace = resolverUrlAnexoExpress(anexo);
+export async function descargarAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
+  const enlace = await resolverUrlAnexoExpress(anexo);
   if (!enlace) {
     return { ok: false, error: t('express.ui.attachments.downloadUnavailable') };
   }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig';
+import { BASE_URL } from '../config/apiConfig';
+import StorageLazyImage from './shared/StorageLazyImage.jsx';
 import { FaPlus, FaEdit, FaTrash, FaUserTie, FaSave, FaTimes, FaUserCircle } from 'react-icons/fa';
 
 export default function GestionResponsables() {
@@ -27,13 +28,6 @@ export default function GestionResponsables() {
     tipoUsuario: localStorage.getItem('tipoUsuario')
   };
   const esAdminOSoporte = usuarioActual.rol === 'admin' || usuarioActual.rol === 'soporte';
-
-  // Función para obtener URL de foto
-  const obtenerUrlFoto = (fotoUrlRelativa) => {
-    if (!fotoUrlRelativa) return null;
-    // Maneja rutas /uploads y referencias s3: vía proxy de storage
-    return resolveUploadsUrl(fotoUrlRelativa);
-  };
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
@@ -231,8 +225,6 @@ export default function GestionResponsables() {
               </div>
             </div>
           ) : responsables.map((responsable) => {
-            const fotoUrl = responsable.fotoUsuario ? obtenerUrlFoto(responsable.fotoUsuario) : null;
-            
             // Componente interno para manejar el estado de la imagen
             const ResponsableCard = () => {
               const [fotoError, setFotoError] = useState(false);
@@ -245,9 +237,9 @@ export default function GestionResponsables() {
                   <div className="flex flex-col items-center mb-4">
                     {/* Foto del usuario */}
                     <div className="relative mb-4">
-                      {fotoUrl && !fotoError ? (
-                        <img
-                          src={fotoUrl}
+                      {responsable.fotoUsuario && !fotoError ? (
+                        <StorageLazyImage
+                          src={responsable.fotoUsuario}
                           alt={responsable.nmbrRespnsble}
                           className="w-20 h-20 rounded-full object-cover border-3 border-fenix-fuego shadow-md"
                           style={{ borderWidth: '3px', borderColor: '#DC2626' }}

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { BASE_URL } from '../../config/apiConfig.js';
+import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
   complexBtnSecondary,
@@ -169,28 +170,28 @@ export default function Seguimiento({
     }
   }, [historialDocs]);
 
-  const construirUrlDescarga = useCallback((valor) => {
-    if (!valor) return '';
-    if (typeof valor !== 'string') return '';
-    if (valor.startsWith('data:')) return valor;
-    return getUploadsUrlCandidates(valor)[0] || '';
-  }, []);
-
-  const descargarDocumento = (documento) => {
-    const enlace = construirUrlDescarga(documento?.url || documento?.ruta || '');
-    if (!enlace) {
+  const descargarDocumento = async (documento) => {
+    const ref = documento?.ruta || documento?.url || '';
+    if (!ref) {
       alert(t('complex.ui.seguimiento.no_descargar_url'));
       return;
     }
-
-    const link = document.createElement('a');
-    link.href = enlace;
-    link.download = documento?.nombre || 'documento';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      if (typeof ref === 'string' && ref.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = ref;
+        link.download = documento?.nombre || 'documento';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      await abrirODescargarArchivo(ref, { nombre: documento?.nombre || 'documento' });
+    } catch {
+      alert(t('complex.ui.seguimiento.no_descargar_url'));
+    }
   };
 
   const handleNuevoSeguimientoChange = (field, value) => {

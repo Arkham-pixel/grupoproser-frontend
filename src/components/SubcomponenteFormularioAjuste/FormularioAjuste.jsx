@@ -39,7 +39,8 @@ import firmaIskharlyImg from '../../img/FIRMAISKHARLY.png';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
 import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios.js';
 import colombia from '../../data/colombia.json';
-import API_CONFIG, { getUploadsUrlCandidates, resolveUploadsUrl } from '../../config/apiConfig.js';
+import API_CONFIG from '../../config/apiConfig.js';
+import { candidatosUrlArchivo, resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
 import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import { fetchImageAsArrayBuffer } from '../../utils/imageUtils.js';
@@ -400,12 +401,30 @@ const [formData, setFormData] = useState({
     await new Promise((r) => setTimeout(r, 1600));
   };
 
-  const capturaMapaUrlParaMapa = useMemo(() => {
-    const im = formData.imagenMapa;
-    if (!im) return '';
-    if (typeof im === 'string') return im;
-    if (im.ruta) return resolveUploadsUrl(im.ruta) || '';
-    return '';
+  const [capturaMapaUrlParaMapa, setCapturaMapaUrlParaMapa] = useState('');
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const im = formData.imagenMapa;
+      if (!im) {
+        if (!cancelado) setCapturaMapaUrlParaMapa('');
+        return;
+      }
+      if (typeof im === 'string') {
+        if (!cancelado) setCapturaMapaUrlParaMapa(im);
+        return;
+      }
+      if (im.ruta) {
+        const url = (await resolverUrlArchivo(im.ruta)) || '';
+        if (!cancelado) setCapturaMapaUrlParaMapa(url);
+        return;
+      }
+      if (!cancelado) setCapturaMapaUrlParaMapa('');
+    })();
+    return () => {
+      cancelado = true;
+    };
   }, [formData.imagenMapa]);
 
   const coordenadasMapa = useMemo(() => {
@@ -835,7 +854,9 @@ return {
         if (imMapa) {
           if (typeof imMapa === 'string') urlCaptura = imMapa;
           else if (typeof imMapa === 'object' && imMapa.ruta) {
-            urlCaptura = resolveUploadsUrl(imMapa.ruta) || `${API_CONFIG.BASE_URL}${imMapa.ruta}`;
+            urlCaptura =
+              (await resolverUrlArchivo(imMapa.ruta)) ||
+              `${API_CONFIG.BASE_URL}${imMapa.ruta}`;
           }
         }
         const crs = String(formDataValue.coordenadasRiesgo || '').trim();
@@ -1501,7 +1522,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         const im = snap?.imagenMapa;
         if (im && typeof im === 'string' && im.startsWith('data:')) return im;
         if (im && typeof im === 'object' && im.ruta) {
-          const urls = getUploadsUrlCandidates(im.ruta);
+          const urls = await candidatosUrlArchivo(im.ruta);
           for (const urlImg of urls) {
             try {
               const resp = await fetch(urlImg);

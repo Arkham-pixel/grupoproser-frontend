@@ -549,15 +549,15 @@ function FilaAnexoExpress({
   const esChecklistWord = etiqueta.badge === 'Check-list';
   const esSalvamentoWord = etiqueta.badge === 'Salvamento';
 
-  const handleVer = () => {
-    const resultado = verAnexoExpress(anexo);
+  const handleVer = async () => {
+    const resultado = await verAnexoExpress(anexo);
     if (!resultado.ok && onAviso) {
       onAviso(resultado.error, 'Documento', 'warning');
     }
   };
 
-  const handleDescargar = () => {
-    const resultado = descargarAnexoExpress({ ...anexo, nombre: tituloDescarga });
+  const handleDescargar = async () => {
+    const resultado = await descargarAnexoExpress({ ...anexo, nombre: tituloDescarga });
     if (!resultado.ok && onAviso) {
       onAviso(resultado.error, 'Documento', 'warning');
     }

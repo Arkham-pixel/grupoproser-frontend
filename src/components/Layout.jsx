@@ -53,6 +53,7 @@ import {
   FaLink,
   FaGlobeAmericas,
   FaBalanceScale,
+  FaCalendarAlt,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
@@ -495,6 +496,7 @@ export default function Layout() {
     '/seguros-alfa/mis-casos': t('nav.pageTitles.alfaMyCases'),
     '/seguros-alfa/dashboard': t('nav.pageTitles.alfaDashboard'),
     '/seguros-alfa/boletin': t('nav.pageTitles.alfaBulletin'),
+    '/seguros-alfa/boletin-diario': t('nav.pageTitles.alfaDailyBulletin'),
     '/seguros-alfa/bloques': t('nav.pageTitles.alfaBlocks'),
     '/seguros-alfa/caso': t('nav.pageTitles.alfaCase'),
     '/seguros-alfa/liquidador': t('nav.pageTitles.alfaCase'),
@@ -667,9 +669,9 @@ export default function Layout() {
         const { obtenerPerfil } = await import('../services/userService');
         const { data } = await obtenerPerfil(token, tipoUsuario);
         if (data?.foto) {
-          const { getUploadsUrlCandidates } = await import('../config/apiConfig');
-          const urls = getUploadsUrlCandidates(data.foto);
-          setFotoUsuarioQueue(urls.length ? urls : []);
+          const { resolverUrlArchivo } = await import('../services/storageSignedUrl.js');
+          const firmada = await resolverUrlArchivo(data.foto);
+          setFotoUsuarioQueue(firmada ? [firmada] : []);
         }
       } catch {
         /* sin foto */
@@ -887,6 +889,7 @@ export default function Layout() {
           { path: '/seguros-alfa/reporte', icon: FaTable, label: t('nav.alfaReport') },
           { path: '/seguros-alfa/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/seguros-alfa/boletin', icon: FaChartLine, label: t('nav.alfaBulletin') },
+          { path: '/seguros-alfa/boletin-diario', icon: FaCalendarAlt, label: t('nav.alfaDailyBulletin') },
           { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
         ]
       : [],

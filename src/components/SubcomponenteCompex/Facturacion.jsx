@@ -18,7 +18,8 @@ import {
 } from './controlHoras/controlHorasUtils';
 import { generarControlHorasExcel, descargarBlob } from './controlHoras/generarControlHorasExcel';
 import { importarControlHorasDesdeArchivo } from './controlHoras/importarControlHorasExcel';
-import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { BASE_URL } from '../../config/apiConfig.js';
+import { abrirODescargarArchivo, resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import {
   complexScope,
   complexPageWrap,
@@ -79,34 +80,54 @@ export default function Facturacion({
   const [seguimientoAbierto, setSeguimientoAbierto] = useState(false);
   const [facturacionAbierto, setFacturacionAbierto] = useState(false);
 
-  const construirUrlDescarga = useCallback((valor) => {
+  const construirUrlDescarga = useCallback(async (valor) => {
     if (!valor) return '';
     if (typeof valor !== 'string') return '';
     if (valor.startsWith('data:')) return valor;
-    return getUploadsUrlCandidates(valor)[0] || '';
+    return (await resolverUrlArchivo(valor)) || '';
   }, []);
 
   const descargarDocumento = useCallback(
-    (documento, event) => {
+    async (documento, event) => {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
       }
-      const enlace = construirUrlDescarga(
-        documento?.url || documento?.ruta || documento?.path || documento?.data || ''
-      );
-      if (!enlace) {
+      const ref = documento?.ruta || documento?.url || documento?.path || documento?.data || '';
+      if (!ref) {
         alert(t('complex.ui.facturacion.no_descargar_url'));
         return false;
       }
-      const link = document.createElement('a');
-      link.href = enlace;
-      link.download = documento?.nombre || documento?.filename || 'documento';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (typeof ref === 'string' && ref.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = ref;
+        link.download = documento?.nombre || documento?.filename || 'documento';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return false;
+      }
+      try {
+        await abrirODescargarArchivo(ref, {
+          nombre: documento?.nombre || documento?.filename || 'documento',
+        });
+      } catch {
+        const enlace = await construirUrlDescarga(ref);
+        if (!enlace) {
+          alert(t('complex.ui.facturacion.no_descargar_url'));
+          return false;
+        }
+        const link = document.createElement('a');
+        link.href = enlace;
+        link.download = documento?.nombre || documento?.filename || 'documento';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       return false;
     },
     [construirUrlDescarga, t]

@@ -1,10 +1,10 @@
 import i18n from '../../i18n';
 const t = i18n.t.bind(i18n);
 import { esUsuarioGerenteFacturacion } from '../../config/gerentesFacturacion';
-import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { resolveUploadsUrl } from '../../config/apiConfig.js';
+import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 
-/** Resuelve URL usable en el navegador (S3 vía proxy /api/storage/file). */
-export function urlArchivoSubtarea(archivo) {
+function normalizarRefArchivoSubtarea(archivo) {
   if (!archivo) return '';
   const candidatos = [
     archivo.url,
@@ -23,10 +23,23 @@ export function urlArchivoSubtarea(archivo) {
     ) {
       v = `/uploads/${v}`;
     }
-    const url = getUploadsUrlCandidates(v)[0];
-    if (url) return url;
+    return v;
   }
   return '';
+}
+
+/** Sync fallback (proxy). Preferir urlArchivoSubtareaAsync para click/descarga. */
+export function urlArchivoSubtarea(archivo) {
+  const ref = normalizarRefArchivoSubtarea(archivo);
+  if (!ref) return '';
+  return resolveUploadsUrl(ref) || '';
+}
+
+/** URL firmada S3 (o proxy fallback) para abrir/descargar adjuntos de subtarea. */
+export async function urlArchivoSubtareaAsync(archivo) {
+  const ref = normalizarRefArchivoSubtarea(archivo);
+  if (!ref) return '';
+  return (await resolverUrlArchivo(ref)) || '';
 }
 
 export function puedeGestionarSubtareasFrontend(codiRespnsbleCaso) {

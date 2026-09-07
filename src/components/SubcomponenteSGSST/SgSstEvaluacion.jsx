@@ -30,7 +30,7 @@ import {
   resolverPerfil0312,
   sincronizarRespuestas,
 } from '../../config/sgSst0312';
-import { getUploadsUrlCandidates } from '../../config/apiConfig';
+import BotonDescargaStorage from '../shared/BotonDescargaStorage.jsx';
 import {
   actualizarCasoSgSst,
   crearCasoSgSst,
@@ -1735,9 +1735,7 @@ export default function SgSstEvaluacion() {
                             <p className="text-xs text-gray-500">{t('sgsst.ui.noFilesYet')}</p>
                           ) : (
                             <ul className="space-y-1.5">
-                              {archivos.map((a) => {
-                                const url = getUploadsUrlCandidates(a.ruta)[0];
-                                return (
+                              {archivos.map((a) => (
                                   <li
                                     key={a._id}
                                     className="flex items-center justify-between gap-2 rounded-md bg-white px-2 py-1.5 text-sm dark:bg-gray-900"
@@ -1746,15 +1744,15 @@ export default function SgSstEvaluacion() {
                                       {a.nombreOriginal}
                                     </span>
                                     <span className="flex shrink-0 items-center gap-2">
-                                      {url && (
-                                        <a
-                                          href={url}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-xs text-red-600 hover:underline"
+                                      {a.ruta && (
+                                        <BotonDescargaStorage
+                                          ruta={a.ruta}
+                                          nombre={a.nombreOriginal}
+                                          className="text-xs text-red-600 hover:underline bg-transparent border-0 p-0 inline-flex items-center gap-1"
+                                          title={t('sgsst.ui.view')}
                                         >
                                           {t('sgsst.ui.view')}
-                                        </a>
+                                        </BotonDescargaStorage>
                                       )}
                                       <button
                                         type="button"
@@ -1765,8 +1763,7 @@ export default function SgSstEvaluacion() {
                                       </button>
                                     </span>
                                   </li>
-                                );
-                              })}
+                                ))}
                             </ul>
                           )}
                         </div>
