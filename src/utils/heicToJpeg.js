@@ -121,14 +121,19 @@ export async function asegurarJpeg(file) {
   const blobFuente = file instanceof Blob ? file : null;
   if (!blobFuente) return file;
 
+  // Chrome/Edge no decodifican HEIC en <img>/canvas: WASM (worker blob) primero.
   let jpegBlob = null;
   try {
-    jpegBlob = await blobAJpegViaCanvas(blobFuente);
-  } catch {
+    jpegBlob = await blobAJpegConWasm(blobFuente);
+  } catch (errWasm) {
     try {
-      jpegBlob = await blobAJpegConWasm(blobFuente);
-    } catch (err) {
-      console.warn('No se pudo convertir HEIC en el navegador:', err);
+      jpegBlob = await blobAJpegViaCanvas(blobFuente);
+    } catch (errCanvas) {
+      console.warn(
+        'No se pudo convertir HEIC en el navegador:',
+        errWasm?.message || errWasm,
+        errCanvas?.message || errCanvas
+      );
       return file;
     }
   }
