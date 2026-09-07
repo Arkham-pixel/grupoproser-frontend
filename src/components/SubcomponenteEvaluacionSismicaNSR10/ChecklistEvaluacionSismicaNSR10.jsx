@@ -2099,6 +2099,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                   value={valorInputDeducible(deducibleCfgPresupuestoInput.porcentaje, 10)}
+                  disabled={Boolean(diagrama.deduciblePresupuesto?.tieneArticulos)}
+                  title={
+                    diagrama.deduciblePresupuesto?.tieneArticulos
+                      ? 'En modo por artículo el % se define en cada fila de la tabla'
+                      : undefined
+                  }
                   onChange={(e) =>
                     actualizarDeduciblePresupuesto({
                       porcentaje: e.target.value === '' ? '' : Number(e.target.value),
@@ -2114,6 +2120,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                   value={valorInputDeducible(deducibleCfgPresupuestoInput.cantidadSMMLV, 4)}
+                  disabled={Boolean(diagrama.deduciblePresupuesto?.tieneArticulos)}
+                  title={
+                    diagrama.deduciblePresupuesto?.tieneArticulos
+                      ? 'En modo por artículo el mínimo se define en cada fila de la tabla'
+                      : undefined
+                  }
                   onChange={(e) =>
                     actualizarDeduciblePresupuesto({
                       cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -2135,29 +2147,30 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       {money(usaTotalPresupuestoOverride ? totalPresupuestoDiagrama : totales.total)}
                     </td>
                   </tr>
-                  <tr className="border-b" style={{ borderColor }}>
-                    <td className="px-3 py-2" style={{ color: textSecondary }}>
-                      DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {money(diagrama.deduciblePresupuesto?.montoPctOVa || 0)}
-                    </td>
-                  </tr>
-                  <tr className="border-b" style={{ borderColor }}>
-                    <td className="px-3 py-2" style={{ color: textSecondary }}>
-                      DEDUCIBLE {diagrama.deduciblePresupuesto?.cantidadSMMLV ?? deducibleCfgPresupuesto.cantidadSMMLV ?? 4} SMMLV
-                      {diagrama.deduciblePresupuesto?.tieneArticulos ? (
-                        <span className="ml-1 text-[11px]">(no aplica)</span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {money(
-                        diagrama.deduciblePresupuesto?.tieneArticulos
-                          ? 0
-                          : diagrama.deduciblePresupuesto?.montoSmmlv || 0
-                      )}
-                    </td>
-                  </tr>
+                  {diagrama.deduciblePresupuesto?.tieneArticulos ? null : (
+                    <>
+                      <tr className="border-b" style={{ borderColor }}>
+                        <td className="px-3 py-2" style={{ color: textSecondary }}>
+                          DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {money(diagrama.deduciblePresupuesto?.montoPctOVa || 0)}
+                        </td>
+                      </tr>
+                      <tr className="border-b" style={{ borderColor }}>
+                        <td className="px-3 py-2" style={{ color: textSecondary }}>
+                          DEDUCIBLE{' '}
+                          {diagrama.deduciblePresupuesto?.cantidadSMMLV ??
+                            deducibleCfgPresupuesto.cantidadSMMLV ??
+                            4}{' '}
+                          SMMLV
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {money(diagrama.deduciblePresupuesto?.montoSmmlv || 0)}
+                        </td>
+                      </tr>
+                    </>
+                  )}
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2 font-semibold">
                       DEDUCIBLE APLICADO
@@ -2194,7 +2207,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
             <p className="text-xs" style={{ color: textSecondary }}>
               {diagrama.deduciblePresupuesto?.tieneArticulos
-                ? 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
+                ? 'Solo se resta un deducible: la suma de (pérdida − deducible) por categoría. El % / SMMLV general de arriba no se vuelve a cobrar.'
                 : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
           </div>

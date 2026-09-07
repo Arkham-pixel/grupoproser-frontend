@@ -756,14 +756,6 @@ export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {
           bold: true,
         },
         {
-          label: 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE',
-          value: presDed.montoPctOVa || 0,
-        },
-        {
-          label: etiquetaSmmlvDeducibleSura(presDed, cfgPres),
-          value: presDed.tieneArticulos ? 0 : presDed.montoSmmlv || 0,
-        },
-        {
           label: `DEDUCIBLE APLICADO EDIFICIO (el mayor: ${presDed.tipoGanadorLabel || '%'})`,
           value: presDed.aplicado || 0,
           bold: true,
@@ -776,6 +768,26 @@ export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {
         },
       ]
     : [
+    ...(presDed.tieneArticulos
+      ? [
+          {
+            label: 'TOTAL PRESUPUESTO',
+            value: totales.totalPresupuesto ?? totales.presupuesto?.total,
+            bold: true,
+          },
+          {
+            label: 'DEDUCIBLE APLICADO EDIFICIO (por artículo)',
+            value: presDed.aplicado || 0,
+            bold: true,
+          },
+          {
+            label: 'VALOR A INDEMNIZAR EDIFICIO',
+            value: presDed.neto,
+            bold: true,
+            destacado: true,
+          },
+        ]
+      : [
     { label: 'Subtotal presupuesto (costo directo)', value: totales.subtotal },
     { label: `AIU (${aiuPct}%)`, value: totales.aiu },
     ...(mostrarImprevistos
@@ -798,18 +810,17 @@ export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {
       value: presDed.tieneArticulos ? 0 : presDed.montoSmmlv || 0,
     },
     {
-      label: presDed.tieneArticulos
-        ? 'DEDUCIBLE APLICADO EDIFICIO (por artículo)'
-        : `DEDUCIBLE APLICADO EDIFICIO (el mayor: ${presDed.tipoGanadorLabel || '%'})`,
+      label: `DEDUCIBLE APLICADO EDIFICIO (el mayor: ${presDed.tipoGanadorLabel || '%'})`,
       value: presDed.aplicado || 0,
       bold: true,
     },
     {
-      label: presDed.tieneArticulos ? 'VALOR A INDEMNIZAR EDIFICIO' : 'PRESUPUESTO NETO',
+      label: 'PRESUPUESTO NETO',
       value: presDed.neto,
       bold: true,
       destacado: true,
     },
+  ]),
   ];
 
   const contenidos = [

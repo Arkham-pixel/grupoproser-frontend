@@ -699,24 +699,28 @@ export function calcularDiagramaLiquidacion({
     contenidosNetoPorArticulo != null &&
     contenidosNetoPorArticulo !== '' &&
     Number.isFinite(netoArticuloCont);
-  const netoArticuloPres = Number(presupuestoNetoPorArticulo);
-  const usarNetoArticuloPres =
+  const dedArtPresN = Number(deduciblePresupuestoPorArticulos);
+  const usarSumaArticulosPres =
     Boolean(usaDeduciblePresupuestoPorArticulo) &&
-    presupuestoNetoPorArticulo != null &&
-    presupuestoNetoPorArticulo !== '' &&
-    Number.isFinite(netoArticuloPres);
+    Number.isFinite(dedArtPresN) &&
+    dedArtPresN > 0;
+  /**
+   * Presupuesto por artículo: el deducible es la suma de categorías.
+   * No usar (totalConAIU − netoSinAIU): eso metía el AIU dentro del «deducible aplicado».
+   */
+  const deduciblePresupuestoAplicado = usarSumaArticulosPres
+    ? redondearCopDeducible(Math.min(dedArtPresN, basePresupuesto))
+    : mayorPres.aplicado;
+  const presupuestoNeto = Math.max(
+    0,
+    Math.round((basePresupuesto - deduciblePresupuestoAplicado) * 100) / 100
+  );
   const contenidosNeto = usarNetoArticuloCont
     ? Math.max(0, Math.round(netoArticuloCont * 100) / 100)
     : Math.max(0, baseContenidos - mayorCont.aplicado);
-  const presupuestoNeto = usarNetoArticuloPres
-    ? Math.max(0, Math.round(netoArticuloPres * 100) / 100)
-    : Math.max(0, basePresupuesto - mayorPres.aplicado);
   const deducibleContenidosAplicado = usarNetoArticuloCont
     ? Math.round(Math.max(0, baseContenidos - contenidosNeto) * 100) / 100
     : mayorCont.aplicado;
-  const deduciblePresupuestoAplicado = usarNetoArticuloPres
-    ? Math.round(Math.max(0, basePresupuesto - presupuestoNeto) * 100) / 100
-    : mayorPres.aplicado;
   const sumaDeducibles =
     Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
   const sumaNeta = Math.round((presupuestoNeto + contenidosNeto) * 100) / 100;

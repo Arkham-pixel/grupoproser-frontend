@@ -1443,7 +1443,13 @@ export function calcularTotalesPresupuesto(presupuesto = {}, valoresAsegurablesC
     tipo: 'presupuesto',
     valoresAsegurablesCaso,
   });
-  const deduciblePorArticulos = sumarDeduciblesFilas(items);
+  const deduciblePorArticulos = Math.round(sumarDeduciblesFilas(items) * 100) / 100;
+  // Con AIU: indemnizar = total (con recargos) − suma de deducibles por categoría.
+  // No usar solo (subtotal − deducible): dejaría el AIU fuera y el diagrama lo contaba como deducible.
+  const valorAIndemnizar =
+    deduciblePorArticulos > 0
+      ? Math.round(Math.max(0, total - deduciblePorArticulos) * 100) / 100
+      : valorAIndemnizarDesdeGrupos(gruposDeducible);
   return {
     subtotal,
     aiu,
@@ -1453,9 +1459,9 @@ export function calcularTotalesPresupuesto(presupuesto = {}, valoresAsegurablesC
     aiuPct,
     imprPct,
     impPct,
-    deduciblePorArticulos: Math.round(deduciblePorArticulos * 100) / 100,
+    deduciblePorArticulos,
     usaDeduciblePorArticulo: gruposDeducible.length > 0 || deduciblePorArticulos > 0,
-    valorAIndemnizar: valorAIndemnizarDesdeGrupos(gruposDeducible),
+    valorAIndemnizar,
     gruposDeducible,
   };
 }
