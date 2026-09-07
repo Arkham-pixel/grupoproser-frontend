@@ -25,6 +25,7 @@ import {
 import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
+import { descargarFiniquitoArrendamientoAlfaWord } from './generarFiniquitoArrendamientoAlfaWord.js';
 import {
   descargarCartaDesistimientoAlfaWord,
   descargarCartaInferiorDeducibleAlfaWord,
@@ -728,6 +729,25 @@ export default function LiquidadorSegurosAlfa({
             }
           >
             <FaFileWord /> {t('segurosAlfa.settlement.downloadFiniquito')}
+          </button>
+          <button
+            type="button"
+            className={expressBtnGhost}
+            disabled={!!exportando}
+            title="Finiquito parcial por gastos de arrendamiento / inhabitabilidad"
+            onClick={() =>
+              correrExport(
+                'finiquitoArrendamiento',
+                descargarFiniquitoArrendamientoAlfaWord,
+                MIME.docx,
+                'FINIQUITO'
+              )
+            }
+          >
+            <FaFileWord />{' '}
+            {t('segurosAlfa.settlement.downloadFiniquitoArrendamiento', {
+              defaultValue: 'Finiquito arrendamiento',
+            })}
           </button>
           <button
             type="button"
