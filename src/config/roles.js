@@ -61,7 +61,7 @@ export const ROLES_CONTRACTOR = [
 
 export const CONFIG_CONTRACTOR_TRES = {
   seccionesMenu: ['alfa', 'zurich', 'bbvaCat', 'sura'],
-  inicio: '/zurich/reporte',
+  inicio: '/inicio',
   prefijosRuta: ['/inicio', '/zurich', '/seguros-alfa', '/sura', '/bbva-cat', '/agenda-catastrofico'],
   incluirHome: true,
   etiqueta: 'Zurich, Alfa, Sura y BBVA',
@@ -69,7 +69,7 @@ export const CONFIG_CONTRACTOR_TRES = {
 
 export const CONFIG_SOLO_ZURICH = {
   seccionesMenu: ['zurich'],
-  inicio: '/zurich/listado/dashboard',
+  inicio: '/inicio',
   prefijosRuta: ['/inicio', '/zurich', '/agenda-catastrofico'],
   rutasExcluidas: [
     '/zurich/carga',
@@ -86,7 +86,7 @@ export const CONFIG_SOLO_ZURICH = {
 
 export const CONFIG_SOLO_BBVA = {
   seccionesMenu: ['bbvaCat'],
-  inicio: '/bbva-cat/listado/analista',
+  inicio: '/inicio',
   prefijosRuta: ['/inicio', '/bbva-cat', '/agenda-catastrofico'],
   rutasExcluidas: ['/bbva-cat/listado/reporte'],
   incluirHome: true,
@@ -111,7 +111,7 @@ export const CONFIG_SOLO_EQUIDAD = {
 
 export const CONFIG_SOLO_EQUIDAD_CAT = {
   seccionesMenu: ['equidadCat', 'allianz'],
-  inicio: '/equidad-cat/reporte',
+  inicio: '/inicio',
   prefijosRuta: ['/inicio', '/equidad-cat', '/allianz', '/allias', '/agenda-catastrofico'],
   incluirHome: true,
   etiqueta: 'Equidad CAT',
@@ -119,7 +119,7 @@ export const CONFIG_SOLO_EQUIDAD_CAT = {
 
 export const CONFIG_SOLO_EXPRESS = {
   seccionesMenu: ['express'],
-  inicio: '/express/reporte',
+  inicio: '/inicio',
   prefijosRuta: ['/inicio', '/express'],
   incluirHome: true,
   etiqueta: 'Express',
@@ -137,7 +137,7 @@ export const CONFIG_SOLO_PREVISORA = {
 export const CONFIG_CATASTROFICOS = {
   /** Orden: Previsora, Zurich, BBVA, Alfa, Sura, Allianz, Equidad CAT. */
   seccionesMenu: ['previsora', 'zurich', 'bbvaCat', 'alfa', 'sura', 'allianz', 'equidadCat'],
-  inicio: '/previsora/listado/reporte',
+  inicio: '/inicio',
   prefijosRuta: [
     '/inicio',
     '/previsora',
@@ -156,7 +156,7 @@ export const CONFIG_CATASTROFICOS = {
 
 export const CONFIG_ERA = {
   seccionesMenu: ['alfa'],
-  inicio: '/seguros-alfa/reporte',
+  inicio: '/inicio',
   prefijosRuta: ['/inicio', '/seguros-alfa', '/agenda-catastrofico'],
   rutasExcluidas: ['/seguros-alfa/carga', '/seguros-alfa/bloques'],
   incluirHome: true,

@@ -154,7 +154,7 @@ import { updateCasoComplex } from './services/complexService';
 import { CasosRiesgoProvider } from './context/CasosRiesgoContext'
 import RequireAuth from './components/RequireAuth'
 import RequireRutaPermitida from './components/RequireRutaPermitida'
-import { esRolVisualizador, esRolPuertos, esRolContractor, esRolExterno, rutaInicioPorRol } from './config/roles'
+import { esRolVisualizador, esRolPuertos, esRolExterno, rutaInicioPorRol } from './config/roles'
 import PaginaError from './components/PaginaError'
 import DetectorConexion from './components/DetectorConexion'
 import OfflineBanner from './components/offline/OfflineBanner.jsx'
@@ -178,14 +178,10 @@ function RootRedirect() {
   return <Navigate to="/login" replace />;
 }
 
-// Visualizadores solo usan matrices de riesgo: evitar aterrizar en el panel general
+// Visualizadores / puertos no usan el panel general; contratistas con Home sí.
 function InicioOrRedirectPorRol() {
   if (esRolVisualizadorLocal()) return <Navigate to="/matrices-riesgo" replace />
   if (esRolPuertosLocal()) return <Navigate to="/puertos/actas" replace />
-  if (esRolContractor()) {
-    const inicio = rutaInicioPorRol()
-    if (inicio && inicio !== '/inicio') return <Navigate to={inicio} replace />
-  }
   return <Inicio />
 }
 
