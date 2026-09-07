@@ -62,14 +62,15 @@ export const ROLES_CONTRACTOR = [
 export const CONFIG_CONTRACTOR_TRES = {
   seccionesMenu: ['alfa', 'zurich', 'bbvaCat', 'sura'],
   inicio: '/zurich/reporte',
-  prefijosRuta: ['/zurich', '/seguros-alfa', '/sura', '/bbva-cat', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/zurich', '/seguros-alfa', '/sura', '/bbva-cat', '/agenda-catastrofico'],
+  incluirHome: true,
   etiqueta: 'Zurich, Alfa, Sura y BBVA',
 };
 
 export const CONFIG_SOLO_ZURICH = {
   seccionesMenu: ['zurich'],
   inicio: '/zurich/listado/dashboard',
-  prefijosRuta: ['/zurich', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/zurich', '/agenda-catastrofico'],
   rutasExcluidas: [
     '/zurich/carga',
     '/zurich/caso',
@@ -79,14 +80,16 @@ export const CONFIG_SOLO_ZURICH = {
     '/zurich/liquidador',
     '/zurich/informe-unico',
   ],
+  incluirHome: true,
   etiqueta: 'Zurich',
 };
 
 export const CONFIG_SOLO_BBVA = {
   seccionesMenu: ['bbvaCat'],
   inicio: '/bbva-cat/listado/analista',
-  prefijosRuta: ['/bbva-cat', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/bbva-cat', '/agenda-catastrofico'],
   rutasExcluidas: ['/bbva-cat/listado/reporte'],
+  incluirHome: true,
   etiqueta: 'BBVA',
 };
 
@@ -109,14 +112,16 @@ export const CONFIG_SOLO_EQUIDAD = {
 export const CONFIG_SOLO_EQUIDAD_CAT = {
   seccionesMenu: ['equidadCat', 'allianz'],
   inicio: '/equidad-cat/reporte',
-  prefijosRuta: ['/equidad-cat', '/allianz', '/allias', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/equidad-cat', '/allianz', '/allias', '/agenda-catastrofico'],
+  incluirHome: true,
   etiqueta: 'Equidad CAT',
 };
 
 export const CONFIG_SOLO_EXPRESS = {
   seccionesMenu: ['express'],
   inicio: '/express/reporte',
-  prefijosRuta: ['/express'],
+  prefijosRuta: ['/inicio', '/express'],
+  incluirHome: true,
   etiqueta: 'Express',
 };
 
@@ -134,6 +139,7 @@ export const CONFIG_CATASTROFICOS = {
   seccionesMenu: ['previsora', 'zurich', 'bbvaCat', 'alfa', 'sura', 'allianz', 'equidadCat'],
   inicio: '/previsora/listado/reporte',
   prefijosRuta: [
+    '/inicio',
     '/previsora',
     '/zurich',
     '/bbva-cat',
@@ -144,14 +150,16 @@ export const CONFIG_CATASTROFICOS = {
     '/catastrofico',
     '/agenda-catastrofico',
   ],
+  incluirHome: true,
   etiqueta: 'Catastróficos',
 };
 
 export const CONFIG_ERA = {
   seccionesMenu: ['alfa'],
   inicio: '/seguros-alfa/reporte',
-  prefijosRuta: ['/seguros-alfa', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/seguros-alfa', '/agenda-catastrofico'],
   rutasExcluidas: ['/seguros-alfa/carga', '/seguros-alfa/bloques'],
+  incluirHome: true,
   etiqueta: 'ERA',
 };
 
@@ -247,21 +255,36 @@ export function rutaInicioPorRol(rol = obtenerRolAlmacenado()) {
 }
 
 const RUTAS_CUENTA = ['/cuenta', '/micuenta'];
+const RUTAS_PLATAFORMA_COMUNES = ['/tickets', '/ayuda', ...RUTAS_CUENTA];
+
+function esRutaPlataformaComun(path) {
+  return RUTAS_PLATAFORMA_COMUNES.some((p) => path === p || path.startsWith(`${p}/`));
+}
 
 export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   const path = pathname || '';
 
+  if (r === 'externo') {
+    return path.startsWith('/ajuste') || path.startsWith('/complex/subtarea');
+  }
+
+  // Todos los usuarios autenticados (salvo externo) pueden reportar tickets
+  if (esRutaPlataformaComun(path) && path.startsWith('/tickets')) {
+    return true;
+  }
+
   if (r === 'visualizador') {
     return (
       path.startsWith('/matriz-riesgo-avanzada') ||
       path.startsWith('/matriz-riesgo-reporte') ||
-      path.startsWith('/matrices-riesgo')
+      path.startsWith('/matrices-riesgo') ||
+      path.startsWith('/tickets')
     );
   }
 
   if (r === 'puertos') {
-    return path.startsWith('/puertos') || RUTAS_CUENTA.some((p) => path === p || path.startsWith(`${p}/`));
+    return path.startsWith('/puertos') || esRutaPlataformaComun(path);
   }
 
   const contractor = obtenerConfigContractor(r);
@@ -275,12 +298,9 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
     return (
       (permitida && !excluida) ||
       path === '/micuenta' ||
-      path.startsWith('/micuenta/')
+      path.startsWith('/micuenta/') ||
+      path.startsWith('/tickets')
     );
-  }
-
-  if (r === 'externo') {
-    return path.startsWith('/ajuste') || path.startsWith('/complex/subtarea');
   }
 
   return true;

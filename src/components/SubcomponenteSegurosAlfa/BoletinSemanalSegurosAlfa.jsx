@@ -203,6 +203,9 @@ export default function BoletinSemanalSegurosAlfa() {
             <button type="button" className={expressBtnPrimary} onClick={() => window.print()}>
               <FaPrint /> {t('segurosAlfa.boletin.print')}
             </button>
+            <Link to="/seguros-alfa/boletin-diario" className={expressBtnGhost}>
+              {t('segurosAlfa.boletin.openDaily')}
+            </Link>
             <Link to="/seguros-alfa/dashboard" className={expressBtnGhost}>
               {t('nav.alfaDashboard')}
             </Link>

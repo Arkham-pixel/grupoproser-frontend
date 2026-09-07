@@ -4,6 +4,14 @@
     "spanish": "Español",
     "english": "English"
   },
+  "novedades": {
+    "title": "What's new",
+    "versionLabel": "Version {{version}}",
+    "dismiss": "Dismiss notice",
+    "refreshIntro": "To see the changes right away, hard-refresh and bypass the cache:",
+    "refreshWindows": "Ctrl + Shift + R",
+    "refreshMac": "Cmd + Shift + R (⌘ + ⇧ + R)"
+  },
   "common": {
     "loading": "Loading…",
     "save": "Save",
@@ -226,6 +234,7 @@
     "returnToTask": "Return to my task",
     "searchTasks": "Search tasks",
     "openHelp": "Open help",
+    "openTickets": "Report issue / tickets",
     "alerts": "My alerts",
     "alertSystem": "Alert system",
     "notifications": "Notifications",
@@ -311,6 +320,7 @@
     },
     "home": "Home",
     "help": "Help",
+    "tickets": "Tickets / Support",
     "addCases": "Add cases",
     "dashboard": "Dashboard",
     "indicators": "Indicators and alerts",
@@ -388,6 +398,7 @@
     "pageTitles": {
       "home": "Home",
       "help": "Help",
+      "tickets": "Tickets / Support",
       "agendaCatastrofico": "Catastrophic calendar",
       "inspectionForm": "Inspection form",
       "propertiesInspectionForm": "Properties inspection form",
@@ -514,7 +525,8 @@
       "equidadCatMyCases": "My Equidad CAT cases",
       "equidadCatDashboard": "Equidad CAT dashboard",
       "equidadCatCase": "Equidad CAT case",
-      "equidadCatArchive": "Equidad CAT archive"
+      "equidadCatArchive": "Equidad CAT archive",
+      "alfaDailyBulletin": "Seguros Alfa daily bulletin"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
@@ -578,7 +590,8 @@
     "equidadCatAddCase": "Add case",
     "equidadCatDashboard": "Dashboard",
     "equidadCatReport": "Report",
-    "equidadCatArchive": "Archive"
+    "equidadCatArchive": "Archive",
+    "alfaDailyBulletin": "Daily bulletin"
   },
   "translation": {
     "preview": "English translation",
@@ -1672,7 +1685,8 @@
         "title": "Week movement detail",
         "type": "Type",
         "empty": "No reported, inspected or settled cases in this range."
-      }
+      },
+      "openDaily": "Daily bulletin"
     },
     "page": {
       "addTitle": "Add Seguros Alfa case",
@@ -2030,6 +2044,49 @@
     "permissions": {
       "inspectorHint": "Inspector role can only view the case and change status.",
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cutoff · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cutoff date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Grand total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation evolution considering growth in the case base",
+        "cutLabel": "Comparison cutoff: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day vs. day change",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions evidenced",
+        "hasRegressions": "Some cases moved to an earlier stage vs. prior cutoff",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "The management rate moved from {{pctAyer}}% to {{pctHoy}}% due to new cases. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total itemized management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared to base of {{ayer}}"
+      }
     }
   },
   "segurosSura": {

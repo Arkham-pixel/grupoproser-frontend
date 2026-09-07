@@ -39,6 +39,7 @@ import {
   FaClipboardList,
   FaSearch,
   FaQuestionCircle,
+  FaTicketAlt,
   FaInbox,
   FaTasks,
   FaHandHoldingHeart,
@@ -146,6 +147,7 @@ function seccionMenuDesdeRuta(path) {
   if (path.startsWith('/cuenta') || path.startsWith('/micuenta') || path.startsWith('/informacion-completa')) {
     return 'cuenta';
   }
+  if (path.startsWith('/tickets')) return 'tickets';
   return null;
 }
 
@@ -441,6 +443,7 @@ export default function Layout() {
   const routeTitles = useMemo(() => ({
     '/inicio': t('nav.pageTitles.home'),
     '/ayuda': t('nav.pageTitles.help'),
+    '/tickets': t('nav.pageTitles.tickets'),
     '/agenda-catastrofico': t('nav.pageTitles.agendaCatastrofico', { defaultValue: 'Agenda catastrófica' }),
     '/formularioinspeccion': t('nav.pageTitles.inspectionForm'),
     '/formulario-inspeccion-propiedades': t('nav.pageTitles.propertiesInspectionForm'),
@@ -669,9 +672,9 @@ export default function Layout() {
         const { obtenerPerfil } = await import('../services/userService');
         const { data } = await obtenerPerfil(token, tipoUsuario);
         if (data?.foto) {
-          const { resolverUrlArchivo } = await import('../services/storageSignedUrl.js');
-          const firmada = await resolverUrlArchivo(data.foto);
-          setFotoUsuarioQueue(firmada ? [firmada] : []);
+          const { getUploadsUrlCandidates } = await import('../config/apiConfig');
+          const urls = getUploadsUrlCandidates(data.foto);
+          setFotoUsuarioQueue(urls.length ? urls : []);
         }
       } catch {
         /* sin foto */
@@ -783,6 +786,9 @@ export default function Layout() {
       !accesoRestringido || configContractor?.incluirHome
         ? [{ path: '/inicio', icon: FaHome, label: t('nav.home') }]
         : [],
+    tickets: [
+      { path: '/tickets', icon: FaTicketAlt, label: t('nav.tickets') },
+    ],
     matrices: esPuertos
       ? []
       : [
@@ -1078,6 +1084,8 @@ export default function Layout() {
     ...(!esVisualizador && !esContractor
       ? [{ key: 'cuenta', title: t('nav.sections.cuenta'), icon: FaUserCircle, items: menuItems.cuenta }]
       : []),
+    // Tickets / soporte: siempre debajo de Cuenta
+    { key: 'tickets', title: t('nav.tickets'), icon: FaTicketAlt, items: menuItems.tickets },
   ].filter((s) => s.items?.length > 0);
 
   const sectionHasActiveChild = (items) =>
@@ -1089,7 +1097,7 @@ export default function Layout() {
 
     const expanded = expandedSection === key;
     const active = sectionHasActiveChild(items);
-    const singleItem = items.length === 1 && key === 'principal';
+    const singleItem = items.length === 1 && (key === 'principal' || key === 'tickets');
 
     const activeClasses =
       'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-900/30';
@@ -1433,6 +1441,16 @@ export default function Layout() {
               <NotificacionesOperativasMenu />
             )}
 
+            <button
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
+              title={t('layout.openTickets', { defaultValue: 'Tickets / Soporte' })}
+              aria-label={t('layout.openTickets', { defaultValue: 'Tickets / Soporte' })}
+              onClick={() => navigate('/tickets')}
+            >
+              <FaTicketAlt className="text-lg" />
+            </button>
+
             {!esContractor && (
             <button
               type="button"
@@ -1511,6 +1529,13 @@ export default function Layout() {
                       {t('layout.openHelp')}
                     </Link>
                     )}
+                    <Link
+                      to="/tickets"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      {t('layout.openTickets', { defaultValue: 'Tickets / Soporte' })}
+                    </Link>
                     <Link
                       to="/micuenta"
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"

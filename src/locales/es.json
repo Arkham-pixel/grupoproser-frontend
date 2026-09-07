@@ -226,6 +226,7 @@
     "returnToTask": "Volver a mi tarea",
     "searchTasks": "Buscar tareas",
     "openHelp": "Abrir ayuda",
+    "openTickets": "Reportar problema / tickets",
     "alerts": "Mis alertas",
     "alertSystem": "Sistema de alertas",
     "notifications": "Notificaciones",
@@ -311,6 +312,7 @@
     },
     "home": "Inicio",
     "help": "Ayuda",
+    "tickets": "Tickets / Soporte",
     "addCases": "Agregar Casos",
     "dashboard": "Panel",
     "indicators": "Indicadores y alertas",
@@ -388,6 +390,7 @@
     "pageTitles": {
       "home": "Inicio",
       "help": "Ayuda",
+      "tickets": "Tickets / Soporte",
       "agendaCatastrofico": "Agenda catastrófica",
       "inspectionForm": "Formulario de Inspección",
       "propertiesInspectionForm": "Formulario Inspección Propiedades",
@@ -448,6 +451,7 @@
       "alfaMyCases": "Mis casos Alfa",
       "alfaDashboard": "Dashboard Seguros Alfa",
       "alfaBulletin": "Boletín semanal Seguros Alfa",
+      "alfaDailyBulletin": "Boletín diario Seguros Alfa",
       "alfaBlocks": "Bloques de cercanía Seguros Alfa",
       "alfaCase": "Caso Seguros Alfa",
       "alfaSettlement": "Liquidador Seguros Alfa",
@@ -521,6 +525,7 @@
     "alfaReport": "Reporte Alfa",
     "alfaDashboard": "Dashboard",
     "alfaBulletin": "Boletín semanal",
+    "alfaDailyBulletin": "Boletín diario",
     "alfaBlocks": "Bloques cercanos",
     "alfaCase": "Caso Alfa",
     "alfaSettlement": "Liquidador Alfa",
@@ -1680,7 +1685,8 @@
         "title": "Detalle de movimientos de la semana",
         "type": "Tipo",
         "empty": "No hay casos reportados, inspeccionados ni liquidados en el rango."
-      }
+      },
+      "openDaily": "Boletín diario"
     },
     "page": {
       "addTitle": "Agregar caso Seguros Alfa",
@@ -2053,6 +2059,49 @@
     "permissions": {
       "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
       "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   },
   "segurosSura": {

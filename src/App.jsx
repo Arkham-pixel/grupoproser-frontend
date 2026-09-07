@@ -39,6 +39,7 @@ import AlertasComplex from './components/AlertasComplex';
 import IndicadoresAlertasComplex from './components/IndicadoresAlertasComplex';
 import MisAlertasComplex from './components/MisAlertasComplex';
 import HelpCenterPage from './components/HelpCenter/HelpCenterPage';
+import TicketsPage from './components/Tickets/TicketsPage';
 import AgendaCatastroficoPage from './components/AgendaCatastrofico/AgendaCatastroficoPage';
 import MatrizRiesgoAvanzada from './components/MatrizRiesgoAvanzada';
 import VistaReporteMatriz from './components/MatrizRiesgoAvanzada/VistaReporteMatriz';
@@ -74,6 +75,7 @@ import CasoEquidadCatWorkspace, {
 import FormularioSegurosAlfa from './components/SubcomponenteSegurosAlfa/FormularioSegurosAlfa';
 import ReporteSegurosAlfa from './components/SubcomponenteSegurosAlfa/ReporteSegurosAlfa';
 import BoletinSemanalSegurosAlfa from './components/SubcomponenteSegurosAlfa/BoletinSemanalSegurosAlfa';
+import BoletinDiarioSegurosAlfa from './components/SubcomponenteSegurosAlfa/BoletinDiarioSegurosAlfa';
 import DashboardSegurosAlfa from './components/SubcomponenteSegurosAlfa/DashboardSegurosAlfa';
 import BloquesCercaniaSegurosAlfa from './components/SubcomponenteSegurosAlfa/BloquesCercaniaSegurosAlfa';
 import CasoSegurosAlfaWorkspace, {
@@ -549,6 +551,7 @@ export default function App() {
         >
           <Route path="inicio" element={<InicioOrRedirectPorRol />} />
           <Route path="ayuda" element={<HelpCenterPage />} />
+          <Route path="tickets" element={<TicketsPage />} />
           <Route path="agenda-catastrofico" element={<AgendaCatastroficoPage />} />
           <Route
             path="complex/formulario"
@@ -620,6 +623,7 @@ export default function App() {
           <Route path="seguros-alfa/mis-casos" element={<ReporteSegurosAlfa modoAsignados />} />
           <Route path="seguros-alfa/dashboard" element={<DashboardSegurosAlfa />} />
           <Route path="seguros-alfa/boletin" element={<BoletinSemanalSegurosAlfa />} />
+          <Route path="seguros-alfa/boletin-diario" element={<BoletinDiarioSegurosAlfa />} />
           <Route path="seguros-alfa/bloques" element={<BloquesCercaniaSegurosAlfa />} />
           <Route path="seguros-alfa/caso" element={<CasoSegurosAlfaWorkspace />} />
           <Route path="seguros-alfa/liquidador" element={<RedirectAlfaLiquidador />} />
