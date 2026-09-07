@@ -28,6 +28,7 @@ import {
   etiquetaCoberturaArticulo,
   filaContenidoListaParaDeducible,
   filaPresupuestoListaParaDeducible,
+  claveGrupoDeducible,
   GRUPO_DEDUCIBLE_CONTENIDOS,
   GRUPO_DEDUCIBLE_EDIFICIO,
   MODO_DEDUCIBLE_NSR10,
@@ -513,6 +514,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
   recargosPresupuesto = null,
   ocultarPresupuestoEscrito = false,
   totalPresupuestoOverride = null,
+  /** Override de reglas por cobertura (p. ej. Sura terremoto 2%). */
+  reglasDeduciblePorCobertura = null,
 }) {
   const { theme } = useTheme();
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -901,6 +904,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
       coberturaPredeterminada: conRecargos.coberturaAfectar,
       valoresAsegurablesCaso,
+      reglasDeducible: reglasDeduciblePorCobertura,
     });
     commit({ presupuesto: { ...conRecargos, items } });
   };
@@ -916,6 +920,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
       coberturaPredeterminada: presupuesto.coberturaAfectar,
       valoresAsegurablesCaso,
+      reglasDeducible: reglasDeduciblePorCobertura,
     });
     onInputChange({
       liquidacionCatastrofico: nextLiq,
@@ -930,30 +935,71 @@ export default function ChecklistEvaluacionSismicaNSR10({
   };
 
   const actualizarFilaPresupuesto = (index, patch) => {
-    const nextItems = filasPresupuesto.map((row, i) => {
+    const cambiaCobertura = Object.prototype.hasOwnProperty.call(patch, 'coberturaAfectar');
+    const syncPctGrupo =
+      Object.prototype.hasOwnProperty.call(patch, 'porcentajeDeducible') ||
+      Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV');
+    const patchAplicar = cambiaCobertura
+      ? {
+          ...patch,
+          // null = aplicar default de la regla; '' = el usuario borró a propósito
+          porcentajeDeducible: null,
+          cantidadMinimoSMMLV: null,
+          valorMinimo: '',
+        }
+      : patch;
+
+    let nextItems = filasPresupuesto.map((row, i) => {
       if (i !== index) return row;
-      const mezclado = { ...row, ...patch };
+      const mezclado = { ...row, ...patchAplicar };
       if (!usaPorArticuloPresupuesto) return mezclado;
       const tocaDeducible =
-        Object.prototype.hasOwnProperty.call(patch, 'coberturaAfectar') ||
-        Object.prototype.hasOwnProperty.call(patch, 'tipoCobertura') ||
-        Object.prototype.hasOwnProperty.call(patch, 'valorAsegurable') ||
-        Object.prototype.hasOwnProperty.call(patch, 'porcentajeDeducible') ||
-        Object.prototype.hasOwnProperty.call(patch, 'valorMinimo') ||
-        Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV') ||
-        Object.prototype.hasOwnProperty.call(patch, 'capitulo') ||
-        Object.prototype.hasOwnProperty.call(patch, 'catalogoId') ||
-        Object.prototype.hasOwnProperty.call(patch, 'actividad') ||
-        Object.prototype.hasOwnProperty.call(patch, 'componente') ||
-        Object.prototype.hasOwnProperty.call(patch, 'cantidad') ||
-        Object.prototype.hasOwnProperty.call(patch, 'valorUnitario');
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'coberturaAfectar') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'tipoCobertura') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'valorAsegurable') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'porcentajeDeducible') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'valorMinimo') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'cantidadMinimoSMMLV') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'capitulo') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'catalogoId') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'actividad') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'componente') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'cantidad') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'valorUnitario');
       if (!tocaDeducible) return mezclado;
       return prepararFilaDeduciblePresupuesto(
         mezclado,
         smmlvFilaContenido,
-        presupuesto.coberturaAfectar
+        presupuesto.coberturaAfectar,
+        optsReglaDeducible
       );
     });
+
+    if (usaPorArticuloPresupuesto && syncPctGrupo) {
+      const fila = nextItems[index];
+      const clave = claveGrupoDeducible(fila, GRUPO_DEDUCIBLE_EDIFICIO);
+      if (clave) {
+        nextItems = nextItems.map((row, i) => {
+          if (i === index) return row;
+          if (claveGrupoDeducible(row, GRUPO_DEDUCIBLE_EDIFICIO) !== clave) return row;
+          return prepararFilaDeduciblePresupuesto(
+            {
+              ...row,
+              ...(Object.prototype.hasOwnProperty.call(patch, 'porcentajeDeducible')
+                ? { porcentajeDeducible: patch.porcentajeDeducible }
+                : {}),
+              ...(Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV')
+                ? { cantidadMinimoSMMLV: patch.cantidadMinimoSMMLV }
+                : {}),
+            },
+            smmlvFilaContenido,
+            presupuesto.coberturaAfectar,
+            optsReglaDeducible
+          );
+        });
+      }
+    }
+
     setPresupuesto({ ...presupuesto, items: nextItems });
   };
 
@@ -983,6 +1029,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
       coberturaPredeterminada: nextContenidos.coberturaAfectar,
       valoresAsegurablesCaso,
+      reglasDeducible: reglasDeduciblePorCobertura,
     });
     commit({ contenidos: { ...nextContenidos, items } });
   };
@@ -991,6 +1038,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     anioSMMLV: deducibleCfg.anioSMMLV,
     valorSMMLV: parseMontoNsr10(deducibleCfg.valorSMMLV) || deducibleCfg.valorSMMLV,
   };
+  const optsReglaDeducible = { reglasDeducible: reglasDeduciblePorCobertura };
 
   const hidratoDeducibleAmbosRef = useRef(false);
   const vaPlatKey = `${valoresAsegurablesCaso.inmueble}|${valoresAsegurablesCaso.contenidos}|${valoresAsegurablesCaso.general}`;
@@ -1002,6 +1050,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
         grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
         coberturaPredeterminada: contenidos.coberturaAfectar,
         valoresAsegurablesCaso,
+        reglasDeducible: reglasDeduciblePorCobertura,
       }),
     };
     const nextPresupuesto = aplicarRecargosPresupuestoNsr10(
@@ -1013,6 +1062,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
               coberturaPredeterminada: presupuesto.coberturaAfectar,
               valoresAsegurablesCaso,
+              reglasDeducible: reglasDeduciblePorCobertura,
             })
           : filasPresupuesto,
       },
@@ -1041,27 +1091,68 @@ export default function ChecklistEvaluacionSismicaNSR10({
   }, [vaPlatKey]);
 
   const actualizarFilaContenido = (index, patch) => {
-    const nextItems = filasContenidos.map((row, i) => {
+    const cambiaCobertura = Object.prototype.hasOwnProperty.call(patch, 'coberturaAfectar');
+    const syncPctGrupo =
+      Object.prototype.hasOwnProperty.call(patch, 'porcentajeDeducible') ||
+      Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV');
+    const patchAplicar = cambiaCobertura
+      ? {
+          ...patch,
+          // null = aplicar default de la regla; '' = el usuario borró a propósito
+          porcentajeDeducible: null,
+          cantidadMinimoSMMLV: null,
+          valorMinimo: '',
+        }
+      : patch;
+
+    let nextItems = filasContenidos.map((row, i) => {
       if (i !== index) return row;
-      const mezclado = { ...row, ...patch };
+      const mezclado = { ...row, ...patchAplicar };
       if (!usaPorArticulo) return mezclado;
       const tocaDeducible =
-        Object.prototype.hasOwnProperty.call(patch, 'coberturaAfectar') ||
-        Object.prototype.hasOwnProperty.call(patch, 'tipoCobertura') ||
-        Object.prototype.hasOwnProperty.call(patch, 'valorAsegurable') ||
-        Object.prototype.hasOwnProperty.call(patch, 'porcentajeDeducible') ||
-        Object.prototype.hasOwnProperty.call(patch, 'valorMinimo') ||
-        Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV') ||
-        Object.prototype.hasOwnProperty.call(patch, 'articulo') ||
-        Object.prototype.hasOwnProperty.call(patch, 'articuloPolizaId') ||
-        Object.prototype.hasOwnProperty.call(patch, 'catalogoId');
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'coberturaAfectar') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'tipoCobertura') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'valorAsegurable') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'porcentajeDeducible') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'valorMinimo') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'cantidadMinimoSMMLV') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'articulo') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'articuloPolizaId') ||
+        Object.prototype.hasOwnProperty.call(patchAplicar, 'catalogoId');
       if (!tocaDeducible) return mezclado;
       return prepararFilaDeducibleContenido(
         mezclado,
         smmlvFilaContenido,
-        contenidos.coberturaAfectar
+        contenidos.coberturaAfectar,
+        optsReglaDeducible
       );
     });
+
+    if (usaPorArticulo && syncPctGrupo) {
+      const fila = nextItems[index];
+      const clave = claveGrupoDeducible(fila, GRUPO_DEDUCIBLE_CONTENIDOS);
+      if (clave) {
+        nextItems = nextItems.map((row, i) => {
+          if (i === index) return row;
+          if (claveGrupoDeducible(row, GRUPO_DEDUCIBLE_CONTENIDOS) !== clave) return row;
+          return prepararFilaDeducibleContenido(
+            {
+              ...row,
+              ...(Object.prototype.hasOwnProperty.call(patch, 'porcentajeDeducible')
+                ? { porcentajeDeducible: patch.porcentajeDeducible }
+                : {}),
+              ...(Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV')
+                ? { cantidadMinimoSMMLV: patch.cantidadMinimoSMMLV }
+                : {}),
+            },
+            smmlvFilaContenido,
+            contenidos.coberturaAfectar,
+            optsReglaDeducible
+          );
+        });
+      }
+    }
+
     setContenidos({ ...contenidos, items: nextItems });
   };
 
@@ -1509,7 +1600,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     return prepararFilaDeduciblePresupuesto(
                       { ...row, coberturaAfectar },
                       smmlvFilaContenido,
-                      coberturaAfectar
+                      coberturaAfectar,
+                      optsReglaDeducible
                     );
                   });
                   setPresupuesto({ ...presupuesto, coberturaAfectar, items: nextItems });
@@ -1684,9 +1776,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       ? (() => {
                           const listaParaDeducible = filaPresupuestoListaParaDeducible(row);
                           const coberturaFila = row.coberturaAfectar || '';
-                          const esTerremoto = String(coberturaFila)
-                            .toLowerCase()
-                            .includes('terremoto');
                           return (
                             <>
                               <td className="px-1 py-1 min-w-[140px]">
@@ -1769,7 +1858,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                                     color: textPrimary,
                                   }}
                                   value={row.porcentajeDeducible ?? ''}
-                                  readOnly={esTerremoto}
+                                  title="Porcentaje de deducible (editable)"
                                   onChange={(e) =>
                                     actualizarFilaPresupuesto(index, {
                                       porcentajeDeducible:
@@ -2333,7 +2422,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     }
                     return aplicarDeducibleCoberturaFila(
                       { ...row, coberturaAfectar },
-                      smmlvFilaContenido
+                      smmlvFilaContenido,
+                      optsReglaDeducible
                     );
                   });
                   setContenidos({ ...contenidos, coberturaAfectar, items: nextItems });
@@ -2396,9 +2486,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     GRUPO_DEDUCIBLE_CONTENIDOS
                   );
                   const coberturaFila = row.coberturaAfectar || '';
-                  const esTerremoto = String(coberturaFila)
-                    .toLowerCase()
-                    .includes('terremoto');
                   return (
                     <tr key={index} className="border-t align-top" style={{ borderColor }}>
                       <td className="px-1 py-1 min-w-[180px]">
@@ -2518,7 +2605,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           className={`${inputClass} text-right`}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                           value={row.porcentajeDeducible ?? ''}
-                          readOnly={esTerremoto}
+                          title="Porcentaje de deducible (editable)"
                           onChange={(e) =>
                             actualizarFilaContenido(index, {
                               porcentajeDeducible:

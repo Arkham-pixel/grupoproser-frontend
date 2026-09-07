@@ -14,7 +14,10 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+  REGLAS_DEDUCIBLE_SURA,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import CampoTomadorSura from './CampoTomadorSura.jsx';
 import {
   calcularLiquidacionSura,
@@ -25,18 +28,39 @@ import {
 import { descargarFiniquitoSuraWord } from './generarFiniquitoSuraWord.js';
 import { descargarLiquidadorSuraExcel } from './generarLiquidadorSuraExcel.js';
 import { descargarLiquidadorSuraPdf } from './generarLiquidadorSuraPdf.js';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import {
+  montoCotizacionPdf,
+  usaCotizacionComoBasePresupuesto,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import {
+  eliminarArchivoSura,
+  getCasoSuraById,
+  subirArchivoSura,
+  actualizarArchivoSura,
+  urlDescargaArchivoSura,
+} from '../../services/segurosSuraService.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
+const suraArchivosApi = {
+  getById: getCasoSuraById,
+  subir: subirArchivoSura,
+  eliminar: eliminarArchivoSura,
+  actualizar: actualizarArchivoSura,
+  url: urlDescargaArchivoSura,
+};
+
 /**
  * Liquidador Sura = evaluación NSR-10 completa (portada / eval / dictamen / presupuesto)
- * + diagrama de liquidación, mismo motor que Catastrófico Complex.
+ * + cotización PDF opcional + diagrama de liquidación.
  */
 export default function LiquidadorSegurosSura({
   casoSura = null,
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
+  onCasoChange,
   liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
@@ -52,6 +76,10 @@ export default function LiquidadorSegurosSura({
 
   const totales = useMemo(() => calcularLiquidacionSura(liquidador), [liquidador]);
   const enc = liquidador.encabezado || {};
+  const tieneCotizacionPdf =
+    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+    liquidador.cotizacionPdf?.archivoPdf;
+  const usaCotizBase = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
@@ -78,6 +106,23 @@ export default function LiquidadorSegurosSura({
       }
       return next;
     });
+  };
+
+  const appendArchivosAlCaso = (creados = []) => {
+    const lista = (Array.isArray(creados) ? creados : [creados]).filter(Boolean);
+    if (!lista.length) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
+      if (!extra.length) return prev;
+      return { ...prev, archivos: [...actuales, ...extra] };
+    });
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
   };
 
   const handleGuardar = async () => {
@@ -195,13 +240,51 @@ export default function LiquidadorSegurosSura({
             />
           </Campo>
         </div>
+
+        <div className="mt-4">
+          <CotizacionPdfLiquidacion
+            value={liquidador.cotizacionPdf}
+            onChange={handleCotizacionChange}
+            casoId={casoSura?._id}
+            api={suraArchivosApi}
+            archivosCaso={casoSura?.archivos || []}
+            onArchivosCreados={appendArchivosAlCaso}
+            onArchivosEliminados={(ids) => {
+              const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+              if (!setIds.size) return;
+              onCasoChange?.((prev) => {
+                if (!prev) return prev;
+                const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+                return {
+                  ...prev,
+                  archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+                };
+              });
+            }}
+            disabled={!!exportando || guardandoCaso}
+            i18nPrefix="segurosSura.settlement"
+          />
+        </div>
+
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
+            <span>
+              {usaCotizBase
+                ? t('segurosSura.settlement.totalDamagesQuote', {
+                    defaultValue: 'Total daños (cotización PDF)',
+                  })
+                : 'Total daños (NSR-10)'}
+            </span>
             <span>$ {formatearMonto(totales.totalDanios)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible presupuesto</span>
+            <span>
+              {usaCotizBase
+                ? t('segurosSura.settlement.deductibleQuote', {
+                    defaultValue: 'Deducible cotización',
+                  })
+                : 'Deducible presupuesto'}
+            </span>
             <span>$ {formatearMonto(totales.diagrama?.deduciblePresupuesto?.aplicado || 0)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
@@ -238,11 +321,25 @@ export default function LiquidadorSegurosSura({
             <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
           </div>
         </div>
+        {usaCotizBase && (
+          <p className="mt-2 text-xs text-gray-500">
+            {t('segurosSura.settlement.quoteDeductibleNote', {
+              defaultValue:
+                'El tope del deducible de edificio es el monto de la cotización; el % se calcula sobre el valor asegurable cuando está diligenciado.',
+            })}
+          </p>
+        )}
       </section>
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
-          {t('segurosSura.settlement.nsrTitle', { defaultValue: 'Evaluación y liquidador NSR-10' })}
+          {tieneCotizacionPdf
+            ? t('segurosSura.settlement.nsrTitleQuote', {
+                defaultValue: 'Liquidador · Contenidos y totales (cotización PDF)',
+              })
+            : t('segurosSura.settlement.nsrTitle', {
+                defaultValue: 'Evaluación y liquidador NSR-10',
+              })}
         </h3>
         <ChecklistEvaluacionSismicaNSR10
           formData={formDataNsr}
@@ -250,6 +347,11 @@ export default function LiquidadorSegurosSura({
           modoLiquidador={false}
           habilitarUploadFotos={false}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+          reglasDeduciblePorCobertura={REGLAS_DEDUCIBLE_SURA}
+          ocultarPresupuestoEscrito={Boolean(tieneCotizacionPdf && usaCotizBase)}
+          totalPresupuestoOverride={
+            usaCotizBase ? montoCotizacionPdf(liquidador.cotizacionPdf) : null
+          }
         />
       </section>
     </div>

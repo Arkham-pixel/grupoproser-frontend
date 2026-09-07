@@ -17,7 +17,7 @@ import {
   getCasoSuraById,
   guardarLiquidadorEnCasoSura,
 } from '../../services/segurosSuraService.js';
-import { calcularLiquidacionSura } from './liquidadorSuraHelpers.js';
+import { calcularLiquidacionSura, sanitizarLiquidadorSura } from './liquidadorSuraHelpers.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -81,7 +81,7 @@ export default function LiquidadorSegurosSuraPage() {
       setError(t('segurosSura.settlement.savedCaseRequired'));
       return;
     }
-    const liquidador = liqArg || liquidadorState;
+    const liquidador = sanitizarLiquidadorSura(liqArg || liquidadorState);
     const totales = totArg || totalesState || calcularLiquidacionSura(liquidador || {});
     if (!liquidador) {
       setError(t('segurosSura.settlement.noData'));
@@ -99,6 +99,7 @@ export default function LiquidadorSegurosSuraPage() {
         casoBase: casoSura || {},
       });
       setCasoSura(actualizado);
+      if (liqArg) setLiquidadorState(liqArg);
       setMensaje(t('segurosSura.settlement.savedMessage'));
     } catch (err) {
       console.error(err);

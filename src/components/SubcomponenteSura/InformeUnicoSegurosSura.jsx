@@ -35,8 +35,11 @@ import { subirArchivoSura } from '../../services/segurosSuraService.js';
 import { importarFotosArchiveroAlInformeCaso } from './syncFotosNsrAlInformeSura.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+  REGLAS_DEDUCIBLE_SURA,
+  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import FotosInspeccionSura from './FotosInspeccionSura.jsx';
 
@@ -1122,6 +1125,7 @@ export default function InformeUnicoSegurosSura({
               onInputChange={handleNsrChange}
               modoLiquidador
               recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+              reglasDeduciblePorCobertura={REGLAS_DEDUCIBLE_SURA}
             />
           </section>
 

@@ -24,7 +24,7 @@ import {
   guardarLiquidadorEnCasoSura,
   guardarSeccionCasoSura,
 } from '../../services/segurosSuraService.js';
-import { calcularLiquidacionSura, camposFaltantesInformeUnicoSura, defaultInformeUnicoSura, itemsPlanosSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { calcularLiquidacionSura, camposFaltantesInformeUnicoSura, defaultInformeUnicoSura, itemsPlanosSura, mapCasoSuraALiquidador, sanitizarLiquidadorSura } from './liquidadorSuraHelpers.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import { descargarFormatoAgilSuraExcel } from './generarFormatoAgilSuraExcel.js';
@@ -190,7 +190,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
       setError(t('segurosSura.settlement.savedCaseRequired'));
       return;
     }
-    const liquidador = liqArg || liquidadorState;
+    const liquidador = sanitizarLiquidadorSura(liqArg || liquidadorState);
     const totales = totArg || totalesState || calcularLiquidacionSura(liquidador || {});
     if (!liquidador) {
       setError(t('segurosSura.settlement.noData'));
@@ -212,7 +212,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
       setCasoSura(
         servidorPerdioPresupuesto ? { ...actualizado, liquidador } : actualizado
       );
-      setLiquidadorState(liquidador);
+      setLiquidadorState(liqArg || liquidadorState || liquidador);
       setTotalesState(totales);
       try {
         borrarBorradorLocal(`sura-ws:${casoId}`);
@@ -600,6 +600,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
                   setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
+                onCasoChange={setCasoSura}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
                 guardandoCaso={guardando}
               />

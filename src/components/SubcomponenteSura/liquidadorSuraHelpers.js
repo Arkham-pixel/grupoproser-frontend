@@ -19,6 +19,11 @@ import {
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, nombreTipoOtroAmparo, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import {
+  montoCotizacionPdf,
+  serializarCotizacionPdf,
+  usaCotizacionComoBasePresupuesto,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import {
   esXmlWordOoXml,
   parsearMontoInformeSeguro,
   sanitizarInformeUnicoCamposWord,
@@ -604,6 +609,8 @@ export const DEFAULT_LIQUIDADOR_SURA = {
   liquidacionCatastrofico: liquidacionCatastroficoDefaultSura(),
   indemnizacionSugerida: '',
   observaciones: '',
+  cotizacionPdf: null,
+  otrosAmparos: defaultOtrosAmparos(),
 };
 
 export function esLiquidadorNsrSura(liquidador = {}) {
@@ -615,7 +622,7 @@ export function esLiquidadorNsrSura(liquidador = {}) {
 }
 
 /**
- * Totales Sura = presupuesto NSR-10 + contenidos + diagrama (suma + hospedaje).
+ * Totales Sura = presupuesto NSR-10 (o cotización PDF) + contenidos + diagrama.
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionSura(liquidador = {}) {
@@ -628,10 +635,14 @@ export function calcularLiquidacionSura(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
+  const usaCotiz = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
+  const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
+  const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
+  const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: liq.valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
-    totalPresupuesto: resumen.totalPresupuesto,
+    totalDanios: sumaCompleta,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
@@ -640,7 +651,16 @@ export function calcularLiquidacionSura(liquidador = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
     otrosAmparos: liquidador.otrosAmparos,
-    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
+    ...(() => {
+      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
+      if (!usaCotiz) return args;
+      return {
+        ...args,
+        usaDeduciblePorArticuloPresupuesto: false,
+        deduciblePresupuestoPorArticulos: 0,
+        presupuestoNetoPorArticulo: null,
+      };
+    })(),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -649,23 +669,27 @@ export function calcularLiquidacionSura(liquidador = {}) {
     modelo: 'nsr10',
     presupuesto: totalesPres,
     contenidos: resumen.contenidos,
-    totalPresupuesto: resumen.totalPresupuesto,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    sumaCompleta: resumen.sumaCompleta,
-    subtotal: totalesPres.subtotal,
-    aiu: totalesPres.aiu,
-    imprevistos: totalesPres.imprevistos,
-    impuestos: totalesPres.impuestos,
-    totalDanios: resumen.sumaCompleta,
+    sumaCompleta,
+    subtotal: usaCotiz ? montoCotiz : totalesPres.subtotal,
+    aiu: usaCotiz ? 0 : totalesPres.aiu,
+    imprevistos: usaCotiz ? 0 : totalesPres.imprevistos,
+    impuestos: usaCotiz ? 0 : totalesPres.impuestos,
+    totalDanios: sumaCompleta,
+    origenPresupuesto: usaCotiz ? 'cotizacion' : 'nsr10',
+    cotizacionMonto: montoCotiz,
     diagrama,
     criterio,
     totalIndemnizar: diagrama.totalIndemnizar,
     totalIndemnizable: diagrama.totalIndemnizar,
-    totalPerdida: resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
+    totalPerdida: sumaCompleta,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta,
     deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
     deducibleTexto: [
-      diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
+      diagrama.deduciblePresupuesto?.aplica
+        ? `${usaCotiz ? 'Cotización' : 'Presupuesto'}: ${diagrama.deduciblePresupuesto.texto}`
+        : null,
       diagrama.deducibleContenidos?.aplica || diagrama.deducibleAplica
         ? `Contenidos: ${diagrama.deducibleContenidos?.texto || diagrama.deducible}`
         : null,
@@ -673,7 +697,7 @@ export function calcularLiquidacionSura(liquidador = {}) {
       .filter(Boolean)
       .join(' · ') || diagrama.deducible,
     subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: resumen.totalPresupuesto,
+    subtotalEdificios: totalPresupuesto,
     diferencia: 0,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
@@ -722,8 +746,36 @@ export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {
     ? totales.contenidos.gruposDeducible
     : [];
   const contenidosPorArticulo = Boolean(contDed.tieneArticulos || grupos.length);
+  const usaCotiz = totales.origenPresupuesto === 'cotizacion';
 
-  const edificio = [
+  const edificio = usaCotiz
+    ? [
+        {
+          label: 'TOTAL COTIZACIÓN PDF',
+          value: totales.totalPresupuesto ?? totales.cotizacionMonto ?? 0,
+          bold: true,
+        },
+        {
+          label: 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE',
+          value: presDed.montoPctOVa || 0,
+        },
+        {
+          label: etiquetaSmmlvDeducibleSura(presDed, cfgPres),
+          value: presDed.tieneArticulos ? 0 : presDed.montoSmmlv || 0,
+        },
+        {
+          label: `DEDUCIBLE APLICADO EDIFICIO (el mayor: ${presDed.tipoGanadorLabel || '%'})`,
+          value: presDed.aplicado || 0,
+          bold: true,
+        },
+        {
+          label: 'COTIZACIÓN NETA',
+          value: presDed.neto,
+          bold: true,
+          destacado: true,
+        },
+      ]
+    : [
     { label: 'Subtotal presupuesto (costo directo)', value: totales.subtotal },
     { label: `AIU (${aiuPct}%)`, value: totales.aiu },
     ...(mostrarImprevistos
@@ -859,6 +911,18 @@ export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosSura(liquidador = {}) {
+  if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
+    const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+    const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
+    return [
+      {
+        id: 'cotizacion-pdf',
+        concepto: nombre ? `Cotización de reparación (${nombre})` : 'Cotización de reparación',
+        valorReclamado: monto,
+        valorIndemnizable: monto,
+      },
+    ];
+  }
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   if (!Array.isArray(items) || !items.length) return [];
   return items
@@ -874,6 +938,15 @@ export function itemsPlanosSura(liquidador = {}) {
         valorUnitario: it.valorUnitario,
       };
     });
+}
+
+/** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
+export function sanitizarLiquidadorSura(liquidador = {}) {
+  if (!liquidador || typeof liquidador !== 'object') return liquidador;
+  return {
+    ...liquidador,
+    cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
+  };
 }
 
 export function presupuestoNsrTieneDatosSura(liquidador = {}) {
@@ -959,6 +1032,7 @@ export function mapCasoSuraALiquidador(caso = {}) {
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
+    cotizacionPdf: guardado.cotizacionPdf || null,
   };
 }
 

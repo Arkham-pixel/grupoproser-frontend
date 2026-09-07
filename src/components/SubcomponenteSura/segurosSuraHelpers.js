@@ -107,6 +107,7 @@ export const ETIQUETAS_ARCHIVO_SURA = [
   'INFORME_FINAL',
   'INFORME_UNICO',
   'FOTOS',
+  'COTIZACION',
   'OTRO',
 ];
 

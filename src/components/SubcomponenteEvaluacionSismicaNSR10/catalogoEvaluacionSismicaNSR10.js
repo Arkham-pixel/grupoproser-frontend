@@ -118,7 +118,8 @@ export const ARTICULOS_ASEGURADOS_POLIZA = [
 ];
 
 /**
- * Coberturas parametrizables. Terremoto aplica 3% del valor asegurable, mínimo 3 SMMLV.
+ * Coberturas parametrizables. Terremoto (default Zurich/CAT): 3% VA, mínimo 3 SMMLV.
+ * El % es editable; la aseguradora puede pasar `reglasDeduciblePorCobertura` (p. ej. Sura 2%).
  * Otras coberturas se pueden agregar aquí sin cambiar la tabla.
  */
 export const COBERTURAS_ARTICULO_ASEGURADO = [
@@ -133,6 +134,16 @@ export const COBERTURAS_ARTICULO_ASEGURADO = [
 export const REGLAS_DEDUCIBLE_POR_COBERTURA = {
   terremoto: {
     porcentaje: 3,
+    cantidadSMMLV: 3,
+    modo: 'max_pct_minimo',
+    tipoMinimo: 'SMMLV',
+  },
+};
+
+/** Sura: terremoto suele ser 2% del valor asegurable, mínimo 3 SMMLV (editable). */
+export const REGLAS_DEDUCIBLE_SURA = {
+  terremoto: {
+    porcentaje: 2,
     cantidadSMMLV: 3,
     modo: 'max_pct_minimo',
     tipoMinimo: 'SMMLV',
@@ -970,9 +981,26 @@ export function calcularGruposDeducibleDeItems(
   });
 }
 
-export function reglaDeduciblePorCobertura(cobertura) {
+export function reglaDeduciblePorCobertura(cobertura, reglasOverride = null) {
   const id = normalizarIdCobertura(cobertura);
-  return REGLAS_DEDUCIBLE_POR_COBERTURA[id] || null;
+  const mapa = {
+    ...REGLAS_DEDUCIBLE_POR_COBERTURA,
+    ...(reglasOverride && typeof reglasOverride === 'object' ? reglasOverride : {}),
+  };
+  return mapa[id] || null;
+}
+
+function numDeducibleFilaOpcional(valor) {
+  if (valor === '' || valor == null) return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** '' = el usuario borró el valor a propósito; null/undefined = usar default de la regla. */
+function resolverValorDeducibleRegla(valorActual, valorRegla) {
+  if (valorActual === '') return '';
+  const n = numDeducibleFilaOpcional(valorActual);
+  return n != null ? n : valorRegla;
 }
 
 /** Fila con artículo o catálogo: ya puede elegir cobertura y deducible. */
@@ -1006,8 +1034,9 @@ export function filaContenidoTieneDeducibleArticulo(row = {}) {
 
 /**
  * Recalcula % / mínimo / deducible de una fila según la cobertura.
- * Terremoto: MAX(base × 3%, 3 SMMLV). El deducible no es editable.
+ * Terremoto: MAX(base × %, mínimo SMMLV). El % es editable; la regla solo rellena vacíos.
  * opts.baseValor: presupuesto usa total de fila si no hay suma asegurada.
+ * opts.reglasDeducible: override por aseguradora (p. ej. Sura 2%).
  */
 export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}) {
   const cobertura = row.coberturaAfectar || row.tipoCobertura || '';
@@ -1029,14 +1058,25 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
     parseMontoNsr10(smmlvCfg.valorSMMLV) ||
     smmlv.valor ||
     SMMLV_DEFAULT;
-  const regla = reglaDeduciblePorCobertura(idCob);
+  const regla = reglaDeduciblePorCobertura(idCob, opts.reglasDeducible);
 
   if (regla) {
-    const cantidadSMMLV = Number(regla.cantidadSMMLV) || 0;
-    const porcentaje = Number(regla.porcentaje) || 0;
-    next.porcentajeDeducible = porcentaje;
+    const porcentajeRegla = Number(regla.porcentaje) || 0;
+    const cantidadRegla = Number(regla.cantidadSMMLV) || 0;
+    next.porcentajeDeducible = resolverValorDeducibleRegla(
+      next.porcentajeDeducible,
+      porcentajeRegla
+    );
+    const cantidadSMMLV = resolverValorDeducibleRegla(
+      next.cantidadMinimoSMMLV,
+      cantidadRegla
+    );
     next.cantidadMinimoSMMLV = cantidadSMMLV;
-    next.valorMinimo = Math.round(cantidadSMMLV * valorSMMLV * 100) / 100;
+    if (cantidadSMMLV === '' || cantidadSMMLV == null) {
+      next.valorMinimo = '';
+    } else {
+      next.valorMinimo = Math.round(Number(cantidadSMMLV) * valorSMMLV * 100) / 100;
+    }
   }
 
   const vaExpl = parseMontoNsr10(next.valorAsegurable);
@@ -1049,8 +1089,15 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
 
   if (regla) {
     if (va <= 0) return next;
-    const porPct = va * (Number(next.porcentajeDeducible) / 100);
-    next.deducibleCalculado = Math.round(Math.max(porPct, next.valorMinimo || 0) * 100) / 100;
+    const pct =
+      next.porcentajeDeducible === '' ? 0 : Number(next.porcentajeDeducible);
+    const porPct = Number.isFinite(pct) && pct > 0 ? va * (pct / 100) : 0;
+    const vmin = parseMontoNsr10(next.valorMinimo) || 0;
+    if (porPct <= 0 && vmin <= 0) {
+      next.deducibleCalculado = '';
+      return next;
+    }
+    next.deducibleCalculado = Math.round(Math.max(porPct, vmin) * 100) / 100;
     return next;
   }
 
@@ -1069,14 +1116,17 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
 export function prepararFilaDeducibleContenido(
   row = {},
   smmlvCfg = {},
-  coberturaPredeterminada = ''
+  coberturaPredeterminada = '',
+  opts = {}
 ) {
   let next = { ...row };
   const propia = String(next.coberturaAfectar || next.tipoCobertura || '').trim();
   if (filaContenidoListaParaDeducible(next) && !propia && coberturaPredeterminada) {
     next = { ...next, coberturaAfectar: coberturaPredeterminada };
   }
-  return aplicarDeducibleCoberturaFila(next, smmlvCfg);
+  return aplicarDeducibleCoberturaFila(next, smmlvCfg, {
+    reglasDeducible: opts.reglasDeducible,
+  });
 }
 
 export function baseValorDeduciblePresupuesto(row = {}) {
@@ -1104,7 +1154,8 @@ export function filaPresupuestoTieneDeducibleArticulo(row = {}) {
 export function prepararFilaDeduciblePresupuesto(
   row = {},
   smmlvCfg = {},
-  coberturaPredeterminada = ''
+  coberturaPredeterminada = '',
+  opts = {}
 ) {
   let next = { ...row };
   const propia = String(next.coberturaAfectar || next.tipoCobertura || '').trim();
@@ -1115,6 +1166,7 @@ export function prepararFilaDeduciblePresupuesto(
   return aplicarDeducibleCoberturaFila(next, smmlvCfg, {
     lista,
     baseValor: baseValorDeduciblePresupuesto(next) || 0,
+    reglasDeducible: opts.reglasDeducible,
   });
 }
 
@@ -1126,12 +1178,23 @@ export function aplicarDeduciblesAgrupados(items = [], smmlvCfg = {}, opts = {})
   const grupoDefault = opts.grupoDefault || GRUPO_DEDUCIBLE_CONTENIDOS;
   const tipo = opts.tipo || 'contenidos';
   const coberturaPredeterminada = opts.coberturaPredeterminada || '';
+  const reglasOpts = { reglasDeducible: opts.reglasDeducible };
   const preparar =
     tipo === 'presupuesto'
       ? (row) =>
-          prepararFilaDeduciblePresupuesto(row, smmlvCfg, coberturaPredeterminada)
+          prepararFilaDeduciblePresupuesto(
+            row,
+            smmlvCfg,
+            coberturaPredeterminada,
+            reglasOpts
+          )
       : (row) =>
-          prepararFilaDeducibleContenido(row, smmlvCfg, coberturaPredeterminada);
+          prepararFilaDeducibleContenido(
+            row,
+            smmlvCfg,
+            coberturaPredeterminada,
+            reglasOpts
+          );
 
   const conRegla = (Array.isArray(items) ? items : []).map((row) => {
     const next = preparar(row);
