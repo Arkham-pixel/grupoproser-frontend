@@ -189,7 +189,7 @@ export default function ReporteFacilitadoresSura() {
     }
   };
 
-  const onExportar = () => {
+  const onExportar = async () => {
     if (!filas.length) {
       setAviso({
         tipo: 'info',
@@ -199,21 +199,24 @@ export default function ReporteFacilitadoresSura() {
       return;
     }
     const invalid = filas.filter((f) => erroresFilaPortal(f).length).length;
+    setBusy('export');
     try {
-      descargarPlantillaFacilitadores(filas);
-      if (invalid) {
-        setAviso({
-          tipo: 'warning',
-          titulo: 'Excel descargado con alertas',
-          mensaje: `${invalid} fila(s) aún no cumplen las reglas del portal.`,
-        });
-      }
+      await descargarPlantillaFacilitadores(filas);
+      setAviso({
+        tipo: invalid ? 'warning' : 'success',
+        titulo: invalid ? 'Excel descargado con alertas' : 'Excel descargado',
+        mensaje: invalid
+          ? `Hoja Seguimiento (como la pantalla) + hoja BD (portal). ${invalid} fila(s) aún con faltantes.`
+          : 'Hoja Seguimiento con chulo/X como en la plataforma, y hoja BD lista para el portal.',
+      });
     } catch (err) {
       setAviso({
         tipo: 'error',
         titulo: 'Exportar',
         mensaje: err.message || 'No se pudo generar el Excel.',
       });
+    } finally {
+      setBusy('');
     }
   };
 
@@ -313,11 +316,11 @@ export default function ReporteFacilitadoresSura() {
             <button
               type="button"
               className={expressBtnSecondary}
-              disabled={!filas.length}
+              disabled={!filas.length || Boolean(busy)}
               onClick={onExportar}
             >
               <FaFileExcel />
-              Descargar para el líder
+              {busy === 'export' ? 'Generando Excel…' : 'Descargar para el líder'}
             </button>
           </div>
         </header>
