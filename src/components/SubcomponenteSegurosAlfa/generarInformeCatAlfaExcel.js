@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import {
   calcularLiquidacionAlfa,
   defaultInformeUnicoAlfa,
@@ -593,9 +594,11 @@ async function resolverBufferFoto(foto) {
   const ruta = foto.ruta || foto.fotoRuta || '';
   if (ruta) {
     if (String(ruta).startsWith('data:')) return dataUrlABuffer(ruta);
-    const primary = urlDescargaArchivoAlfa(ruta);
-    const candidatos = getUploadsUrlCandidates(ruta) || [];
-    const urls = [...new Set([primary, ...candidatos].filter(Boolean))];
+    const urls = await candidatosUrlArchivo(
+      ruta,
+      urlDescargaArchivoAlfa(ruta),
+      ...(getUploadsUrlCandidates(ruta) || [])
+    );
     for (const url of urls) {
       const img = await fetchImageBuffer(url);
       if (img) return img;

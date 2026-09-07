@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaDownload, FaTrash, FaUpload } from 'react-icons/fa';
+import { FaTrash, FaUpload } from 'react-icons/fa';
 import {
   eliminarArchivoPrevisora,
   getCasoPrevisoraById,
   subirArchivoPrevisora,
-  urlDescargaArchivoPrevisora,
 } from '../../services/previsoraService.js';
 import {
   expressAlertError,
@@ -14,6 +13,7 @@ import {
   expressBtnPrimary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import BotonDescargaStorage from '../shared/BotonDescargaStorage.jsx';
 import { ETIQUETAS_ARCHIVO_PREVISORA, formatDate } from './previsoraHelpers.js';
 
 const formatBytes = (n) => {
@@ -146,9 +146,7 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
                 </td>
               </tr>
             ) : (
-              archivos.map((arch) => {
-                const url = urlDescargaArchivoPrevisora(arch.ruta);
-                return (
+              archivos.map((arch) => (
                   <tr key={arch._id}>
                     <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
                       {arch.nombreOriginal}
@@ -166,17 +164,14 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex gap-2">
-                        {url && (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={arch.nombreOriginal}
-                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
+                        {arch.ruta && (
+                          <BotonDescargaStorage
+                            ruta={arch.ruta}
+                            nombre={arch.nombreOriginal}
+                            onError={(err) => setError(err.message)}
                           >
-                            <FaDownload />
                             {t('previsora.archive.download')}
-                          </a>
+                          </BotonDescargaStorage>
                         )}
                         <button
                           type="button"
@@ -189,8 +184,7 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
                       </div>
                     </td>
                   </tr>
-                );
-              })
+              ))
             )}
           </tbody>
         </table>

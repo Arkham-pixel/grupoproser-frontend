@@ -43,6 +43,7 @@ import {
 } from './liquidadorSuraHelpers.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
@@ -942,9 +943,11 @@ async function resolverBytesFoto(foto, archivosCaso = []) {
 
   // Preferir ruta del servidor antes que blob: local (más estable al generar Word)
   if (ruta) {
-    const candidatos = getUploadsUrlCandidates(ruta);
-    const primary = urlDescargaArchivoSura(ruta);
-    const urls = [...new Set([primary, ...(candidatos || [])].filter(Boolean))];
+    const urls = await candidatosUrlArchivo(
+      ruta,
+      urlDescargaArchivoSura(ruta),
+      ...(getUploadsUrlCandidates(ruta) || [])
+    );
     for (const url of urls) {
       const img = await fetchImageBytes(url);
       if (img) return img;

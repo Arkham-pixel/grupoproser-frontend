@@ -31,6 +31,7 @@ import {
 } from './liquidadorAlfaHelpers.js';
 import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 import { paginasTodasCotizacionesPdfAlfa } from '../liquidacion/cotizacionPdfLiquidacion.js';
 
@@ -639,9 +640,11 @@ async function resolverBytesFoto(foto, archivosCaso = []) {
 
   // Preferir ruta del servidor antes que blob: local (más estable al generar Word)
   if (ruta) {
-    const candidatos = getUploadsUrlCandidates(ruta);
-    const primary = urlDescargaArchivoAlfa(ruta);
-    const urls = [...new Set([primary, ...(candidatos || [])].filter(Boolean))];
+    const urls = await candidatosUrlArchivo(
+      ruta,
+      urlDescargaArchivoAlfa(ruta),
+      ...(getUploadsUrlCandidates(ruta) || [])
+    );
     for (const url of urls) {
       const img = await fetchImageBytes(url);
       if (img) return img;

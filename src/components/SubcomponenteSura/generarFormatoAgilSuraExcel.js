@@ -2,6 +2,7 @@ import { saveAs } from 'file-saver';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
 import { generarWorkbookLiquidadorSuraNsr, pintarResumenIndemnizacionSura } from './generarLiquidadorSuraExcel.js';
 import {
@@ -110,9 +111,11 @@ async function resolverBufferFoto(item = {}, archivosCaso = []) {
     if (arch?.ruta) ruta = arch.ruta;
   }
   if (!ruta) return null;
-  const primary = urlDescargaArchivoSura(ruta);
-  const candidatos = getUploadsUrlCandidates(ruta) || [];
-  const urls = [...new Set([primary, ...candidatos].filter(Boolean))];
+  const urls = await candidatosUrlArchivo(
+    ruta,
+    urlDescargaArchivoSura(ruta),
+    ...(getUploadsUrlCandidates(ruta) || [])
+  );
   for (const url of urls) {
     const img = await fetchImageBuffer(url);
     if (img) return img;
@@ -260,9 +263,11 @@ async function resolverBufferMapaInforme(informe = {}) {
     }
     const ruta = im.ruta || im.fotoRuta || '';
     if (ruta) {
-      const primary = urlDescargaArchivoSura(ruta);
-      const candidatos = getUploadsUrlCandidates(ruta) || [];
-      const urls = [...new Set([primary, ...candidatos].filter(Boolean))];
+      const urls = await candidatosUrlArchivo(
+        ruta,
+        urlDescargaArchivoSura(ruta),
+        ...(getUploadsUrlCandidates(ruta) || [])
+      );
       for (const url of urls) {
         const img = await fetchImageBuffer(url);
         if (img) return img;

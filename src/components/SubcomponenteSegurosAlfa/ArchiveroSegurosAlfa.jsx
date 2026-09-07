@@ -17,7 +17,6 @@ import {
   reintentarSharePointAlfa,
   setSharePointEnabledAlfa,
   subirArchivoAlfa,
-  urlDescargaArchivoAlfa,
 } from '../../services/segurosAlfaService.js';
 import useAlfaSharePointSyncStatus from '../../hooks/useAlfaSharePointSyncStatus.js';
 import {
@@ -27,6 +26,7 @@ import {
   expressBtnPrimary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import BotonDescargaStorage from '../shared/BotonDescargaStorage.jsx';
 import { ETIQUETAS_ARCHIVO_ALFA, formatDate } from './segurosAlfaHelpers.js';
 import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
 
@@ -190,7 +190,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
 
   const resolveDownloadUrl = (doc) => {
     if (doc.origin === 'sharepoint') return doc.downloadUrl || null;
-    return urlDescargaArchivoAlfa(doc.ruta || doc.downloadUrl);
+    return null;
   };
 
   const handleToggleSharePoint = async (archivoId, enabled) => {
@@ -412,7 +412,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex flex-wrap justify-end gap-2">
-                        {url && (
+                        {doc.origin === 'sharepoint' && url ? (
                           <a
                             href={url}
                             target="_blank"
@@ -422,6 +422,16 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                             <FaDownload />
                             {t('segurosAlfa.archive.download')}
                           </a>
+                        ) : (
+                          doc.ruta && (
+                            <BotonDescargaStorage
+                              ruta={doc.ruta}
+                              nombre={doc.nombre}
+                              onError={(err) => setError(err.message)}
+                            >
+                              {t('segurosAlfa.archive.download')}
+                            </BotonDescargaStorage>
+                          )
                         )}
                         {doc.sharepoint?.webUrl && (
                           <a
@@ -469,7 +479,6 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
               })
             ) : (
               archivos.map((arch) => {
-                const url = urlDescargaArchivoAlfa(arch.ruta);
                 const sync = syncByArchivoId[String(arch._id)] || { status: 'none' };
                 const status = sync.status || 'none';
                 return (
@@ -497,17 +506,14 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex flex-wrap justify-end gap-2">
-                        {url && (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={arch.nombreOriginal}
-                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 dark:border-gray-700 dark:text-sky-300"
+                        {arch.ruta && (
+                          <BotonDescargaStorage
+                            ruta={arch.ruta}
+                            nombre={arch.nombreOriginal}
+                            onError={(err) => setError(err.message)}
                           >
-                            <FaDownload />
                             {t('segurosAlfa.archive.download')}
-                          </a>
+                          </BotonDescargaStorage>
                         )}
                         {renderSharePointActions(arch._id, status, sync.webUrl)}
                         {status === 'failed' && allowRetry && (

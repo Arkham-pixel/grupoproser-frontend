@@ -43,6 +43,8 @@ import { descargarDesprendibleCatZurich } from './generarDesprendibleCatZurich.j
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { AUTOSAVE_DEBOUNCE_MS } from '../../config/autoSaveConfig.js';
 import { ACCEPT_ARCHIVOS_IMAGEN, asegurarJpeg, esArchivoImagen } from '../../utils/heicToJpeg.js';
+import StorageLazyImage from '../shared/StorageLazyImage.jsx';
+import { resolverUrlImagen } from '../../services/storageSignedUrl.js';
 
 const SEVERIDAD_MANUAL_CAT = SEVERIDAD_CAT_ZURICH.map((s) => ({
   nivel: s.valor,
@@ -461,10 +463,18 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   const td =
     'border border-gray-300 px-2 py-2 font-body text-sm text-gray-800 dark:border-gray-600 dark:text-gray-100 align-top';
 
-  const abrirFotoGrande = (e, foto, url) => {
+  const abrirFotoGrande = async (e, foto, urlFallback) => {
     e.preventDefault();
     e.stopPropagation();
-    if (arrastrandoId || !url) return;
+    if (arrastrandoId) return;
+    let url = null;
+    try {
+      url = await resolverUrlImagen(foto);
+    } catch {
+      /* fallback abajo */
+    }
+    url = url || urlFallback || getImageUrl(foto) || urlDescargaArchivoZurich(foto?.ruta);
+    if (!url) return;
     setImagenAmpliada({
       url,
       descripcion: foto?.descripcion || '',
@@ -683,7 +693,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {fotos.map((f, index) => {
               const clave = idFoto(f, index);
-              const url = getImageUrl(f) || urlDescargaArchivoZurich(f.ruta);
+              const tieneFoto = Boolean(f.ruta || getImageUrl(f));
               const esOrigen = arrastrandoId === clave;
               const esDestino =
                 destinoArrastreId === clave && arrastrandoId && arrastrandoId !== clave;
@@ -731,16 +741,16 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
                   </div>
 
                   <div className="relative">
-                    {url ? (
+                    {tieneFoto ? (
                       <button
                         type="button"
                         className="block w-full cursor-zoom-in p-0"
                         title="Clic para ampliar"
-                        onClick={(e) => abrirFotoGrande(e, f, url)}
+                        onClick={(e) => abrirFotoGrande(e, f)}
                         onMouseDown={(e) => e.stopPropagation()}
                       >
-                        <img
-                          src={url}
+                        <StorageLazyImage
+                          imagen={f}
                           alt={f.nombreOriginal || 'Foto'}
                           draggable={false}
                           className="h-36 w-full rounded-lg object-cover"

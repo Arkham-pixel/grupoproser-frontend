@@ -13,6 +13,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { ImageCompression } from '../../utils/imageCompression.js';
 import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA } from '../../utils/heicToJpeg.js';
+import LazyGatedImage from '../shared/LazyGatedImage.jsx';
+import StorageLazyImage from '../shared/StorageLazyImage.jsx';
+import { resolverUrlImagen } from '../../services/storageSignedUrl.js';
 import {
   actualizarArchivoAlfa,
   eliminarArchivoAlfa,
@@ -351,6 +354,11 @@ export default function FotosInspeccionAlfa({
               const esOrigen = arrastrandoId === clave;
               const esDestino =
                 destinoArrastreId === clave && arrastrandoId && arrastrandoId !== clave;
+              const esPreviewLocal = Boolean(
+                imagen.preview ||
+                  (typeof imageUrl === 'string' &&
+                    (imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')))
+              );
               return (
                 <div
                   key={clave}
@@ -403,15 +411,26 @@ export default function FotosInspeccionAlfa({
                     <span>#{index + 1}</span>
                   </div>
                   <div className="relative">
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={imagen.nombre}
-                        className="h-32 w-full cursor-pointer rounded-lg object-cover"
-                        draggable={false}
-                        onClick={() => setImagenSeleccionada(imagen)}
-                        onError={createImageErrorHandler(imagen, () => {})}
-                      />
+                    {imageUrl || imagen.ruta ? (
+                      esPreviewLocal ? (
+                        <LazyGatedImage
+                          src={imageUrl}
+                          alt={imagen.nombre}
+                          className="h-32 w-full cursor-pointer overflow-hidden rounded-lg"
+                          draggable={false}
+                          onClick={() => setImagenSeleccionada(imagen)}
+                          onError={createImageErrorHandler(imagen, () => {})}
+                        />
+                      ) : (
+                        <StorageLazyImage
+                          imagen={imagen}
+                          alt={imagen.nombre}
+                          className="h-32 w-full cursor-pointer overflow-hidden rounded-lg"
+                          draggable={false}
+                          onClick={() => setImagenSeleccionada(imagen)}
+                          onError={createImageErrorHandler(imagen, () => {})}
+                        />
+                      )
                     ) : (
                       <div
                         className="flex h-32 w-full items-center justify-center rounded-lg"
@@ -502,18 +521,46 @@ export default function FotosInspeccionAlfa({
       )}
 
       {imagenSeleccionada && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setImagenSeleccionada(null)}
-        >
-          <img
-            src={getImageUrl(imagenSeleccionada)}
-            alt={imagenSeleccionada.nombre}
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+        <FotoAlfaAmpliada
+          imagen={imagenSeleccionada}
+          onClose={() => setImagenSeleccionada(null)}
+        />
       )}
+    </div>
+  );
+}
+
+function FotoAlfaAmpliada({ imagen, onClose }) {
+  const [src, setSrc] = useState(
+    () => getImageUrl(imagen) || (imagen?.preview ? imagen.preview : null)
+  );
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (imagen?.preview?.startsWith?.('blob:') || imagen?.preview?.startsWith?.('data:')) {
+        setSrc(imagen.preview);
+        return;
+      }
+      const url = await resolverUrlImagen(imagen);
+      if (!cancelado) setSrc(url || getImageUrl(imagen));
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [imagen]);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      {src ? (
+        <img
+          src={src}
+          alt={imagen?.nombre}
+          className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : null}
     </div>
   );
 }

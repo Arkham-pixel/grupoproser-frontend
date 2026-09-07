@@ -22,6 +22,7 @@ import {
 import { saveAs } from 'file-saver';
 import logoPrevisoraUrl from '../../assets/logo-previsora.png';
 import { urlDescargaArchivoPrevisora } from '../../services/previsoraService.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { nombreUsuarioPlataforma } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   DISCLAIMER_CAT_PREVISORA,
@@ -216,8 +217,12 @@ async function construirParrafosFotos(caso = {}) {
     const a = fotosOrdenadas[i];
     const titulo = `${i + 1}. ${a.nombreOriginal || a.nombreArchivo || 'Foto'}`;
     const descripcion = String(a.descripcion || '').trim();
-    const url = urlDescargaArchivoPrevisora(a.ruta);
-    const img = url ? await fetchImageBytes(url) : null;
+    const urls = await candidatosUrlArchivo(a.ruta, urlDescargaArchivoPrevisora(a.ruta));
+    let img = null;
+    for (const url of urls) {
+      img = await fetchImageBytes(url);
+      if (img) break;
+    }
     if (img) incluidas += 1;
     preparadas.push({ titulo, descripcion, img, fallo: !img });
   }

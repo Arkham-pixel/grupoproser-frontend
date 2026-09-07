@@ -5,6 +5,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { urlDescargaArchivoFdm } from '../../services/equidadFdmService.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 
 /** Etiquetas que NUNCA entran al PDF unificado (liquidador / modelo Excel). */
 export const ETIQUETAS_EXCLUIDAS_MERGE_PDF = new Set([
@@ -105,13 +106,19 @@ export const archivosParaExpedienteFdm = (archivos = []) =>
 export const archivosPdfParaUnirFdm = archivosParaExpedienteFdm;
 
 async function fetchArchivoBytes(arch) {
-  const url = urlDescargaArchivoFdm(arch.ruta);
-  if (!url) throw new Error(`Sin URL de descarga: ${arch.nombreOriginal}`);
-  const res = await fetch(url, { headers: authFetchHeaders() });
-  if (!res.ok) {
-    throw new Error(`No se pudo leer ${arch.nombreOriginal} (${res.status})`);
+  const urls = await candidatosUrlArchivo(arch.ruta, urlDescargaArchivoFdm(arch.ruta));
+  if (!urls.length) throw new Error(`Sin URL de descarga: ${arch.nombreOriginal}`);
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { headers: authFetchHeaders() });
+      if (res.ok) return res.arrayBuffer();
+      lastErr = new Error(`No se pudo leer ${arch.nombreOriginal} (${res.status})`);
+    } catch (err) {
+      lastErr = err;
+    }
   }
-  return res.arrayBuffer();
+  throw lastErr || new Error(`No se pudo leer ${arch.nombreOriginal}`);
 }
 
 async function appendPdfBytes(merged, pdfBytes) {

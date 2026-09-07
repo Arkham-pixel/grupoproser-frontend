@@ -30,6 +30,7 @@ import {
 } from './liquidadorBbvaCatHelpers.js';
 import { urlDescargaArchivoBbvaCat } from '../../services/bbvaCatService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { calcularTotalesFormatoExcelBbvaCat, esValorGlobal } from './formatoLiquidacionBbvaCat.js';
 import { inferirTipoLiquidadorBbvaCat, textosLetrerosBbvaCat } from './deduciblesBbvaCat.js';
 
@@ -680,10 +681,11 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = [
-    ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : []),
+  const candidatos = await candidatosUrlArchivo(
+    foto?.ruta,
     urlFn?.(foto?.ruta),
-  ].filter(Boolean);
+    ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : [])
+  );
   const vistos = new Set();
   for (const url of candidatos) {
     if (vistos.has(url)) continue;

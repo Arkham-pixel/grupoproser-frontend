@@ -52,6 +52,7 @@ import {
 import { nombreTipoOtroAmparo } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -622,10 +623,11 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = [
-    ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : []),
+  const candidatos = await candidatosUrlArchivo(
+    foto?.ruta,
     urlFn?.(foto?.ruta),
-  ].filter(Boolean);
+    ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : [])
+  );
   const vistos = new Set();
   for (const url of candidatos) {
     if (vistos.has(url)) continue;

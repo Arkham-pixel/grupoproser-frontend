@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import {
   aplicarRecargosPresupuestoNsr10,
   fusionarPortadaConFormData,
@@ -261,9 +262,11 @@ async function resolverBufferFotoFila(item) {
 
   const ruta = item.fotoRuta || '';
   if (ruta) {
-    const primary = urlDescargaArchivoSura(ruta);
-    const candidatos = getUploadsUrlCandidates(ruta) || [];
-    const urls = [...new Set([primary, ...candidatos].filter(Boolean))];
+    const urls = await candidatosUrlArchivo(
+      ruta,
+      urlDescargaArchivoSura(ruta),
+      ...(getUploadsUrlCandidates(ruta) || [])
+    );
     for (const url of urls) {
       const img = await fetchImageBuffer(url);
       if (img) return img;

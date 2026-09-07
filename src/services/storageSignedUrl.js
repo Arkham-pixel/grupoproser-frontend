@@ -129,6 +129,27 @@ export async function resolverUrlImagen(imagenORef) {
   return null;
 }
 
+/**
+ * Lista de URLs a probar (firmada primero, luego proxies).
+ * Útil en Word / Excel / desprendibles.
+ */
+export async function candidatosUrlArchivo(ruta, ...fallbacks) {
+  const out = [];
+  const raw = String(ruta || '').trim();
+  if (raw) {
+    try {
+      const firmada = await resolverUrlArchivo(raw);
+      if (firmada) out.push(firmada);
+    } catch {
+      /* fallback abajo */
+    }
+  }
+  for (const f of fallbacks) {
+    if (f) out.push(f);
+  }
+  return [...new Set(out.filter(Boolean))];
+}
+
 export function invalidarCacheUrlArchivo(ref) {
   if (!ref) {
     cache.clear();

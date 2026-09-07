@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaDownload, FaTrash, FaUpload } from 'react-icons/fa';
+import { FaTrash, FaUpload } from 'react-icons/fa';
 import {
   expressAlertError,
   expressAlertSuccess,
   expressBtnGhost,
   expressBtnPrimary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import BotonDescargaStorage from '../shared/BotonDescargaStorage.jsx';
 import {
   ETIQUETA_DOCUMENTO_PAGO_BBVA_CAT,
   formatDate,
@@ -164,9 +165,7 @@ export default function AdjuntoDocumentoPagoBbvaCat({
         </p>
       ) : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-700 dark:bg-[#1A1A1A]">
-          {docsPago.map((arch) => {
-            const url = api.url(arch.ruta);
-            return (
+          {docsPago.map((arch) => (
               <li
                 key={arch._id}
                 className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
@@ -180,16 +179,15 @@ export default function AdjuntoDocumentoPagoBbvaCat({
                   </p>
                 </div>
                 <div className="inline-flex gap-2">
-                  {url && (
-                    <a
-                      href={url}
+                  {arch.ruta && (
+                    <BotonDescargaStorage
+                      ruta={arch.ruta}
+                      nombre={arch.nombreOriginal}
                       className={expressBtnGhost}
-                      target="_blank"
-                      rel="noreferrer"
+                      onError={(err) => setError(err.message)}
                     >
-                      <FaDownload />
                       {t('bbvaCat.archive.download')}
-                    </a>
+                    </BotonDescargaStorage>
                   )}
                   <button
                     type="button"
@@ -202,8 +200,7 @@ export default function AdjuntoDocumentoPagoBbvaCat({
                   </button>
                 </div>
               </li>
-            );
-          })}
+          ))}
         </ul>
       )}
     </div>

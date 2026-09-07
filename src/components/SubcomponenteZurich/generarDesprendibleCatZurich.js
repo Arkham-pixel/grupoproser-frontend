@@ -22,6 +22,7 @@ import {
 import { saveAs } from 'file-saver';
 import logoZurichUrl from '../../assets/zurich-logo.png';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
+import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { nombreUsuarioPlataforma } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   DISCLAIMER_CAT_ZURICH,
@@ -216,8 +217,12 @@ async function construirParrafosFotos(caso = {}) {
     const a = fotosOrdenadas[i];
     const titulo = `${i + 1}. ${a.nombreOriginal || a.nombreArchivo || 'Foto'}`;
     const descripcion = String(a.descripcion || '').trim();
-    const url = urlDescargaArchivoZurich(a.ruta);
-    const img = url ? await fetchImageBytes(url) : null;
+    const urls = await candidatosUrlArchivo(a.ruta, urlDescargaArchivoZurich(a.ruta));
+    let img = null;
+    for (const url of urls) {
+      img = await fetchImageBytes(url);
+      if (img) break;
+    }
     if (img) incluidas += 1;
     preparadas.push({ titulo, descripcion, img, fallo: !img });
   }
