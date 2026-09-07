@@ -36,15 +36,15 @@ export const CATEGORIAS_GESTION_TERREMOTO = [
   },
   {
     id: 'liquidados',
-    label: 'Liquidados',
-    labelCorto: 'Liquidados',
-    descripcion: 'Liquidados',
+    label: 'Liquidación concluida y en recolecta de documentos',
+    labelCorto: 'Liq. concluida',
+    descripcion: 'Liquidación concluida y en recolecta de documentos',
   },
   {
     id: 'pendientesPagoAlfa',
-    label: 'Pendientes de pago por Alfa',
-    labelCorto: 'Pend. pago Alfa',
-    descripcion: 'Cerrados pendientes de pago por Alfa',
+    label: 'Cerrados',
+    labelCorto: 'Cerrados',
+    descripcion: 'Cerrados',
   },
   {
     id: 'objetados',
