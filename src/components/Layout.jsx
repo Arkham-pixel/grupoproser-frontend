@@ -55,6 +55,7 @@ import {
   FaGlobeAmericas,
   FaBalanceScale,
   FaCalendarAlt,
+  FaUserPlus,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
@@ -1015,6 +1016,12 @@ export default function Layout() {
             icon: FaPlus,
             label: t('nav.addUser'),
             onClick: () => localStorage.setItem('cuentaTab', 'agregar'),
+          },
+          {
+            path: '/cuenta',
+            icon: FaUserPlus,
+            label: 'Agregar usuario remoto',
+            onClick: () => localStorage.setItem('cuentaTab', 'agregarRemoto'),
           },
           { path: '/editar-perfil-usuario', icon: FaEdit, label: t('nav.editUsers') },
           {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import EditarCuentas from "./EditarCuenta";
 import AgregarCuenta from "./AgregarCuenta";
+import AgregarUsuarioRemoto from "./AgregarUsuarioRemoto";
 import api from "../../services/api";
 import MiCuenta from "./miCuenta";
 import CambiarContrasena from "./CambiarContrasena";
@@ -88,6 +89,14 @@ export default function Cuenta() {
         )}
         {esAdminOSoporte && (
           <button
+            className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium ${pestana === "agregarRemoto" ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}
+            onClick={() => setPestana("agregarRemoto")}
+          >
+            Agregar usuario remoto
+          </button>
+        )}
+        {esAdminOSoporte && (
+          <button
             className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium ${pestana === "eliminar" ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}
             onClick={() => setPestana("eliminar")}
           >
@@ -100,6 +109,7 @@ export default function Cuenta() {
         {pestana === "editar" && <EditarCuentas />}
         {pestana === "micuenta" && <CambiarContrasena />}
         {pestana === "agregar" && esAdminOSoporte && <AgregarCuenta />}
+        {pestana === "agregarRemoto" && esAdminOSoporte && <AgregarUsuarioRemoto />}
         {pestana === "eliminar" && esAdminOSoporte && (
           <div className="mt-4 sm:mt-6">
             <form onSubmit={handleEliminarCuenta} className="space-y-2 sm:space-y-3">
