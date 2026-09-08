@@ -899,6 +899,50 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     }
   };
 
+  /**
+   * Etiqueta L:N (cols 12–14) + valor en O (15).
+   * Si el merge de plantilla se rompe al insertar ítems, M/N quedan con texto viejo
+   * («Sub Total», «Deducible…») y se ven repetidos. Limpiar + recombinar evita eso.
+   */
+  const escribirFilaTotal = (row, label, value, { bold = false } = {}) => {
+    unmergeRangoSeguro(sheet, row, 12, row, 14);
+    for (let c = 12; c <= 14; c += 1) {
+      const cell = sheet.getCell(row, c);
+      cell.value = null;
+      try {
+        if (cell.formula) cell.formula = undefined;
+      } catch {
+        /* ok */
+      }
+    }
+    const labelCell = sheet.getCell(row, 12);
+    labelCell.value = label || null;
+    if (bold) {
+      labelCell.font = { ...(labelCell.font || {}), bold: true };
+    }
+    try {
+      sheet.mergeCells(row, 12, row, 14);
+    } catch {
+      try {
+        unmergeRangoSeguro(sheet, row, 12, row, 14);
+        sheet.mergeCells(row, 12, row, 14);
+      } catch {
+        /* ok: queda solo en L */
+      }
+    }
+    setTotalVal(row, 15, value);
+    if (bold) {
+      try {
+        sheet.getCell(row, 15).font = {
+          ...(sheet.getCell(row, 15).font || {}),
+          bold: true,
+        };
+      } catch {
+        /* ok */
+      }
+    }
+  };
+
   const rSub = 25 + rowShift;
   const rAiu = 26 + rowShift;
   const rDed = 27 + rowShift;
@@ -910,38 +954,48 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
   const rBanco = 36 + rowShift;
   const rFirma = 38 + rowShift;
 
-  setVal(sheet, rSub, 12, 'Sub Total ítems');
-  setTotalVal(rSub, 15, subTotalItems || 0);
+  // Limpiar también merges “fantasma” de la plantilla en filas base (sin shift)
+  if (rowShift > 0) {
+    for (const base of [25, 26, 27, 28, 29]) {
+      unmergeRangoSeguro(sheet, base, 12, base, 14);
+      for (let c = 12; c <= 14; c += 1) {
+        try {
+          sheet.getCell(base, c).value = null;
+        } catch {
+          /* ok */
+        }
+      }
+    }
+  }
 
-  setVal(sheet, rAiu, 12, `AIU (${aiuPctUi}%)`);
-  setTotalVal(rAiu, 15, aiuVal || 0);
-
-  setVal(sheet, rDed, 12, 'Deducible Aplicable');
-  setTotalVal(rDed, 15, deducibleFinal || 0);
+  escribirFilaTotal(rSub, 'Sub Total ítems', subTotalItems || 0);
+  escribirFilaTotal(rAiu, `AIU (${aiuPctUi}%)`, aiuVal || 0);
+  escribirFilaTotal(rDed, 'Deducible Aplicable', deducibleFinal || 0);
 
   // Reescribir O8 (Pesos/Otro) con el deducible aplicado real
   setTotalVal(8, 15, deducibleFinal || 0);
 
   let rowValor = rValorBase;
   if (totalOtrosAmparos > 0) {
-    setVal(sheet, rOtros, 12, 'Otros amparos (sin deducible)');
-    setTotalVal(rOtros, 15, totalOtrosAmparos);
+    escribirFilaTotal(rOtros, 'Otros amparos (sin deducible)', totalOtrosAmparos);
     rowValor = rOtros + 1;
+  } else {
+    // Sin otros amparos: limpiar fila 29 por si quedó etiqueta/merge basura
+    const rExtra = rOtros + 1;
+    if (rExtra < rObs) {
+      unmergeRangoSeguro(sheet, rExtra, 12, rExtra, 14);
+      for (let c = 12; c <= 15; c += 1) {
+        try {
+          const cell = sheet.getCell(rExtra, c);
+          cell.value = null;
+          if (cell.formula) cell.formula = undefined;
+        } catch {
+          /* ok */
+        }
+      }
+    }
   }
-  setVal(sheet, rowValor, 12, 'Valor a Indemnizar');
-  setTotalVal(rowValor, 15, aIndemnizar || 0);
-  try {
-    sheet.getCell(rowValor, 12).font = {
-      ...(sheet.getCell(rDed, 12).font || {}),
-      bold: true,
-    };
-    sheet.getCell(rowValor, 15).font = {
-      ...(sheet.getCell(rDed, 15).font || {}),
-      bold: true,
-    };
-  } catch {
-    /* ok */
-  }
+  escribirFilaTotal(rowValor, 'Valor a Indemnizar', aIndemnizar || 0, { bold: true });
 
   // Liquidado por
   setVal(
