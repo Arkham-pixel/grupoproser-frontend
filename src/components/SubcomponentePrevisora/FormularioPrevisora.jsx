@@ -60,6 +60,7 @@ import ModalImportarExcelPrevisora, {
   esAdminOSoportePrevisora,
 } from './ModalImportarExcelPrevisora.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import SelectBuscable from '../SelectBuscable.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import {
@@ -75,28 +76,25 @@ import {
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
+import {
+  aplicarCambioDepartamento,
+  extraerListaCiudadesApi,
+  filtrarCiudadesPorDepartamento,
+  mapearCiudadesDesdeApi,
+  opcionesCiudadSelect,
+} from '../../utils/ciudadesColombia.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const PrevisoraRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
+const BTN_CIUDAD_PREVISORA =
+  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
+
 const aNumero = (valor) => {
   if (valor === '' || valor === null || valor === undefined) return null;
   const n = Number(String(valor).replace(/\./g, '').replace(/[^\d-]/g, ''));
   return Number.isNaN(n) ? null : n;
-};
-
-const normTxt = (valor) =>
-  String(valor ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .trim()
-    .toUpperCase();
-
-const opcionHuerfana = (valor, opciones = []) => {
-  const v = String(valor || '').trim();
-  if (!v) return false;
-  return !opciones.some((op) => normTxt(op) === normTxt(v));
 };
 
 const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat', onClose, onSaved }) => {
@@ -170,19 +168,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         const dataAj = await resAj.json().catch(() => ({}));
         const dataIns = await resIns.json().catch(() => ({}));
         if (cancelado) return;
-        const lista = Array.isArray(dataCiudades?.data)
-          ? dataCiudades.data
-          : Array.isArray(dataCiudades)
-            ? dataCiudades
-            : [];
-        setCiudadesRaw(
-          lista
-            .map((c) => ({
-              ciudad: String(c.descMunicipio || c.label || c.nombre || '').trim(),
-              departamento: String(c.descDepto || c.departamento || '').trim(),
-            }))
-            .filter((c) => c.ciudad)
-        );
+        setCiudadesRaw(mapearCiudadesDesdeApi(extraerListaCiudadesApi(dataCiudades)));
         const listaResp = Array.isArray(dataResp?.data)
           ? dataResp.data
           : Array.isArray(dataResp)
@@ -218,47 +204,15 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     };
   }, []);
 
-  const departamentos = useMemo(() => {
-    const map = new Map();
-    for (const c of ciudadesRaw) {
-      if (!c.departamento) continue;
-      const key = normTxt(c.departamento);
-      if (!map.has(key)) map.set(key, c.departamento);
-    }
-    return [...map.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw]);
-
-  const ciudadesFiltradas = useMemo(() => {
-    const depto = normTxt(form.departamento);
-    const lista = depto
-      ? ciudadesRaw.filter((c) => normTxt(c.departamento) === depto)
-      : ciudadesRaw;
-    const unicas = new Map();
-    for (const c of lista) {
-      const key = normTxt(c.ciudad);
-      if (!unicas.has(key)) unicas.set(key, c.ciudad);
-    }
-    return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw, form.departamento]);
-
-  const opcionesCiudad = useMemo(() => {
-    const fuente = esModuloListado
-      ? ciudadesRaw.map((c) => c.ciudad)
-      : ciudadesFiltradas;
-    const unicas = new Map();
-    for (const ciudad of fuente) {
-      const key = normTxt(ciudad);
-      if (key && !unicas.has(key)) unicas.set(key, ciudad);
-    }
-    const base = [...unicas.values()]
-      .sort((a, b) => a.localeCompare(b, 'es'))
-      .map((c) => ({ value: c, label: c }));
-    const actual = String(form.ciudad || '').trim();
-    if (actual && !base.some((c) => normTxt(c.value) === normTxt(actual))) {
-      return [{ value: actual, label: actual }, ...base];
-    }
-    return base;
-  }, [ciudadesRaw, ciudadesFiltradas, esModuloListado, form.ciudad]);
+  /** Listado: todas las ciudades sin filtrar por departamento. */
+  const opcionesCiudadListado = useMemo(
+    () =>
+      opcionesCiudadSelect(
+        filtrarCiudadesPorDepartamento(ciudadesRaw, '', { requireDepto: false }),
+        form.ciudad
+      ),
+    [ciudadesRaw, form.ciudad]
+  );
 
   const ajustadoresPorCiudad = useMemo(
     () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
@@ -288,21 +242,20 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     });
   };
 
-  const setDepartamento = (e) => {
+  const setDepartamento = (valor) => {
     if (!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)) return;
-    const valor = e?.target ? e.target.value : e;
-    setForm((prev) => {
-      const siguiente = { ...prev, departamento: valor };
-      const deptoNorm = normTxt(valor);
-      const ciudadSigueValida =
-        !prev.ciudad ||
-        ciudadesRaw.some(
-          (c) =>
-            normTxt(c.departamento) === deptoNorm && normTxt(c.ciudad) === normTxt(prev.ciudad)
-        );
-      if (!ciudadSigueValida) siguiente.ciudad = '';
-      return siguiente;
-    });
+    setForm((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudadesRaw, {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudad',
+      })
+    );
+  };
+
+  const setCiudad = (val) => {
+    if (!puedeEditarCampoCaso(rolUsuario, 'ciudad', ctxPermiso)) return;
+    setForm((prev) => ({ ...prev, ciudad: val }));
   };
 
   const setCampoMiles = (clave) => (e) => {
@@ -620,20 +573,35 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               placeholder={t('previsora.placeholders.telefonoIntermediario')}
             />
           </Campo>
-          <Campo label={t('previsora.fields.ciudad')}>
-            <SelectBuscable
-              options={opcionesCiudad}
-              value={form.ciudad || ''}
-              onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
-              disabled={
-                attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
-                (cargandoCatalogos && opcionesCiudad.length === 0)
-              }
-              placeholder={t('previsora.placeholders.selectCity')}
-              searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
-              buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          {esModuloListado ? (
+            <Campo label={t('previsora.fields.ciudad')}>
+              <SelectBuscable
+                options={opcionesCiudadListado}
+                value={form.ciudad || ''}
+                onChange={(val) => setCiudad(val)}
+                disabled={
+                  attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
+                  (cargandoCatalogos && opcionesCiudadListado.length === 0)
+                }
+                placeholder={t('previsora.placeholders.selectCity')}
+                searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
+                buttonClassName={BTN_CIUDAD_PREVISORA}
+              />
+            </Campo>
+          ) : (
+            <SelectorDepartamentoCiudad
+              ciudadesRaw={ciudadesRaw}
+              departamento={form.departamento}
+              ciudad={form.ciudad}
+              onDepartamentoChange={setDepartamento}
+              onCiudadChange={setCiudad}
+              cargando={cargandoCatalogos}
+              disabledDepartamento={!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)}
+              disabledCiudad={attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled}
+              i18nNs="previsora"
+              buttonClassName={BTN_CIUDAD_PREVISORA}
             />
-          </Campo>
+          )}
           <Campo label={t('previsora.fields.estado')} required>
             {selectSimple('estado', ESTADOS_PREVISORA)}
           </Campo>
@@ -990,44 +958,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
                   onChange={setCampo('canalRadicacion')}
                   placeholder="Ej: Previsora"
                 />
-              </Campo>
-              <Campo label={t('previsora.fields.departamento')}>
-                <SelectFenix
-                  value={form.departamento}
-                  onChange={setDepartamento}
-                  disabled={cargandoCatalogos && departamentos.length === 0}
-                >
-                  <option value="">{t('common.select')}</option>
-                  {opcionHuerfana(form.departamento, departamentos) && (
-                    <option value={form.departamento}>{form.departamento}</option>
-                  )}
-                  {departamentos.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </SelectFenix>
-              </Campo>
-              <Campo label={t('previsora.fields.ciudad')}>
-                <SelectFenix
-                  value={form.ciudad}
-                  onChange={setCampo('ciudad')}
-                  disabled={cargandoCatalogos && ciudadesFiltradas.length === 0}
-                >
-                  <option value="">
-                    {form.departamento
-                      ? t('previsora.placeholders.selectCity')
-                      : t('previsora.placeholders.selectDepartmentFirst')}
-                  </option>
-                  {opcionHuerfana(form.ciudad, ciudadesFiltradas) && (
-                    <option value={form.ciudad}>{form.ciudad}</option>
-                  )}
-                  {ciudadesFiltradas.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </SelectFenix>
               </Campo>
             </div>
           </section>

@@ -4,6 +4,8 @@
  * Solo incluye claves con valor no vacío.
  */
 
+import { coincidirCiudadExacta } from './ciudadesColombia.js';
+
 const toTrim = (v) => String(v ?? '').trim();
 
 const toIsoDateInput = (valor) => {
@@ -42,8 +44,8 @@ export function extraerCiudadYDepartamento(ciudad) {
 
   if (typeof ciudad === 'object' && ciudad !== null) {
     const ciudadLabel = toTrim(ciudad.label);
-    const ciudadValue = toTrim(ciudad.value || ciudad.descMunicipio);
-    const ciudadNombre = toTrim(ciudad.descMunicipio || ciudad.nombre);
+    const ciudadValue = toTrim(ciudad.value || ciudad.ciudad || ciudad.descMunicipio);
+    const ciudadNombre = toTrim(ciudad.ciudad || ciudad.descMunicipio || ciudad.nombre);
 
     if (ciudadLabel.includes(' - ')) {
       ciudadSiniestro = ciudadLabel.split(' - ')[0].trim();
@@ -88,23 +90,12 @@ function resolverCiudadDesdeCatalogo(codigo, ciudades = []) {
   const codigoStr = toTrim(codigo);
   if (!codigoStr || !Array.isArray(ciudades) || ciudades.length === 0) return '';
 
-  const ciudad = ciudades.find((c) => {
-    const candidates = [
-      c.value,
-      c.codiMunicipio,
-      c.cod1Mun1c1p1o,
-      c.cod1Cpoblado,
-      c.codiPoblado,
-    ].map((v) => toTrim(v));
-    return candidates.includes(codigoStr);
-  });
-
+  const ciudad = coincidirCiudadExacta(ciudades, codigoStr);
   if (!ciudad) return '';
-  if (ciudad.label) return toTrim(ciudad.label);
-  if (ciudad.descMunicipio && ciudad.descDepto) {
-    return `${ciudad.descMunicipio} - ${ciudad.descDepto}`;
-  }
-  return toTrim(ciudad.descMunicipio || ciudad.descPoblado || '');
+  const nombre = toTrim(ciudad.ciudad || ciudad.label || ciudad.value || ciudad.descMunicipio);
+  const depto = toTrim(ciudad.departamento || ciudad.descDepto);
+  if (nombre && depto) return `${nombre} - ${depto}`;
+  return nombre;
 }
 
 /**

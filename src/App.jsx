@@ -69,6 +69,7 @@ import LiquidadorEquidadFdmPage from './components/SubcomponenteEquidadFdm/Liqui
 import FormularioEquidadCat from './components/SubcomponenteEquidadCat/FormularioEquidadCat';
 import ReporteEquidadCat from './components/SubcomponenteEquidadCat/ReporteEquidadCat';
 import DashboardEquidadCat from './components/SubcomponenteEquidadCat/DashboardEquidadCat';
+import BoletinDiarioEquidadCat from './components/SubcomponenteEquidadCat/BoletinDiarioEquidadCat';
 import ArchiveroEquidadCatPage from './components/SubcomponenteEquidadCat/ArchiveroEquidadCatPage';
 import CasoEquidadCatWorkspace, {
   RedirectEquidadCatWorkspace,
@@ -86,6 +87,7 @@ import CasoSegurosAlfaWorkspace, {
 import FormularioZurich from './components/SubcomponenteZurich/FormularioZurich';
 import ReporteZurich from './components/SubcomponenteZurich/ReporteZurich';
 import DashboardZurich from './components/SubcomponenteZurich/DashboardZurich';
+import BoletinDiarioZurich from './components/SubcomponenteZurich/BoletinDiarioZurich';
 import ReporteZurichListado from './components/SubcomponenteZurich/ReporteZurichListado';
 import DashboardZurichListado from './components/SubcomponenteZurich/DashboardZurichListado';
 import CasoZurichWorkspace, {
@@ -96,6 +98,7 @@ import CasoZurichWorkspace, {
 import FormularioBbvaCat from './components/SubcomponenteBbvaCat/FormularioBbvaCat';
 import ReporteBbvaCat from './components/SubcomponenteBbvaCat/ReporteBbvaCat';
 import DashboardBbvaCat from './components/SubcomponenteBbvaCat/DashboardBbvaCat';
+import BoletinDiarioBbvaCat from './components/SubcomponenteBbvaCat/BoletinDiarioBbvaCat';
 import ReporteBbvaCatListado from './components/SubcomponenteBbvaCat/ReporteBbvaCatListado';
 import DashboardBbvaCatListado from './components/SubcomponenteBbvaCat/DashboardBbvaCatListado';
 import CasoBbvaCatWorkspace, {
@@ -106,6 +109,7 @@ import BloquesCercaniaBbvaCat from './components/SubcomponenteBbvaCat/BloquesCer
 import FormularioPrevisora from './components/SubcomponentePrevisora/FormularioPrevisora';
 import ReportePrevisora from './components/SubcomponentePrevisora/ReportePrevisora';
 import DashboardPrevisora from './components/SubcomponentePrevisora/DashboardPrevisora';
+import BoletinDiarioPrevisora from './components/SubcomponentePrevisora/BoletinDiarioPrevisora';
 import ReportePrevisoraListado from './components/SubcomponentePrevisora/ReportePrevisoraListado';
 import DashboardPrevisoraListado from './components/SubcomponentePrevisora/DashboardPrevisoraListado';
 import CasoPrevisoraWorkspace, {
@@ -115,6 +119,7 @@ import ArchiveroPrevisoraPage from './components/SubcomponentePrevisora/Archiver
 import FormularioAllianz from './components/SubcomponenteAllianz/FormularioAllianz';
 import ReporteAllianz from './components/SubcomponenteAllianz/ReporteAllianz';
 import DashboardAllianz from './components/SubcomponenteAllianz/DashboardAllianz';
+import BoletinDiarioAllianz from './components/SubcomponenteAllianz/BoletinDiarioAllianz';
 import ReporteAllianzListado from './components/SubcomponenteAllianz/ReporteAllianzListado';
 import DashboardAllianzListado from './components/SubcomponenteAllianz/DashboardAllianzListado';
 import ArchiveroAllianzPage from './components/SubcomponenteAllianz/ArchiveroAllianzPage';
@@ -125,6 +130,7 @@ import { FormularioCasoSuraPage } from './components/SubcomponenteSura/Formulari
 import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
 import ReporteFacilitadoresSura from './components/SubcomponenteSura/ReporteFacilitadoresSura';
 import BoletinSemanalSegurosSura from './components/SubcomponenteSura/BoletinSemanalSegurosSura';
+import BoletinDiarioSegurosSura from './components/SubcomponenteSura/BoletinDiarioSegurosSura';
 import DashboardSegurosSura from './components/SubcomponenteSura/DashboardSegurosSura';
 import BloquesCercaniaSegurosSura from './components/SubcomponenteSura/BloquesCercaniaSegurosSura';
 import CasoSegurosSuraWorkspace, {
@@ -608,6 +614,7 @@ export default function App() {
           <Route path="equidad-cat/reporte" element={<ReporteEquidadCat />} />
           <Route path="equidad-cat/mis-casos" element={<ReporteEquidadCat modoAsignados />} />
           <Route path="equidad-cat/dashboard" element={<DashboardEquidadCat />} />
+          <Route path="equidad-cat/boletin-diario" element={<BoletinDiarioEquidadCat />} />
           <Route path="equidad-cat/caso" element={<RedirectEquidadCatWorkspace />} />
           <Route element={<CasoEquidadCatWorkspace />}>
             <Route path="equidad-cat/liquidador" element={<></>} />
@@ -635,6 +642,7 @@ export default function App() {
           <Route path="zurich/reporte" element={<ReporteZurich />} />
           <Route path="zurich/dashboard" element={<DashboardZurich />} />
           <Route path="zurich/boletin" element={<Navigate to="/zurich/dashboard" replace />} />
+          <Route path="zurich/boletin-diario" element={<BoletinDiarioZurich />} />
           <Route path="zurich/caso" element={<CasoZurichWorkspace />} />
           <Route path="zurich/liquidador" element={<RedirectZurichLiquidador />} />
           <Route path="zurich/informe-unico" element={<RedirectZurichInforme />} />
@@ -648,6 +656,7 @@ export default function App() {
           <Route path="bbva-cat/reporte" element={<ReporteBbvaCat />} />
           <Route path="bbva-cat/dashboard" element={<DashboardBbvaCat />} />
           <Route path="bbva-cat/boletin" element={<Navigate to="/bbva-cat/dashboard" replace />} />
+          <Route path="bbva-cat/boletin-diario" element={<BoletinDiarioBbvaCat />} />
           <Route element={<CasoBbvaCatWorkspace />}>
             <Route path="bbva-cat/caso" element={<></>} />
             <Route path="bbva-cat/liquidador" element={<></>} />
@@ -665,6 +674,7 @@ export default function App() {
           <Route path="previsora/reporte" element={<ReportePrevisora />} />
           <Route path="previsora/dashboard" element={<DashboardPrevisora />} />
           <Route path="previsora/boletin" element={<Navigate to="/previsora/dashboard" replace />} />
+          <Route path="previsora/boletin-diario" element={<BoletinDiarioPrevisora />} />
           <Route element={<CasoPrevisoraWorkspace />}>
             <Route path="previsora/caso" element={<></>} />
             <Route path="previsora/liquidador" element={<></>} />
@@ -682,6 +692,7 @@ export default function App() {
           <Route path="allianz/reporte" element={<ReporteAllianz />} />
           <Route path="allianz/dashboard" element={<DashboardAllianz />} />
           <Route path="allianz/boletin" element={<Navigate to="/allianz/dashboard" replace />} />
+          <Route path="allianz/boletin-diario" element={<BoletinDiarioAllianz />} />
           <Route element={<CasoAllianzWorkspace />}>
             <Route path="allianz/caso" element={<></>} />
             <Route path="allianz/liquidador" element={<></>} />
@@ -701,6 +712,7 @@ export default function App() {
           <Route path="sura/documentacion" element={<ReporteSegurosSura soloDocumentacion />} />
           <Route path="sura/dashboard" element={<DashboardSegurosSura />} />
           <Route path="sura/boletin" element={<BoletinSemanalSegurosSura />} />
+          <Route path="sura/boletin-diario" element={<BoletinDiarioSegurosSura />} />
           <Route path="sura/bloques" element={<BloquesCercaniaSegurosSura />} />
           <Route path="sura/caso" element={<CasoSegurosSuraWorkspace />} />
           <Route path="sura/liquidador" element={<RedirectSuraLiquidador />} />

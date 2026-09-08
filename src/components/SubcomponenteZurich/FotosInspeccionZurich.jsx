@@ -37,6 +37,7 @@ export default function FotosInspeccionZurich({
   casoId,
   origen = 'cat',
   api: apiProp = null,
+  origenCarga,
   fotosInforme = [],
   onFotosInformeChange,
   onArchivoCreado,
@@ -103,6 +104,7 @@ export default function FotosInspeccionZurich({
       }
       const creado = await api.subir(casoId, file, 'FOTOS', {
         descripcion: item.descripcion || '',
+        ...(origenCarga ? { origenCarga } : {}),
       });
       onArchivoCreado?.(creado);
       return {

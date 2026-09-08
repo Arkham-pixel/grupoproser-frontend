@@ -2,10 +2,8 @@ import React from "react";
 import Select from "react-select";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-// import ciudadesData from "../../data/colombia.json";
-
-// Construir opciones para react-select
-// Elimina ciudadesColombia y usa la prop ciudades
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
+import { ciudadSigueValidaTrasCambioDepto } from '../../utils/ciudadesColombia.js';
 
 const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = [], responsables = [], clasificaciones = [], ciudades = [], funcionarios = [], cargandoFuncionarios = false }) => {
   const { t } = useTranslation();
@@ -19,6 +17,12 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const disabledBg = theme === 'dark' ? '#2A2A2A' : '#F3F4F6';
   const disabledText = theme === 'dark' ? '#6B6B6B' : '#6B7280';
+
+  const labelClass = "block text-xs sm:text-sm font-medium mb-1";
+  const fieldWrapClass = "mb-3 sm:mb-4";
+  const selectButtonClass =
+    'w-full rounded px-2 sm:px-3 py-2 text-xs sm:text-sm border bg-white text-gray-800 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600';
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => {
@@ -39,13 +43,46 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
     }));
   };
 
-  const handleCiudadChange = (selectedOption) => {
-    setFormData(prev => ({
+  const handleDepartamentoChange = (valor) => {
+    setFormData((prev) => {
+      const ciudadActual =
+        (typeof prev.ciudad === 'object' && prev.ciudad
+          ? prev.ciudad.value || prev.ciudad.label
+          : prev.ciudad) || '';
+      const next = { ...prev, departamento: valor == null ? '' : String(valor) };
+      if (
+        !valor ||
+        !ciudadSigueValidaTrasCambioDepto(ciudades, ciudadActual, valor)
+      ) {
+        next.ciudad = null;
+      }
+      return next;
+    });
+  };
+
+  const handleCiudadChange = (val, meta) => {
+    setFormData((prev) => ({
       ...prev,
-      ciudad: selectedOption
+      ciudad: val
+        ? {
+            value: val,
+            label: meta?.label || val,
+            departamento: meta?.departamento || prev.departamento || '',
+            codigo: meta?.codigo,
+          }
+        : null,
+      departamento: meta?.departamento || prev.departamento || '',
     }));
   };
 
+  const ciudadNombre =
+    typeof formData.ciudad === 'object' && formData.ciudad
+      ? formData.ciudad.value || formData.ciudad.label || ''
+      : formData.ciudad || '';
+  const departamentoActual =
+    formData.departamento ||
+    (typeof formData.ciudad === 'object' ? formData.ciudad?.departamento : '') ||
+    '';
   
   const selectedResp = responsables.find(r => String(r.codiRespnsble) === String(formData.responsable));
 
@@ -68,9 +105,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Columna 1 */}
           <div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.client')}
@@ -103,9 +140,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                   ))}
               </select>
             </div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.classification')}
@@ -133,60 +170,25 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                   ))}
               </select>
             </div>
-            <div className="mb-3 sm:mb-4">
+            <SelectorDepartamentoCiudad
+              ciudadesRaw={ciudades}
+              departamento={departamentoActual}
+              ciudad={ciudadNombre}
+              onDepartamentoChange={handleDepartamentoChange}
+              onCiudadChange={handleCiudadChange}
+              wrapInCampo
+              i18nNs="common"
+              labelDepartamento={t('segurosSura.fields.departamento', {
+                defaultValue: 'Departamento',
+              })}
+              labelCiudad={t('inspection.activation.inspectionCity')}
+              buttonClassName={selectButtonClass}
+              classNameDepto={fieldWrapClass}
+              classNameCiudad={fieldWrapClass}
+            />
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
-                style={{ color: textPrimary }}
-              >
-                {t('inspection.activation.inspectionCity')}
-              </label>
-              <Select
-                options={ciudades}
-                value={formData.ciudad}
-                onChange={handleCiudadChange}
-                placeholder={t('inspection.activation.cityPlaceholder')}
-                isClearable
-                className="text-xs sm:text-sm"
-                styles={{
-                  control: (provided, state) => ({
-                    ...provided,
-                    fontSize: '0.875rem',
-                    backgroundColor: inputBg,
-                    color: textPrimary,
-                    borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                    boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                    '&:hover': {
-                      borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                    },
-                    '@media (min-width: 640px)': {
-                      fontSize: '1rem'
-                    }
-                  }),
-                  option: (provided, state) => ({
-                    ...provided,
-                    backgroundColor: state.isSelected 
-                      ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                      : state.isFocused
-                      ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                      : inputBg,
-                    color: state.isSelected 
-                      ? '#FFFFFF'
-                      : textPrimary
-                  }),
-                  singleValue: (provided) => ({
-                    ...provided,
-                    color: textPrimary
-                  }),
-                  placeholder: (provided) => ({
-                    ...provided,
-                    color: textSecondary
-                  })
-                }}
-              />
-            </div>
-            <div className="mb-3 sm:mb-4">
-              <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.insured')}
@@ -206,9 +208,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 required
               />
             </div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.inspectionDate')}
@@ -230,9 +232,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
           </div>
           {/* Columna 2 */}
           <div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.inspector')}
@@ -272,9 +274,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 />
               )}
             </div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.requester')}
@@ -339,9 +341,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 />
               )}
             </div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.address')}
@@ -362,7 +364,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 required
               />
             </div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
                 className="block text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
@@ -384,9 +386,9 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 required
               />
             </div>
-            <div className="mb-3 sm:mb-4">
+            <div className={fieldWrapClass}>
               <label 
-                className="block text-xs sm:text-sm font-medium mb-1"
+                className={labelClass}
                 style={{ color: textPrimary }}
               >
                 {t('inspection.activation.observations')}
@@ -410,7 +412,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
         </div>
         <div className="mt-3 sm:mt-4">
           <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
+            className={labelClass}
             style={{ color: textPrimary }}
           >
             {t('inspection.activation.status')}

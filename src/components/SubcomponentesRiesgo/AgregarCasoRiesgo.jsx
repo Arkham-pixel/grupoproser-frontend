@@ -23,6 +23,11 @@ import {
 import { InputFenix, RiesgoFormTabs, RiesgoNavPanel, RiesgoPageHeader } from './RiesgoUiBlocks.jsx';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
+import {
+  coincidirCiudadExacta,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+} from '../../utils/ciudadesColombia.js';
 
 // Configurar axios para usar la URL base correcta
 axios.defaults.baseURL = BASE_URL;
@@ -32,6 +37,7 @@ const initialFormData = {
   aseguradora: '',
   direccion: '',
   ciudad: null,
+  departamento: '',
   asegurado: '',
   fechaAsignacion: '',
   fechaInspeccion: '',
@@ -83,6 +89,52 @@ const normalizarArchivo = (valor) => {
   return '';
 };
 
+/** Convierte valor guardado (código o nombre) a opción {value,label,departamento,codigo}. */
+const resolverOpcionCiudad = (ciudadesRaw, valorGuardado, departamento = '') => {
+  if (valorGuardado == null || valorGuardado === '') return null;
+
+  let texto = '';
+  let deptoHint = departamento || '';
+  let codigoHint = '';
+
+  if (typeof valorGuardado === 'object') {
+    texto = String(
+      valorGuardado.value || valorGuardado.label || valorGuardado.ciudad || ''
+    ).trim();
+    deptoHint =
+      deptoHint ||
+      String(valorGuardado.departamento || valorGuardado.descDepto || '').trim();
+    codigoHint = String(valorGuardado.codigo || valorGuardado.codiMunicipio || '').trim();
+  } else {
+    texto = String(valorGuardado).trim();
+  }
+
+  if (!texto && !codigoHint) return null;
+
+  const match =
+    coincidirCiudadExacta(ciudadesRaw, codigoHint || texto, deptoHint) ||
+    (codigoHint && codigoHint !== texto
+      ? coincidirCiudadExacta(ciudadesRaw, texto, deptoHint)
+      : null);
+
+  if (match) {
+    const nombre = match.ciudad || match.value || match.label || texto;
+    return {
+      value: nombre,
+      label: nombre,
+      departamento: match.departamento || deptoHint || '',
+      codigo: match.codigo || codigoHint || undefined,
+    };
+  }
+
+  return {
+    value: texto,
+    label: texto,
+    departamento: deptoHint || '',
+    codigo: codigoHint || undefined,
+  };
+};
+
 const camposAdjuntosRiesgo = [
   'adjuntoAsignacion',
   'adjuntoInspeccion',
@@ -110,7 +162,11 @@ const construirPayloadRiesgo = (datos) => {
       ? { value: datos.clasificacion, label: datos.clasificacion }
       : null;
 
-  const ciudadCodigo = ciudadSeleccionada?.value || '';
+  const ciudadNombre =
+    ciudadSeleccionada?.label ||
+    ciudadSeleccionada?.value ||
+    '';
+  const ciudadCodigo = ciudadSeleccionada?.codigo || '';
   const clasificacionValor = clasificacionSeleccionada ? String(clasificacionSeleccionada.value || clasificacionSeleccionada.label || '') : '';
   const solicitanteValor = solicitanteSeleccionado ? (solicitanteSeleccionado.value || solicitanteSeleccionado.label || '') : '';
   const solicitanteLabel = solicitanteSeleccionado ? (solicitanteSeleccionado.label || solicitanteSeleccionado.value || '') : '';
@@ -121,9 +177,10 @@ const construirPayloadRiesgo = (datos) => {
     aseguradora: datos.aseguradora || '',
     responsable: datos.responsable || '',
     estado: datos.codiEstdo || datos.estado || '',
-    ciudad: ciudadCodigo,
-    ciudadSucursal: datos.ciudadSucursal || ciudadCodigo,
-    codigoPoblado: datos.codigoPoblado || ciudadCodigo,
+    ciudad: ciudadNombre,
+    departamento: datos.departamento || ciudadSeleccionada?.departamento || '',
+    ciudadSucursal: datos.ciudadSucursal || ciudadNombre,
+    codigoPoblado: datos.codigoPoblado || ciudadCodigo || ciudadNombre,
     direccion: datos.direccion || datos.codDireccion || '',
     asegurado: datos.asegurado || datos.asgrBenfcro || '',
     nmroConsecutivo: datos.nmroConsecutivo || '',
@@ -352,14 +409,41 @@ const opciones = data
         codiEstdo: casoDesdeComplex.codiEstdo || prev.codiEstdo || '',
         responsable: casoDesdeComplex.responsable || prev.responsable || '',
         ciudad: casoDesdeComplex.ciudad
-          ? {
-              value: casoDesdeComplex.ciudad.value || casoDesdeComplex.ciudad,
-              label: casoDesdeComplex.ciudad.label || casoDesdeComplex.ciudad.value || casoDesdeComplex.ciudad,
-            }
+          ? resolverOpcionCiudad(ciudades, casoDesdeComplex.ciudad, casoDesdeComplex.departamento)
           : prev.ciudad,
+        departamento:
+          casoDesdeComplex.departamento ||
+          (typeof casoDesdeComplex.ciudad === 'object'
+            ? casoDesdeComplex.ciudad.departamento
+            : '') ||
+          prev.departamento ||
+          '',
       }));
     }
   }, [casoDesdeComplex]);
+
+  // Cuando el catálogo llega después del prefill Complex, resolver ciudad exacta
+  useEffect(() => {
+    if (!casoDesdeComplex?.ciudad || !ciudades.length) return;
+    setFormData((prev) => {
+      const resolved = resolverOpcionCiudad(
+        ciudades,
+        prev.ciudad || casoDesdeComplex.ciudad,
+        prev.departamento || casoDesdeComplex.departamento || ''
+      );
+      if (!resolved) return prev;
+      const mismo =
+        prev.ciudad?.value === resolved.value &&
+        prev.ciudad?.departamento === resolved.departamento &&
+        prev.departamento === (resolved.departamento || prev.departamento);
+      if (mismo) return prev;
+      return {
+        ...prev,
+        ciudad: resolved,
+        departamento: resolved.departamento || prev.departamento || '',
+      };
+    });
+  }, [ciudades, casoDesdeComplex]);
 
   useEffect(() => {
 axios.get('/api/estados/clasificaciones-riesgo')
@@ -376,21 +460,34 @@ const opciones = res.data
   }, []);
 
   useEffect(() => {
-axios.get('/api/ciudades/ciudades')
-      .then(res => {
-// Mapeo para react-select: value = codiMunicipio, label = descMunicipio - descDepto
-        const opciones = res.data.map(c => ({
-          value: c.codiMunicipio,
-          label: `${c.descMunicipio} - ${c.descDepto}`,
-          departamento: c.descDepto,
-          ...c
-        })).filter(ciudad => ciudad.value && ciudad.label);
-        setCiudades(ordenarLista(opciones, (ciudad) => ciudad.label));
-      })
-      .catch((error) => {
-        console.error('❌ Error cargando ciudades:', error);
-        setCiudades([]);
-      });
+    let cancelado = false;
+    const cargarCiudades = async () => {
+      try {
+        let payload;
+        try {
+          const res = await axios.get('/api/ciudades/ciudades');
+          payload = res.data;
+          if (!extraerListaCiudadesApi(payload).length) {
+            throw new Error('lista vacía');
+          }
+        } catch {
+          const res = await axios.get(`${BASE_URL}/api/ciudades`);
+          payload = res.data;
+        }
+        if (cancelado) return;
+        const mapeadas = mapearCiudadesDesdeApi(extraerListaCiudadesApi(payload));
+        setCiudades(mapeadas);
+      } catch (error) {
+        if (!cancelado) {
+          console.error('❌ Error cargando ciudades:', error);
+          setCiudades([]);
+        }
+      }
+    };
+    cargarCiudades();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   // Función para cargar funcionarios de una aseguradora
@@ -528,16 +625,13 @@ axios.get('/api/ciudades/ciudades')
       const found = estados.find(e => e.descEstdo === caso.estado);
       estadoValue = found ? String(found.codiEstdo) : '';
     }
-    // Ciudad (Ciudad de Inspección - usar codigoPoblado primero)
-    let ciudadValue = null;
+    // Ciudad (Ciudad de Inspección - código o nombre exacto, sin startsWith)
     const codigoCiudad = caso.codigoPoblado || caso.ciudadSucursal || caso.ciudad;
-    if (codigoCiudad) {
-      ciudadValue = ciudades.find(c => 
-        c.value === codigoCiudad || 
-        String(c.value) === String(codigoCiudad) ||
-        c.label.startsWith(String(codigoCiudad))
-      );
-    }
+    const ciudadValue = resolverOpcionCiudad(
+      ciudades,
+      codigoCiudad,
+      caso.departamento || ''
+    );
     // Clasificación
     let clasificacionValue = '';
     if (caso.codiClasificacion) {
@@ -583,6 +677,7 @@ axios.get('/api/ciudades/ciudades')
       responsable: responsableValue,
       codiEstdo: estadoValue,
       ciudad: ciudadValue,
+      departamento: ciudadValue?.departamento || caso.departamento || '',
       codiClasificacion: clasificacionValue,
       quienSolicita: quienSolicitaValue,
       // ...otros campos normales...
@@ -604,8 +699,15 @@ axios.get('/api/ciudades/ciudades')
       observInforme: caso.observInforme || '',
       codDireccion: caso.codDireccion || '',
       funcSolicita: caso.funcSolicita || '',
-      codigoPoblado: caso.codigoPoblado || '',
-      ciudadSucursal: caso.ciudadSucursal || '',
+      codigoPoblado: caso.codigoPoblado || ciudadValue?.codigo || '',
+      ciudadSucursal: (() => {
+        const suc = resolverOpcionCiudad(ciudades, caso.ciudadSucursal || codigoCiudad, caso.departamento || '');
+        return suc?.value || caso.ciudadSucursal || '';
+      })(),
+      departamentoSucursal: (() => {
+        const suc = resolverOpcionCiudad(ciudades, caso.ciudadSucursal || codigoCiudad, caso.departamento || '');
+        return suc?.departamento || caso.departamento || '';
+      })(),
       vlorTarifaAseguradora: caso.vlorTarifaAseguradora || '',
       vlorHonorarios: caso.vlorHonorarios || '',
       vlorGastos: caso.vlorGastos || '',
@@ -707,13 +809,11 @@ axios.get('/api/ciudades/ciudades')
       }
       let ciudadValue = null;
       const codigoCiudad = casoInicial.codigoPoblado || casoInicial.ciudadSucursal || casoInicial.ciudad;
-      if (codigoCiudad) {
-        ciudadValue = ciudades.find(c => 
-          c.value === codigoCiudad || 
-          String(c.value) === String(codigoCiudad) ||
-          c.label.startsWith(String(codigoCiudad))
-        );
-      }
+      ciudadValue = resolverOpcionCiudad(
+        ciudades,
+        codigoCiudad,
+        casoInicial.departamento || ''
+      );
       let clasificacionValue = '';
       if (casoInicial.codiClasificacion) {
         clasificacionValue = String(casoInicial.codiClasificacion);
@@ -757,6 +857,7 @@ axios.get('/api/ciudades/ciudades')
         responsable: responsableValue,
         codiEstdo: estadoValue,
         ciudad: ciudadValue,
+        departamento: ciudadValue?.departamento || casoInicial.departamento || '',
         codiClasificacion: clasificacionValue,
         quienSolicita: quienSolicitaValue,
         codiIspector: casoInicial.codiIspector || '',
@@ -777,8 +878,23 @@ axios.get('/api/ciudades/ciudades')
         observInforme: casoInicial.observInforme || '',
         codDireccion: casoInicial.codDireccion || '',
         funcSolicita: casoInicial.funcSolicita || '',
-        codigoPoblado: casoInicial.codigoPoblado || '',
-        ciudadSucursal: casoInicial.ciudadSucursal || '',
+        codigoPoblado: casoInicial.codigoPoblado || ciudadValue?.codigo || '',
+        ciudadSucursal: (() => {
+          const suc = resolverOpcionCiudad(
+            ciudades,
+            casoInicial.ciudadSucursal || codigoCiudad,
+            casoInicial.departamento || ''
+          );
+          return suc?.value || casoInicial.ciudadSucursal || '';
+        })(),
+        departamentoSucursal: (() => {
+          const suc = resolverOpcionCiudad(
+            ciudades,
+            casoInicial.ciudadSucursal || codigoCiudad,
+            casoInicial.departamento || ''
+          );
+          return suc?.departamento || casoInicial.departamento || '';
+        })(),
         vlorTarifaAseguradora: casoInicial.vlorTarifaAseguradora || '',
         vlorHonorarios: casoInicial.vlorHonorarios || '',
         vlorGastos: casoInicial.vlorGastos || '',

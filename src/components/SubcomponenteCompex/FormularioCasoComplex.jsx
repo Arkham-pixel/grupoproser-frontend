@@ -29,6 +29,14 @@ import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { enriquecerPlantillaContactoInicial } from '../../utils/contactoInicialPlantillaCorreo.js';
 import { autoSaveService } from '../../services/autoSaveService.js';
 import {
+  aOpcionesSelect,
+  aplicarCambioDepartamento,
+  coincidirCiudadExacta,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+  normalizarCiudadTexto,
+} from '../../utils/ciudadesColombia.js';
+import {
   registerOfflineSyncHandler,
   unregisterOfflineSyncHandler,
   isBrowserOnline,
@@ -1085,50 +1093,14 @@ localStorage.removeItem(storageKey);
 
   const handleDepartamentoChange = (e) => {
     const valor = e?.target ? e.target.value : e;
-    const deptoNorm = String(valor ?? '')
-      .normalize('NFD')
-      .replace(/\p{M}/gu, '')
-      .trim()
-      .toUpperCase();
-    setFormData((prev) => {
-      const siguiente = {
-        ...prev,
-        departamento: valor,
-        departamentoCiudad: valor,
-      };
-      if (!valor) {
-        siguiente.ciudadSiniestro = '';
-        siguiente.ciudad = '';
-        siguiente.nombreCiudad = '';
-        return siguiente;
-      }
-      const ciudadActual = prev.ciudadSiniestro || prev.ciudad || '';
-      if (!ciudadActual) return siguiente;
-      const ciudadSigueValida = ciudades.some((c) => {
-        const deptoC = String(c.departamento ?? '')
-          .normalize('NFD')
-          .replace(/\p{M}/gu, '')
-          .trim()
-          .toUpperCase();
-        const ciudadC = String(c.value ?? c.label ?? '')
-          .normalize('NFD')
-          .replace(/\p{M}/gu, '')
-          .trim()
-          .toUpperCase();
-        const ciudadNorm = String(ciudadActual)
-          .normalize('NFD')
-          .replace(/\p{M}/gu, '')
-          .trim()
-          .toUpperCase();
-        return deptoC === deptoNorm && ciudadC === ciudadNorm;
-      });
-      if (!ciudadSigueValida) {
-        siguiente.ciudadSiniestro = '';
-        siguiente.ciudad = '';
-        siguiente.nombreCiudad = '';
-      }
-      return siguiente;
-    });
+    setFormData((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudades, {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: 'departamentoCiudad',
+        ciudadKey: 'ciudadSiniestro',
+        ciudadExtraKeys: ['ciudad', 'nombreCiudad'],
+      })
+    );
   };
 
   // Handler para aseguradora
@@ -2638,7 +2610,7 @@ return;
 
   useEffect(() => {
     let cancelado = false;
-    const cacheKey = esSura ? 'ciudades-options-sura-v1' : 'ciudades-options-v2';
+    const cacheKey = 'ciudades-options-v3';
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
@@ -2656,43 +2628,17 @@ return;
 
     if (!cached) {
       fetch(`${BASE_URL}/api/ciudades`)
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           if (cancelado) return;
-          const lista = data?.success && Array.isArray(data.data)
-            ? data.data
-            : Array.isArray(data) ? data : [];
-          const normalizar = (texto) =>
-            String(texto ?? '')
-              .normalize('NFD')
-              .replace(/\p{M}/gu, '')
-              .trim()
-              .toUpperCase();
-          const vistas = new Set();
-          const opciones = [];
-          for (const c of lista) {
-            const municipio = String(
-              c.descMunicipio || c.label || c.nombre || c.value || ''
-            ).trim();
-            const depto = String(c.descDepto || c.departamento || '').trim();
-            if (!municipio) continue;
-            // SURA: una fila por municipio+depto (el catálogo trae muchos poblados).
-            if (esSura) {
-              const clave = `${normalizar(municipio)}|${normalizar(depto)}`;
-              if (vistas.has(clave)) continue;
-              vistas.add(clave);
-            }
-            opciones.push({
-              value: municipio,
-              label: municipio,
-              departamento: depto,
-            });
-          }
+          const opciones = aOpcionesSelect(
+            mapearCiudadesDesdeApi(extraerListaCiudadesApi(data))
+          );
           const ordenadas = ordenarPorLabel(opciones);
           setCiudades(ordenadas);
           sessionStorage.setItem(cacheKey, JSON.stringify(ordenadas));
         })
-        .catch(err => {
+        .catch((err) => {
           if (!cancelado) {
             console.error('Error cargando ciudades:', err);
             setCiudades([]);
@@ -2710,7 +2656,6 @@ return;
     };
   }, [
     ordenarPorLabel,
-    esSura,
     formData.codiRespnsble,
     formData.nombreResponsable,
     initialData?.codiRespnsble,
@@ -2724,56 +2669,28 @@ return;
       return;
     }
 
-    const ciudadGuardada = formData.ciudadSiniestro;
-    const normalizarCiudad = (texto) =>
-      String(texto ?? '')
-        .normalize('NFD')
-        .replace(/\p{M}/gu, '')
-        .trim()
-        .toUpperCase();
-    const guardadaNorm = normalizarCiudad(ciudadGuardada);
-    const deptoNorm = normalizarCiudad(
-      formData.departamento || formData.departamentoCiudad || ''
+    const deptoActual = formData.departamento || formData.departamentoCiudad || '';
+    const ciudadEncontrada = coincidirCiudadExacta(
+      ciudades,
+      formData.ciudadSiniestro,
+      deptoActual
     );
 
-    // Solo igualdad exacta o sin tildes/mayúsculas.
-    // Nunca substring: "TADO" no debe resolver a "APARTADO".
-    // En SURA, si hay departamento, priorizar coincidencia en ese depto.
-    const coincide = (ciudad) => {
-      if (String(ciudad.value) === String(ciudadGuardada)) return true;
-      if (String(ciudad.label) === String(ciudadGuardada)) return true;
-      if (normalizarCiudad(ciudad.value) === guardadaNorm) return true;
-      if (normalizarCiudad(ciudad.label) === guardadaNorm) return true;
-      return false;
-    };
-    let ciudadEncontrada = null;
-    if (esSura && deptoNorm) {
-      ciudadEncontrada = ciudades.find(
-        (ciudad) =>
-          normalizarCiudad(ciudad.departamento) === deptoNorm && coincide(ciudad)
-      );
-    }
-    if (!ciudadEncontrada) {
-      ciudadEncontrada = ciudades.find(coincide);
-    }
-
     if (ciudadEncontrada && formData.ciudadSiniestro !== ciudadEncontrada.value) {
-setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         ciudadSiniestro: ciudadEncontrada.value,
         departamento: prev.departamento || ciudadEncontrada.departamento || '',
         departamentoCiudad: prev.departamentoCiudad || ciudadEncontrada.departamento || '',
       }));
-    } else if (ciudadEncontrada?.departamento && esSura && !formData.departamento) {
+    } else if (ciudadEncontrada?.departamento && !formData.departamento) {
       setFormData((prev) => ({
         ...prev,
         departamento: ciudadEncontrada.departamento,
         departamentoCiudad: prev.departamentoCiudad || ciudadEncontrada.departamento,
       }));
-    } else if (!ciudadEncontrada && ciudadGuardada) {
-      // Si no se encuentra pero hay un valor, mantenerlo (puede ser un valor válido que no está en la lista)
-}
-  }, [ciudades, initialData, formData.ciudadSiniestro, formData.departamento, esSura]);
+    }
+  }, [ciudades, initialData, formData.ciudadSiniestro, formData.departamento, formData.departamentoCiudad]);
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/responsables`)

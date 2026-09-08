@@ -129,11 +129,13 @@ export const ESTADOS_BBVA_CAT = [
   'OBJECIÓN',
   'OBJETADO',
   'AUTORIZACIÓN ANALISTA',
+  'CASO AJUSTADO',
   'CASO PARA PAGO',
   'PAGADO',
+  'DESISTIMIENTO',
 ];
 
-/** Grupos de la barra de estados del formulario (flujo + rama objeción + pago). */
+/** Grupos de la barra de estados del formulario (flujo + objeción + pago + desistimiento). */
 export const GRUPOS_BARRA_ESTADOS_BBVA_CAT = [
   {
     id: 'inspeccion',
@@ -144,8 +146,12 @@ export const GRUPOS_BARRA_ESTADOS_BBVA_CAT = [
     estados: ['OBJECIÓN', 'OBJETADO'],
   },
   {
+    id: 'desistimiento',
+    estados: ['DESISTIMIENTO'],
+  },
+  {
     id: 'pago',
-    estados: ['AUTORIZACIÓN ANALISTA', 'CASO PARA PAGO', 'PAGADO'],
+    estados: ['AUTORIZACIÓN ANALISTA', 'CASO AJUSTADO', 'CASO PARA PAGO', 'PAGADO'],
   },
 ];
 
@@ -159,8 +165,10 @@ export const FECHA_ACCION_POR_ESTADO_BBVA_CAT = {
   OBJECIÓN: 'fechaObjecion',
   OBJETADO: 'fechaObjetado',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
+  'CASO AJUSTADO': 'fechaCasoAjustado',
   'CASO PARA PAGO': 'fechaCasoParaPago',
   PAGADO: 'fechaCasoPagado',
+  DESISTIMIENTO: 'fechaDesistimiento',
 };
 
 export const CAMPOS_FECHA_ACCION_BBVA_CAT = [
@@ -172,8 +180,10 @@ export const CAMPOS_FECHA_ACCION_BBVA_CAT = [
   'fechaObjecion',
   'fechaObjetado',
   'fechaAutorizacionAnalista',
+  'fechaCasoAjustado',
   'fechaCasoParaPago',
   'fechaCasoPagado',
+  'fechaDesistimiento',
 ];
 
 export const ETIQUETA_DOCUMENTO_PAGO_BBVA_CAT = 'PAGO';
@@ -194,6 +204,10 @@ const ESTADOS_BBVA_CAT_LEGACY = {
   INDEMNIZADO: 'PAGADO',
   GIRADO: 'PAGADO',
   'CASE PAID': 'PAGADO',
+  DESISTIDO: 'DESISTIMIENTO',
+  'CASO DESISTIDO': 'DESISTIMIENTO',
+  'CASO AJUSTADO BBVA': 'CASO AJUSTADO',
+  AJUSTADO: 'CASO AJUSTADO',
 };
 
 const claveEstadoBbvaCat = (valor) =>
@@ -216,7 +230,7 @@ export function homologarEstadoBbvaCat(valor) {
 
 export function muestraZonaDocumentoPagoBbvaCat(estado) {
   const e = claveEstadoBbvaCat(homologarEstadoBbvaCat(estado));
-  return e === 'PAGADO' || e === 'CASO PARA PAGO';
+  return e === 'PAGADO' || e === 'CASO PARA PAGO' || e === 'CASO AJUSTADO';
 }
 
 export function diasEnEstadoBbvaCat(caso = {}) {
@@ -794,8 +808,10 @@ export const FORM_VACIO_BBVA_CAT = {
   fechaObjecion: '',
   fechaObjetado: '',
   fechaAutorizacionAnalista: '',
+  fechaCasoAjustado: '',
   fechaCasoParaPago: '',
   fechaCasoPagado: '',
+  fechaDesistimiento: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',

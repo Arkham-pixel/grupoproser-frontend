@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCloudUploadAlt, FaDownload, FaTrash, FaTimes, FaUpload } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaDownload, FaFileArchive, FaTrash, FaTimes, FaUpload } from 'react-icons/fa';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -17,6 +17,7 @@ import {
   resolverOrigenCargaBbvaCat,
 } from './bbvaCatHelpers.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
+import { descargarArchiveroBbvaCatZip } from './descargarArchiveroBbvaCatZip.js';
 import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 
 /** Alineado con multer en bbvaCat / bbvaCatListado (25 MB). */
@@ -94,9 +95,19 @@ export default function ArchiveroBbvaCat({
   );
   const opcionesEtiqueta =
     etiquetas ||
-    (origen === 'listado' ? ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO : ETIQUETAS_ARCHIVO_BBVA_CAT);
+    (origenCarga === 'analista'
+      ? ['POLIZA']
+      : origen === 'listado'
+        ? ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO
+        : ETIQUETAS_ARCHIVO_BBVA_CAT);
   const [archivos, setArchivos] = useState(() => archivosVisibles(caso?.archivos));
-  const [etiqueta, setEtiqueta] = useState(etiquetaInicial || 'GENERAL');
+  const [etiqueta, setEtiqueta] = useState(() => {
+    const inicial = etiquetaInicial || 'GENERAL';
+    if (resolverOrigenCargaBbvaCat(origenCargaProp) === 'analista' && (!etiquetaInicial || etiquetaInicial === 'GENERAL')) {
+      return 'POLIZA';
+    }
+    return inicial;
+  });
   const [pendientes, setPendientes] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
   const [progreso, setProgreso] = useState(null);
@@ -104,6 +115,8 @@ export default function ArchiveroBbvaCat({
   const [cargando, setCargando] = useState(() => Boolean(caso?._id));
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  const [descargandoZip, setDescargandoZip] = useState(false);
+  const [progresoZip, setProgresoZip] = useState(null);
   const dragCountRef = useRef(0);
 
   const archivosAnalista = useMemo(
@@ -312,6 +325,48 @@ export default function ArchiveroBbvaCat({
     }
   };
 
+  const handleDescargarTodoZip = async () => {
+    const conRuta = archivos.filter((a) => a?.ruta);
+    if (!conRuta.length) {
+      setError(t('bbvaCat.archive.downloadAllEmpty'));
+      return;
+    }
+    setError(null);
+    setExito(null);
+    setDescargandoZip(true);
+    setProgresoZip({ current: 0, total: conRuta.length });
+    try {
+      const result = await descargarArchiveroBbvaCatZip({
+        caso,
+        archivos: conRuta,
+        onProgreso: setProgresoZip,
+      });
+      if (result.fallidos?.length) {
+        setExito(
+          t('bbvaCat.archive.downloadAllPartial', {
+            ok: result.ok,
+            total: result.total,
+            failed: result.fallidos.length,
+          })
+        );
+      } else {
+        setExito(t('bbvaCat.archive.downloadAllOk', { count: result.ok }));
+      }
+    } catch (err) {
+      const code = err?.message;
+      if (code === 'EMPTY') {
+        setError(t('bbvaCat.archive.downloadAllEmpty'));
+      } else if (code === 'ALL_FAILED') {
+        setError(t('bbvaCat.archive.downloadAllError'));
+      } else {
+        setError(err.message || t('bbvaCat.archive.downloadAllError'));
+      }
+    } finally {
+      setDescargandoZip(false);
+      setProgresoZip(null);
+    }
+  };
+
   const textoBotonSubida = () => {
     if (subiendo && progreso?.total > 1) {
       return t('bbvaCat.archive.uploadingCount', {
@@ -342,25 +397,44 @@ export default function ArchiveroBbvaCat({
       }}
       onDrop={handleDrop}
     >
-      <div>
-        <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
-          {t('bbvaCat.archive.title')}
-        </h3>
-        <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          {t(origen === 'listado' ? 'bbvaCat.archive.subtitleListado' : 'bbvaCat.archive.subtitle', {
-            caseNumber: caso?.consecutivo || caso?.identificacion || '',
-          })}
-        </p>
-        <p className="mt-1 font-body text-xs text-gray-600 dark:text-gray-300">
-          {origenCarga === 'analista'
-            ? t('bbvaCat.archive.uploadingAsAnalyst')
-            : t('bbvaCat.archive.uploadingAsAdjuster')}
-        </p>
-        {origen !== 'listado' && (
-          <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
-            {t('bbvaCat.cat.evidenciaHint')}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+            {t('bbvaCat.archive.title')}
+          </h3>
+          <p className="font-body text-sm text-gray-500 dark:text-gray-400">
+            {t(origen === 'listado' ? 'bbvaCat.archive.subtitleListado' : 'bbvaCat.archive.subtitle', {
+              caseNumber: caso?.consecutivo || caso?.identificacion || '',
+            })}
           </p>
-        )}
+          <p className="mt-1 font-body text-xs text-gray-600 dark:text-gray-300">
+            {origenCarga === 'analista'
+              ? t('bbvaCat.archive.uploadingAsAnalyst')
+              : t('bbvaCat.archive.uploadingAsAdjuster')}
+          </p>
+          {origen !== 'listado' && (
+            <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
+              {t('bbvaCat.cat.evidenciaHint')}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          className={expressBtnSecondary}
+          disabled={descargandoZip || subiendo || !archivos.some((a) => a?.ruta)}
+          title={t('bbvaCat.archive.downloadAllHint')}
+          onClick={handleDescargarTodoZip}
+        >
+          <FaFileArchive />
+          {descargandoZip
+            ? progresoZip?.total
+              ? t('bbvaCat.archive.downloadingAllCount', {
+                  current: progresoZip.current,
+                  total: progresoZip.total,
+                })
+              : t('bbvaCat.archive.downloadingAll')
+            : t('bbvaCat.archive.downloadAll')}
+        </button>
       </div>
 
       {error && <div className={expressAlertError}>{error}</div>}

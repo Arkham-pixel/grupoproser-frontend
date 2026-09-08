@@ -526,7 +526,13 @@
       "equidadCatDashboard": "Equidad CAT dashboard",
       "equidadCatCase": "Equidad CAT case",
       "equidadCatArchive": "Equidad CAT archive",
-      "alfaDailyBulletin": "Seguros Alfa daily bulletin"
+      "alfaDailyBulletin": "Seguros Alfa daily bulletin",
+      "bbvaCatDailyBulletin": "Daily bulletin BBVA CAT",
+      "previsoraDailyBulletin": "Daily bulletin Previsora",
+      "equidadCatDailyBulletin": "Daily bulletin Equidad CAT",
+      "allianzDailyBulletin": "Daily bulletin Allianz",
+      "zurichDailyBulletin": "Daily bulletin Zurich",
+      "suraDailyBulletin": "Daily bulletin Sura"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
@@ -591,7 +597,13 @@
     "equidadCatDashboard": "Dashboard",
     "equidadCatReport": "Report",
     "equidadCatArchive": "Archive",
-    "alfaDailyBulletin": "Daily bulletin"
+    "alfaDailyBulletin": "Daily bulletin",
+    "bbvaCatDailyBulletin": "Daily bulletin",
+    "previsoraDailyBulletin": "Daily bulletin",
+    "equidadCatDailyBulletin": "Daily bulletin",
+    "allianzDailyBulletin": "Daily bulletin",
+    "zurichDailyBulletin": "Daily bulletin",
+    "suraDailyBulletin": "Daily bulletin"
   },
   "translation": {
     "preview": "English translation",
@@ -2237,7 +2249,8 @@
         "title": "Week movement detail",
         "type": "Type",
         "empty": "No reported, inspected or settled cases in this range."
-      }
+      },
+      "openDaily": "Daily bulletin"
     },
     "page": {
       "addTitle": "Add Seguros Sura case",
@@ -2683,6 +2696,49 @@
     "permissions": {
       "inspectorHint": "Inspector role can only view the case and change status.",
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cut-off · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cut-off date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Overall total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation progress accounting for growth in the case base",
+        "cutLabel": "Comparison cut-off: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day-to-day variation",
+        "noYesterday": "Could not rebuild the {{fecha}} cut-off (no cases with intake date on or before that day).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions detected",
+        "hasRegressions": "Some cases moved to an earlier stage vs. the previous cut-off",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "Management percentage went from {{pctAyer}}% to {{pctHoy}}% due to new case intake. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "{{fecha}} cut-off reconstructed from case dates and milestones (no saved snapshot that day). Same-day status change variations may be approximate."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total discriminated management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared against {{ayer}} base"
+      }
     }
   },
   "properties": {
@@ -11819,6 +11875,49 @@
     "permissions": {
       "inspectorHint": "Inspector role can only view the case and change status.",
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cut-off · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cut-off date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Overall total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation progress accounting for growth in the case base",
+        "cutLabel": "Comparison cut-off: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day-to-day variation",
+        "noYesterday": "Could not rebuild the {{fecha}} cut-off (no cases with intake date on or before that day).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions detected",
+        "hasRegressions": "Some cases moved to an earlier stage vs. the previous cut-off",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "Management percentage went from {{pctAyer}}% to {{pctHoy}}% due to new case intake. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "{{fecha}} cut-off reconstructed from case dates and milestones (no saved snapshot that day). Same-day status change variations may be approximate."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total discriminated management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared against {{ayer}} base"
+      }
     }
   },
   "bbvaCat": {
@@ -11865,8 +11964,9 @@
     "statusBar": {
       "hint": "Select the status on the bar. Changing it stamps the action date when it is still empty.",
       "inspeccion": "Inspection and analysis",
-      "objecion": "Objection",
-      "pago": "Authorization and payment"
+      "objecion": "Objected",
+      "pago": "Authorization and payment",
+      "desistimiento": "Withdrawal"
     },
     "fields": {
       "siniestro": "STRO / Claim",
@@ -11951,8 +12051,10 @@
       "fechaObjecion": "OBJECTION date",
       "fechaObjetado": "OBJECTED date",
       "fechaAutorizacionAnalista": "ANALYST AUTHORIZATION date",
+      "fechaCasoAjustado": "ADJUSTED CASE date",
       "fechaCasoParaPago": "READY FOR PAYMENT date",
       "fechaCasoPagado": "CASE PAID date",
+      "fechaDesistimiento": "WITHDRAWAL date",
       "diasEnEstado": "Days in status",
       "ultimaGestion": "Last action",
       "documentoFaltante": "Missing document",
@@ -12262,16 +12364,25 @@
       "deleteError": "Could not delete the document.",
       "confirmDelete": "Delete this document from the file cabinet?",
       "empty": "No documents in this case yet.",
-      "sectionAnalyst": "Uploaded by analyst ({{count}})",
-      "sectionAdjuster": "Uploaded by adjuster ({{count}})",
-      "emptyAnalyst": "The analyst has not uploaded documents yet.",
-      "emptyAdjuster": "The adjuster has not uploaded photos or documents yet.",
-      "uploadingAsAnalyst": "Will be saved as an analyst document (removes the case from the analyst queue).",
-      "uploadingAsAdjuster": "Will be saved as an adjuster document (the case stays in the analyst queue).",
+      "sectionAnalyst": "Analyst — policy ({{count}})",
+      "sectionAdjuster": "Adjuster — report, photos and settlement ({{count}})",
+      "emptyAnalyst": "The analyst has not uploaded the policy yet.",
+      "emptyAdjuster": "The adjuster has not uploaded the report, photos or documents yet.",
+      "uploadingAsAnalyst": "Will be saved as an analyst document (typically the policy; removes the case from the analyst queue).",
+      "uploadingAsAdjuster": "Will be saved as an adjuster document (report, photos, settlement).",
       "file": "File",
       "size": "Size",
       "date": "Date",
       "download": "Download",
+      "downloadAll": "Download all (ZIP)",
+      "downloadAllHint": "ZIP with folders: Analyst/POLICY and Adjuster/REPORT·PHOTOS·etc.",
+      "downloadingAll": "Building ZIP…",
+      "downloadingAllCount": "Packing {{current}} of {{total}}…",
+      "downloadAllOk": "ZIP downloaded with {{count}} file(s) in folders.",
+      "downloadAllPartial": "ZIP ready: {{ok}} of {{total}} files. {{failed}} could not be included.",
+      "downloadAllEmpty": "There are no files with a path to download.",
+      "downloadAllError": "Could not build the archive ZIP.",
+      "downloadError": "Could not download the file",
       "pageTitle": "BBVA CAT archive",
       "pageSubtitle": "Files you upload here are stored on the listing and show up in the listing report.",
       "pickCase": "Select a listing case (ZC / claim) to open its archive.",
@@ -12458,6 +12569,9 @@
       "recommendation": "Adjuster recommendation",
       "downloadWord": "Download Word report",
       "wordError": "Could not generate the Word report.",
+      "wordSavedArchive": "Report downloaded and a copy saved to the archive (adjuster / REPORT).",
+      "wordArchiveError": "The Word file downloaded, but it could not be saved to the archive.",
+      "wordDownloadedOnly": "Report downloaded. Save the case to copy it to the archive.",
       "saveDraft": "Save draft",
       "saving": "Saving…",
       "savedMessage": "Unique report saved to the case.",
@@ -12583,6 +12697,49 @@
       "openEarth": "Open in Google Earth",
       "openMaps": "Open in Maps",
       "filteredToCase": "Table filtered to this case"
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cut-off · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cut-off date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Overall total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation progress accounting for growth in the case base",
+        "cutLabel": "Comparison cut-off: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day-to-day variation",
+        "noYesterday": "Could not rebuild the {{fecha}} cut-off (no cases with intake date on or before that day).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions detected",
+        "hasRegressions": "Some cases moved to an earlier stage vs. the previous cut-off",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "Management percentage went from {{pctAyer}}% to {{pctHoy}}% due to new case intake. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "{{fecha}} cut-off reconstructed from case dates and milestones (no saved snapshot that day). Same-day status change variations may be approximate."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total discriminated management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared against {{ayer}} base"
+      }
     }
   },
   "allianz": {
@@ -12881,10 +13038,12 @@
           "ANÁLISIS DEL CASO": "Analysis",
           "PENDIENTE DE DOCUMENTO": "Documents",
           "OBJECIÓN": "Objection",
-          "AUTORIZACIÓN ANALISTA": "Authorization",
-          "CASO PARA PAGO": "Ready to pay",
           "OBJETADO": "Objected",
+          "AUTORIZACIÓN ANALISTA": "Authorization",
+          "CASO AJUSTADO": "Adjusted",
+          "CASO PARA PAGO": "Ready to pay",
           "PAGADO": "Paid",
+          "DESISTIMIENTO": "Withdrawal",
           "ANULADO": "Cancelled"
         }
       },
@@ -13429,6 +13588,49 @@
     "permissions": {
       "inspectorHint": "Inspector role can only view the case and change status.",
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cut-off · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cut-off date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Overall total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation progress accounting for growth in the case base",
+        "cutLabel": "Comparison cut-off: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day-to-day variation",
+        "noYesterday": "Could not rebuild the {{fecha}} cut-off (no cases with intake date on or before that day).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions detected",
+        "hasRegressions": "Some cases moved to an earlier stage vs. the previous cut-off",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "Management percentage went from {{pctAyer}}% to {{pctHoy}}% due to new case intake. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "{{fecha}} cut-off reconstructed from case dates and milestones (no saved snapshot that day). Same-day status change variations may be approximate."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total discriminated management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared against {{ayer}} base"
+      }
     }
   },
   "previsora": {
@@ -14000,6 +14202,49 @@
     "permissions": {
       "inspectorHint": "Inspector role can only view the case and change status.",
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cut-off · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cut-off date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Overall total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation progress accounting for growth in the case base",
+        "cutLabel": "Comparison cut-off: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day-to-day variation",
+        "noYesterday": "Could not rebuild the {{fecha}} cut-off (no cases with intake date on or before that day).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions detected",
+        "hasRegressions": "Some cases moved to an earlier stage vs. the previous cut-off",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "Management percentage went from {{pctAyer}}% to {{pctHoy}}% due to new case intake. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "{{fecha}} cut-off reconstructed from case dates and milestones (no saved snapshot that day). Same-day status change variations may be approximate."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total discriminated management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared against {{ayer}} base"
+      }
     }
   },
   "equidadCat": {
@@ -14534,6 +14779,49 @@
     "permissions": {
       "inspectorHint": "Inspector role can only view the case and change status.",
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
+    },
+    "boletinDiario": {
+      "title": "Daily management bulletin",
+      "subtitle": "Operational cut-off · {{fecha}} (America/Bogota)",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "print": "Print / PDF",
+      "openWeekly": "Weekly bulletin",
+      "loadError": "Could not load the daily bulletin.",
+      "cutOff": "Cut-off date",
+      "terremoto": {
+        "title": "Earthquake management",
+        "subtitle": "Current case classification",
+        "total": "Overall total"
+      },
+      "comparativo": {
+        "title": "Daily comparison",
+        "subtitle": "Operation progress accounting for growth in the case base",
+        "cutLabel": "Comparison cut-off: {{ayer}} vs {{hoy}}",
+        "estado": "Status",
+        "yesterday": "Yesterday",
+        "today": "Today",
+        "variation": "Day-to-day variation",
+        "noYesterday": "Could not rebuild the {{fecha}} cut-off (no cases with intake date on or before that day).",
+        "effectiveYesterday": "Cases with effective management (yesterday)",
+        "effectiveToday": "Cases with effective management (today)",
+        "newAssignments": "New assignments",
+        "baseGrowth": "{{pct}}% increase in the total base",
+        "netManaged": "Net increase in managed cases",
+        "regressions": "Cases that moved backward",
+        "noRegressions": "No stage regressions detected",
+        "hasRegressions": "Some cases moved to an earlier stage vs. the previous cut-off",
+        "summaryBanner": "Accumulated management rose from {{desde}} to {{hasta}} cases, even as the total base grew by {{nuevas}} new assignments.",
+        "summaryText": "Management percentage went from {{pctAyer}}% to {{pctHoy}}% due to new case intake. In absolute terms there are {{neto}} additional cases with effective management.",
+        "reconstructedNote": "{{fecha}} cut-off reconstructed from case dates and milestones (no saved snapshot that day). Same-day status change variations may be approximate."
+      },
+      "discriminada": {
+        "eyebrow": "Daily report of management actions",
+        "title": "Total discriminated management",
+        "subtitle": "Classification by adjuster comments and reported movements",
+        "source": "Source: ARNALD base {{hoy}} · Compared against {{ayer}} base"
+      }
     }
   }
 }

@@ -12,9 +12,9 @@ import {
 export const DIAS_ESTANCADO_BBVA_CAT = 15;
 export const LIMITE_GRANDES_PERDIDAS_BBVA_CAT = 10;
 
-const ESTADOS_CERRADOS = new Set(['PAGADO', 'OBJETADO']);
+const ESTADOS_CERRADOS = new Set(['PAGADO', 'OBJETADO', 'DESISTIMIENTO']);
 const ESTADOS_TRAMITE = new Set(['CASO NUEVO', 'COORDINANDO INSPECCIÓN', 'ANÁLISIS DEL CASO']);
-const ESTADOS_LISTOS_PAGO = new Set(['AUTORIZACIÓN ANALISTA', 'CASO PARA PAGO']);
+const ESTADOS_LISTOS_PAGO = new Set(['AUTORIZACIÓN ANALISTA', 'CASO AJUSTADO', 'CASO PARA PAGO']);
 
 const CUBETAS_ANTIGUEDAD = ['0-7 d', '8-15 d', '16-30 d', '31-45 d', '46+ d'];
 
@@ -145,6 +145,7 @@ export function construirDashboardBbvaCatListado(casos = []) {
   let pendienteDocumento = 0;
   let enObjecion = 0;
   let objetados = 0;
+  let desistimientos = 0;
   let listosPago = 0;
   let pagados = 0;
   let reservaAbierta = 0;
@@ -185,6 +186,7 @@ export function construirDashboardBbvaCatListado(casos = []) {
     if (estado === 'PENDIENTE DE DOCUMENTO') pendienteDocumento += 1;
     if (estado === 'OBJECIÓN') enObjecion += 1;
     if (estado === 'OBJETADO') objetados += 1;
+    if (estado === 'DESISTIMIENTO') desistimientos += 1;
     if (ESTADOS_LISTOS_PAGO.has(estado)) listosPago += 1;
     if (estado === 'PAGADO') pagados += 1;
 
@@ -288,6 +290,7 @@ export function construirDashboardBbvaCatListado(casos = []) {
       pendienteDocumento,
       enObjecion,
       objetados,
+      desistimientos,
       listosPago,
       pagados,
       estancados: nEstancados,

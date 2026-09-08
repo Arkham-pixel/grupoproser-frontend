@@ -1621,4 +1621,5 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
     '_'
   );
   saveAs(blob, nombre);
+  return { blob, filename: nombre };
 }

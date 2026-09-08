@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { FaChevronLeft, FaChevronRight, FaPrint } from 'react-icons/fa';
+import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaPrint } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import { fetchAllCasosSura, getAlertasSura } from '../../services/segurosSuraService.js';
@@ -201,6 +201,9 @@ export default function BoletinSemanalSegurosSura() {
             <button type="button" className={expressBtnPrimary} onClick={() => window.print()}>
               <FaPrint /> {t('segurosSura.boletin.print')}
             </button>
+            <Link to="/sura/boletin-diario" className={expressBtnGhost}>
+              <FaCalendarAlt /> {t('segurosSura.boletin.openDaily')}
+            </Link>
             <Link to="/sura/dashboard" className={expressBtnGhost}>
               {t('nav.suraDashboard')}
             </Link>

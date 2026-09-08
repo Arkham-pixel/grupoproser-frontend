@@ -1,9 +1,13 @@
 import React, { useState, useRef, useCallback, useMemo, memo } from 'react';
-import Select from 'react-select';
 import { useTranslation } from 'react-i18next';
 import { abrirODescargarArchivo, resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { useTheme } from '../../context/ThemeContext';
 import { diasHabilesColombiaEntre } from '../../utils/festivosColombia.js';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
+import {
+  ciudadSigueValidaTrasCambioDepto,
+  coincidirCiudadExacta,
+} from '../../utils/ciudadesColombia.js';
 
 const NS = 'risks.ui.trazabilidad_riesgo';
 
@@ -114,6 +118,51 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   
   const textareaRefs = useRef({});
+
+  const selectButtonClass =
+    'w-full rounded px-2 sm:px-3 py-2 text-xs sm:text-sm border bg-white text-gray-800 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600';
+
+  const ciudadSucursalValor = String(
+    formData.ciudadSucursal ||
+      (typeof formData.ciudad === 'object' ? formData.ciudad?.value : formData.ciudad) ||
+      ''
+  ).trim();
+  const matchSucursal = coincidirCiudadExacta(
+    ciudades,
+    ciudadSucursalValor,
+    formData.departamentoSucursal || formData.departamento || ''
+  );
+  const departamentoSucursal =
+    formData.departamentoSucursal ||
+    matchSucursal?.departamento ||
+    formData.departamento ||
+    '';
+  const ciudadSucursalNombre =
+    matchSucursal?.ciudad || matchSucursal?.value || ciudadSucursalValor;
+
+  const handleDepartamentoSucursal = (valor) => {
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        departamentoSucursal: valor == null ? '' : String(valor),
+      };
+      if (
+        !valor ||
+        !ciudadSigueValidaTrasCambioDepto(ciudades, prev.ciudadSucursal, valor)
+      ) {
+        next.ciudadSucursal = '';
+      }
+      return next;
+    });
+  };
+
+  const handleCiudadSucursal = (val, meta) => {
+    setFormData((prev) => ({
+      ...prev,
+      ciudadSucursal: val || '',
+      departamentoSucursal: meta?.departamento || prev.departamentoSucursal || '',
+    }));
+  };
 
   const handleBlur = useCallback((e) => {
     handleChange(e);
@@ -521,48 +570,17 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
           >
             {t(`${NS}.ciudad_sucursal`)}
           </label>
-          <Select
-            options={ciudades}
-            value={ciudades.find(c => c.value === (formData.ciudadSucursal || formData.ciudad?.value)) || null}
-            onChange={selected => setFormData(prev => ({ ...prev, ciudadSucursal: selected ? selected.value : '' }))}
-            placeholder={t('common.select')}
-            isClearable
-            className="text-xs sm:text-sm"
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                fontSize: '0.875rem',
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                '&:hover': {
-                  borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                },
-                '@media (min-width: 640px)': {
-                  fontSize: '1rem'
-                }
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected 
-                  ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                  : state.isFocused
-                  ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                  : inputBg,
-                color: state.isSelected 
-                  ? '#FFFFFF'
-                  : textPrimary
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: textPrimary
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: textSecondary
-              })
-            }}
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudades}
+            departamento={departamentoSucursal}
+            ciudad={ciudadSucursalNombre}
+            onDepartamentoChange={handleDepartamentoSucursal}
+            onCiudadChange={handleCiudadSucursal}
+            wrapInCampo={false}
+            i18nNs="common"
+            buttonClassName={selectButtonClass}
+            classNameDepto="mb-2"
+            classNameCiudad=""
           />
         </div>
         <div>

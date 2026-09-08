@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   FaPaperclip,
@@ -79,9 +79,16 @@ function authHeaders(extra = {}) {
   };
 }
 
-function esAdminOSoporteLocal() {
-  const rol = String(localStorage.getItem('rol') || '').toLowerCase();
-  return rol === 'admin' || rol === 'soporte';
+function puedeVerBandejaTicketsLocal() {
+  const login = String(localStorage.getItem('login') || '')
+    .trim()
+    .toLowerCase();
+  // Misma lista por defecto que backend TICKETS_NOTIFY_LOGINS
+  const logins = String(import.meta.env.VITE_TICKETS_BANDEJA_LOGINS || '1065012991')
+    .split(/[,;]+/)
+    .map((l) => l.trim().toLowerCase())
+    .filter(Boolean);
+  return Boolean(login && logins.includes(login));
 }
 
 const FORM_INICIAL = {
@@ -94,8 +101,8 @@ const FORM_INICIAL = {
 
 export default function TicketsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const admin = useMemo(() => esAdminOSoporteLocal(), []);
-  const [vista, setVista] = useState(admin ? 'todos' : 'mios');
+  const [puedeBandeja, setPuedeBandeja] = useState(() => puedeVerBandejaTicketsLocal());
+  const [vista, setVista] = useState(() => (puedeVerBandejaTicketsLocal() ? 'todos' : 'mios'));
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -114,13 +121,18 @@ export default function TicketsPage() {
     setLoading(true);
     setError('');
     try {
-      const qs = new URLSearchParams({ vista: admin && vista === 'todos' ? 'todos' : 'mios' });
+      const qs = new URLSearchParams({
+        vista: puedeBandeja && vista === 'todos' ? 'todos' : 'mios',
+      });
       const res = await fetch(`${BASE_URL}/api/tickets?${qs}`, {
         headers: authHeaders(),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.mensaje || 'No se pudieron cargar los tickets');
+      }
+      if (typeof data.meta?.puedeBandeja === 'boolean') {
+        setPuedeBandeja(data.meta.puedeBandeja);
       }
       setTickets(Array.isArray(data.data) ? data.data : []);
     } catch (err) {
@@ -129,7 +141,7 @@ export default function TicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [admin, vista]);
+  }, [puedeBandeja, vista]);
 
   useEffect(() => {
     cargarTickets();
@@ -150,6 +162,9 @@ export default function TicketsPage() {
       setDetalle(data.data);
       setEstadoEdicion(data.data.estado || 'abierto');
       setComentario('');
+      if (typeof data.meta?.puedeBandeja === 'boolean') {
+        setPuedeBandeja(data.meta.puedeBandeja);
+      }
       setSearchParams({ id: String(id) }, { replace: true });
     } catch (err) {
       setError(err.message || 'Error abriendo ticket');
@@ -533,7 +548,7 @@ export default function TicketsPage() {
         >
           <FaUser /> Mis tickets
         </button>
-        {admin && (
+        {puedeBandeja && (
           <button
             type="button"
             onClick={() => setVista('todos')}
@@ -722,7 +737,7 @@ export default function TicketsPage() {
                   )}
                 </div>
 
-                {admin ? (
+                {puedeBandeja ? (
                   <div className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       Gestión soporte

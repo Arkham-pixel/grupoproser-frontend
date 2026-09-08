@@ -1,7 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useMemo, useState } from 'react';
-import Select from 'react-select';
-import { useTheme } from '../../context/ThemeContext';
+import React, { useMemo } from 'react';
 import {
   complexAlertError,
   complexAlertWarn,
@@ -12,7 +10,6 @@ import {
 } from './complexFenixUi';
 import {
   Campo,
-  getComplexSelectStyles,
   InputFenix,
   SelectFenix,
   TextareaFenix,
@@ -20,18 +17,10 @@ import {
 } from './FacturacionHelpers';
 import { InputFechaHoraProtocolo } from './ComplexUiBlocks.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import CampoTomadorSura from '../SubcomponenteSura/CampoTomadorSura.jsx';
-import SelectBuscable from '../SelectBuscable.jsx';
-
-function scoreCoincidenciaCiudad(label, queryNorm) {
-  if (!queryNorm) return 0;
-  const n = normalizarCiudad(label);
-  if (n === queryNorm) return 0;
-  if (n.startsWith(queryNorm)) return 1;
-  if (n.includes(queryNorm)) return 2;
-  return 3;
-}
+import { coincidirCiudadExacta } from '../../utils/ciudadesColombia.js';
 
 function resolverEstadoSelect(formData, estados = []) {
   const seleccionUsuario = String(formData?.estado ?? '').trim();
@@ -73,35 +62,6 @@ function normalizarTipoDocumento(valor) {
   return upper;
 }
 
-function normalizarCiudad(texto) {
-  return String(texto ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .trim()
-    .toUpperCase();
-}
-
-/** Coincide solo por igualdad exacta o sin tildes/mayúsculas. Nunca por substring
- * (evita que "TADO" resuelva a "APARTADO"). */
-function resolverCiudadSelect(formData, municipios) {
-  if (!formData.ciudadSiniestro || !municipios.length) return null;
-  const guardada = String(formData.ciudadSiniestro);
-  const guardadaNorm = normalizarCiudad(guardada);
-
-  const porExacto = municipios.find(
-    (opt) => String(opt.value) === guardada || String(opt.label) === guardada
-  );
-  if (porExacto) return porExacto;
-
-  return (
-    municipios.find(
-      (opt) =>
-        normalizarCiudad(opt.value) === guardadaNorm ||
-        normalizarCiudad(opt.label) === guardadaNorm
-    ) || null
-  );
-}
-
 export default function DatosGenerales({
   formData,
   handleChange,
@@ -127,73 +87,22 @@ export default function DatosGenerales({
   inspectoresCatastrofico = [],
 }) {
   const { t } = useTranslation();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  const selectStyles = useMemo(() => getComplexSelectStyles(isDark), [isDark]);
-  const [busquedaCiudad, setBusquedaCiudad] = useState('');
   const sinAsignar = t('complex.ui.datos_generales.sin_asignar');
   const rolUsuario = obtenerRolAlmacenado();
 
   const deptoActual = formData.departamento || formData.departamentoCiudad || '';
 
-  const departamentosSura = useMemo(() => {
-    if (!mostrarAsignacionCatastrofico) return [];
-    const map = new Map();
-    for (const m of municipios || []) {
-      const d = String(m.departamento || '').trim();
-      if (!d) continue;
-      const key = normalizarCiudad(d);
-      if (!map.has(key)) map.set(key, d);
-    }
-    return [...map.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [municipios, mostrarAsignacionCatastrofico]);
-
-  const municipiosSuraFiltrados = useMemo(() => {
-    if (!mostrarAsignacionCatastrofico) return [];
-    const deptoNorm = normalizarCiudad(deptoActual);
-    if (!deptoNorm) return [];
-    const unicas = new Map();
-    for (const m of municipios || []) {
-      if (normalizarCiudad(m.departamento) !== deptoNorm) continue;
-      const key = normalizarCiudad(m.label || m.value);
-      if (!key || unicas.has(key)) continue;
-      unicas.set(key, {
-        value: m.value || m.label,
-        label: m.label || m.value,
-        departamento: m.departamento || deptoActual,
-      });
-    }
-    return [...unicas.values()].sort((a, b) =>
-      String(a.label).localeCompare(String(b.label), 'es')
-    );
-  }, [municipios, deptoActual, mostrarAsignacionCatastrofico]);
-
-  const opcionesCiudadSura = useMemo(() => {
-    const base = municipiosSuraFiltrados.map((c) => ({
-      value: c.value,
-      label: c.label,
-    }));
-    const actual = String(formData.ciudadSiniestro || '').trim();
-    if (
-      actual &&
-      !base.some((c) => normalizarCiudad(c.value) === normalizarCiudad(actual))
-    ) {
-      return [{ value: actual, label: actual }, ...base];
-    }
-    return base;
-  }, [municipiosSuraFiltrados, formData.ciudadSiniestro]);
-
-  const municipiosParaSelect = useMemo(() => {
-    const q = normalizarCiudad(busquedaCiudad);
-    if (!q) return municipios;
-    return [...municipios]
-      .filter((o) => scoreCoincidenciaCiudad(o.label, q) < 3)
-      .sort(
-        (a, b) =>
-          scoreCoincidenciaCiudad(a.label, q) - scoreCoincidenciaCiudad(b.label, q) ||
-          String(a.label).localeCompare(String(b.label), 'es')
-      );
-  }, [municipios, busquedaCiudad]);
+  const ciudadesRaw = useMemo(
+    () =>
+      (municipios || []).map((m) => ({
+        ciudad: m.ciudad || m.label || m.value || '',
+        departamento: m.departamento || '',
+        codigo: m.codigo,
+        value: m.value || m.ciudad || m.label,
+        label: m.label || m.ciudad || m.value,
+      })),
+    [municipios]
+  );
 
   const setCampoAsignacion = (clave) => (e) => {
     const valor = e?.target ? e.target.value : e;
@@ -205,25 +114,20 @@ export default function DatosGenerales({
     }
   };
 
-  const onCiudadSuraChange = (val) => {
-    const encontrada = municipiosSuraFiltrados.find(
-      (c) =>
-        String(c.value) === String(val) ||
-        normalizarCiudad(c.value) === normalizarCiudad(val)
-    );
-    handleCiudadChange({
-      value: val,
-      label: encontrada?.label || val,
-      departamento: encontrada?.departamento || deptoActual,
-    });
-  };
-
-  const onDepartamentoSuraChange = (e) => {
+  const onDepartamentoChange = (valor) => {
     if (typeof handleDepartamentoChange === 'function') {
-      handleDepartamentoChange(e);
+      handleDepartamentoChange(valor);
       return;
     }
-    handleChange(e);
+    handleChange({ target: { name: 'departamento', value: valor } });
+  };
+
+  const onCiudadChange = (val, meta = {}) => {
+    handleCiudadChange({
+      value: val,
+      label: meta.label || val,
+      departamento: meta.departamento || deptoActual,
+    });
   };
 
   const labelResponsable =
@@ -247,20 +151,9 @@ export default function DatosGenerales({
     sinAsignar;
 
   const ciudadNoEnLista =
-    formData.ciudadSiniestro &&
+    Boolean(formData.ciudadSiniestro) &&
     municipios.length > 0 &&
-    !(mostrarAsignacionCatastrofico
-      ? municipiosSuraFiltrados.find(
-          (opt) =>
-            String(opt.value) === String(formData.ciudadSiniestro) ||
-            String(opt.label) === String(formData.ciudadSiniestro) ||
-            normalizarCiudad(opt.value) === normalizarCiudad(formData.ciudadSiniestro)
-        )
-      : municipios.find(
-          (opt) =>
-            String(opt.value) === String(formData.ciudadSiniestro) ||
-            String(opt.label) === String(formData.ciudadSiniestro)
-        ));
+    !coincidirCiudadExacta(ciudadesRaw, formData.ciudadSiniestro, deptoActual);
 
   const aseguradorasOrdenadas = [...(aseguradoraOptions || [])].sort((a, b) => {
     const labelA = (a.label || a || '').toString().toUpperCase();
@@ -649,108 +542,32 @@ export default function DatosGenerales({
           </>
         ) : null}
 
-        {mostrarAsignacionCatastrofico ? (
-          <>
-            <Campo
-              label={t('segurosSura.fields.departamento', { defaultValue: 'Departamento' })}
-            >
-              <SelectFenix
-                name="departamento"
-                value={deptoActual}
-                onChange={onDepartamentoSuraChange}
-                disabled={cargandoMunicipios && departamentosSura.length === 0}
-              >
-                <option value="">{t('common.select', { defaultValue: 'Seleccionar…' })}</option>
-                {deptoActual &&
-                  !departamentosSura.some(
-                    (d) => normalizarCiudad(d) === normalizarCiudad(deptoActual)
-                  ) && <option value={deptoActual}>{deptoActual}</option>}
-                {departamentosSura.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </SelectFenix>
-            </Campo>
-
-            <Campo label={t('complex.ui.datos_generales.ciudad_del_siniestro')}>
-              <SelectBuscable
-                options={opcionesCiudadSura}
-                value={formData.ciudadSiniestro || ''}
-                onChange={onCiudadSuraChange}
-                disabled={
-                  (cargandoMunicipios && municipios.length === 0) || !deptoActual
-                }
-                placeholder={
-                  deptoActual
-                    ? t('complex.ui.datos_generales.selecciona_una_ciudad')
-                    : t('segurosSura.placeholders.selectDepartmentFirst', {
-                        defaultValue: 'Seleccione primero el departamento',
-                      })
-                }
-                searchPlaceholder={t('common.searchEllipsis', {
-                  defaultValue: 'Buscar ciudad…',
-                })}
-                buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-              />
-              {cargandoMunicipios && municipios.length === 0 && (
-                <p className={complexHint}>
-                  {t('complex.ui.datos_generales.cargando_ciudades')}
-                </p>
-              )}
-              {ciudadNoEnLista && (
-                <p className={complexAlertWarn}>
-                  {t('complex.ui.datos_generales.ciudad_guardada')}
-                  {formData.ciudadSiniestro}
-                  {t(
-                    'complex.ui.datos_generales.verifica_que_coincida_con_las_opciones_disponibles'
-                  )}
-                </p>
-              )}
-            </Campo>
-          </>
-        ) : (
-          <Campo
-            label={t('complex.ui.datos_generales.ciudad_del_siniestro')}
-            className="md:col-span-2"
-          >
-            <Select
-              options={municipiosParaSelect}
-              value={resolverCiudadSelect(formData, municipios)}
-              onChange={(opt) => {
-                setBusquedaCiudad('');
-                handleCiudadChange(opt);
-              }}
-              onInputChange={(input, meta) => {
-                if (meta.action === 'input-change') setBusquedaCiudad(input);
-                if (meta.action === 'menu-close' || meta.action === 'set-value') {
-                  setBusquedaCiudad('');
-                }
-                return input;
-              }}
-              filterOption={() => true}
-              placeholder={t('complex.ui.datos_generales.selecciona_una_ciudad')}
-              isSearchable
-              isLoading={cargandoMunicipios && municipios.length === 0}
-              isDisabled={cargandoMunicipios && municipios.length === 0}
-              className="w-full"
-              styles={selectStyles}
-            />
-            {cargandoMunicipios && municipios.length === 0 && (
-              <p className={complexHint}>
-                {t('complex.ui.datos_generales.cargando_ciudades')}
-              </p>
+        <SelectorDepartamentoCiudad
+          ciudadesRaw={ciudadesRaw}
+          departamento={deptoActual}
+          ciudad={formData.ciudadSiniestro || ''}
+          onDepartamentoChange={onDepartamentoChange}
+          onCiudadChange={onCiudadChange}
+          cargando={cargandoMunicipios}
+          i18nNs="segurosSura"
+          labelCiudad={t('complex.ui.datos_generales.ciudad_del_siniestro')}
+          labelDepartamento={t('segurosSura.fields.departamento', {
+            defaultValue: 'Departamento',
+          })}
+        />
+        {cargandoMunicipios && municipios.length === 0 && (
+          <p className={`${complexHint} md:col-span-2`}>
+            {t('complex.ui.datos_generales.cargando_ciudades')}
+          </p>
+        )}
+        {ciudadNoEnLista && (
+          <p className={`${complexAlertWarn} md:col-span-2`}>
+            {t('complex.ui.datos_generales.ciudad_guardada')}
+            {formData.ciudadSiniestro}
+            {t(
+              'complex.ui.datos_generales.verifica_que_coincida_con_las_opciones_disponibles'
             )}
-            {ciudadNoEnLista && (
-              <p className={complexAlertWarn}>
-                {t('complex.ui.datos_generales.ciudad_guardada')}
-                {formData.ciudadSiniestro}
-                {t(
-                  'complex.ui.datos_generales.verifica_que_coincida_con_las_opciones_disponibles'
-                )}
-              </p>
-            )}
-          </Campo>
+          </p>
         )}
 
         <Campo label={t("complex.ui.datos_generales.tipo_de_poliza")}>

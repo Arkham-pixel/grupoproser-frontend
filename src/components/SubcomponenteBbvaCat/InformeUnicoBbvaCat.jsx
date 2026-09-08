@@ -216,12 +216,33 @@ export default function InformeUnicoBbvaCat({
   const handleWord = async () => {
     setDescargando(true);
     setError('');
+    setMensaje('');
     try {
-      await descargarWordInformeBbvaCat({
+      const resultado = await descargarWordInformeBbvaCat({
         caso: casoBbvaCat || {},
         informe,
         liquidador,
       });
+      const blob = resultado?.blob;
+      const nombre = resultado?.filename || resultado?.nombre;
+      if (blob && nombre && casoBbvaCat?._id) {
+        try {
+          const file = new File([blob], nombre, {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
+          const creado = await api.subir(casoBbvaCat._id, file, 'INFORME', {
+            origenCarga: 'ajustador',
+            descripcion: 'Copia del informe único Word',
+          });
+          appendArchivosAlCaso([creado]);
+          setMensaje(t('bbvaCat.reportUnique.wordSavedArchive'));
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar el informe en el archivero BBVA:', errArchivo);
+          setError(t('bbvaCat.reportUnique.wordArchiveError'));
+        }
+      } else if (!casoBbvaCat?._id) {
+        setMensaje(t('bbvaCat.reportUnique.wordDownloadedOnly'));
+      }
     } catch (err) {
       console.error(err);
       setError(t('bbvaCat.reportUnique.wordError'));
@@ -553,6 +574,7 @@ export default function InformeUnicoBbvaCat({
           casoId={casoBbvaCat?._id}
           origen={origen}
           api={api}
+          origenCarga="ajustador"
           inputIdPrefix="bbva-foto"
           fotosInforme={informe.fotosInspeccion || []}
           onFotosInformeChange={(lista) => setCampo('fotosInspeccion', lista)}

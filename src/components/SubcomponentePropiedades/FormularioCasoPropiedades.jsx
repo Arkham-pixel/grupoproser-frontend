@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FaBuilding,
   FaClipboardList,
@@ -32,11 +32,17 @@ import {
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { PropiedadesPageHeader } from './PropiedadesUiBlocks.jsx';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import {
   CLASES_INMUEBLE,
   CLASES_TIPOS_INMUEBLE,
   fechaParaInput,
 } from './propiedadesHelpers.js';
+import {
+  aplicarCambioDepartamento,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+} from '../../utils/ciudadesColombia.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -136,19 +142,7 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
         const dataAseguradoras = await resAseguradoras.json().catch(() => ({}));
         if (cancelado) return;
 
-        const listaCiudades = Array.isArray(dataCiudades?.data)
-          ? dataCiudades.data
-          : Array.isArray(dataCiudades)
-            ? dataCiudades
-            : [];
-        setCiudadesRaw(
-          listaCiudades
-            .map((c) => ({
-              ciudad: String(c.descMunicipio || c.label || c.nombre || '').trim(),
-              departamento: String(c.descDepto || c.departamento || '').trim(),
-            }))
-            .filter((c) => c.ciudad)
-        );
+        setCiudadesRaw(mapearCiudadesDesdeApi(extraerListaCiudadesApi(dataCiudades)));
 
         const listaResp = Array.isArray(dataResponsables?.data)
           ? dataResponsables.data
@@ -198,29 +192,6 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
     };
   }, []);
 
-  const departamentos = useMemo(() => {
-    const set = new Map();
-    for (const c of ciudadesRaw) {
-      if (!c.departamento) continue;
-      const key = c.departamento.toUpperCase();
-      if (!set.has(key)) set.set(key, c.departamento);
-    }
-    return [...set.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw]);
-
-  const ciudadesFiltradas = useMemo(() => {
-    const depto = String(form.departamento || '').trim().toUpperCase();
-    const lista = depto
-      ? ciudadesRaw.filter((c) => c.departamento.toUpperCase() === depto)
-      : ciudadesRaw;
-    const unicas = new Map();
-    for (const c of lista) {
-      const key = c.ciudad.toUpperCase();
-      if (!unicas.has(key)) unicas.set(key, c.ciudad);
-    }
-    return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw, form.departamento]);
-
   const setCampo = (clave) => (e) => {
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => {
@@ -231,23 +202,24 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
         if (!tipos.includes(siguiente.tipoInmueble)) siguiente.tipoInmueble = '';
       }
 
-      if (clave === 'departamento') {
-        const deptoNorm = String(valor || '').trim().toUpperCase();
-        const ciudadActual = ciudadesRaw.find(
-          (c) =>
-            c.ciudad.toUpperCase() === String(prev.ciudad || '').toUpperCase() &&
-            c.departamento.toUpperCase() === deptoNorm
-        );
-        if (!ciudadActual) siguiente.ciudad = '';
-      }
+      return siguiente;
+    });
+  };
 
-      if (clave === 'ciudad') {
-        const match = ciudadesRaw.find(
-          (c) => c.ciudad.toUpperCase() === String(valor || '').toUpperCase()
-        );
-        if (match?.departamento) siguiente.departamento = match.departamento;
-      }
+  const setDepartamento = (valor) => {
+    setForm((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudadesRaw, {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudad',
+      })
+    );
+  };
 
+  const setCiudad = (val, meta) => {
+    setForm((prev) => {
+      const siguiente = { ...prev, ciudad: val };
+      if (meta?.departamento) siguiente.departamento = meta.departamento;
       return siguiente;
     });
   };
@@ -406,42 +378,18 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
               placeholder={t('properties.placeholders.location')}
             />
           </Campo>
-          <Campo label={t('properties.fields.department')}>
-            <SelectFenix
-              value={form.departamento}
-              onChange={setCampo('departamento')}
-              disabled={cargandoCatalogos && departamentos.length === 0}
-            >
-              <option value="">{t('common.select')}</option>
-              {opcionHuerfana(form.departamento, departamentos) && (
-                <option value={form.departamento}>{form.departamento}</option>
-              )}
-              {departamentos.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </SelectFenix>
-          </Campo>
-          <Campo label={t('properties.fields.city')}>
-            <SelectFenix
-              value={form.ciudad}
-              onChange={setCampo('ciudad')}
-              disabled={cargandoCatalogos && ciudadesFiltradas.length === 0}
-            >
-              <option value="">
-                {form.departamento ? t('properties.placeholders.selectCity') : t('properties.placeholders.allOrSelectCity')}
-              </option>
-              {opcionHuerfana(form.ciudad, ciudadesFiltradas) && (
-                <option value={form.ciudad}>{form.ciudad}</option>
-              )}
-              {ciudadesFiltradas.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </SelectFenix>
-          </Campo>
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={form.departamento}
+            ciudad={form.ciudad}
+            onDepartamentoChange={setDepartamento}
+            onCiudadChange={setCiudad}
+            cargando={cargandoCatalogos}
+            requireDepto={false}
+            i18nNs="properties"
+            labelDepartamento={t('properties.fields.department')}
+            labelCiudad={t('properties.fields.city')}
+          />
           <Campo label={t('properties.fields.propertyClass')}>
             <SelectFenix value={form.claseInmueble} onChange={setCampo('claseInmueble')}>
               <option value="">{t('common.select')}</option>

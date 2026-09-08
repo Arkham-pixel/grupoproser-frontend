@@ -526,7 +526,13 @@
       "equidadCatMyCases": "Mis casos Equidad CAT",
       "equidadCatDashboard": "Dashboard Equidad CAT",
       "equidadCatCase": "Caso Equidad CAT",
-      "equidadCatArchive": "Archivero Equidad CAT"
+      "equidadCatArchive": "Archivero Equidad CAT",
+      "bbvaCatDailyBulletin": "Boletín diario BBVA CAT",
+      "previsoraDailyBulletin": "Boletín diario Previsora",
+      "equidadCatDailyBulletin": "Boletín diario Equidad CAT",
+      "allianzDailyBulletin": "Boletín diario Allianz",
+      "zurichDailyBulletin": "Boletín diario Zurich",
+      "suraDailyBulletin": "Boletín diario Sura"
     },
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
@@ -591,7 +597,13 @@
     "equidadCatAddCase": "Agregar caso",
     "equidadCatDashboard": "Dashboard",
     "equidadCatReport": "Reporte",
-    "equidadCatArchive": "Archivero"
+    "equidadCatArchive": "Archivero",
+    "bbvaCatDailyBulletin": "Boletín diario",
+    "previsoraDailyBulletin": "Boletín diario",
+    "equidadCatDailyBulletin": "Boletín diario",
+    "allianzDailyBulletin": "Boletín diario",
+    "zurichDailyBulletin": "Boletín diario",
+    "suraDailyBulletin": "Boletín diario"
   },
   "translation": {
     "preview": "Traducción al inglés",
@@ -2262,7 +2274,8 @@
         "title": "Detalle de movimientos de la semana",
         "type": "Tipo",
         "empty": "No hay casos reportados, inspeccionados ni liquidados en el rango."
-      }
+      },
+      "openDaily": "Boletín diario"
     },
     "page": {
       "addTitle": "Agregar caso Seguros Sura",
@@ -2709,6 +2722,49 @@
     "permissions": {
       "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
       "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   },
   "properties": {
@@ -11854,6 +11910,49 @@
     "permissions": {
       "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
       "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   },
   "bbvaCat": {
@@ -11900,8 +11999,9 @@
     "statusBar": {
       "hint": "Seleccione el estado en la barra. Al cambiarlo se registra la fecha de acción si aún está vacía.",
       "inspeccion": "Inspección y análisis",
-      "objecion": "Objeción",
-      "pago": "Autorización y pago"
+      "objecion": "Objetados",
+      "pago": "Autorización y pago",
+      "desistimiento": "Desistimiento"
     },
     "fields": {
       "siniestro": "STRO / Siniestro",
@@ -11986,8 +12086,10 @@
       "fechaObjecion": "Fecha OBJECIÓN",
       "fechaObjetado": "Fecha OBJETADO",
       "fechaAutorizacionAnalista": "Fecha AUTORIZACIÓN ANALISTA",
+      "fechaCasoAjustado": "Fecha CASO AJUSTADO",
       "fechaCasoParaPago": "Fecha CASO PARA PAGO",
       "fechaCasoPagado": "Fecha CASO PAGADO",
+      "fechaDesistimiento": "Fecha DESISTIMIENTO",
       "diasEnEstado": "Días en estado",
       "ultimaGestion": "Última gestión",
       "documentoFaltante": "Documento faltante",
@@ -12297,16 +12399,25 @@
       "deleteError": "No se pudo eliminar el documento.",
       "confirmDelete": "¿Eliminar este documento del archivero?",
       "empty": "Aún no hay documentos en este caso.",
-      "sectionAnalyst": "Subido por el analista ({{count}})",
-      "sectionAdjuster": "Subido por el ajustador ({{count}})",
-      "emptyAnalyst": "El analista aún no ha cargado documentos.",
-      "emptyAdjuster": "El ajustador aún no ha cargado fotos ni documentos.",
-      "uploadingAsAnalyst": "Se guardará como documento del analista (saca el caso de la cola analista).",
-      "uploadingAsAdjuster": "Se guardará como documento del ajustador (el caso sigue en la cola del analista).",
+      "sectionAnalyst": "Analista — póliza ({{count}})",
+      "sectionAdjuster": "Ajustador — informe, fotos y liquidación ({{count}})",
+      "emptyAnalyst": "El analista aún no ha cargado la póliza.",
+      "emptyAdjuster": "El ajustador aún no ha cargado informe, fotos ni documentos.",
+      "uploadingAsAnalyst": "Se guardará como documento del analista (típicamente la póliza; saca el caso de la cola analista).",
+      "uploadingAsAdjuster": "Se guardará como documento del ajustador (informe, fotos, liquidación).",
       "file": "Archivo",
       "size": "Tamaño",
       "date": "Fecha",
       "download": "Descargar",
+      "downloadAll": "Descargar todo (ZIP)",
+      "downloadAllHint": "ZIP con carpetas: Analista/POLIZA y Ajustador/INFORME·FOTOS·etc.",
+      "downloadingAll": "Generando ZIP…",
+      "downloadingAllCount": "Empaquetando {{current}} de {{total}}…",
+      "downloadAllOk": "ZIP descargado con {{count}} archivo(s) en carpetas.",
+      "downloadAllPartial": "ZIP listo: {{ok}} de {{total}} archivos. {{failed}} no se pudieron incluir.",
+      "downloadAllEmpty": "No hay archivos con ruta para descargar.",
+      "downloadAllError": "No se pudo generar el ZIP del archivero.",
+      "downloadError": "No se pudo descargar el archivo",
       "pageTitle": "Archivero BBVA CAT",
       "pageSubtitle": "Los documentos que subas aquí quedan en el listado y se ven en el reporte listado.",
       "pickCase": "Selecciona un caso del listado (ZC / STRO) para abrir su archivero.",
@@ -12493,6 +12604,9 @@
       "recommendation": "Recomendación del ajustador",
       "downloadWord": "Descargar informe Word",
       "wordError": "No se pudo generar el informe Word.",
+      "wordSavedArchive": "Informe descargado y copia guardada en el archivero (ajustador / INFORME).",
+      "wordArchiveError": "El Word se descargó, pero no se pudo guardar en el archivero.",
+      "wordDownloadedOnly": "Informe descargado. Guarde el caso para poder copiarlo al archivero.",
       "saveDraft": "Guardar borrador",
       "saving": "Guardando…",
       "savedMessage": "Informe único guardado en el caso.",
@@ -12618,6 +12732,49 @@
       "openEarth": "Abrir en Google Earth",
       "openMaps": "Abrir en Maps",
       "filteredToCase": "Tabla filtrada a este caso"
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   },
   "allianz": {
@@ -12916,10 +13073,12 @@
           "ANÁLISIS DEL CASO": "Análisis",
           "PENDIENTE DE DOCUMENTO": "Documentos",
           "OBJECIÓN": "Objeción",
-          "AUTORIZACIÓN ANALISTA": "Autorización",
-          "CASO PARA PAGO": "Para pago",
           "OBJETADO": "Objetado",
+          "AUTORIZACIÓN ANALISTA": "Autorización",
+          "CASO AJUSTADO": "Ajustado",
+          "CASO PARA PAGO": "Para pago",
           "PAGADO": "Pagado",
+          "DESISTIMIENTO": "Desistimiento",
           "ANULADO": "Anulado"
         }
       },
@@ -13464,6 +13623,49 @@
     "permissions": {
       "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
       "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   },
   "previsora": {
@@ -14035,6 +14237,49 @@
     "permissions": {
       "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
       "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   },
   "equidadCat": {
@@ -14569,6 +14814,49 @@
     "permissions": {
       "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
       "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
+    },
+    "boletinDiario": {
+      "title": "Boletín diario de gestión",
+      "subtitle": "Corte operativo · {{fecha}} (America/Bogota)",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "today": "Hoy",
+      "print": "Imprimir / PDF",
+      "openWeekly": "Boletín semanal",
+      "loadError": "No fue posible cargar el boletín diario.",
+      "cutOff": "Fecha de corte",
+      "terremoto": {
+        "title": "Gestión terremoto",
+        "subtitle": "Clasificación actual de los casos",
+        "total": "Total general"
+      },
+      "comparativo": {
+        "title": "Comparativo diario",
+        "subtitle": "Evolución de la operación teniendo en cuenta el incremento en la base de casos",
+        "cutLabel": "Corte de comparación: {{ayer}} vs {{hoy}}",
+        "estado": "Estado",
+        "yesterday": "Ayer",
+        "today": "Hoy",
+        "variation": "Variación día vs. día",
+        "noYesterday": "No se pudo reconstruir el corte del {{fecha}} (sin casos con fecha de ingreso ese día o anterior).",
+        "effectiveYesterday": "Casos con gestión efectiva (ayer)",
+        "effectiveToday": "Casos con gestión efectiva (hoy)",
+        "newAssignments": "Nuevas asignaciones",
+        "baseGrowth": "Incremento del {{pct}}% en la base total",
+        "netManaged": "Incremento neto de casos con gestión",
+        "regressions": "Casos que retrocedieron",
+        "noRegressions": "No se evidencian retrocesos de etapa",
+        "hasRegressions": "Hay casos que bajaron de etapa vs. el corte anterior",
+        "summaryBanner": "La gestión acumulada aumentó de {{desde}} a {{hasta}} casos, aun cuando la base total creció en {{nuevas}} nuevas asignaciones.",
+        "summaryText": "El porcentaje de gestión pasó de {{pctAyer}}% a {{pctHoy}}% por el ingreso de casos nuevos. En términos absolutos hay {{neto}} casos adicionales con gestión efectiva.",
+        "reconstructedNote": "Corte del {{fecha}} reconstruido desde fechas e hitos de los casos (no había snapshot guardado ese día). Las variaciones por cambio de estado del mismo día pueden ser aproximadas."
+      },
+      "discriminada": {
+        "eyebrow": "Informe diario de gestiones adelantadas",
+        "title": "Total gestión discriminada",
+        "subtitle": "Clasificación según comentarios y movimientos reportados por el ajustador",
+        "source": "Fuente: base ARNALD {{hoy}} · Comparativo contra base del {{ayer}}"
+      }
     }
   }
 }

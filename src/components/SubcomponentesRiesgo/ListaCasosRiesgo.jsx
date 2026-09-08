@@ -15,11 +15,13 @@ import {
   riesgoTableWrap,
 } from './riesgoFenixUi.js';
 import { getEstadoRiesgoNombre } from '../../utils/riesgoEstadoUtils.js';
+import { coincidirCiudadExacta } from '../../utils/ciudadesColombia.js';
 
 const getCiudadNombre = (codigo, ciudades) => {
+  if (!codigo) return codigo;
   if (!ciudades || !Array.isArray(ciudades)) return codigo;
-  const ciudad = ciudades.find((c) => c.value === codigo || c.codiMunicipio === codigo);
-  return ciudad ? ciudad.label : codigo;
+  const match = coincidirCiudadExacta(ciudades, codigo);
+  return match ? match.ciudad || match.label || match.value : codigo;
 };
 
 const getEstadoNombre = (codigo, estados) => getEstadoRiesgoNombre(codigo, estados);

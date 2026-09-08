@@ -52,6 +52,13 @@ import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 import AlertasCasoExpressPanel from './AlertasCasoExpressPanel.jsx';
 import { formatearFechaHoraParaInput } from '../../utils/complexFechaHoraUtils.js';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
+import {
+  aplicarCambioDepartamento,
+  coincidirCiudadExacta,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+} from '../../utils/ciudadesColombia.js';
 
 const DEFAULT_FORM = {
   _id: '',
@@ -70,6 +77,7 @@ const DEFAULT_FORM = {
   anexos: [],
   aseguradora: '',
   intermediario: '',
+  departamento: '',
   ciudadSiniestro: '',
   aseguradoBeneficiario: '',
   nit: '',
@@ -211,6 +219,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         intermediario:
           resolverNombreCatalogo(intermediariosExpress, data.intermediario) ||
           toInputTextValue(data.intermediario),
+        departamento: toInputTextValue(data.departamento),
         ciudadSiniestro: toInputTextValue(data.ciudadSiniestro),
         aseguradoBeneficiario: toInputTextValue(data.aseguradoBeneficiario),
         nit: toInputTextValue(data.nit),
@@ -424,8 +433,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         const res = await fetch(`${BASE_URL}/api/ciudades`);
         const data = await res.json();
         if (cancelado) return;
-        const lista = data?.success && Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
-        setCiudades(ordenarLista(lista, (ciudad) => ciudad?.descMunicipio ?? ciudad?.label ?? ciudad?.nombre ?? ''));
+        setCiudades(mapearCiudadesDesdeApi(extraerListaCiudadesApi(data)));
       } catch (err) {
         if (!cancelado) {
           console.error('Error cargando ciudades (Express):', err);
@@ -577,16 +585,25 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     [intermediariosExpress, formData.intermediario]
   );
 
-  const mappedCiudades = useMemo(() => {
-    const opciones = ciudades
-      .map((ciudad, index) => ({
-        value: ciudad.codiMunicipio ?? ciudad.value ?? ciudad._id ?? ciudad.descMunicipio ?? '',
-        label: ciudad.descMunicipio ?? ciudad.label ?? ciudad.nombre ?? '',
-        key: ciudad._id ?? `${ciudad.codiMunicipio ?? ciudad.value ?? 'ciudad'}-${index}`,
-      }))
-      .filter((ciudad) => ciudad.value && ciudad.label);
-    return ordenarLista(opciones, (ciudad) => ciudad.label);
-  }, [ciudades]);
+  // Resolver código DIVIPOLA (5 dígitos) o nombre legado → nombre + departamento
+  useEffect(() => {
+    if (!ciudades.length || !formData.ciudadSiniestro) return;
+    const encontrada = coincidirCiudadExacta(
+      ciudades,
+      formData.ciudadSiniestro,
+      formData.departamento
+    );
+    if (!encontrada) return;
+    const nombre = encontrada.ciudad || encontrada.value || encontrada.label || '';
+    const depto = encontrada.departamento || '';
+    if (!nombre) return;
+    if (formData.ciudadSiniestro === nombre && (formData.departamento || !depto)) return;
+    setFormData((prev) => ({
+      ...prev,
+      ciudadSiniestro: nombre,
+      departamento: prev.departamento || depto,
+    }));
+  }, [ciudades, formData.ciudadSiniestro, formData.departamento]);
 
   const onDrop = useCallback((acceptedFiles) => {
     if (!acceptedFiles?.length) return;
@@ -631,6 +648,24 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDepartamentoChange = (valor) => {
+    setFormData((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudades, {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudadSiniestro',
+      })
+    );
+  };
+
+  const handleCiudadChange = (val, meta) => {
+    setFormData((prev) => ({
+      ...prev,
+      ciudadSiniestro: val || '',
+      departamento: meta?.departamento || prev.departamento || '',
+    }));
   };
 
   const handleRadioChange = (event) => {
@@ -1314,22 +1349,15 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     </SelectFenix>
                   </Campo>
                 </div>
-                <Campo label={tUi('city')} required>
-                  <SelectFenix
-                    id="ciudadSiniestro"
-                    name="ciudadSiniestro"
-                    value={formData.ciudadSiniestro}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">{t('common.select')}</option>
-                    {mappedCiudades.map((ciudad, index) => (
-                      <option key={ciudad.key ?? `${ciudad.value}-${index}`} value={ciudad.value}>
-                        {ciudad.label}
-                      </option>
-                    ))}
-                  </SelectFenix>
-                </Campo>
+                <SelectorDepartamentoCiudad
+                  ciudadesRaw={ciudades}
+                  departamento={formData.departamento || ''}
+                  ciudad={formData.ciudadSiniestro || ''}
+                  onDepartamentoChange={handleDepartamentoChange}
+                  onCiudadChange={handleCiudadChange}
+                  i18nNs="common"
+                  labelCiudad={tUi('city')}
+                />
                 <Campo label={tUi('insuredBeneficiary')} required>
                   <InputFenix
                     id="aseguradoBeneficiario"

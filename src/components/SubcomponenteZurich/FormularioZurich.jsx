@@ -61,7 +61,7 @@ import ModalImportarExcelZurich, {
   esAdminOSoporteZurich,
 } from './ModalImportarExcelZurich.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
-import SelectBuscable from '../SelectBuscable.jsx';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { obtenerRolAlmacenado, esRolContractorZurich } from '../../config/roles.js';
 import {
   attrsCampoCaso,
@@ -76,28 +76,23 @@ import {
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
+import {
+  aplicarCambioDepartamento,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+} from '../../utils/ciudadesColombia.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const ZurichRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
+const BTN_CIUDAD_ZURICH =
+  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
+
 const aNumero = (valor) => {
   if (valor === '' || valor === null || valor === undefined) return null;
   const n = Number(String(valor).replace(/\./g, '').replace(/[^\d-]/g, ''));
   return Number.isNaN(n) ? null : n;
-};
-
-const normTxt = (valor) =>
-  String(valor ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .trim()
-    .toUpperCase();
-
-const opcionHuerfana = (valor, opciones = []) => {
-  const v = String(valor || '').trim();
-  if (!v) return false;
-  return !opciones.some((op) => normTxt(op) === normTxt(v));
 };
 
 const FormularioZurich = ({
@@ -181,19 +176,7 @@ const FormularioZurich = ({
         const dataAj = await resAj.json().catch(() => ({}));
         const dataIns = await resIns.json().catch(() => ({}));
         if (cancelado) return;
-        const lista = Array.isArray(dataCiudades?.data)
-          ? dataCiudades.data
-          : Array.isArray(dataCiudades)
-            ? dataCiudades
-            : [];
-        setCiudadesRaw(
-          lista
-            .map((c) => ({
-              ciudad: String(c.descMunicipio || c.label || c.nombre || '').trim(),
-              departamento: String(c.descDepto || c.departamento || '').trim(),
-            }))
-            .filter((c) => c.ciudad)
-        );
+        setCiudadesRaw(mapearCiudadesDesdeApi(extraerListaCiudadesApi(dataCiudades)));
         const listaResp = Array.isArray(dataResp?.data)
           ? dataResp.data
           : Array.isArray(dataResp)
@@ -234,48 +217,6 @@ const FormularioZurich = ({
     setForm((prev) => (prev.departamento ? prev : { ...prev, departamento: depto }));
   }, [ciudadesRaw, form.ciudad, form.departamento]);
 
-  const departamentos = useMemo(() => {
-    const map = new Map();
-    for (const c of ciudadesRaw) {
-      if (!c.departamento) continue;
-      const key = normTxt(c.departamento);
-      if (!map.has(key)) map.set(key, c.departamento);
-    }
-    return [...map.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw]);
-
-  const ciudadesFiltradas = useMemo(() => {
-    const depto = normTxt(form.departamento);
-    const lista = depto
-      ? ciudadesRaw.filter((c) => normTxt(c.departamento) === depto)
-      : ciudadesRaw;
-    const unicas = new Map();
-    for (const c of lista) {
-      const key = normTxt(c.ciudad);
-      if (!unicas.has(key)) unicas.set(key, c.ciudad);
-    }
-    return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw, form.departamento]);
-
-  const opcionesCiudad = useMemo(() => {
-    const fuente = esModuloListado
-      ? ciudadesRaw.map((c) => c.ciudad)
-      : ciudadesFiltradas;
-    const unicas = new Map();
-    for (const ciudad of fuente) {
-      const key = normTxt(ciudad);
-      if (key && !unicas.has(key)) unicas.set(key, ciudad);
-    }
-    const base = [...unicas.values()]
-      .sort((a, b) => a.localeCompare(b, 'es'))
-      .map((c) => ({ value: c, label: c }));
-    const actual = String(form.ciudad || '').trim();
-    if (actual && !base.some((c) => normTxt(c.value) === normTxt(actual))) {
-      return [{ value: actual, label: actual }, ...base];
-    }
-    return base;
-  }, [ciudadesRaw, ciudadesFiltradas, esModuloListado, form.ciudad]);
-
   const ajustadoresPorCiudad = useMemo(
     () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
     [ajustadoresCat, form.ajustador]
@@ -293,10 +234,6 @@ const FormularioZurich = ({
       if (clave === 'tipoPoliza' && !esTipoPolizaOtroZurich(valor)) {
         siguiente.tipoPolizaOtro = '';
       }
-      if (clave === 'ciudad') {
-        const depto = departamentoPorCiudadZurich(valor, ciudadesRaw);
-        if (depto) siguiente.departamento = depto;
-      }
       if (clave === 'estado') {
         siguiente.estado = homologarEstadoZurich(valor);
         const campoFecha = campoFechaPorEstadoZurich(siguiente.estado);
@@ -308,19 +245,24 @@ const FormularioZurich = ({
     });
   };
 
-  const setDepartamento = (e) => {
+  const setDepartamento = (valor) => {
     if (!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)) return;
-    const valor = e?.target ? e.target.value : e;
+    setForm((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudadesRaw, {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudad',
+      })
+    );
+  };
+
+  const setCiudad = (val, meta) => {
+    if (!puedeEditarCampoCaso(rolUsuario, 'ciudad', ctxPermiso)) return;
     setForm((prev) => {
-      const siguiente = { ...prev, departamento: valor };
-      const deptoNorm = normTxt(valor);
-      const ciudadSigueValida =
-        !prev.ciudad ||
-        ciudadesRaw.some(
-          (c) =>
-            normTxt(c.departamento) === deptoNorm && normTxt(c.ciudad) === normTxt(prev.ciudad)
-        );
-      if (!ciudadSigueValida) siguiente.ciudad = '';
+      const siguiente = { ...prev, ciudad: val };
+      const depto =
+        meta?.departamento || departamentoPorCiudadZurich(val, ciudadesRaw);
+      if (depto) siguiente.departamento = depto;
       return siguiente;
     });
   };
@@ -671,40 +613,19 @@ const FormularioZurich = ({
               placeholder={t('zurich.placeholders.telefonoIntermediario')}
             />
           </Campo>
-          <Campo label={t('zurich.fields.ciudad')}>
-            <SelectBuscable
-              options={opcionesCiudad}
-              value={form.ciudad || ''}
-              onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
-              disabled={
-                attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
-                (cargandoCatalogos && opcionesCiudad.length === 0)
-              }
-              placeholder={t('zurich.placeholders.selectCity')}
-              searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
-              buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            />
-          </Campo>
-          <Campo label={t('zurich.fields.departamento')}>
-            <SelectFenix
-              value={form.departamento}
-              onChange={setDepartamento}
-              disabled={
-                (cargandoCatalogos && departamentos.length === 0) ||
-                attrsCampoCaso(rolUsuario, 'departamento', ctxPermiso).disabled
-              }
-            >
-              <option value="">{t('common.select')}</option>
-              {opcionHuerfana(form.departamento, departamentos) && (
-                <option value={form.departamento}>{form.departamento}</option>
-              )}
-              {departamentos.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </SelectFenix>
-          </Campo>
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={form.departamento}
+            ciudad={form.ciudad}
+            onDepartamentoChange={setDepartamento}
+            onCiudadChange={setCiudad}
+            cargando={cargandoCatalogos}
+            requireDepto={!esModuloListado}
+            disabledDepartamento={!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)}
+            disabledCiudad={attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled}
+            i18nNs="zurich"
+            buttonClassName={BTN_CIUDAD_ZURICH}
+          />
           <Campo label={t('zurich.fields.direccionPredio')} className="md:col-span-2 lg:col-span-3">
             <InputFenix
               value={form.direccionPredio}

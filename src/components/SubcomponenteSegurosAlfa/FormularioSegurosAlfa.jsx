@@ -55,7 +55,7 @@ import ModalImportarExcelAlfa, {
 } from './ModalImportarExcelAlfa.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
-import SelectBuscable from '../SelectBuscable.jsx';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { esRolEra, obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
@@ -71,6 +71,11 @@ import {
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
+import {
+  aplicarCambioDepartamento,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+} from '../../utils/ciudadesColombia.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 import {
@@ -79,6 +84,9 @@ import {
 } from './liquidadorAlfaHelpers.js';
 
 const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
+
+const BTN_CIUDAD_ALFA =
+  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
 
 const aNumero = (valor) => {
   if (valor === '' || valor === null || valor === undefined) return null;
@@ -123,19 +131,6 @@ const restaurarFormConLiquidador = (draftData, caso) => {
   }
   if (!Object.keys(extra).length) return base;
   return { ...base, ...extra };
-};
-
-const normTxt = (valor) =>
-  String(valor ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .trim()
-    .toUpperCase();
-
-const opcionHuerfana = (valor, opciones = []) => {
-  const v = String(valor || '').trim();
-  if (!v) return false;
-  return !opciones.some((op) => normTxt(op) === normTxt(v));
 };
 
 const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onSaved }) => {
@@ -259,19 +254,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         const dataAj = await resAj.json().catch(() => ({}));
         const dataIns = await resIns.json().catch(() => ({}));
         if (cancelado) return;
-        const lista = Array.isArray(dataCiudades?.data)
-          ? dataCiudades.data
-          : Array.isArray(dataCiudades)
-            ? dataCiudades
-            : [];
-        setCiudadesRaw(
-          lista
-            .map((c) => ({
-              ciudad: String(c.descMunicipio || c.label || c.nombre || '').trim(),
-              departamento: String(c.descDepto || c.departamento || '').trim(),
-            }))
-            .filter((c) => c.ciudad)
-        );
+        setCiudadesRaw(mapearCiudadesDesdeApi(extraerListaCiudadesApi(dataCiudades)));
         const listaResp = Array.isArray(dataResp?.data)
           ? dataResp.data
           : Array.isArray(dataResp)
@@ -307,38 +290,6 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     };
   }, []);
 
-  const departamentos = useMemo(() => {
-    const map = new Map();
-    for (const c of ciudadesRaw) {
-      if (!c.departamento) continue;
-      const key = normTxt(c.departamento);
-      if (!map.has(key)) map.set(key, c.departamento);
-    }
-    return [...map.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw]);
-
-  const ciudadesFiltradas = useMemo(() => {
-    const depto = normTxt(form.departamento);
-    const lista = depto
-      ? ciudadesRaw.filter((c) => normTxt(c.departamento) === depto)
-      : ciudadesRaw;
-    const unicas = new Map();
-    for (const c of lista) {
-      const key = normTxt(c.ciudad);
-      if (!unicas.has(key)) unicas.set(key, c.ciudad);
-    }
-    return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [ciudadesRaw, form.departamento]);
-
-  const opcionesCiudad = useMemo(() => {
-    const base = ciudadesFiltradas.map((c) => ({ value: c, label: c }));
-    const actual = String(form.ciudad || '').trim();
-    if (actual && !ciudadesFiltradas.some((c) => normTxt(c) === normTxt(actual))) {
-      return [{ value: actual, label: actual }, ...base];
-    }
-    return base;
-  }, [ciudadesFiltradas, form.ciudad]);
-
   const ajustadoresAlfa = useMemo(
     () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
     [ajustadoresCat, form.ajustador]
@@ -354,21 +305,20 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     setForm((prev) => ({ ...prev, [clave]: valor }));
   };
 
-  const setDepartamento = (e) => {
+  const setDepartamento = (valor) => {
     if (!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)) return;
-    const valor = e?.target ? e.target.value : e;
-    setForm((prev) => {
-      const siguiente = { ...prev, departamento: valor };
-      const deptoNorm = normTxt(valor);
-      const ciudadSigueValida =
-        !prev.ciudad ||
-        ciudadesRaw.some(
-          (c) =>
-            normTxt(c.departamento) === deptoNorm && normTxt(c.ciudad) === normTxt(prev.ciudad)
-        );
-      if (!ciudadSigueValida) siguiente.ciudad = '';
-      return siguiente;
-    });
+    setForm((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudadesRaw, {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudad',
+      })
+    );
+  };
+
+  const setCiudad = (val) => {
+    if (!puedeEditarCampoCaso(rolUsuario, 'ciudad', ctxPermiso)) return;
+    setForm((prev) => ({ ...prev, ciudad: val }));
   };
 
   const setCampoMiles = (clave) => (e) => {
@@ -627,41 +577,18 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               placeholder="Ej: Seguros Alfa"
             />
           </Campo>
-          <Campo label={t('segurosAlfa.fields.departamento')}>
-            <SelectFenix
-              value={form.departamento}
-              onChange={setDepartamento}
-              disabled={cargandoCatalogos && departamentos.length === 0}
-            >
-              <option value="">{t('common.select')}</option>
-              {opcionHuerfana(form.departamento, departamentos) && (
-                <option value={form.departamento}>{form.departamento}</option>
-              )}
-              {departamentos.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </SelectFenix>
-          </Campo>
-          <Campo label={t('segurosAlfa.fields.ciudad')}>
-            <SelectBuscable
-              options={opcionesCiudad}
-              value={form.ciudad || ''}
-              onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
-              disabled={
-                attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
-                (cargandoCatalogos && ciudadesFiltradas.length === 0)
-              }
-              placeholder={
-                form.departamento
-                  ? t('segurosAlfa.placeholders.selectCity')
-                  : t('segurosAlfa.placeholders.selectDepartmentFirst')
-              }
-              searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
-              buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            />
-          </Campo>
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={form.departamento}
+            ciudad={form.ciudad}
+            onDepartamentoChange={setDepartamento}
+            onCiudadChange={setCiudad}
+            cargando={cargandoCatalogos}
+            disabledDepartamento={!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)}
+            disabledCiudad={attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled}
+            i18nNs="segurosAlfa"
+            buttonClassName={BTN_CIUDAD_ALFA}
+          />
         </div>
       </section>
 

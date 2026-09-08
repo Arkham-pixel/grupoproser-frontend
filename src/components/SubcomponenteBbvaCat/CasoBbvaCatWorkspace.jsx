@@ -629,6 +629,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
           <ArchiveroBbvaCat
             origen={esModuloListado ? 'listado' : 'cat'}
             caso={casoBbvaCat}
+            origenCarga="ajustador"
             etiquetaInicial={
               tabActivo === TABS_BBVA_CAT.INFORME
                 ? 'INFORME'

@@ -99,8 +99,10 @@ const COLUMNAS = [
   { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
   { clave: 'fechaObjetado', labelKey: 'fechaObjetado' },
   { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
+  { clave: 'fechaCasoAjustado', labelKey: 'fechaCasoAjustado' },
   { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
   { clave: 'fechaCasoPagado', labelKey: 'fechaCasoPagado' },
+  { clave: 'fechaDesistimiento', labelKey: 'fechaDesistimiento' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -147,8 +149,10 @@ const buildExportRow = (caso) => ({
   'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
   'FECHA OBJETADO': formatDate(caso.fechaObjetado),
   'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
+  'FECHA CASO AJUSTADO': formatDate(caso.fechaCasoAjustado),
   'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
   'FECHA CASO PAGADO': formatDate(caso.fechaCasoPagado),
+  'FECHA DESISTIMIENTO': formatDate(caso.fechaDesistimiento),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -378,8 +382,10 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
     'fechaObjecion',
     'fechaObjetado',
     'fechaAutorizacionAnalista',
+    'fechaCasoAjustado',
     'fechaCasoParaPago',
     'fechaCasoPagado',
+    'fechaDesistimiento',
     'ultimaGestion',
   ]);
 
@@ -821,6 +827,8 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
           <ArchiveroBbvaCat
             origen="listado"
             caso={casoArchivero}
+            origenCarga={esAnalista ? 'analista' : 'ajustador'}
+            etiquetaInicial={esAnalista ? 'POLIZA' : 'GENERAL'}
             onClose={() => setCasoArchivero(null)}
             onChanged={(actualizado) => {
               setCasoArchivero(actualizado);
