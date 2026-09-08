@@ -2,7 +2,6 @@ import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './allianzHelpers.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
-  argsDeduciblesPorArticuloDiagrama,
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
@@ -15,9 +14,7 @@ import {
 import {
   calcularDiagramaLiquidacion,
   DEFAULT_DEDUCIBLE_CATASTROFICO,
-  HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
-import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import {
   esXmlWordOoXml,
   parsearMontoInformeSeguro,
@@ -426,6 +423,10 @@ export function esInformeUnicoAllianz(info = {}) {
   return normalizarTipoInformeAllianz(info?.tipoInforme, 'unico') === 'unico';
 }
 
+export function esInformeFinalAllianz(info = {}) {
+  return normalizarTipoInformeAllianz(info?.tipoInforme, 'unico') === 'final';
+}
+
 /** Tipo vigente: el del borrador en pantalla, o el guardado en el caso. */
 export function tipoInformeActualAllianz(informe = null, caso = null) {
   if (informe?.tipoInforme) {
@@ -542,11 +543,39 @@ export function sanitizarLiquidadorAllianz(liquidador = {}) {
 }
 
 export function desgloseDeducibleTerremotoAllianz(liquidador = {}, diagrama = null) {
+  const compartido = diagrama?.deducibleCompartido;
+  if (compartido) {
+    const valores = valoresAsegurablesDesdeLiquidador(liquidador);
+    const valorAsegurado =
+      (Number(valores.inmueble) || 0) + (Number(valores.contenidos) || 0);
+    const porcentaje = Number(compartido.porcentaje) || 0;
+    const cantidadSMMLV = Number(compartido.cantidadSMMLV) || 0;
+    const montoPct = Number(compartido.montoPctOVa) || 0;
+    const montoSmmlv = Number(compartido.montoSmmlv) || 0;
+    const aplicado = Number(compartido.aplicado) || 0;
+    const etiquetaPct = `${porcentaje}% de los valores asegurados conjuntos`;
+    return {
+      porcentaje,
+      cantidadSMMLV,
+      valorAsegurado,
+      montoPct,
+      montoSmmlv,
+      aplicado,
+      etiquetaPct,
+      etiquetaSmmlv: `${cantidadSMMLV} SMMLV`,
+      etiquetaAplicado: 'Deducible compartido aplicado (el mayor)',
+      texto:
+        `Deducible único: mayor entre ${etiquetaPct} ($${formatearMonto(montoPct)}) ` +
+        `y ${cantidadSMMLV} SMMLV ($${formatearMonto(montoSmmlv)}). ` +
+        `Aplicado una sola vez: $${formatearMonto(aplicado)}.`,
+    };
+  }
   return desgloseDeducibleTerremoto(liquidador, diagrama, formatearMonto);
 }
 
 export function patchDeduciblePresupuestoAllianz(liquidador = {}, patch = {}) {
   const liq = liquidador.liquidacionCatastrofico || {};
+  const { modoAplicacionDeducible, ...patchCfg } = patch;
   const cfg = {
     ...configDeducibleTerremotoCat({}, {
       valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
@@ -554,7 +583,7 @@ export function patchDeduciblePresupuestoAllianz(liquidador = {}, patch = {}) {
     ...(liq.deducibleConfigPresupuesto && typeof liq.deducibleConfigPresupuesto === 'object'
       ? liq.deducibleConfigPresupuesto
       : {}),
-    ...patch,
+    ...patchCfg,
   };
   if (patch.modo === 'no_aplica') cfg.aplica = false;
   else if (patch.modo) cfg.aplica = true;
@@ -565,7 +594,11 @@ export function patchDeduciblePresupuestoAllianz(liquidador = {}, patch = {}) {
     ...liquidador,
     liquidacionCatastrofico: {
       ...liq,
+      ...(modoAplicacionDeducible
+        ? { modoAplicacionDeducible }
+        : {}),
       deducibleConfigPresupuesto: cfg,
+      deducibleConfigContenidos: cfg,
       deducible: cfg.texto != null ? cfg.texto : liq.deducible,
     },
   };
@@ -644,8 +677,9 @@ export function liquidacionCatastroficoDefaultAllianz(caso = {}) {
       : '';
   return {
     valorAsegurado: va,
-    hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
+    hospedajePorcentaje: 0,
     hospedajeManual: '',
+    modoAplicacionDeducible: 'individual',
     deducible: TEXTO_DEDUCIBLE_TERREMOTO_CAT,
     deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
     deducibleConfigPresupuesto: configDeducibleTerremotoCat(
@@ -775,13 +809,13 @@ export function calcularLiquidacionCotizacionAllianz(liquidador = {}) {
     totalDanios: monto,
     totalPresupuesto: monto,
     totalContenidos: 0,
-    hospedajePorcentaje: liq.hospedajePorcentaje,
-    hospedajeManual: liq.hospedajeManual,
+    hospedajePorcentaje: 0,
+    hospedajeManual: 0,
     deducible: liq.deducible,
     deducibleConfig: cfg,
     deducibleConfigContenidos: cfg,
     deducibleConfigPresupuesto: cfg,
-    otrosAmparos: liquidador.otrosAmparos,
+    otrosAmparos: [],
   });
   const desglose = desgloseDeducibleTerremotoAllianz(liquidador, diagrama);
   const deducibleAplicado = Number(diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0) || 0;
@@ -820,17 +854,19 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
   const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
+    valorAseguradoContenidos: valoresAsegurablesCaso.contenidos,
+    usarValorAseguradoGeneralParaContenidos: false,
     totalDanios: sumaCompleta,
     totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    hospedajePorcentaje: liq.hospedajePorcentaje,
-    hospedajeManual: liq.hospedajeManual,
+    hospedajePorcentaje: 0,
+    hospedajeManual: 0,
     deducible: liq.deducible,
-    deducibleConfig: liq.deducibleConfig,
-    deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
+    deducibleConfig: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
+    deducibleConfigContenidos: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
     deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
-    otrosAmparos: liquidador.otrosAmparos,
-    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
+    otrosAmparos: [],
+    deducibleCompartido: liq.modoAplicacionDeducible === 'compartido',
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -864,7 +900,12 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     subtotalContenidos: resumen.totalContenidos,
     subtotalEdificios: totalPresupuesto,
     diferencia: Math.round(((totalReclamado - (diagrama.totalIndemnizar || 0)) * 100)) / 100,
-    usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
+    usaSMMLV: Boolean(
+      diagrama.deducibleCompartido
+        ? diagrama.deducibleCompartido.usaMinimo &&
+            diagrama.deducibleCompartido.tipoMinimo === 'SMMLV'
+        : diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'
+    ),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
     liquidacionCotizacion: calcularLiquidacionCotizacionAllianz(liquidador),
@@ -901,6 +942,12 @@ export function cuadroLiquidacionAllianz(totales = {}, liquidador = {}) {
     deducibleTexto = formatearMonto(deducibleMonto);
   } else if (!deducibleTexto) {
     deducibleTexto = 'No aplica';
+  }
+  if (deducibleMonto > 0) {
+    deducibleTexto =
+      diag.modoAplicacionDeducible === 'compartido'
+        ? `Deducible compartido: ${deducibleTexto}`
+        : `Deducibles individuales: ${deducibleTexto}`;
   }
   return {
     valorReclamado: Number(tot.totalReclamado) || Number(tot.totalDanios) || 0,
@@ -1084,7 +1131,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
     liquidacionCatastrofico: liquidacionCatastroficoDefaultAllianz(caso),
-    otrosAmparos: defaultOtrosAmparos(),
+    otrosAmparos: [],
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
         ? formatMiles(caso.valorReclamado)
@@ -1101,9 +1148,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
       encabezado: fusionarEncabezadoAllianz(base.encabezado, guardado.encabezado),
       observaciones: guardado.observaciones || '',
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
-      otrosAmparos: Array.isArray(guardado.otrosAmparos)
-        ? normalizarOtrosAmparos(guardado.otrosAmparos)
-        : defaultOtrosAmparos(),
+      otrosAmparos: [],
     };
   }
 
@@ -1122,9 +1167,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
       ...(guardado.liquidacionCatastrofico || {}),
     },
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
-    otrosAmparos: Array.isArray(guardado.otrosAmparos)
-      ? normalizarOtrosAmparos(guardado.otrosAmparos)
-      : defaultOtrosAmparos(),
+    otrosAmparos: [],
     cotizacionPdf: guardado.cotizacionPdf || null,
     filasCotizacionVsPresupuesto: serializarFilasCotizacionVsPresupuestoAllianz(
       guardado.filasCotizacionVsPresupuesto
@@ -1158,12 +1201,6 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     ? normalizarTipoInformeAllianz(guardado.tipoInforme, 'unico')
     : 'unico';
   const encabezado = encabezadoDesdecasoAllianz(caso);
-  const ctxPoliza = (informe) => ({
-    caso,
-    encabezado,
-    informe: { tipoInforme: tipo, ...(informe || {}) },
-    liquidador: caso.liquidador,
-  });
   const base = {
     tipoInforme: tipo,
     fechaInforme: fechaInput(new Date()),
@@ -1173,13 +1210,11 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     coordenadasRiesgo: '',
     imagenMapa: '',
     direccionRiesgo: resolverDireccionPredioAllianz(caso, encabezado, guardado || {}),
+    analisisNexoCausal: '',
     analisisCobertura: '',
     reservaSugerida: '',
-    filasDanios: plantillaFilasDaniosAllianz(),
-    filasPolizaCobertura: completarFilasPolizaCoberturaAllianz(
-      plantillaFilasPolizaAllianz(tipo),
-      ctxPoliza(null)
-    ),
+    filasDanios: [],
+    filasPolizaCobertura: [],
     filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarAllianz(),
     conclusiones: '',
     recomendacion: '',
@@ -1203,16 +1238,17 @@ export function defaultInformeUnicoAllianz(caso = {}) {
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
     infoEvento: guardado.infoEvento || base.infoEvento,
     descripcionDanios: guardado.descripcionDanios || base.descripcionDanios,
+    analisisNexoCausal: guardado.analisisNexoCausal || base.analisisNexoCausal,
+    analisisCobertura: guardado.analisisCobertura || base.analisisCobertura,
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo:
       textoNoVacioAllianz(guardado.direccionRiesgo) || base.direccionRiesgo,
     reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
-    filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
-    filasPolizaCobertura: completarFilasPolizaCoberturaAllianz(
-      usarPlantillaSiVacio(guardado.filasPolizaCobertura, base.filasPolizaCobertura),
-      ctxPoliza(guardado)
-    ),
+    filasDanios: Array.isArray(guardado.filasDanios) ? guardado.filasDanios : [],
+    filasPolizaCobertura: Array.isArray(guardado.filasPolizaCobertura)
+      ? guardado.filasPolizaCobertura
+      : [],
     filasPresupuestoPreliminar: usarPlantillaSiVacio(
       guardado.filasPresupuestoPreliminar,
       base.filasPresupuestoPreliminar

@@ -4,6 +4,15 @@ import { useTheme } from '../../context/ThemeContext';
 import Select from 'react-select';
 import { FaEye, FaTimes } from 'react-icons/fa';
 import ciudadesData from '../../data/colombia.json';
+import { BASE_URL } from '../../config/apiConfig.js';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
+import {
+  mapearCiudadesDesdeColombiaJson,
+  mapearCiudadesDesdeApi,
+  extraerListaCiudadesApi,
+  aplicarCambioDepartamento,
+  coincidirCiudadExacta,
+} from '../../utils/ciudadesColombia.js';
 import MapaGoogleEarth from '../MapaGoogleEarth';
 import { CONTACTOS_BOLIVAR, EMPRESA_BOLIVAR, ASEGURADOS } from './plantillasPuertos';
 
@@ -31,22 +40,72 @@ export default function SeccionInicialPuertos({
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
 
-  // Preparar opciones de municipios
-  const municipios = ciudadesData.flatMap(dep =>
-    dep.ciudades.map(ciudad => ({
-      label: `${ciudad} - ${dep.departamento}`,
-      value: ciudad,
-      departamento: dep.departamento
-    }))
+  const [ciudadesRaw, setCiudadesRaw] = useState(() =>
+    mapearCiudadesDesdeColombiaJson(ciudadesData)
   );
+  const [cargandoCiudades, setCargandoCiudades] = useState(false);
 
-  const handleCiudadChange = (selectedOption) => {
-    if (selectedOption) {
+  useEffect(() => {
+    let cancelado = false;
+    const fallback = () => mapearCiudadesDesdeColombiaJson(ciudadesData);
+    const cargar = async () => {
+      setCargandoCiudades(true);
+      try {
+        if (!BASE_URL) throw new Error('sin BASE_URL');
+        const res = await fetch(`${BASE_URL}/api/ciudades`);
+        if (!res.ok) throw new Error('ciudades');
+        const data = await res.json();
+        const lista = mapearCiudadesDesdeApi(extraerListaCiudadesApi(data));
+        if (!cancelado) setCiudadesRaw(lista.length ? lista : fallback());
+      } catch {
+        if (!cancelado) setCiudadesRaw(fallback());
+      } finally {
+        if (!cancelado) setCargandoCiudades(false);
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!formData.municipio || formData.departamento || !ciudadesRaw.length) return;
+    const match = coincidirCiudadExacta(ciudadesRaw, formData.municipio, '');
+    if (match?.departamento) {
       onMultipleChange({
-        municipio: selectedOption.value,
-        departamento: selectedOption.departamento
+        municipio: match.ciudad || formData.municipio,
+        departamento: match.departamento,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ciudadesRaw]);
+
+  const handleDepartamentoChange = (valor) => {
+    const next = aplicarCambioDepartamento(
+      {
+        departamento: formData.departamento || '',
+        municipio: formData.municipio || '',
+      },
+      valor,
+      ciudadesRaw,
+      {
+        departamentoKey: 'departamento',
+        departamentoCiudadKey: null,
+        ciudadKey: 'municipio',
+      }
+    );
+    onMultipleChange({
+      departamento: next.departamento,
+      municipio: next.municipio || '',
+    });
+  };
+
+  const handleCiudadChange = (val, meta) => {
+    onMultipleChange({
+      municipio: val || '',
+      departamento: meta?.departamento || formData.departamento || '',
+    });
   };
 
   const formatearFechaInspeccion = (fechaStr) => {
@@ -219,62 +278,20 @@ export default function SeccionInicialPuertos({
 
         {/* Ciudad y Fecha del Reporte */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label 
-              className="block text-xs sm:text-sm font-medium mb-1"
-              style={{ color: textPrimary }}
-            >
-              {t('ports.ui.formulario.seccionInicial.ciudadReporte')}
-            </label>
-            <Select
-              options={municipios}
-              value={(() => {
-                if (!formData.municipio) return null;
-                return municipios.find(opt => opt.value === formData.municipio) || null;
-              })()}
-              onChange={handleCiudadChange}
-              placeholder={t('ports.ui.formulario.seccionInicial.seleccionarCiudad')}
-              isSearchable
-              className="w-full"
-              isDisabled={cargando}
-              styles={{
-                control: (provided, state) => ({
-                  ...provided,
-                  fontSize: '14px',
-                  minHeight: '40px',
-                  backgroundColor: inputBg,
-                  color: textPrimary,
-                  borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                  boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                  '&:hover': {
-                    borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  }
-                }),
-                option: (provided, state) => ({
-                  ...provided,
-                  backgroundColor: state.isSelected 
-                    ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                    : state.isFocused
-                    ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                    : inputBg,
-                  color: state.isSelected 
-                    ? '#FFFFFF'
-                    : textPrimary
-                }),
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: textPrimary
-                }),
-                placeholder: (provided) => ({
-                  ...provided,
-                  color: textSecondary
-                }),
-                menu: (provided) => ({
-                  ...provided,
-                  backgroundColor: inputBg,
-                  border: `1px solid ${borderColor}`
-                })
-              }}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:col-span-2">
+            <SelectorDepartamentoCiudad
+              ciudadesRaw={ciudadesRaw}
+              departamento={formData.departamento || ''}
+              ciudad={formData.municipio || ''}
+              onDepartamentoChange={handleDepartamentoChange}
+              onCiudadChange={handleCiudadChange}
+              cargando={cargandoCiudades}
+              disabled={cargando}
+              labelDepartamento={t('ports.ui.formulario.seccionInicial.departamento', {
+                defaultValue: 'Departamento',
+              })}
+              labelCiudad={t('ports.ui.formulario.seccionInicial.ciudadReporte')}
+              i18nNs="common"
             />
           </div>
 

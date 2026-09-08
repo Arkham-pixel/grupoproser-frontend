@@ -1,37 +1,115 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Select from 'react-select';
 import { useTheme } from '../../context/ThemeContext';
 import ciudadesData from '../../data/colombia.json';
+import { BASE_URL } from '../../config/apiConfig.js';
+import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
+import {
+  mapearCiudadesDesdeColombiaJson,
+  mapearCiudadesDesdeApi,
+  extraerListaCiudadesApi,
+  aplicarCambioDepartamento,
+  coincidirCiudadExacta,
+} from '../../utils/ciudadesColombia.js';
+
+function textoCiudadSiniestro(valor) {
+  if (!valor) return '';
+  if (typeof valor === 'object') return String(valor.value || valor.label || '').trim();
+  return String(valor).trim();
+}
 
 export default function DatosGeneralesPuertos({ formData, onInputChange, onMultipleChange, cargando }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const [ciudadesRaw, setCiudadesRaw] = useState(() =>
+    mapearCiudadesDesdeColombiaJson(ciudadesData)
+  );
+  const [cargandoCiudades, setCargandoCiudades] = useState(false);
 
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
-  const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
 
-  const municipios = ciudadesData.flatMap(dep =>
-    dep.ciudades.map(ciudad => ({
-      label: `${ciudad} - ${dep.departamento}`,
-      value: ciudad
-    }))
-  );
+  useEffect(() => {
+    let cancelado = false;
+    const fallback = () => mapearCiudadesDesdeColombiaJson(ciudadesData);
+    const cargar = async () => {
+      setCargandoCiudades(true);
+      try {
+        if (!BASE_URL) throw new Error('sin BASE_URL');
+        const res = await fetch(`${BASE_URL}/api/ciudades`);
+        if (!res.ok) throw new Error('ciudades');
+        const data = await res.json();
+        const lista = mapearCiudadesDesdeApi(extraerListaCiudadesApi(data));
+        if (!cancelado) setCiudadesRaw(lista.length ? lista : fallback());
+      } catch {
+        if (!cancelado) setCiudadesRaw(fallback());
+      } finally {
+        if (!cancelado) setCargandoCiudades(false);
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
-  const handleCiudadChange = (selectedOption) => {
-    if (!selectedOption) {
+  useEffect(() => {
+    const ciudad = textoCiudadSiniestro(formData.ciudad_siniestro);
+    if (!ciudad || !ciudadesRaw.length) return;
+    const depto = formData.departamento_siniestro || '';
+    const match = coincidirCiudadExacta(ciudadesRaw, ciudad, depto);
+    if (!match) return;
+    const needsDepto = !depto && match.departamento;
+    const needsNormalize =
+      typeof formData.ciudad_siniestro === 'string' ||
+      (typeof formData.ciudad_siniestro === 'object' &&
+        formData.ciudad_siniestro?.value !== match.ciudad);
+    if (!needsDepto && !needsNormalize) return;
+    onMultipleChange({
+      ciudad_siniestro: { value: match.ciudad, label: match.ciudad },
+      departamento_siniestro: match.departamento || depto,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ciudadesRaw]);
+
+  const ciudadActual = textoCiudadSiniestro(formData.ciudad_siniestro);
+
+  const handleDepartamentoChange = (valor) => {
+    const next = aplicarCambioDepartamento(
+      {
+        departamento_siniestro: formData.departamento_siniestro || '',
+        ciudad_siniestro: ciudadActual,
+      },
+      valor,
+      ciudadesRaw,
+      {
+        departamentoKey: 'departamento_siniestro',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudad_siniestro',
+      }
+    );
+    onMultipleChange({
+      departamento_siniestro: next.departamento_siniestro,
+      ciudad_siniestro: next.ciudad_siniestro
+        ? { value: next.ciudad_siniestro, label: next.ciudad_siniestro }
+        : '',
+    });
+  };
+
+  const handleCiudadChange = (val, meta) => {
+    if (!val) {
       onMultipleChange({
         ciudad_siniestro: '',
-        departamento_siniestro: ''
+        departamento_siniestro: formData.departamento_siniestro || '',
       });
       return;
     }
+    const ciudad = meta?.ciudad || val;
     onMultipleChange({
-      ciudad_siniestro: selectedOption,
-      departamento_siniestro: selectedOption.label.split(' - ')[1] || ''
+      ciudad_siniestro: { value: ciudad, label: meta?.label || ciudad },
+      departamento_siniestro: meta?.departamento || formData.departamento_siniestro || '',
     });
   };
 
@@ -120,79 +198,20 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
           />
         </div>
 
-        <div className="md:col-span-2">
-          <label
-            className="block text-sm font-medium"
-            style={{ color: textPrimary }}
-          >
-            {t('ports.ui.formulario.datosGenerales.ciudad')}
-          </label>
-          <Select
-            options={municipios}
-            value={(() => {
-              if (!formData.ciudad_siniestro) return null;
-              if (typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro !== null) {
-                return formData.ciudad_siniestro;
-              }
-              const ciudadStr = String(formData.ciudad_siniestro);
-              let encontrada = municipios.find(opt => opt.value === ciudadStr);
-              if (!encontrada) {
-                encontrada = municipios.find(opt =>
-                  opt.label === ciudadStr ||
-                  opt.label.includes(ciudadStr) ||
-                  opt.value === ciudadStr
-                );
-              }
-              if (!encontrada) {
-                encontrada = municipios.find(opt =>
-                  opt.label.toLowerCase().includes(ciudadStr.toLowerCase()) ||
-                  opt.value.toLowerCase() === ciudadStr.toLowerCase()
-                );
-              }
-              return encontrada || null;
-            })()}
-            onChange={handleCiudadChange}
-            placeholder={t('ports.ui.formulario.datosGenerales.ciudadPlaceholder')}
-            isSearchable
-            className="w-full"
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                fontSize: '14px',
-                minHeight: '40px',
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                '&:hover': {
-                  borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                }
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected
-                  ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                  : state.isFocused
-                  ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                  : inputBg,
-                color: state.isSelected
-                  ? '#FFFFFF'
-                  : textPrimary
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: textPrimary
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: textSecondary
-              }),
-              menu: (provided) => ({
-                ...provided,
-                backgroundColor: inputBg,
-                border: `1px solid ${borderColor}`
-              })
-            }}
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={formData.departamento_siniestro || ''}
+            ciudad={ciudadActual}
+            onDepartamentoChange={handleDepartamentoChange}
+            onCiudadChange={handleCiudadChange}
+            cargando={cargandoCiudades}
+            disabled={cargando}
+            labelDepartamento={t('ports.ui.formulario.datosGenerales.departamento', {
+              defaultValue: 'Departamento',
+            })}
+            labelCiudad={t('ports.ui.formulario.datosGenerales.ciudad')}
+            i18nNs="common"
           />
         </div>
 

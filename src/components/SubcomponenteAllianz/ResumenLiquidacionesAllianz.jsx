@@ -28,11 +28,9 @@ export default function ResumenLiquidacionesAllianz({
   const desgloseCot = cot.desglose || {};
   const tieneCotiz = Number(cot.monto) > 0;
   const diag = totales.diagrama || {};
-  const hospCot = Number(cot.gastosHospedaje) || 0;
-  const otrosCot = (Array.isArray(cot.otrosAmparos) ? cot.otrosAmparos : []).filter(
-    (it) => Number(it?.valor) > 0
-  );
-  const hayAuxiliosCot = hospCot > 0 || otrosCot.length > 0;
+  const compartido = diag.modoAplicacionDeducible === 'compartido';
+  const deducibleInfraestructura = Number(diag.deduciblePresupuesto?.aplicado) || 0;
+  const deducibleContenidos = Number(diag.deducibleContenidos?.aplicado) || 0;
 
   return (
     <div className={`grid max-w-4xl grid-cols-1 gap-4 ${tieneCotiz ? 'lg:grid-cols-2' : ''}`}>
@@ -56,28 +54,8 @@ export default function ResumenLiquidacionesAllianz({
               label={t('allianz.settlement.deductibleToApply')}
               valor={cot.deducibleAplicado}
             />
-            {hayAuxiliosCot ? (
-              <Fila
-                label={t('allianz.settlement.suggestedAfterDeductible')}
-                valor={cot.neto}
-              />
-            ) : null}
-            {hospCot > 0 ? (
-              <Fila label={t('allianz.settlement.lodgingAllowance')} valor={hospCot} />
-            ) : null}
-            {otrosCot.map((it) => (
-              <Fila
-                key={it.id || `${it.tipo}-${it.nombre}`}
-                label={it.nombre || it.tipo}
-                valor={it.valor}
-              />
-            ))}
             <Fila
-              label={
-                hayAuxiliosCot
-                  ? t('allianz.settlement.quoteTotalAfterDeductibleAndAllowances')
-                  : t('allianz.settlement.suggestedAfterDeductible')
-              }
+              label={t('allianz.settlement.suggestedAfterDeductible')}
               valor={cot.total ?? cot.neto}
               bold
               last
@@ -98,14 +76,16 @@ export default function ResumenLiquidacionesAllianz({
         </p>
         <div className="grid grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
           <Fila label={t('allianz.settlement.totalDamagesNsr')} valor={totales.totalDanios} />
-          <Fila label="Hospedaje" valor={diag.gastosHospedaje} />
           <Fila label={desgloseNsr.etiquetaPct} valor={desgloseNsr.montoPct} />
           <Fila label={desgloseNsr.etiquetaSmmlv} valor={desgloseNsr.montoSmmlv} />
-          <Fila
-            label={t('allianz.settlement.deductibleToApply')}
-            valor={desgloseNsr.aplicado}
-          />
-          <Fila label="Otros amparos (sin deducible)" valor={totales.totalOtrosAmparos} />
+          {compartido ? (
+            <Fila label="Deducible compartido" valor={diag.sumaDeducibles} />
+          ) : (
+            <>
+              <Fila label="Deducible infraestructura" valor={deducibleInfraestructura} />
+              <Fila label="Deducible contenidos" valor={deducibleContenidos} />
+            </>
+          )}
           <Fila
             label={t('allianz.settlement.suggestedAfterDeductible')}
             valor={totales.totalIndemnizar}

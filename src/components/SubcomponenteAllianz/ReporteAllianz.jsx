@@ -748,6 +748,7 @@ export default function ReporteAllianz() {
           wide
         >
           <ArchiveroAllianz
+            origen="cat"
             caso={casoArchivero}
             onClose={() => setCasoArchivero(null)}
             onChanged={(actualizado) => {

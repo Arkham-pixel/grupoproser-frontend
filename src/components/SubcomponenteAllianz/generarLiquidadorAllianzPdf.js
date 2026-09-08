@@ -227,7 +227,18 @@ export async function generarLiquidadorAllianzPdfBlob(liquidador, totales, caso 
     [
       { label: 'Valor total reclamado', value: data.valorTotalReclamado },
       { label: 'Valor total liquidación', value: data.valorTotalLiquidacion },
-      { label: 'Deducible', value: data.deducible },
+      ...(tot.diagrama?.modoAplicacionDeducible === 'compartido'
+        ? [{ label: 'Deducible compartido', value: data.deducible }]
+        : [
+            {
+              label: 'Deducible infraestructura',
+              value: tot.diagrama?.deduciblePresupuesto?.aplicado || 0,
+            },
+            {
+              label: 'Deducible contenidos',
+              value: tot.diagrama?.deducibleContenidos?.aplicado || 0,
+            },
+          ]),
       { label: 'Valor a indemnizar', value: data.valorAIndemnizar },
     ],
     x,

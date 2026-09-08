@@ -1,11 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaTrash, FaUpload } from 'react-icons/fa';
-import {
-  eliminarArchivoAllianz,
-  getCasoAllianzById,
-  subirArchivoAllianz,
-} from '../../services/allianzService.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -14,7 +9,12 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import BotonDescargaStorage from '../shared/BotonDescargaStorage.jsx';
-import { ETIQUETAS_ARCHIVO_ALLIANZ, formatDate } from './allianzHelpers.js';
+import {
+  ETIQUETAS_ARCHIVO_ALLIANZ,
+  ETIQUETAS_ARCHIVO_ALLIANZ_LISTADO,
+  formatDate,
+} from './allianzHelpers.js';
+import { allianzArchivosApi } from './allianzArchivosApi.js';
 
 const formatBytes = (n) => {
   const num = Number(n);
@@ -24,17 +24,52 @@ const formatBytes = (n) => {
   return `${(num / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export default function ArchiveroAllianz({ caso, onClose, onChanged }) {
+export default function ArchiveroAllianz({
+  caso,
+  onClose,
+  onChanged,
+  origen = 'cat',
+  etiquetas,
+  etiquetaInicial = 'GENERAL',
+}) {
   const { t } = useTranslation();
   const inputRef = useRef(null);
+  const api = useMemo(() => allianzArchivosApi(origen), [origen]);
+  const opcionesEtiqueta =
+    etiquetas || (origen === 'listado' ? ETIQUETAS_ARCHIVO_ALLIANZ_LISTADO : ETIQUETAS_ARCHIVO_ALLIANZ);
   const [archivos, setArchivos] = useState(() => caso?.archivos || []);
-  const [etiqueta, setEtiqueta] = useState('GENERAL');
+  const [etiqueta, setEtiqueta] = useState(etiquetaInicial || 'GENERAL');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
 
+  useEffect(() => {
+    setArchivos(caso?.archivos || []);
+  }, [caso?._id, caso?.archivos]);
+
+  useEffect(() => {
+    if (!caso?._id) return undefined;
+    let cancelado = false;
+    (async () => {
+      try {
+        const actualizado = await api.getById(caso._id);
+        if (cancelado) return;
+        setArchivos(actualizado.archivos || []);
+      } catch {
+        /* el listado no trae archivos; el getById los hidrata */
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [caso?._id, api]);
+
+  useEffect(() => {
+    if (etiquetaInicial) setEtiqueta(etiquetaInicial);
+  }, [etiquetaInicial]);
+
   const refrescar = async () => {
-    const actualizado = await getCasoAllianzById(caso._id);
+    const actualizado = await api.getById(caso._id);
     setArchivos(actualizado.archivos || []);
     if (onChanged) onChanged(actualizado);
     return actualizado;
@@ -48,7 +83,7 @@ export default function ArchiveroAllianz({ caso, onClose, onChanged }) {
     setExito(null);
     setSubiendo(true);
     try {
-      await subirArchivoAllianz(caso._id, file, etiqueta);
+      await api.subir(caso._id, file, etiqueta);
       await refrescar();
       setExito(t('allianz.archive.uploadOk'));
     } catch (err) {
@@ -63,7 +98,7 @@ export default function ArchiveroAllianz({ caso, onClose, onChanged }) {
     setError(null);
     setExito(null);
     try {
-      await eliminarArchivoAllianz(caso._id, archivoId);
+      await api.eliminar(caso._id, archivoId);
       await refrescar();
       setExito(t('allianz.archive.deleteOk'));
     } catch (err) {
@@ -78,13 +113,15 @@ export default function ArchiveroAllianz({ caso, onClose, onChanged }) {
           {t('allianz.archive.title')}
         </h3>
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          {t('allianz.archive.subtitle', {
+          {t(origen === 'listado' ? 'allianz.archive.subtitleListado' : 'allianz.archive.subtitle', {
             caseNumber: caso?.consecutivo || caso?.identificacion || '',
           })}
         </p>
-        <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
-          {t('allianz.cat.evidenciaHint')}
-        </p>
+        {origen !== 'listado' && (
+          <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
+            {t('allianz.cat.evidenciaHint')}
+          </p>
+        )}
       </div>
 
       {error && <div className={expressAlertError}>{error}</div>}
@@ -93,7 +130,7 @@ export default function ArchiveroAllianz({ caso, onClose, onChanged }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Campo label={t('allianz.archive.label')}>
           <SelectFenix value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)}>
-            {ETIQUETAS_ARCHIVO_ALLIANZ.map((op) => (
+            {opcionesEtiqueta.map((op) => (
               <option key={op} value={op}>
                 {t(`allianz.archive.labels.${op}`, { defaultValue: op })}
               </option>
@@ -147,43 +184,43 @@ export default function ArchiveroAllianz({ caso, onClose, onChanged }) {
               </tr>
             ) : (
               archivos.map((arch) => (
-                  <tr key={arch._id}>
-                    <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
-                      {arch.nombreOriginal}
-                    </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {t(`allianz.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
-                        defaultValue: arch.etiqueta || 'GENERAL',
-                      })}
-                    </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {formatBytes(arch.tamaño)}
-                    </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
-                      {formatDate(arch.fechaSubida) || '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="inline-flex gap-2">
-                        {arch.ruta && (
-                          <BotonDescargaStorage
-                            ruta={arch.ruta}
-                            nombre={arch.nombreOriginal}
-                            onError={(err) => setError(err.message)}
-                          >
-                            {t('allianz.archive.download')}
-                          </BotonDescargaStorage>
-                        )}
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
-                          onClick={() => handleDelete(arch._id)}
+                <tr key={arch._id}>
+                  <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
+                    {arch.nombreOriginal}
+                  </td>
+                  <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    {t(`allianz.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
+                      defaultValue: arch.etiqueta || 'GENERAL',
+                    })}
+                  </td>
+                  <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    {formatBytes(arch.tamaño)}
+                  </td>
+                  <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    {formatDate(arch.fechaSubida) || '—'}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="inline-flex gap-2">
+                      {arch.ruta && (
+                        <BotonDescargaStorage
+                          ruta={arch.ruta}
+                          nombre={arch.nombreOriginal}
+                          onError={(err) => setError(err.message)}
                         >
-                          <FaTrash />
-                          {t('allianz.report.delete')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                          {t('allianz.archive.download')}
+                        </BotonDescargaStorage>
+                      )}
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
+                        onClick={() => handleDelete(arch._id)}
+                      >
+                        <FaTrash />
+                        {t('allianz.report.delete')}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ))
             )}
           </tbody>

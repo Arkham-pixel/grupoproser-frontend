@@ -39,6 +39,14 @@ import { PageBreak } from "docx";
 import Logo from '../img/Logo.png';
 import ciudadesData from '../data/colombia.json';
 import Select from 'react-select';
+import SelectorDepartamentoCiudad from './shared/SelectorDepartamentoCiudad.jsx';
+import {
+  coincidirCiudadExacta,
+  extraerListaCiudadesApi,
+  mapearCiudadesDesdeApi,
+  mapearCiudadesDesdeColombiaJson,
+  normalizarCiudadTexto,
+} from '../utils/ciudadesColombia.js';
 import 'leaflet/dist/leaflet.css'
 const MapaDeCalor = lazy(() => import("./MapaDeCalor"));
 const FormularioAreas = lazy(() => import("./SubcomponenteFRiesgo/FormularioAreas"));
@@ -262,15 +270,27 @@ export default function FormularioInspeccion() {
   const [modoEdicion, setModoEdicion] = useState(false);
   const [cargando, setCargando] = useState(false);
   
-  // Información general - Memoizado para evitar recálculos
-  const municipios = useMemo(() => 
-    ciudadesData.flatMap(dep =>
-      dep.ciudades.map(ciudad => ({
-        label: `${ciudad} - ${dep.departamento}`,
-        value: ciudad
-      }))
-    ), []
+  // Catálogo depto→ciudad (API con fallback colombia.json)
+  const [ciudadesRaw, setCiudadesRaw] = useState(() =>
+    mapearCiudadesDesdeColombiaJson(ciudadesData)
   );
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/ciudades`);
+        const data = await res.json();
+        const mapeadas = mapearCiudadesDesdeApi(extraerListaCiudadesApi(data));
+        if (!cancelado && mapeadas.length) setCiudadesRaw(mapeadas);
+      } catch {
+        /* fallback ya cargado desde colombia.json */
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   const [formData, setFormData] = useState({
     ciudad_siniestro: datosPrevios.ciudad_siniestro || datosPrevios.ciudad || datosPrevios.municipio || "",
     departamento_siniestro: datosPrevios.departamento_siniestro || datosPrevios.departamento || "",
@@ -1493,19 +1513,15 @@ await generarManualInspeccion();
       ) ||
       aseguradoraRaw;
 
-    // Emparejar municipio con colombia.json (value = nombre ciudad)
+    // Emparejar municipio (match exacto/normalizado; nunca substring)
     const ciudadStr = String(ciudadTexto || '').split(' - ')[0].trim();
-    const municipioOpt =
-      municipios.find((opt) => normalizar(opt.value) === normalizar(ciudadStr)) ||
-      municipios.find(
-        (opt) =>
-          normalizar(opt.label).includes(normalizar(ciudadStr)) ||
-          normalizar(opt.value).includes(normalizar(ciudadStr))
-      ) ||
-      null;
-    const ciudadFinal = municipioOpt?.value || ciudadStr;
-    const deptoFinal =
-      (municipioOpt?.label || '').split(' - ')[1]?.trim() || deptoTexto;
+    const encontrada = coincidirCiudadExacta(
+      ciudadesRaw,
+      ciudadStr,
+      deptoTexto || ''
+    );
+    const ciudadFinal = encontrada?.ciudad || ciudadStr;
+    const deptoFinal = encontrada?.departamento || deptoTexto;
 
     if (nombre) {
       setNombreCliente((prev) => tomar(prev, nombre));
@@ -1549,12 +1565,12 @@ await generarManualInspeccion();
       asignar('direccion', dir);
       asignar('direccionRiesgo', dir);
       asignar('aseguradora', aseguradoraMatch);
-      if (municipioOpt) {
-        asignar('ciudad_siniestro', municipioOpt);
-        asignar('ciudad', municipioOpt.value);
-        asignar('municipio', municipioOpt.value);
-      } else if (ciudadFinal) {
-        asignar('ciudad_siniestro', ciudadFinal);
+      if (ciudadFinal) {
+        asignar('ciudad_siniestro', {
+          value: ciudadFinal,
+          label: ciudadFinal,
+          departamento: deptoFinal,
+        });
         asignar('ciudad', ciudadFinal);
         asignar('municipio', ciudadFinal);
       }
@@ -1566,7 +1582,7 @@ await generarManualInspeccion();
       if (prefill.nmroRiesgo) asignar('nmroRiesgo', prefill.nmroRiesgo);
       return next;
     });
-  }, [municipios]);
+  }, [ciudadesRaw]);
 
   // Prefill desde caso de riesgo (mismo patrón que ajuste desde Complex)
   useEffect(() => {
@@ -2425,30 +2441,60 @@ localStorage.removeItem('formularioInspeccion');
     setColaboladores(e.target.value);
   };
 
-  const handleCiudadChange = (selectedOption) => {
-    if (!selectedOption) {
+  const handleCiudadChange = (val, meta = {}) => {
+    if (!val) {
       setFormData((prev) => ({
         ...prev,
-        ciudad_siniestro: "",
-        departamento_siniestro: "",
-        ciudad: "",
-        departamento: "",
+        ciudad_siniestro: '',
+        departamento_siniestro: prev.departamento_siniestro || prev.departamento || '',
+        ciudad: '',
+        departamento: prev.departamento || prev.departamento_siniestro || '',
       }));
-      setMunicipio("");
-      setDepartamento("");
+      setMunicipio('');
       return;
     }
-    const dept = selectedOption.label.split(" - ")[1] || "";
-    const ciudadTexto = selectedOption.value || selectedOption.label.split(" - ")[0] || "";
+    const dept =
+      meta.departamento ||
+      formData.departamento_siniestro ||
+      formData.departamento ||
+      '';
+    const ciudadTexto = val;
     setFormData((prev) => ({
       ...prev,
-      ciudad_siniestro: selectedOption,
+      ciudad_siniestro: { value: ciudadTexto, label: ciudadTexto, departamento: dept },
       departamento_siniestro: dept,
       ciudad: ciudadTexto,
       departamento: dept,
     }));
     setMunicipio(ciudadTexto);
-    setDepartamento(dept);
+    if (dept) setDepartamento(dept);
+  };
+
+  const handleDepartamentoInspeccionChange = (valor) => {
+    const depto = valor || '';
+    setDepartamento(depto);
+    setFormData((prev) => {
+      const ciudadActual =
+        typeof prev.ciudad_siniestro === 'object' && prev.ciudad_siniestro
+          ? prev.ciudad_siniestro.value || prev.ciudad_siniestro.label || ''
+          : prev.ciudad_siniestro || prev.ciudad || '';
+      const sigue = coincidirCiudadExacta(ciudadesRaw, ciudadActual, depto);
+      if (!depto || !sigue) {
+        setMunicipio('');
+        return {
+          ...prev,
+          departamento_siniestro: depto,
+          departamento: depto,
+          ciudad_siniestro: '',
+          ciudad: '',
+        };
+      }
+      return {
+        ...prev,
+        departamento_siniestro: depto,
+        departamento: depto,
+      };
+    });
   };
 
 
@@ -6403,91 +6449,23 @@ return (
       
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            {t('inspection.fields.city')}
-          </label>
-          <Select
-            placeholder={t('inspection.placeholders.city')}
-            options={municipios}
-            value={(() => {
-              if (!formData.ciudad_siniestro) return null;
-              
-              // Si es un objeto, usarlo directamente
-              if (typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro !== null) {
-                return formData.ciudad_siniestro;
-              }
-              
-              // Si es string, buscar en las opciones
-              const ciudadStr = String(formData.ciudad_siniestro);
-              
-              // Buscar por value exacto
-              let encontrada = municipios.find(opt => opt.value === ciudadStr);
-              
-              // Si no se encuentra, buscar por label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label === ciudadStr || 
-                  opt.label.includes(ciudadStr) ||
-                  opt.value === ciudadStr
-                );
-              }
-              
-              // Si aún no se encuentra, buscar por coincidencia parcial en el label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label.toLowerCase().includes(ciudadStr.toLowerCase()) ||
-                  opt.value.toLowerCase() === ciudadStr.toLowerCase()
-                );
-              }
-              
-              return encontrada || null;
-            })()}
-            onChange={handleCiudadChange}
-            isSearchable
-            className="w-full"
-            isDisabled={cargando}
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                fontSize: '14px',
-                minHeight: '40px',
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                '&:hover': {
-                  borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                }
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected 
-                  ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                  : state.isFocused
-                  ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                  : inputBg,
-                color: state.isSelected 
-                  ? '#FFFFFF'
-                  : textPrimary
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: textPrimary
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: textSecondary
-              }),
-              menu: (provided) => ({
-                ...provided,
-                backgroundColor: inputBg,
-                border: `1px solid ${borderColor}`
-              })
-            }}
+        <div className="contents">
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={formData.departamento_siniestro || formData.departamento || ''}
+            ciudad={
+              typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro
+                ? (formData.ciudad_siniestro.value || formData.ciudad_siniestro.label || '')
+                : (formData.ciudad_siniestro || formData.ciudad || '')
+            }
+            onDepartamentoChange={handleDepartamentoInspeccionChange}
+            onCiudadChange={handleCiudadChange}
+            disabled={cargando}
+            wrapInCampo
+            i18nNs="segurosSura"
+            labelDepartamento={t('inspection.fields.department', { defaultValue: 'Departamento' })}
+            labelCiudad={t('inspection.fields.city')}
+            buttonClassName="w-full rounded-md border px-2 sm:px-3 py-2 text-sm"
           />
         </div>
 
@@ -6894,107 +6872,27 @@ return (
       />
     </div>
 
-    <div className="md:col-span-2">
-        <label 
-          className="block text-sm font-medium"
-          style={{ color: textPrimary }}
-        >
-          {t('inspection.ui.formulario_inspeccion.municipality')}
-        </label>
-       <Select
-            placeholder={t('inspection.ui.formulario_inspeccion.municipality')}
-            options={municipios}
-            value={(() => {
-              if (!formData.ciudad_siniestro) return null;
-              
-              // Si es un objeto, usarlo directamente
-              if (typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro !== null) {
-                return formData.ciudad_siniestro;
-              }
-              
-              // Si es string, buscar en las opciones
-              const ciudadStr = String(formData.ciudad_siniestro);
-              
-              // Buscar por value exacto
-              let encontrada = municipios.find(opt => opt.value === ciudadStr);
-              
-              // Si no se encuentra, buscar por label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label === ciudadStr || 
-                  opt.label.includes(ciudadStr) ||
-                  opt.value === ciudadStr
-                );
-              }
-              
-              // Si aún no se encuentra, buscar por coincidencia parcial en el label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label.toLowerCase().includes(ciudadStr.toLowerCase()) ||
-                  opt.value.toLowerCase() === ciudadStr.toLowerCase()
-                );
-              }
-              
-              return encontrada || null;
-            })()}
-            onChange={handleCiudadChange}
-            isSearchable
-            className="w-full"
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                fontSize: '14px',
-                minHeight: '40px',
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                '&:hover': {
-                  borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                }
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected 
-                  ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                  : state.isFocused
-                  ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                  : inputBg,
-                color: state.isSelected 
-                  ? '#FFFFFF'
-                  : textPrimary,
-                '&:active': {
-                  backgroundColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  color: '#FFFFFF'
-                }
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: textPrimary
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: textSecondary
-              }),
-              menu: (provided) => ({
-                ...provided,
-                backgroundColor: inputBg,
-                border: `1px solid ${borderColor}`,
-                boxShadow: theme === 'dark' ? '0 4px 6px rgba(0, 0, 0, 0.5)' : '0 4px 6px rgba(0, 0, 0, 0.1)'
-              }),
-              menuList: (provided) => ({
-                ...provided,
-                padding: 0
-              }),
-              input: (provided) => ({
-                ...provided,
-                color: textPrimary
-              })
-            }}
-          />
-      </div>
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <SelectorDepartamentoCiudad
+        ciudadesRaw={ciudadesRaw}
+        departamento={formData.departamento_siniestro || formData.departamento || ''}
+        ciudad={
+          typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro
+            ? (formData.ciudad_siniestro.value || formData.ciudad_siniestro.label || '')
+            : (formData.ciudad_siniestro || formData.ciudad || '')
+        }
+        onDepartamentoChange={handleDepartamentoInspeccionChange}
+        onCiudadChange={handleCiudadChange}
+        disabled={cargando}
+        wrapInCampo
+        i18nNs="segurosSura"
+        labelDepartamento={t('inspection.ui.formulario_inspeccion.department', { defaultValue: 'Departamento' })}
+        labelCiudad={t('inspection.ui.formulario_inspeccion.municipality')}
+        buttonClassName="w-full rounded-md border px-3 py-2 text-sm"
+      />
+    </div>
 
-    <div className="md:col-span-2">
+<div className="md:col-span-2">
       <label
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}

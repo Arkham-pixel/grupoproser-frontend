@@ -1,4 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
@@ -17,10 +26,8 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
   INFO_EVENTO_DEFAULT_ALLIANZ,
-  NIVELES_AFECTACION_ALLIANZ,
   calcularLiquidacionAllianz,
   casoAllianzConInforme,
-  completarFilasPolizaCoberturaAllianz,
   defaultInformeUnicoAllianz,
   desgloseDeducibleTerremotoAllianz,
   etiquetaArchivoInformeAllianz,
@@ -31,7 +38,6 @@ import {
   mapcasoAllianzALiquidador,
   normalizarTipoInformeAllianz,
   patchDeduciblePresupuestoAllianz,
-  plantillaFilasPolizaAllianz,
   presupuestoNsrTieneDatosAllianz,
   reservaSugeridaAllianz,
   resolverCoberturaAllianz,
@@ -39,12 +45,10 @@ import {
   resolverTomadorAllianz,
   totalPresupuestoPreliminarAllianz,
 } from './liquidadorAllianzHelpers.js';
-import { descargarWordInformeAllianz } from './generarWordInformeAllianz.js';
 import { allianzArchivosApi } from './allianzArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SelectorTipoInformeAllianz from './SelectorTipoInformeAllianz.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
@@ -53,6 +57,70 @@ import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquida
 import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
 import ResumenLiquidacionesAllianz from './ResumenLiquidacionesAllianz.jsx';
 import TablaCotizacionVsPresupuestoAllianz from './TablaCotizacionVsPresupuestoAllianz.jsx';
+
+const ChecklistEvaluacionSismicaNSR10 = lazy(() =>
+  import('../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx')
+);
+
+/** Evita re-render del workspace en cada tecla; el flush al desmontar no pierde cambios. */
+const LIFT_DEBOUNCE_MS = 220;
+const FIELD_COMMIT_DEBOUNCE_MS = 350;
+
+/** Mantiene el tecleo local e inmediato; actualiza el formulario pesado al pausar o salir. */
+const TextareaDiferida = memo(function TextareaDiferida({
+  value = '',
+  onCommit,
+  ...props
+}) {
+  const [localValue, setLocalValue] = useState(value || '');
+  const timerRef = useRef(null);
+  const committedRef = useRef(value || '');
+  const onCommitRef = useRef(onCommit);
+  onCommitRef.current = onCommit;
+
+  useEffect(() => {
+    const next = value || '';
+    committedRef.current = next;
+    setLocalValue((current) => (current === next ? current : next));
+  }, [value]);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const commit = useCallback((next) => {
+    clearTimeout(timerRef.current);
+    if (next === committedRef.current) return;
+    committedRef.current = next;
+    onCommitRef.current?.(next);
+  }, []);
+
+  const handleChange = useCallback(
+    (event) => {
+      const next = event.target.value;
+      setLocalValue(next);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => commit(next), FIELD_COMMIT_DEBOUNCE_MS);
+    },
+    [commit]
+  );
+
+  const handleBlur = useCallback(() => commit(localValue), [commit, localValue]);
+
+  return (
+    <textarea
+      {...props}
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+    />
+  );
+});
+
+function conReservaDesdePresupuesto(prev, filasPpto) {
+  const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
+  const suma = totalPresupuestoPreliminarAllianz(filasPpto);
+  if (suma > 0) next.reservaSugerida = String(suma);
+  return next;
+}
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -67,7 +135,7 @@ function extraerLatLng(texto) {
   return { latitud: '', longitud: '' };
 }
 
-function TablaFilasAllianz({
+const TablaFilasAllianz = memo(function TablaFilasAllianz({
   columnas,
   filas,
   onChangeFila,
@@ -109,11 +177,11 @@ function TablaFilasAllianz({
                         ))}
                       </select>
                     ) : col.type === 'textarea' ? (
-                      <textarea
+                      <TextareaDiferida
                         className="min-h-[72px] w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
                         rows={col.rows || 3}
                         value={fila[col.key] || ''}
-                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                        onCommit={(next) => onChangeFila(idx, col.key, next)}
                         placeholder={col.placeholder || ''}
                       />
                     ) : col.type === 'money' ? (
@@ -163,7 +231,26 @@ function TablaFilasAllianz({
       </button>
     </div>
   );
-}
+});
+
+const MapaRiesgoAllianzMemo = memo(function MapaRiesgoAllianzMemo({
+  coordenadasIniciales,
+  direccionInicial,
+  capturaInicial,
+  forzarCaptura,
+  onMapaChange,
+}) {
+  return (
+    <MapaGoogleEarth
+      apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+      coordenadasIniciales={coordenadasIniciales}
+      direccionInicial={direccionInicial}
+      capturaInicial={capturaInicial}
+      forzarCaptura={forzarCaptura}
+      onMapaChange={onMapaChange}
+    />
+  );
+});
 
 export default function InformeUnicoAllianz({
   casoAllianz = null,
@@ -191,7 +278,16 @@ export default function InformeUnicoAllianz({
   const [descargando, setDescargando] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
+  const informeRef = useRef(informe);
+  const liquidadorRef = useRef(liquidador);
+  const totalesRef = useRef(null);
+  const liftInformeTimer = useRef(null);
+  const liftLiqTimer = useRef(null);
+  informeRef.current = informe;
+  liquidadorRef.current = liquidador;
+
   const totales = useMemo(() => calcularLiquidacionAllianz(liquidador), [liquidador]);
+  totalesRef.current = totales;
   const desgloseDed = useMemo(
     () => desgloseDeducibleTerremotoAllianz(liquidador, totales.diagrama),
     [liquidador, totales.diagrama]
@@ -205,6 +301,7 @@ export default function InformeUnicoAllianz({
   const tipoInforme = normalizarTipoInformeAllianz(informe.tipoInforme, 'unico');
   const esPreliminar = tipoInforme === 'preliminar';
   const esUnico = tipoInforme === 'unico';
+  const esFinal = tipoInforme === 'final';
   const totalPreliminar = useMemo(
     () => totalPresupuestoPreliminarAllianz(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
@@ -229,8 +326,16 @@ export default function InformeUnicoAllianz({
     if (typeof im === 'string') return im;
     return '';
   }, [informe.imagenMapa]);
+  const direccionMapaInicial = useMemo(
+    () =>
+      informe.direccionRiesgo ||
+      resolverDireccionPredioAllianz(casoAllianz || {}, {}, informe),
+    // Solo recalcular si cambia dirección o datos del caso, no en cada tecla del informe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [informe.direccionRiesgo, casoAllianz?._id, casoAllianz?.direccionPredio, casoAllianz?.ciudad]
+  );
 
-  const handleMapaChange = (info) => {
+  const handleMapaChange = useCallback((info) => {
     setInforme((prev) => {
       const next = { ...prev };
       if (info?.lat != null && info?.lng != null) {
@@ -249,7 +354,7 @@ export default function InformeUnicoAllianz({
       }
       return next;
     });
-  };
+  }, []);
 
   useEffect(() => {
     setInforme(
@@ -268,14 +373,41 @@ export default function InformeUnicoAllianz({
   }, [tipoInformeExterno]);
 
   useEffect(() => {
-    onEstadoChange?.(informe);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [informe]);
+    if (!onEstadoChange) return undefined;
+    clearTimeout(liftInformeTimer.current);
+    liftInformeTimer.current = setTimeout(() => {
+      onEstadoChange(informeRef.current);
+    }, LIFT_DEBOUNCE_MS);
+    return () => clearTimeout(liftInformeTimer.current);
+  }, [informe, onEstadoChange]);
 
   useEffect(() => {
-    onLiquidadorChange?.(liquidador, totales);
+    if (!onLiquidadorChange) return undefined;
+    clearTimeout(liftLiqTimer.current);
+    liftLiqTimer.current = setTimeout(() => {
+      onLiquidadorChange(liquidadorRef.current, totalesRef.current);
+    }, LIFT_DEBOUNCE_MS);
+    return () => clearTimeout(liftLiqTimer.current);
+  }, [liquidador, totales, onLiquidadorChange]);
+
+  useEffect(
+    () => () => {
+      clearTimeout(liftInformeTimer.current);
+      clearTimeout(liftLiqTimer.current);
+      onEstadoChange?.(informeRef.current);
+      onLiquidadorChange?.(liquidadorRef.current, totalesRef.current);
+    },
+    // Flush final al desmontar; callbacks pueden cambiar, pero el ref tiene el último estado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liquidador, totales]);
+    []
+  );
+
+  const flushEstadoAlPadre = useCallback(() => {
+    clearTimeout(liftInformeTimer.current);
+    clearTimeout(liftLiqTimer.current);
+    onEstadoChange?.(informeRef.current);
+    onLiquidadorChange?.(liquidadorRef.current, totalesRef.current);
+  }, [onEstadoChange, onLiquidadorChange]);
 
   const setCampo = (campo, valor) => {
     setInforme((prev) => {
@@ -292,71 +424,87 @@ export default function InformeUnicoAllianz({
     const nextTipo = normalizarTipoInformeAllianz(tipo, tipoInforme);
     if (nextTipo === tipoInforme) return;
     const next = { ...informe, tipoInforme: nextTipo };
-    const vacias = (informe.filasPolizaCobertura || []).every(
-      (f) => !String(f?.analisis || '').trim() && !String(f?.conclusion || '').trim()
-    );
-    if (vacias) {
-      next.filasPolizaCobertura = completarFilasPolizaCoberturaAllianz(
-        plantillaFilasPolizaAllianz(nextTipo),
-        {
-          caso: casoAllianz || {},
-          encabezado: liquidador?.encabezado || {},
-          informe: next,
-          liquidador,
-        }
-      );
-    }
     setInforme(next);
     onGuardarEnCaso?.(next);
   };
 
-  const conReservaDesdePresupuesto = (prev, filasPpto) => {
-    const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
-    const suma = totalPresupuestoPreliminarAllianz(filasPpto);
-    if (suma > 0) next.reservaSugerida = String(suma);
-    return next;
-  };
-
-  const setFila = (campo, idx, key, valor) => {
+  const setFila = useCallback((campo, idx, key, valor) => {
     setInforme((prev) => {
       const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
       list[idx] = { ...(list[idx] || {}), [key]: valor };
       if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
-  };
+  }, []);
 
-  const addFila = (campo, vacia) => {
+  const addFila = useCallback((campo, vacia) => {
     setInforme((prev) => {
       const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
       if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
-  };
+  }, []);
 
-  const removeFila = (campo, idx) => {
+  const removeFila = useCallback((campo, idx) => {
     setInforme((prev) => {
       const list = (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx);
       if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
-  };
+  }, []);
 
-  const handleNsrChange = (patch) => {
+  const onChangeFilaPresupuesto = useCallback(
+    (idx, key, valor) => setFila('filasPresupuestoPreliminar', idx, key, valor),
+    [setFila]
+  );
+  const onAddFilaPresupuesto = useCallback(
+    () => addFila('filasPresupuestoPreliminar', { capitulo: '', descripcion: '', valor: '' }),
+    [addFila]
+  );
+  const onRemoveFilaPresupuesto = useCallback(
+    (idx) => removeFila('filasPresupuestoPreliminar', idx),
+    [removeFila]
+  );
+
+  const columnasPresupuestoPreliminar = useMemo(
+    () => [
+      {
+        key: 'capitulo',
+        label: t('allianz.reportUnique.colCapitulo'),
+        type: 'textarea',
+        rows: 2,
+      },
+      {
+        key: 'descripcion',
+        label: t('allianz.reportUnique.colDescripcionAlcance'),
+        type: 'textarea',
+        rows: 3,
+      },
+      {
+        key: 'valor',
+        label: t('allianz.reportUnique.colValorEstimado'),
+        type: 'money',
+        placeholder: '$ 0',
+      },
+    ],
+    [t]
+  );
+
+  const handleNsrChange = useCallback((patch) => {
     setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
-  };
+  }, []);
 
-  const handleCotizacionChange = (cotizacionPdf) => {
+  const handleCotizacionChange = useCallback((cotizacionPdf) => {
     setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
     setInforme((prev) => ({
       ...prev,
       fotosCotizacion: serializarPaginasCotizacion(cotizacionPdf?.paginas),
     }));
-  };
+  }, []);
 
-  const actualizarDeduciblePresupuesto = (patch) => {
+  const actualizarDeduciblePresupuesto = useCallback((patch) => {
     setLiquidador((prev) => patchDeduciblePresupuestoAllianz(prev, patch));
-  };
+  }, []);
 
   const restaurarInfoEvento = () => {
     setCampo('infoEvento', INFO_EVENTO_DEFAULT_ALLIANZ);
@@ -367,10 +515,12 @@ export default function InformeUnicoAllianz({
     setError('');
     setMensaje('');
     try {
+      flushEstadoAlPadre();
+      const { descargarWordInformeAllianz } = await import('./generarWordInformeAllianz.js');
       const resultado = await descargarWordInformeAllianz({
         caso: casoAllianz || {},
-        informe,
-        liquidador,
+        informe: informeRef.current,
+        liquidador: liquidadorRef.current,
       });
       const blob = resultado?.blob;
       const nombre = resultado?.filename || resultado?.nombre;
@@ -384,7 +534,7 @@ export default function InformeUnicoAllianz({
           const creado = await api.subir(
             casoAllianz._id,
             file,
-            etiquetaArchivoInformeAllianz(informe.tipoInforme)
+            etiquetaArchivoInformeAllianz(informeRef.current?.tipoInforme)
           );
           onCasoChange?.((prev) => {
             if (!prev) return prev;
@@ -433,8 +583,48 @@ export default function InformeUnicoAllianz({
   const nNsr = esUnico ? 3 : 5;
   const nTabla = 6;
   const nFotos = esPreliminar ? 5 : esUnico ? 4 : 7;
-  const nConclusiones = esUnico ? 5 : 4;
+  const nAnalisisConclusiones = esUnico ? 5 : esFinal ? 4 : 4;
+  const nConclusiones = nAnalisisConclusiones;
   const nFirmas = esPreliminar ? 6 : esUnico ? 6 : 8;
+
+  const camposAnalisisConclusiones = (
+    <div className="space-y-4">
+      <Campo label={t('allianz.reportUnique.causalNexusAnalysis')}>
+        <TextareaDiferida
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={5}
+          value={informe.analisisNexoCausal || ''}
+          onCommit={(next) => setCampo('analisisNexoCausal', next)}
+          placeholder={t('allianz.reportUnique.causalNexusPlaceholder')}
+        />
+      </Campo>
+      <Campo label={t('allianz.reportUnique.coverageAnalysis')}>
+        <TextareaDiferida
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={5}
+          value={informe.analisisCobertura || ''}
+          onCommit={(next) => setCampo('analisisCobertura', next)}
+          placeholder={t('allianz.reportUnique.coverageAnalysisPlaceholder')}
+        />
+      </Campo>
+      <Campo label={t('allianz.reportUnique.conclusions')}>
+        <TextareaDiferida
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={4}
+          value={informe.conclusiones || ''}
+          onCommit={(next) => setCampo('conclusiones', next)}
+        />
+      </Campo>
+      <Campo label={t('allianz.reportUnique.recommendations')}>
+        <TextareaDiferida
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={4}
+          value={informe.recomendacion || ''}
+          onCommit={(next) => setCampo('recomendacion', next)}
+        />
+      </Campo>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -461,11 +651,11 @@ export default function InformeUnicoAllianz({
         <p className="mb-2 font-body text-xs text-gray-500">
           {t('allianz.reportUnique.eventHint')}
         </p>
-        <textarea
+        <TextareaDiferida
           className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
           rows={6}
           value={informe.infoEvento || ''}
-          onChange={(e) => setCampo('infoEvento', e.target.value)}
+          onCommit={(next) => setCampo('infoEvento', next)}
         />
         <figure className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
           <img
@@ -512,55 +702,13 @@ export default function InformeUnicoAllianz({
         <h3 className={expressSectionTitle}>
           2. {t('allianz.reportUnique.sectionDamages')}
         </h3>
-        {esUnico ? (
-          <textarea
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-            rows={5}
-            value={informe.descripcionDanios || ''}
-            onChange={(e) => setCampo('descripcionDanios', e.target.value)}
-            placeholder={t('allianz.reportUnique.sectionDamagesHint')}
-          />
-        ) : (
-          <>
-            <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-              {t('allianz.reportUnique.sectionDamagesTableHint')}
-            </p>
-            <TablaFilasAllianz
-              columnas={[
-                { key: 'zona', label: t('allianz.reportUnique.colZona'), type: 'textarea', rows: 2 },
-                {
-                  key: 'condicion',
-                  label: t('allianz.reportUnique.colCondicion'),
-                  type: 'textarea',
-                  rows: 3,
-                },
-                {
-                  key: 'nivel',
-                  label: t('allianz.reportUnique.colNivel'),
-                  type: 'select',
-                  options: NIVELES_AFECTACION_ALLIANZ,
-                },
-              ]}
-              filas={informe.filasDanios}
-              onChangeFila={(idx, key, valor) => setFila('filasDanios', idx, key, valor)}
-              onAdd={() => addFila('filasDanios', { zona: '', condicion: '', nivel: '' })}
-              onRemove={(idx) => removeFila('filasDanios', idx)}
-              addLabel={t('allianz.reportUnique.addDamageRow')}
-              emptyLabel={t('allianz.reportUnique.emptyDamageRows')}
-            />
-            <div className="mt-4">
-              <Campo label={t('allianz.reportUnique.sectionDamagesNarrative')}>
-                <textarea
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-                  rows={5}
-                  value={informe.descripcionDanios || ''}
-                  onChange={(e) => setCampo('descripcionDanios', e.target.value)}
-                  placeholder={t('allianz.reportUnique.sectionDamagesHint')}
-                />
-              </Campo>
-            </div>
-          </>
-        )}
+        <TextareaDiferida
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={8}
+          value={informe.descripcionDanios || ''}
+          onCommit={(next) => setCampo('descripcionDanios', next)}
+          placeholder={t('allianz.reportUnique.sectionDamagesHint')}
+        />
 
         <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -606,13 +754,9 @@ export default function InformeUnicoAllianz({
           </Campo>
 
           <div className="mt-3 min-h-[320px] overflow-hidden rounded-lg">
-            <MapaGoogleEarth
-              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+            <MapaRiesgoAllianzMemo
               coordenadasIniciales={informe.coordenadasRiesgo}
-              direccionInicial={
-                informe.direccionRiesgo ||
-                resolverDireccionPredioAllianz(casoAllianz || {}, {}, informe)
-              }
+              direccionInicial={direccionMapaInicial}
               capturaInicial={capturaMapaInicial || undefined}
               forzarCaptura={forzarCapturaMapa}
               onMapaChange={handleMapaChange}
@@ -680,38 +824,28 @@ export default function InformeUnicoAllianz({
             </dd>
           </div>
         </dl>
-        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('allianz.reportUnique.sectionPolicyTableHint')}
-        </p>
-        <TablaFilasAllianz
-          columnas={[
-            { key: 'concepto', label: t('allianz.reportUnique.colConcepto'), type: 'textarea', rows: 2 },
-            {
-              key: 'analisis',
-              label: t('allianz.reportUnique.colAnalisis'),
-              type: 'textarea',
-              rows: 3,
-            },
-            {
-              key: 'conclusion',
-              label: t('allianz.reportUnique.colConclusion'),
-              type: 'textarea',
-              rows: 2,
-            },
-          ]}
-          filas={informe.filasPolizaCobertura}
-          onChangeFila={(idx, key, valor) => setFila('filasPolizaCobertura', idx, key, valor)}
-          onAdd={() =>
-            addFila('filasPolizaCobertura', { concepto: '', analisis: '', conclusion: '' })
-          }
-          onRemove={(idx) => removeFila('filasPolizaCobertura', idx)}
-          addLabel={t('allianz.reportUnique.addPolicyRow')}
-          emptyLabel={t('allianz.reportUnique.emptyPolicyRows')}
-        />
+        {esPreliminar ? (
+          <>
+            <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+              {t('allianz.reportUnique.sectionPolicyHint')}
+            </p>
+            <TextareaDiferida
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={8}
+              value={informe.analisisCobertura || ''}
+              onCommit={(next) => setCampo('analisisCobertura', next)}
+              placeholder={t('allianz.reportUnique.sectionPolicyPlaceholder')}
+            />
+          </>
+        ) : (
+          <p className="font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('allianz.reportUnique.sectionPolicyHintFinal')}
+          </p>
+        )}
       </section>
       )}
 
-      {!esUnico && (
+      {esPreliminar && (
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
           {nConclusiones}. {t('allianz.reportUnique.sectionConclusions')}
@@ -725,34 +859,11 @@ export default function InformeUnicoAllianz({
           </p>
         )}
         <TablaFilasAllianz
-          columnas={[
-            {
-              key: 'capitulo',
-              label: t('allianz.reportUnique.colCapitulo'),
-              type: 'textarea',
-              rows: 2,
-            },
-            {
-              key: 'descripcion',
-              label: t('allianz.reportUnique.colDescripcionAlcance'),
-              type: 'textarea',
-              rows: 3,
-            },
-            {
-              key: 'valor',
-              label: t('allianz.reportUnique.colValorEstimado'),
-              type: 'money',
-              placeholder: '$ 0',
-            },
-          ]}
+          columnas={columnasPresupuestoPreliminar}
           filas={informe.filasPresupuestoPreliminar}
-          onChangeFila={(idx, key, valor) =>
-            setFila('filasPresupuestoPreliminar', idx, key, valor)
-          }
-          onAdd={() =>
-            addFila('filasPresupuestoPreliminar', { capitulo: '', descripcion: '', valor: '' })
-          }
-          onRemove={(idx) => removeFila('filasPresupuestoPreliminar', idx)}
+          onChangeFila={onChangeFilaPresupuesto}
+          onAdd={onAddFilaPresupuesto}
+          onRemove={onRemoveFilaPresupuesto}
           addLabel={t('allianz.reportUnique.addBudgetRow')}
           emptyLabel={t('allianz.reportUnique.emptyBudgetRows')}
         />
@@ -763,25 +874,37 @@ export default function InformeUnicoAllianz({
 
         <div className="mt-5">
           <Campo label={t('allianz.reportUnique.conclusions')}>
-            <textarea
+            <TextareaDiferida
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
               rows={4}
               value={informe.conclusiones || ''}
-              onChange={(e) => setCampo('conclusiones', e.target.value)}
+              onCommit={(next) => setCampo('conclusiones', next)}
             />
           </Campo>
         </div>
         <div className="mt-3">
           <Campo label={t('allianz.reportUnique.recommendation')}>
-            <textarea
+            <TextareaDiferida
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
               rows={4}
               value={informe.recomendacion || ''}
-              onChange={(e) => setCampo('recomendacion', e.target.value)}
+              onCommit={(next) => setCampo('recomendacion', next)}
             />
           </Campo>
         </div>
       </section>
+      )}
+
+      {esFinal && (
+        <section className={expressFormSection}>
+          <h3 className={expressSectionTitle}>
+            {nAnalisisConclusiones}. {t('allianz.reportUnique.sectionAnalysisConclusions')}
+          </h3>
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('allianz.reportUnique.sectionAnalysisConclusionsHint')}
+          </p>
+          {camposAnalisisConclusiones}
+        </section>
       )}
 
       {!esPreliminar && (
@@ -868,6 +991,9 @@ export default function InformeUnicoAllianz({
             <div className="mb-4 max-w-xl">
               <EditorDeducibleLibreAllianz
                 cfg={liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto || {}}
+                modoAplicacion={
+                  liquidador.liquidacionCatastrofico?.modoAplicacionDeducible || 'individual'
+                }
                 onChange={actualizarDeduciblePresupuesto}
                 disabled={guardandoCaso}
               />
@@ -877,12 +1003,21 @@ export default function InformeUnicoAllianz({
               <ResumenLiquidacionesAllianz totales={totales} desgloseNsr={desgloseDed} />
             </div>
 
-            <ChecklistEvaluacionSismicaNSR10
-              formData={formDataNsr}
-              onInputChange={handleNsrChange}
-              modoLiquidador
-              recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
-            />
+            <Suspense
+              fallback={
+                <p className="font-body text-sm text-gray-500">
+                  Cargando liquidador NSR-10…
+                </p>
+              }
+            >
+              <ChecklistEvaluacionSismicaNSR10
+                formData={formDataNsr}
+                onInputChange={handleNsrChange}
+                modoLiquidador
+                recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+                simplificarDeducible
+              />
+            </Suspense>
           </section>
 
           <section className={expressFormSection}>
@@ -965,26 +1100,12 @@ export default function InformeUnicoAllianz({
       {esUnico && (
         <section className={expressFormSection}>
           <h3 className={expressSectionTitle}>
-            {nConclusiones}. {t('allianz.reportUnique.sectionConclusions')}
+            {nAnalisisConclusiones}. {t('allianz.reportUnique.sectionAnalysisConclusions')}
           </h3>
-          <Campo label={t('allianz.reportUnique.conclusions')}>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-              rows={4}
-              value={informe.conclusiones || ''}
-              onChange={(e) => setCampo('conclusiones', e.target.value)}
-            />
-          </Campo>
-          <div className="mt-3">
-            <Campo label={t('allianz.reportUnique.recommendation')}>
-              <textarea
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-                rows={4}
-                value={informe.recomendacion || ''}
-                onChange={(e) => setCampo('recomendacion', e.target.value)}
-              />
-            </Campo>
-          </div>
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('allianz.reportUnique.sectionAnalysisConclusionsHint')}
+          </p>
+          {camposAnalisisConclusiones}
         </section>
       )}
 
@@ -1023,7 +1144,10 @@ export default function InformeUnicoAllianz({
             type="button"
             className={expressBtnPrimary}
             disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(informe)}
+            onClick={() => {
+              flushEstadoAlPadre();
+              onGuardarEnCaso(informeRef.current);
+            }}
           >
             {guardandoCaso
               ? t('allianz.reportUnique.saving')

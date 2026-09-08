@@ -30,8 +30,6 @@ import { descargarFiniquitoAllianzWord } from './generarFiniquitoAllianzWord.js'
 import { descargarLiquidadorAllianzExcel } from './generarLiquidadorAllianzExcel.js';
 import { descargarLiquidadorAllianzPdf } from './generarLiquidadorAllianzPdf.js';
 import { allianzArchivosApi } from './allianzArchivosApi.js';
-import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
-import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
@@ -316,17 +314,15 @@ export default function LiquidadorAllianz({
               onChange={(e) => actualizarValorAsegurable('valorAseguradoInmueble', e.target.value)}
             />
           </Campo>
-        </div>
-        <div className="mt-4">
-          <OtrosAmparosLiquidacion
-            otrosAmparos={liquidador.otrosAmparos}
-            onChange={(filas) =>
-              setLiquidador((prev) => ({
-                ...prev,
-                otrosAmparos: Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
-              }))
-            }
-          />
+          <Campo label={t('allianz.fields.valorAseguradoContenidos')}>
+            <InputFenix
+              inputMode="numeric"
+              value={enc.valorAseguradoContenidos || ''}
+              onChange={(e) =>
+                actualizarValorAsegurable('valorAseguradoContenidos', e.target.value)
+              }
+            />
+          </Campo>
         </div>
         <div className="mt-4">
           <CotizacionPdfLiquidacion
@@ -357,6 +353,9 @@ export default function LiquidadorAllianz({
         <div className="mt-4 max-w-xl">
           <EditorDeducibleLibreAllianz
             cfg={liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto || {}}
+            modoAplicacion={
+              liquidador.liquidacionCatastrofico?.modoAplicacionDeducible || 'individual'
+            }
             onChange={actualizarDeduciblePresupuesto}
             disabled={!!exportando || guardandoCaso}
           />
@@ -392,6 +391,7 @@ export default function LiquidadorAllianz({
           onInputChange={handleNsrChange}
           modoLiquidador={embeberEnInforme}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+          simplificarDeducible
         />
       </section>
     </div>

@@ -12,6 +12,58 @@ import { liquidadorParaPersistir } from '../components/SubcomponenteEvaluacionSi
 const TAB_INFORME = 'informe';
 const TAB_AGIL = 'informe-agil';
 
+/** Comparación barata: evita JSON.stringify de base64/previews en cada tecla. */
+function snapDataParaComparar(tipo, data) {
+  if (!data || typeof data !== 'object') return '';
+  if (tipo === 'informe' || tipo === 'agil') {
+    const {
+      imagenMapa,
+      fotosInspeccion,
+      fotosCotizacion,
+      filasDanios,
+      filasPolizaCobertura,
+      ...rest
+    } = data;
+    return JSON.stringify({
+      ...rest,
+      imagenMapa:
+        typeof imagenMapa === 'string' && imagenMapa
+          ? `len:${imagenMapa.length}:${imagenMapa.slice(0, 24)}:${imagenMapa.slice(-12)}`
+          : '',
+      fotosInspeccion: (Array.isArray(fotosInspeccion) ? fotosInspeccion : []).map(
+        (f) => f?._id || f?.ruta || f?.nombreOriginal || f?.nombre || ''
+      ),
+      fotosCotizacion: (Array.isArray(fotosCotizacion) ? fotosCotizacion : []).map(
+        (f) => f?._id || f?.ruta || f?.page || ''
+      ),
+      filasDanios: Array.isArray(filasDanios) ? filasDanios.length : 0,
+      filasPolizaCobertura: Array.isArray(filasPolizaCobertura) ? filasPolizaCobertura.length : 0,
+    });
+  }
+  const { cotizacionPdf, evaluacionSismicaNSR10, ...rest } = data;
+  const presupuesto = evaluacionSismicaNSR10?.presupuesto;
+  return JSON.stringify({
+    ...rest,
+    cotizacionPdf: cotizacionPdf
+      ? {
+          archivoPdf: cotizacionPdf.archivoPdf?._id || cotizacionPdf.archivoPdf || null,
+          paginas: Array.isArray(cotizacionPdf.paginas) ? cotizacionPdf.paginas.length : 0,
+        }
+      : null,
+    evaluacionSismicaNSR10: evaluacionSismicaNSR10
+      ? {
+          ...evaluacionSismicaNSR10,
+          presupuesto: presupuesto
+            ? {
+                ...presupuesto,
+                items: Array.isArray(presupuesto.items) ? presupuesto.items : [],
+              }
+            : presupuesto,
+        }
+      : evaluacionSismicaNSR10,
+  });
+}
+
 async function persistirPayload({
   casoId,
   payload,
@@ -86,7 +138,7 @@ export default function useAllianzCasoAutosave({
     const scheduleSave = (payload) => {
       if (!payload?.data) return;
       const key = snapKey(payload.tipo);
-      const snap = JSON.stringify(payload.data);
+      const snap = snapDataParaComparar(payload.tipo, payload.data);
       const prevSnap = lastSnap.current[key];
 
       if (!readyRef.current) {
@@ -123,7 +175,7 @@ export default function useAllianzCasoAutosave({
             guardarInforme,
             guardarInformeAgil,
           });
-          lastSnap.current[key] = JSON.stringify(payload.data);
+          lastSnap.current[key] = snapDataParaComparar(payload.tipo, payload.data);
           onCasoActualizado?.(actualizado);
           setAutosaveUiStatus({
             state: 'synced',
@@ -190,7 +242,10 @@ export default function useAllianzCasoAutosave({
           guardarInforme,
           guardarInformeAgil,
         });
-        lastSnap.current[snapKey(payload.tipo)] = JSON.stringify(payload.data);
+        lastSnap.current[snapKey(payload.tipo)] = snapDataParaComparar(
+          payload.tipo,
+          payload.data
+        );
         onCasoActualizado?.(actualizado);
         setAutosaveUiStatus({
           state: 'synced',

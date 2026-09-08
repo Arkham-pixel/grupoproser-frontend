@@ -26,6 +26,7 @@ export function textoSugeridoDeducibleAllianz(cfg = {}) {
  */
 export default function EditorDeducibleLibreAllianz({
   cfg = {},
+  modoAplicacion = 'individual',
   onChange,
   disabled = false,
 } = {}) {
@@ -36,6 +37,44 @@ export default function EditorDeducibleLibreAllianz({
 
   return (
     <div className="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+          ¿Cómo exige la póliza aplicar el deducible?
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={disabled}
+            className={`rounded-lg border p-3 text-left text-sm ${
+              modoAplicacion === 'individual'
+                ? 'border-blue-600 ring-1 ring-blue-600'
+                : 'border-gray-200 dark:border-gray-700'
+            }`}
+            onClick={() => emitir({ modoAplicacionDeducible: 'individual' })}
+          >
+            <span className="block font-semibold">Deducibles individuales</span>
+            <span className="text-xs text-gray-500">
+              Se calcula uno para infraestructura y otro para contenidos.
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            className={`rounded-lg border p-3 text-left text-sm ${
+              modoAplicacion === 'compartido'
+                ? 'border-blue-600 ring-1 ring-blue-600'
+                : 'border-gray-200 dark:border-gray-700'
+            }`}
+            onClick={() => emitir({ modoAplicacionDeducible: 'compartido' })}
+          >
+            <span className="block font-semibold">Un solo deducible</span>
+            <span className="text-xs text-gray-500">
+              Se calcula una vez sobre la suma de ambos valores asegurados.
+            </span>
+          </button>
+        </div>
+      </div>
+
       <Campo label="Deducible">
         <textarea
           className="min-h-[72px] w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
@@ -56,9 +95,10 @@ export default function EditorDeducibleLibreAllianz({
             value={cfg.porcentaje ?? ''}
             placeholder="2"
             onChange={(e) => {
-              const raw = e.target.value.replace(',', '.');
+              const raw = e.target.value.replace(',', '.').replace(/[^\d.]/g, '');
+              if ((raw.match(/\./g) || []).length > 1) return;
               emitir({
-                porcentaje: raw === '' ? '' : Number(raw),
+                porcentaje: raw,
               });
             }}
           />
@@ -71,9 +111,10 @@ export default function EditorDeducibleLibreAllianz({
             value={cfg.cantidadSMMLV ?? ''}
             placeholder="3"
             onChange={(e) => {
-              const raw = e.target.value.replace(',', '.');
+              const raw = e.target.value.replace(',', '.').replace(/[^\d.]/g, '');
+              if ((raw.match(/\./g) || []).length > 1) return;
               emitir({
-                cantidadSMMLV: raw === '' ? '' : Number(raw),
+                cantidadSMMLV: raw,
                 tipoMinimo: 'SMMLV',
               });
             }}

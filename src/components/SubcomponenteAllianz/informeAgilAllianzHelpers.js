@@ -1,6 +1,5 @@
 import {
   CAMPOS_INFORME_AGIL,
-  VALOR_APLICA_INFORME_AGIL,
   VALOR_NO_APLICA_INFORME_AGIL,
   esNoAplicaInformeAgil,
   fusionarVaciosInformeAgil,
@@ -95,11 +94,6 @@ export function computarInformeAgilDesdeCasoAllianz({
   const ident = texto(enc.identificacion, casoSafe.identificacion);
   const tomador = texto(enc.tomador, casoSafe.tomador, casoSafe.asegurado);
   const asegurado = texto(enc.asegurado, casoSafe.asegurado);
-  const hospedajeManual = Number(liq.liquidacionCatastrofico?.hospedajeManual);
-  const hospedajeDiag = Number(tot.diagrama?.gastosHospedaje);
-  const auxilioAplica =
-    (Number.isFinite(hospedajeManual) && hospedajeManual > 0) ||
-    (Number.isFinite(hospedajeDiag) && hospedajeDiag > 0);
 
   return {
     siniestroNro: texto(enc.siniestro, casoSafe.siniestro, casoSafe.zc),
@@ -142,7 +136,7 @@ export function computarInformeAgilDesdeCasoAllianz({
     valorSugeridoLuegoDeducible: cuadro.valorSugeridoLuegoDeducible
       ? formatearMonto(cuadro.valorSugeridoLuegoDeducible)
       : '',
-    auxilioInterrupcion: auxilioAplica ? VALOR_APLICA_INFORME_AGIL : VALOR_NO_APLICA_INFORME_AGIL,
+    auxilioInterrupcion: VALOR_NO_APLICA_INFORME_AGIL,
     valorFinalEstimadoPerdida: cuadro.valorFinalEstimadoPerdida
       ? formatearMonto(cuadro.valorFinalEstimadoPerdida)
       : '',

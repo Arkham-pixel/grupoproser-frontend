@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaFolderOpen, FaSave } from 'react-icons/fa';
 import LiquidadorAllianz from './LiquidadorAllianz.jsx';
 import InformeUnicoAllianz from './InformeUnicoAllianz.jsx';
 import InformeAgilAllianz from './InformeAgilAllianz.jsx';
 import SelectorTipoInformeAllianz from './SelectorTipoInformeAllianz.jsx';
+import ArchiveroAllianz from './ArchiveroAllianz.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -33,6 +34,7 @@ import {
 import {
   calcularLiquidacionAllianz,
   defaultInformeUnicoAllianz,
+  etiquetaArchivoInformeAllianz,
   normalizarTipoInformeAllianz,
   tipoInformeActualAllianz,
 } from './liquidadorAllianzHelpers.js';
@@ -43,6 +45,7 @@ import useAllianzCasoAutosave from '../../hooks/useAllianzCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -164,6 +167,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
   const [restoreNonce, setRestoreNonce] = useState(0);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
+  const [archiveroAbierto, setArchiveroAbierto] = useState(false);
 
   const casoId = casoAllianz?._id || casoIdFromQuery || null;
 
@@ -489,18 +493,49 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
       : guardarInformeAgilEnCasoAllianz,
   });
 
-  const draftPayload = useMemo(
-    () => ({
+  const draftPayload = useMemo(() => {
+    const informeLigero = informeState
+      ? {
+          ...informeState,
+          imagenMapa:
+            typeof informeState.imagenMapa === 'string' && informeState.imagenMapa
+              ? `len:${informeState.imagenMapa.length}`
+              : '',
+          filasDanios: [],
+          filasPolizaCobertura: [],
+        }
+      : null;
+    return {
       liquidador: liquidadorState,
       totales: totalesState,
-      informe: informeState,
+      informe: informeLigero,
       informeAgil: informeAgilState,
-    }),
-    [liquidadorState, totalesState, informeState, informeAgilState]
-  );
+    };
+  }, [liquidadorState, totalesState, informeState, informeAgilState]);
+
   const onDraftRestoreAvailable = useCallback((info) => {
     setDraftToRestore(info);
     setShowDraftRestore(true);
+  }, []);
+
+  const onLiquidadorDesdeInforme = useCallback((liq, tot) => {
+    setLiquidadorState(liq);
+    setTotalesState(tot);
+  }, []);
+
+  const onLiquidadorDesdeTab = useCallback((liq, tot) => {
+    setLiquidadorState(liq);
+    setTotalesState(tot);
+    if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
+      setInformeState((prev) => {
+        if (!prev) return prev;
+        const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
+        const prevKey = JSON.stringify(prev.fotosCotizacion || []);
+        const nextKey = JSON.stringify(nextFotos);
+        if (prevKey === nextKey) return prev;
+        return { ...prev, fotosCotizacion: nextFotos };
+      });
+    }
   }, []);
   const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
     formKey: casoId ? `${esModuloListado ? 'allianz-listado-ws' : 'allianz-ws'}:${casoId}` : '',
@@ -528,6 +563,16 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {casoId && (
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => setArchiveroAbierto(true)}
+              >
+                <FaFolderOpen /> {t('allianz.report.archive')}
+                {casoAllianz?.archivos?.length ? ` (${casoAllianz.archivos.length})` : ''}
+              </button>
+            )}
             {mostrarBotonGuardarSuperior && (
               <button
                 type="button"
@@ -661,10 +706,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
                 ocultarSelector
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
-                onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState(liq);
-                  setTotalesState(tot);
-                }}
+                onLiquidadorChange={onLiquidadorDesdeInforme}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
                 onCasoChange={setCasoAllianz}
                 guardandoCaso={guardando}
@@ -675,20 +717,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
                 casoAllianz={casoAllianz}
                 origen={esModuloListado ? 'listado' : 'cat'}
                 liquidadorInicial={liquidadorState}
-                onEstadoChange={(liq, tot) => {
-                  setLiquidadorState(liq);
-                  setTotalesState(tot);
-                  if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
-                    setInformeState((prev) => {
-                      if (!prev) return prev;
-                      const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
-                      const prevKey = JSON.stringify(prev.fotosCotizacion || []);
-                      const nextKey = JSON.stringify(nextFotos);
-                      if (prevKey === nextKey) return prev;
-                      return { ...prev, fotosCotizacion: nextFotos };
-                    });
-                  }
-                }}
+                onEstadoChange={onLiquidadorDesdeTab}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
                 onCasoChange={setCasoAllianz}
                 guardandoCaso={guardando}
@@ -697,6 +726,30 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
           </div>
         </div>
       </div>
+      {archiveroAbierto && casoAllianz && (
+        <ExpressModal
+          open
+          onClose={() => setArchiveroAbierto(false)}
+          title={t('allianz.archive.title')}
+          wide
+        >
+          <ArchiveroAllianz
+            origen={esModuloListado ? 'listado' : 'cat'}
+            caso={casoAllianz}
+            etiquetaInicial={
+              tabActivo === TABS_ALLIANZ.INFORME
+                ? etiquetaArchivoInformeAllianz(
+                    informeState?.tipoInforme || casoAllianz?.informeUnico?.tipoInforme
+                  )
+                : tabActivo === TABS_ALLIANZ.LIQUIDADOR
+                  ? 'LIQUIDACION'
+                  : 'INFORME'
+            }
+            onClose={() => setArchiveroAbierto(false)}
+            onChanged={(actualizado) => setCasoAllianz(actualizado)}
+          />
+        </ExpressModal>
+      )}
       <ArnaldDraftChrome
         draftStatus={draftStatus}
         lastDraftAt={lastDraftAt}
@@ -713,7 +766,15 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
           }));
           if (data.liquidador) setLiquidadorState(data.liquidador);
           if (data.totales) setTotalesState(data.totales);
-          if (data.informe) setInformeState(data.informe);
+          if (data.informe) {
+            const mapaDraft = data.informe.imagenMapa;
+            const mapaOk =
+              typeof mapaDraft === 'string' &&
+              mapaDraft.startsWith('data:')
+                ? mapaDraft
+                : casoAllianz?.informeUnico?.imagenMapa || '';
+            setInformeState({ ...data.informe, imagenMapa: mapaOk });
+          }
           if (data.informeAgil) setInformeAgilState(data.informeAgil);
           setRestoreNonce((n) => n + 1);
           setShowDraftRestore(false);

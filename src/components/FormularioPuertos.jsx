@@ -35,7 +35,14 @@ import { PageBreak } from "docx";
 import Logo from '../img/Logo.png';
 import { TableOfContents } from "docx";
 import ciudadesData from '../data/colombia.json';
-import Select from 'react-select';
+import SelectorDepartamentoCiudad from './shared/SelectorDepartamentoCiudad.jsx';
+import {
+  mapearCiudadesDesdeColombiaJson,
+  mapearCiudadesDesdeApi,
+  extraerListaCiudadesApi,
+  aplicarCambioDepartamento,
+  coincidirCiudadExacta,
+} from '../utils/ciudadesColombia.js';
 import 'leaflet/dist/leaflet.css'
 import MapaDeCalor from "./MapaDeCalor";
 import FormularioAreas from "./SubcomponenteFRiesgo/FormularioAreas";
@@ -65,12 +72,10 @@ export default function FormularioPuertos() {
   const [cargando, setCargando] = useState(false);
   
   // Información general
-  const municipios = ciudadesData.flatMap(dep =>
-    dep.ciudades.map(ciudad => ({
-      label: `${ciudad} - ${dep.departamento}`,
-      value: ciudad
-    }))
+  const [ciudadesRaw, setCiudadesRaw] = useState(() =>
+    mapearCiudadesDesdeColombiaJson(ciudadesData)
   );
+  const [cargandoCiudades, setCargandoCiudades] = useState(false);
   const [formData, setFormData] = useState({
     ciudad_siniestro: datosPrevios.ciudad_siniestro || datosPrevios.ciudad || datosPrevios.municipio || "",
     departamento_siniestro: datosPrevios.departamento_siniestro || datosPrevios.departamento || "",
@@ -619,23 +624,102 @@ const filaDoble = (label, value) => new TableRow({
   };
 
 
-  const handleCiudadChange = (selectedOption) => {
-    if (!selectedOption) {
-      setFormData({
-        ...formData,
-        ciudad_siniestro: "",
-        departamento_siniestro: "",
-      });
+  useEffect(() => {
+    let cancelado = false;
+    const fallback = () => mapearCiudadesDesdeColombiaJson(ciudadesData);
+    const cargar = async () => {
+      setCargandoCiudades(true);
+      try {
+        if (!BASE_URL) throw new Error('sin BASE_URL');
+        const res = await fetch(`${BASE_URL}/api/ciudades`);
+        if (!res.ok) throw new Error('ciudades');
+        const data = await res.json();
+        const lista = mapearCiudadesDesdeApi(extraerListaCiudadesApi(data));
+        if (!cancelado) setCiudadesRaw(lista.length ? lista : fallback());
+      } catch {
+        if (!cancelado) setCiudadesRaw(fallback());
+      } finally {
+        if (!cancelado) setCargandoCiudades(false);
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const textoCiudadSiniestro = (() => {
+    const c = formData.ciudad_siniestro;
+    if (!c) return '';
+    if (typeof c === 'object') return String(c.label || c.value || '').trim();
+    return String(c).trim();
+  })();
+
+  useEffect(() => {
+    if (!textoCiudadSiniestro || formData.departamento_siniestro || !ciudadesRaw.length) return;
+    const match = coincidirCiudadExacta(ciudadesRaw, textoCiudadSiniestro, '');
+    if (!match) return;
+    setFormData((prev) => ({
+      ...prev,
+      ciudad_siniestro: { value: match.ciudad, label: match.ciudad },
+      departamento_siniestro: match.departamento || '',
+      ciudad: match.ciudad,
+      departamento: match.departamento || prev.departamento || '',
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ciudadesRaw]);
+
+  const handleDepartamentoSiniestroChange = (valor) => {
+    setFormData((prev) => {
+      const ciudadActual =
+        typeof prev.ciudad_siniestro === 'object' && prev.ciudad_siniestro !== null
+          ? prev.ciudad_siniestro.value || prev.ciudad_siniestro.label || ''
+          : prev.ciudad_siniestro || '';
+      const next = aplicarCambioDepartamento(
+        {
+          ...prev,
+          departamento_siniestro: prev.departamento_siniestro || '',
+          ciudad_siniestro: ciudadActual,
+        },
+        valor,
+        ciudadesRaw,
+        {
+          departamentoKey: 'departamento_siniestro',
+          departamentoCiudadKey: 'departamento',
+          ciudadKey: 'ciudad_siniestro',
+          ciudadExtraKeys: ['ciudad'],
+        }
+      );
+      return {
+        ...next,
+        ciudad_siniestro: next.ciudad_siniestro
+          ? { value: next.ciudad_siniestro, label: next.ciudad_siniestro }
+          : '',
+      };
+    });
+  };
+
+  const handleCiudadChange = (val, meta) => {
+    if (!val) {
+      setFormData((prev) => ({
+        ...prev,
+        ciudad_siniestro: '',
+        departamento_siniestro: prev.departamento_siniestro || '',
+        ciudad: '',
+      }));
       return;
     }
-    setFormData({
-      ...formData,
-      ciudad_siniestro: selectedOption,
-      departamento_siniestro: selectedOption.label.split(" - ")[1] || "",
-    });
-
-
-};
+    const ciudad = meta?.ciudad || val;
+    const depto = meta?.departamento || '';
+    setFormData((prev) => ({
+      ...prev,
+      ciudad_siniestro: { value: ciudad, label: meta?.label || ciudad },
+      departamento_siniestro: depto || prev.departamento_siniestro || '',
+      ciudad,
+      departamento: depto || prev.departamento || prev.departamento_siniestro || '',
+    }));
+    setMunicipio(ciudad);
+  };
 
 
 
@@ -779,7 +863,7 @@ docContent.push(
   new Paragraph({
     children: [
       new TextRun({
-        text: `${formData.ciudad_siniestro} – ${formData.departamento_siniestro  || ""}`,
+        text: `${textoCiudadSiniestro} – ${formData.departamento_siniestro  || ""}`,
         italics: true,
         size: 24,
         font: "Arial",
@@ -877,7 +961,7 @@ try {
       new Paragraph({ children: [], pageBreakBefore: true }),
       linea("Señores"),
       linea(aseguradora, true),
-      linea(`Ciudad: ${formData.ciudad_siniestro}`),
+      linea(`Ciudad: ${textoCiudadSiniestro}`),
       linea(""),
       linea("REF: INFORME DE INSPECCIÓN", true),
       linea(`ASEGURADO: ${nombreCliente}`),
@@ -1151,7 +1235,7 @@ docContent.push(
       new TableRow({
         children: [
           encabezadoTabla("Ciudad"),
-          celdaTexto(municipios)
+          celdaTexto(municipio)
         ],
       }),
       new TableRow({
@@ -2098,7 +2182,7 @@ const handleGuardarEnHistorial = async () => {
 
   const datos = {
     tipo: 'inspeccion',
-    titulo: `Inspección - ${nombreCliente || 'Cliente'} - ${formData.ciudad_siniestro || 'Ciudad'}`,
+    titulo: `Inspección - ${nombreCliente || 'Cliente'} - ${textoCiudadSiniestro || 'Ciudad'}`,
     usuario: nombre,
     userId: login,
     estado: 'en_proceso',
@@ -2106,7 +2190,7 @@ const handleGuardarEnHistorial = async () => {
       numeroActa: nombreCliente || "N/A",
       fechaInspeccion: fecha,
       horaInspeccion: obtenerHoraActualColombia(),
-      ciudad: formData.ciudad_siniestro,
+      ciudad: textoCiudadSiniestro,
       aseguradora: formData.aseguradora,
       sucursal: "N/A",
       asegurado: nombreCliente,
@@ -2225,7 +2309,7 @@ const handleExportar = async () => {
 
     const datos = {
       tipo: 'inspeccion',
-      titulo: `Inspección - ${nombreCliente || 'Cliente'} - ${formData.ciudad_siniestro || 'Ciudad'}`,
+      titulo: `Inspección - ${nombreCliente || 'Cliente'} - ${textoCiudadSiniestro || 'Ciudad'}`,
       usuario: nombre,
       userId: login,
       estado: 'completado',
@@ -2233,7 +2317,7 @@ const handleExportar = async () => {
         numeroActa: nombreCliente || "N/A",
         fechaInspeccion: fecha,
         horaInspeccion: obtenerHoraActualColombia(),
-        ciudad: formData.ciudad_siniestro,
+        ciudad: textoCiudadSiniestro,
         aseguradora: formData.aseguradora,
         sucursal: "N/A",
         asegurado: nombreCliente,
@@ -2757,143 +2841,18 @@ return (
 
       {/* Información Cliente */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            Nombre del Cliente / Empresa
-          </label>
-          <input
-            type="text"
-            value={nombreCliente}
-            onChange={(e) => setNombreCliente(e.target.value)}
-            className="w-full rounded px-2 sm:px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            placeholder="Ej: LADRILLERA CASABLANCA S.A.S."
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={formData.departamento_siniestro || ''}
+            ciudad={textoCiudadSiniestro}
+            onDepartamentoChange={handleDepartamentoSiniestroChange}
+            onCiudadChange={handleCiudadChange}
+            cargando={cargandoCiudades}
             disabled={cargando}
-          />
-        </div>
-
-        <div>
-          <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            Dirección
-          </label>
-          <input
-            type="text"
-            value={formData.direccion}
-            onChange={e => setFormData({ ...formData, direccion: e.target.value })}
-            className="w-full rounded px-2 sm:px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            placeholder="Dirección"
-            disabled={cargando}
-          />
-        </div>
-      </div>
-
-      
-      
-      
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            Ciudad
-          </label>
-          <Select
-            options={municipios}
-            value={(() => {
-              if (!formData.ciudad_siniestro) return null;
-              
-              // Si es un objeto, usarlo directamente
-              if (typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro !== null) {
-                return formData.ciudad_siniestro;
-              }
-              
-              // Si es string, buscar en las opciones
-              const ciudadStr = String(formData.ciudad_siniestro);
-              
-              // Buscar por value exacto
-              let encontrada = municipios.find(opt => opt.value === ciudadStr);
-              
-              // Si no se encuentra, buscar por label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label === ciudadStr || 
-                  opt.label.includes(ciudadStr) ||
-                  opt.value === ciudadStr
-                );
-              }
-              
-              // Si aún no se encuentra, buscar por coincidencia parcial en el label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label.toLowerCase().includes(ciudadStr.toLowerCase()) ||
-                  opt.value.toLowerCase() === ciudadStr.toLowerCase()
-                );
-              }
-              
-              return encontrada || null;
-            })()}
-            onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
-            isSearchable
-            className="w-full"
-            isDisabled={cargando}
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                fontSize: '14px',
-                minHeight: '40px',
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                '&:hover': {
-                  borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                }
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected 
-                  ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                  : state.isFocused
-                  ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                  : inputBg,
-                color: state.isSelected 
-                  ? '#FFFFFF'
-                  : textPrimary
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: textPrimary
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: textSecondary
-              }),
-              menu: (provided) => ({
-                ...provided,
-                backgroundColor: inputBg,
-                border: `1px solid ${borderColor}`
-              })
-            }}
+            labelDepartamento="Departamento"
+            labelCiudad="Ciudad"
+            i18nNs="common"
           />
         </div>
 
@@ -2999,11 +2958,7 @@ return (
       >
         <p>
           Ciudad: {
-            typeof formData.ciudad_siniestro === "object" && formData.ciudad_siniestro !== null
-              ? formData.ciudad_siniestro.label
-              : (typeof formData.ciudad_siniestro === "string"
-                  ? formData.ciudad_siniestro
-                  : "_________")
+            textoCiudadSiniestro || "_________"
           }'
         </p>
                 <br />
@@ -3011,11 +2966,7 @@ return (
         <p><strong>{aseguradora}</strong></p>
         <p>
           Ciudad: {
-            typeof formData.ciudad_siniestro === "object" && formData.ciudad_siniestro !== null
-              ? formData.ciudad_siniestro.label
-              : (typeof formData.ciudad_siniestro === "string"
-                  ? formData.ciudad_siniestro
-                  : "_________")
+            textoCiudadSiniestro || "_________"
           }
         </p>        <br />
         <p><strong>REF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: INFORME DE INSPECCIÓN</strong></p>
@@ -3670,105 +3621,20 @@ return (
       />
     </div>
 
-    <div className="md:col-span-2">
-        <label 
-          className="block text-sm font-medium"
-          style={{ color: textPrimary }}
-        >
-          Ciudad del Siniestro
-        </label>
-       <Select
-            options={municipios}
-            value={(() => {
-              if (!formData.ciudad_siniestro) return null;
-              
-              // Si es un objeto, usarlo directamente
-              if (typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro !== null) {
-                return formData.ciudad_siniestro;
-              }
-              
-              // Si es string, buscar en las opciones
-              const ciudadStr = String(formData.ciudad_siniestro);
-              
-              // Buscar por value exacto
-              let encontrada = municipios.find(opt => opt.value === ciudadStr);
-              
-              // Si no se encuentra, buscar por label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label === ciudadStr || 
-                  opt.label.includes(ciudadStr) ||
-                  opt.value === ciudadStr
-                );
-              }
-              
-              // Si aún no se encuentra, buscar por coincidencia parcial en el label
-              if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label.toLowerCase().includes(ciudadStr.toLowerCase()) ||
-                  opt.value.toLowerCase() === ciudadStr.toLowerCase()
-                );
-              }
-              
-              return encontrada || null;
-            })()}
-            onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
-            isSearchable
-            className="w-full"
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                fontSize: '14px',
-                minHeight: '40px',
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                '&:hover': {
-                  borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                }
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected 
-                  ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                  : state.isFocused
-                  ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                  : inputBg,
-                color: state.isSelected 
-                  ? '#FFFFFF'
-                  : textPrimary,
-                '&:active': {
-                  backgroundColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  color: '#FFFFFF'
-                }
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: textPrimary
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: textSecondary
-              }),
-              menu: (provided) => ({
-                ...provided,
-                backgroundColor: inputBg,
-                border: `1px solid ${borderColor}`,
-                boxShadow: theme === 'dark' ? '0 4px 6px rgba(0, 0, 0, 0.5)' : '0 4px 6px rgba(0, 0, 0, 0.1)'
-              }),
-              menuList: (provided) => ({
-                ...provided,
-                padding: 0
-              }),
-              input: (provided) => ({
-                ...provided,
-                color: textPrimary
-              })
-            }}
-          />
-      </div>
+    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <SelectorDepartamentoCiudad
+        ciudadesRaw={ciudadesRaw}
+        departamento={formData.departamento_siniestro || ''}
+        ciudad={textoCiudadSiniestro}
+        onDepartamentoChange={handleDepartamentoSiniestroChange}
+        onCiudadChange={handleCiudadChange}
+        cargando={cargandoCiudades}
+        disabled={cargando}
+        labelDepartamento="Departamento"
+        labelCiudad="Ciudad del Siniestro"
+        i18nNs="common"
+      />
+    </div>
     <div>
       <label 
         className="block text-sm font-semibold mb-1"
@@ -3803,28 +3669,6 @@ return (
         placeholder="Ej: Vía El Zulia"
         value={barrio}
         onChange={(e) => setBarrio(e.target.value)}
-        className="w-full rounded px-3 py-2"
-        style={{
-          backgroundColor: inputBg,
-          color: textPrimary,
-          borderColor: borderColor,
-          border: `1px solid ${borderColor}`
-        }}
-        disabled={cargando}
-      />
-    </div>
-    <div>
-      <label 
-        className="block text-sm font-semibold mb-1"
-        style={{ color: textPrimary }}
-      >
-        Departamento
-      </label>
-      <input
-        type="text"
-        placeholder="Ej: Norte de Santander"
-        value={formData.departamento_siniestro}
-        onChange={e => setFormData({ ...formData, departamento_siniestro: e.target.value })}
         className="w-full rounded px-3 py-2"
         style={{
           backgroundColor: inputBg,
@@ -5592,7 +5436,7 @@ return (
         nombreCliente: nombreCliente,
         tipoInmueble: formData.tipo_inmueble,
         direccion: formData.direccion,
-        ciudad: formData.ciudad_siniestro,
+        ciudad: textoCiudadSiniestro,
         analisisRiesgos: analisisRiesgos,
         tablaRiesgos: tablaRiesgos,
         energiaProveedor: energiaProveedor,
@@ -5666,7 +5510,7 @@ return (
             onExportar={handleExportar}
             tipoFormulario={TIPOS_FORMULARIOS.INSPECCION}
             tituloFormulario="Inspección"
-            deshabilitado={!nombreCliente || !formData.ciudad_siniestro || !formData.aseguradora}
+            deshabilitado={!nombreCliente || !textoCiudadSiniestro || !formData.aseguradora}
             guardando={guardando}
             exportando={exportando}
           />

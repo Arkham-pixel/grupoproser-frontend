@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  FaCalendarAlt,
+  FaCalendarAlt,
   FaCheckCircle,
   FaChevronLeft,
   FaChevronRight,
@@ -20,7 +20,7 @@ import {
   FaArrowUp,
 } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
-import { fetchAllCasosBbvaCat } from '../../services/bbvaCatService.js';
+import { fetchAllCasosBbvaCatListado } from '../../services/bbvaCatListadoService.js';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 import { calcularBoletinDiarioBbvaCat, diaBogotaDesdeOffset } from './boletinDiarioBbvaCatHelpers.js';
 import { isoDateBogota } from './boletinSemanalBbvaCatHelpers.js';
@@ -123,7 +123,7 @@ export default function BoletinDiarioBbvaCat() {
       setLoading(true);
       setError(null);
       try {
-        const lista = await fetchAllCasosBbvaCat();
+        const lista = await fetchAllCasosBbvaCatListado();
         if (!cancelado) {
           setCasos(filtrarCasosPorAsignacionUsuario(lista, { modulo: 'bbvaCat' }));
         }

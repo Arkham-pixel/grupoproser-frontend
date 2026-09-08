@@ -9,6 +9,7 @@ import {
 } from '../../services/allianzListadoService.js';
 import FormularioAllianz from './FormularioAllianz.jsx';
 import AccionesAllianzMenu from './AccionesAllianzMenu.jsx';
+import ArchiveroAllianz from './ArchiveroAllianz.jsx';
 import ModalImportarExcelAllianz, {
   esAdminOSoporteAllianz,
 } from './ModalImportarExcelAllianz.jsx';
@@ -175,6 +176,7 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
   const [pagina, setPagina] = useState(1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
+  const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteAllianz();
@@ -595,9 +597,14 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesAllianzMenu
+                          docsCount={item.archivos?.length || 0}
                           tieneLiquidador={casoAllianzTieneLiquidador(item)}
                           tieneInforme={casoAllianzTieneInforme(item)}
                           onGestionar={() => setCasoEdicion(item)}
+                          onArchivero={() => setCasoArchivero(item)}
+                          onAbrirCaso={() =>
+                            navigate(`/allianz/listado/caso?casoId=${item._id}&tab=informe`)
+                          }
                           onLiquidador={() =>
                             navigate(`/allianz/listado/caso?casoId=${item._id}&tab=liquidador`, {
                               state: { casoAllianz: item },
@@ -671,6 +678,27 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
             onSaved={async () => {
               setCasoEdicion(null);
               await recargar();
+            }}
+          />
+        </ExpressModal>
+      )}
+
+      {casoArchivero && (
+        <ExpressModal
+          open
+          onClose={() => setCasoArchivero(null)}
+          title={t('allianz.archive.title')}
+          wide
+        >
+          <ArchiveroAllianz
+            origen="listado"
+            caso={casoArchivero}
+            onClose={() => setCasoArchivero(null)}
+            onChanged={(actualizado) => {
+              setCasoArchivero(actualizado);
+              setCasos((prev) =>
+                prev.map((c) => (c._id === actualizado._id ? { ...c, ...actualizado } : c))
+              );
             }}
           />
         </ExpressModal>

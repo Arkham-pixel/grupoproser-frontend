@@ -207,27 +207,31 @@ function agregarHojaLiquidacion(workbook, liquidador) {
     filas.push(['Cotización del asegurado', desCot.etiquetaSmmlv || 'SMMLV', desCot.montoSmmlv || 0]);
     filas.push(['Cotización del asegurado', 'Deducible aplicado', cot.deducibleAplicado || 0]);
     filas.push(['Cotización del asegurado', 'Luego de deducible', cot.neto || 0]);
-    if (Number(cot.gastosHospedaje) > 0) {
-      filas.push(['Cotización del asegurado', 'Auxilio / hospedaje', cot.gastosHospedaje]);
-    }
-    (Array.isArray(cot.otrosAmparos) ? cot.otrosAmparos : [])
-      .filter((it) => Number(it?.valor) > 0)
-      .forEach((it) => {
-        filas.push(['Cotización del asegurado', it.nombre || it.tipo || 'Auxilio', it.valor]);
-      });
     filas.push([
       'Cotización del asegurado',
-      'Total (cotización − deducible + auxilios)',
+      'Total (cotización − deducible)',
       cot.total ?? cot.neto ?? 0,
     ]);
   }
   filas.push(['Presupuesto ajustador (NSR-10)', 'Total daños NSR-10', tot.totalDanios || 0]);
-  filas.push(['Presupuesto ajustador (NSR-10)', 'Hospedaje', tot.diagrama?.gastosHospedaje || 0]);
-  filas.push([
-    'Presupuesto ajustador (NSR-10)',
-    tot.deducibleTexto || 'Deducible aplicado',
-    tot.deducibleAplicado || 0,
-  ]);
+  if (tot.diagrama?.modoAplicacionDeducible === 'compartido') {
+    filas.push([
+      'Presupuesto ajustador (NSR-10)',
+      'Deducible compartido',
+      tot.deducibleAplicado || 0,
+    ]);
+  } else {
+    filas.push([
+      'Presupuesto ajustador (NSR-10)',
+      'Deducible infraestructura',
+      tot.diagrama?.deduciblePresupuesto?.aplicado || 0,
+    ]);
+    filas.push([
+      'Presupuesto ajustador (NSR-10)',
+      'Deducible contenidos',
+      tot.diagrama?.deducibleContenidos?.aplicado || 0,
+    ]);
+  }
   filas.push(['Presupuesto ajustador (NSR-10)', 'Luego de deducible', tot.totalIndemnizar || 0]);
   filas.forEach((fila, i) => {
     const row = sheet.getRow(i + 2);

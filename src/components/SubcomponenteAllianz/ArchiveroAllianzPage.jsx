@@ -113,7 +113,7 @@ export default function ArchiveroAllianzPage() {
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('allianz.workspace.loading')}</p>
             ) : casoId && caso ? (
-              <ArchiveroAllianz caso={caso} onChanged={setCaso} />
+              <ArchiveroAllianz origen="cat" caso={caso} onChanged={setCaso} />
             ) : (
               <p className="text-sm text-gray-500">{t('allianz.archive.pickCase')}</p>
             )}

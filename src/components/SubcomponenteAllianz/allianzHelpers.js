@@ -203,6 +203,10 @@ export const ETIQUETAS_ARCHIVO_ALLIANZ = [
   'POLIZA',
   'INSPECCION',
   'LIQUIDACION',
+  'INFORME',
+  'INFORME_PRELIMINAR',
+  'INFORME_FINAL',
+  'INFORME_UNICO',
   'FOTOS',
   'COTIZACION',
   /** Manual CAT — evidencia fotográfica/documental */
@@ -211,6 +215,19 @@ export const ETIQUETAS_ARCHIVO_ALLIANZ = [
   'EQUIPOS_CRITICOS',
   'MITIGACION',
   'NO_ACCESO',
+  'OTRO',
+];
+
+export const ETIQUETAS_ARCHIVO_ALLIANZ_LISTADO = [
+  'GENERAL',
+  'POLIZA',
+  'LIQUIDACION',
+  'INFORME',
+  'INFORME_PRELIMINAR',
+  'INFORME_FINAL',
+  'INFORME_UNICO',
+  'FOTOS',
+  'COTIZACION',
   'OTRO',
 ];
 

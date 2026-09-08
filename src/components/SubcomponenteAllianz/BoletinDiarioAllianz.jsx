@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  FaCalendarAlt,
+  FaCalendarAlt,
   FaCheckCircle,
   FaChevronLeft,
   FaChevronRight,
@@ -20,7 +20,7 @@ import {
   FaArrowUp,
 } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
-import { fetchAllCasosAllianz } from '../../services/allianzService.js';
+import { fetchAllCasosAllianzListado } from '../../services/allianzListadoService.js';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 import { calcularBoletinDiarioAllianz, diaBogotaDesdeOffset } from './boletinDiarioAllianzHelpers.js';
 import { isoDateBogota } from './boletinSemanalAllianzHelpers.js';
@@ -123,7 +123,7 @@ export default function BoletinDiarioAllianz() {
       setLoading(true);
       setError(null);
       try {
-        const lista = await fetchAllCasosAllianz();
+        const lista = await fetchAllCasosAllianzListado();
         if (!cancelado) {
           setCasos(filtrarCasosPorAsignacionUsuario(lista, { modulo: 'allianz' }));
         }

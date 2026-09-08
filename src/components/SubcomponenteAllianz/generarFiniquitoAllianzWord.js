@@ -217,11 +217,9 @@ export async function descargarFiniquitoAllianzWord(liquidador = {}, totalesInpu
   const totalPerdida = formatearMontoConstancia(
     totales.totalDanios ?? totales.totalPerdida ?? totales.totalIndemnizable
   );
-  const deducible = String(totales.deducibleTexto || totales.diagrama?.deducible || 'No aplica');
   const indemnizacion = formatearMontoConstancia(totales.totalIndemnizar);
   const letras = letrasConstancia(montoALetrasFdm(totales.totalIndemnizar));
   const tasaTxt = tasaDeducibleTxt(totales);
-  const hospedaje = formatearMontoConstancia(totales.diagrama?.gastosHospedaje || 0);
 
   const logosTable = await buildLogosHeader();
 
@@ -272,7 +270,7 @@ export async function descargarFiniquitoAllianzWord(liquidador = {}, totalesInpu
           ),
 
           p(
-            `SEGUNDO. - Que recibiré de ${ASEGURADORA}, la suma de: ($${indemnizacion})-(${letras}), valor en que estimo los perjuicios sufridos, dado que el total de daños según presupuesto NSR-10 es por valor de ($${totalPerdida}), más gastos de hospedaje ($${hospedaje}), con deducible: ${tasaTxt}, para un total a indemnizar de: ($${indemnizacion}).`,
+            `SEGUNDO. - Que recibiré de ${ASEGURADORA}, la suma de: ($${indemnizacion})-(${letras}), valor en que estimo los perjuicios sufridos, dado que el total de daños según presupuesto NSR-10 es por valor de ($${totalPerdida}), con deducible: ${tasaTxt}, para un total a indemnizar de: ($${indemnizacion}).`,
             { after: 140 }
           ),
 

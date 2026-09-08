@@ -11,7 +11,7 @@ import {
 } from './boletinSemanalPrevisoraHelpers.js';
 
 const TZ = 'America/Bogota';
-const CORTES_KEY = 'previsora.boletinDiario.cortes';
+const CORTES_KEY = 'previsora.boletinDiario.listado.cortes';
 
 /** Categorías del tablero «Gestión terremoto» / comparativo (mutuamente excluyentes). */
 export const CATEGORIAS_GESTION_TERREMOTO = [
@@ -390,7 +390,7 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
   ) {
     return 'enInspeccion';
   }
-  return 'verificacion';
+  return clasificarCasoGestionTerremoto(caso);
 }
 
 export function reconstruirCorteDesdeCasos(casos = [], isoCorte) {

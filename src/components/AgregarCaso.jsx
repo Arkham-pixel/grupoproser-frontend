@@ -1,29 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { crearCasoComplex, updateCasoComplex } from '../services/complexService';
 import ciudadesData from '../data/colombia.json';
-import Select from 'react-select';
 import { aseguradorasConFuncionarios } from '../data/aseguradorasFuncionarios';
 import { useDropzone } from 'react-dropzone';
 import { useParams } from 'react-router-dom'; // 👈 Importar
 import { getCasoComplex } from '../services/complexService'; // 👈 Importar
-
-
-
-const municipios = ciudadesData.flatMap(dep =>
-  dep.ciudades.map(ciudad => ({
-    label: `${ciudad} - ${dep.departamento}`,
-    value: ciudad
-  }))
-);
-
-
-
-
-
-
+import { BASE_URL } from '../config/apiConfig.js';
+import SelectorDepartamentoCiudad from './shared/SelectorDepartamentoCiudad.jsx';
+import {
+  mapearCiudadesDesdeColombiaJson,
+  mapearCiudadesDesdeApi,
+  extraerListaCiudadesApi,
+  coincidirCiudadExacta,
+  aplicarCambioDepartamento,
+} from '../utils/ciudadesColombia.js';
 
   const AgregarCaso = ({ modoEdicion }) => {
   const { id } = useParams();
+  const [ciudadesRaw, setCiudadesRaw] = useState(() =>
+    mapearCiudadesDesdeColombiaJson(ciudadesData)
+  );
+  const [cargandoCiudades, setCargandoCiudades] = useState(false);
 
   const [formData, setFormData] = useState({
     responsable:'',
@@ -37,6 +34,7 @@ const municipios = ciudadesData.flatMap(dep =>
     fecha_asignacion: '',
     fecha_siniestro: '',
     ciudad_siniestro: '',
+    departamento_siniestro: '',
     descripcion_siniestro: '',
     aseguradora: '',
     funcionario_aseguradora:'',
@@ -121,21 +119,80 @@ const municipios = ciudadesData.flatMap(dep =>
 
 
 
-  const handleCiudadChange = (selectedOption) => {
-  setFormData({ ...formData, ciudad_siniestro: selectedOption.value });
+  useEffect(() => {
+    let cancelado = false;
+    const fallback = () => mapearCiudadesDesdeColombiaJson(ciudadesData);
+    const cargar = async () => {
+      setCargandoCiudades(true);
+      try {
+        if (!BASE_URL) throw new Error('sin BASE_URL');
+        const res = await fetch(`${BASE_URL}/api/ciudades`);
+        if (!res.ok) throw new Error('ciudades');
+        const data = await res.json();
+        const lista = mapearCiudadesDesdeApi(extraerListaCiudadesApi(data));
+        if (!cancelado) setCiudadesRaw(lista.length ? lista : fallback());
+      } catch {
+        if (!cancelado) setCiudadesRaw(fallback());
+      } finally {
+        if (!cancelado) setCargandoCiudades(false);
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const handleDepartamentoSiniestro = (valor) => {
+    setFormData((prev) =>
+      aplicarCambioDepartamento(prev, valor, ciudadesRaw, {
+        departamentoKey: 'departamento_siniestro',
+        departamentoCiudadKey: null,
+        ciudadKey: 'ciudad_siniestro',
+      })
+    );
   };
 
+  const handleCiudadSiniestro = (val) => {
+    setFormData((prev) => ({ ...prev, ciudad_siniestro: val || '' }));
+  };
 
-    const handleAseguradoraChange = (e) => {
+  const handleAseguradoraChange = (e) => {
     const value = e.target.value;
     setFormData({ ...formData, aseguradora: value, funcionario_aseguradora: '' });
   };
 
   useEffect(() => {
     if (modoEdicion && id) {
-      getCasoComplex(id).then(data => setFormData(data));
+      getCasoComplex(id).then((data) => {
+        setFormData({
+          ...data,
+          departamento_siniestro:
+            data?.departamento_siniestro || data?.departamento || '',
+        });
+      });
     }
   }, [modoEdicion, id]);
+
+  useEffect(() => {
+    if (!formData.ciudad_siniestro || !ciudadesRaw.length) return;
+    const match = coincidirCiudadExacta(
+      ciudadesRaw,
+      formData.ciudad_siniestro,
+      formData.departamento_siniestro || ''
+    );
+    if (!match) return;
+    const needsDepto =
+      !formData.departamento_siniestro && match.departamento;
+    const needsNormalize =
+      match.ciudad && match.ciudad !== formData.ciudad_siniestro;
+    if (!needsDepto && !needsNormalize) return;
+    setFormData((prev) => ({
+      ...prev,
+      departamento_siniestro: match.departamento || prev.departamento_siniestro,
+      ciudad_siniestro: match.ciudad || prev.ciudad_siniestro,
+    }));
+  }, [ciudadesRaw, formData.ciudad_siniestro, formData.departamento_siniestro]);
 
 
 
@@ -603,15 +660,17 @@ const {
           />
         </div>
 
-        <div className="lg:col-span-2">
-          <label className="block text-xs sm:text-sm font-medium">Ciudad del Siniestro</label>
-          <Select
-            options={municipios}
-            value={municipios.find(opt => opt.value === formData.ciudad_siniestro)}
-            onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
-            isSearchable
-            className="w-full"
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={formData.departamento_siniestro || ''}
+            ciudad={formData.ciudad_siniestro || ''}
+            onDepartamentoChange={handleDepartamentoSiniestro}
+            onCiudadChange={handleCiudadSiniestro}
+            cargando={cargandoCiudades}
+            labelDepartamento="Departamento del Siniestro"
+            labelCiudad="Ciudad del Siniestro"
+            i18nNs="common"
           />
         </div>
 

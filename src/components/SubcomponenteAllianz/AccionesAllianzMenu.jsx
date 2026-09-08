@@ -37,7 +37,7 @@ export default function AccionesAllianzMenu({
   useLayoutEffect(() => {
     if (!abierto || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
-    const menuAltoApprox = 330;
+    const menuAltoApprox = 380;
     const espacioAbajo = window.innerHeight - rect.bottom;
     const abrirArriba = espacioAbajo < menuAltoApprox && rect.top > menuAltoApprox;
     setCoords({
@@ -99,7 +99,6 @@ export default function AccionesAllianzMenu({
             {t('allianz.report.manage')}
           </button>
           )}
-          {typeof onArchivero === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -110,7 +109,6 @@ export default function AccionesAllianzMenu({
             {t('allianz.report.archive')}
             {docsCount > 0 ? ` (${docsCount})` : ''}
           </button>
-          )}
           {typeof onAbrirCaso === 'function' && (
           <button
             type="button"

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  FaCalendarAlt,
+  FaCalendarAlt,
   FaCheckCircle,
   FaChevronLeft,
   FaChevronRight,
@@ -20,7 +20,7 @@ import {
   FaArrowUp,
 } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
-import { fetchAllCasosPrevisora } from '../../services/previsoraService.js';
+import { fetchAllCasosPrevisoraListado } from '../../services/previsoraListadoService.js';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 import { calcularBoletinDiarioPrevisora, diaBogotaDesdeOffset } from './boletinDiarioPrevisoraHelpers.js';
 import { isoDateBogota } from './boletinSemanalPrevisoraHelpers.js';
@@ -123,7 +123,7 @@ export default function BoletinDiarioPrevisora() {
       setLoading(true);
       setError(null);
       try {
-        const lista = await fetchAllCasosPrevisora();
+        const lista = await fetchAllCasosPrevisoraListado();
         if (!cancelado) {
           setCasos(filtrarCasosPorAsignacionUsuario(lista, { modulo: 'previsora' }));
         }

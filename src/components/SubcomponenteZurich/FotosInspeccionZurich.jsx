@@ -266,6 +266,21 @@ export default function FotosInspeccionZurich({
     });
   };
 
+  const confirmarDescripcion = (id, descripcion) => {
+    const clave = String(id);
+    if (descripcionTimeoutRef.current) clearTimeout(descripcionTimeoutRef.current);
+    const next = imagenes.map((img, idx) =>
+      idImagen(img, idx) === clave ? { ...img, descripcion } : img
+    );
+    isInternalUpdateRef.current = true;
+    setImagenes(next);
+    onFotosInformeChange?.(next);
+    const foto = next.find((img, idx) => idImagen(img, idx) === clave);
+    if (foto?._id && casoId) {
+      Promise.resolve(api.actualizar?.(casoId, foto._id, { descripcion })).catch(() => {});
+    }
+  };
+
   useEffect(
     () => () => {
       if (descripcionTimeoutRef.current) clearTimeout(descripcionTimeoutRef.current);
@@ -516,6 +531,7 @@ export default function FotosInspeccionZurich({
                         e.stopPropagation();
                         actualizarDescripcion(clave, e.target.value);
                       }}
+                      onBlur={(e) => confirmarDescripcion(clave, e.target.value)}
                       onMouseDown={(e) => e.stopPropagation()}
                       placeholder="Descripción de la imagen..."
                       className="mt-1 w-full resize-none rounded px-2 py-1 text-xs focus:outline-none"

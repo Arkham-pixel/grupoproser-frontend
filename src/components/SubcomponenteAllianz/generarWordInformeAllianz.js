@@ -21,7 +21,6 @@ import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../Su
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionAllianz,
-  completarFilasPolizaCoberturaAllianz,
   defaultInformeUnicoAllianz,
   desgloseDeducibleTerremotoAllianz,
   encabezadoDesdecasoAllianz,
@@ -30,6 +29,7 @@ import {
   etiquetaTituloInformeAllianz,
   esInformePreliminarAllianz,
   esInformeUnicoAllianz,
+  esInformeFinalAllianz,
   filasConDatoCotizacionVsPresupuestoAllianz,
   etiquetaMotivoCotizacionVsPresupuestoAllianz,
   motivoFilaCotizacionVsPresupuestoAllianz,
@@ -49,7 +49,6 @@ import {
   resolverTomadorAllianz,
   totalPresupuestoPreliminarAllianz,
 } from './liquidadorAllianzHelpers.js';
-import { nombreTipoOtroAmparo } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
@@ -388,16 +387,12 @@ const campoFila = (label, value, opts = {}) =>
     ],
   });
 
-/** Liquidación de la cotización: monto, deducible y auxilios (hospedaje + otros amparos). */
+/** Liquidación de la cotización: monto menos deducible. */
 function tablaLiquidacionCotizacionWord(liqCot = {}) {
   const monto = Number(liqCot.monto) || 0;
   if (!(monto > 0)) return null;
   const des = liqCot.desglose || {};
   const w = { labelW: 5000, valueW: 5000 };
-  const hosp = Number(liqCot.gastosHospedaje) || 0;
-  const otros = (Array.isArray(liqCot.otrosAmparos) ? liqCot.otrosAmparos : []).filter(
-    (it) => Number(it?.valor) > 0
-  );
   const rows = [
     campoFila('Cotización del asegurado', money(monto), w),
     ...(Number(des.montoPct) > 0
@@ -407,18 +402,7 @@ function tablaLiquidacionCotizacionWord(liqCot = {}) {
       ? [campoFila(des.etiquetaSmmlv || '3 SMMLV', money(des.montoSmmlv), w)]
       : []),
     campoFila('Deducible a aplicar', money(liqCot.deducibleAplicado), w),
-    ...(hosp > 0 || otros.length
-      ? [campoFila('Cotización luego de deducible', money(liqCot.neto), w)]
-      : []),
-    ...(hosp > 0 ? [campoFila('Auxilio / gastos de hospedaje', money(hosp), w)] : []),
-    ...otros.map((it) =>
-      campoFila(
-        `${nombreTipoOtroAmparo(it.tipo, it.nombre)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
-        money(it.valor),
-        w
-      )
-    ),
-    campoFila('TOTAL (cotización − deducible + auxilios)', money(liqCot.total ?? liqCot.neto), {
+    campoFila('TOTAL (cotización − deducible)', money(liqCot.total ?? liqCot.neto), {
       ...w,
       boldValue: true,
     }),
@@ -436,6 +420,80 @@ function textoCiudadDeptoAllianz(caso = {}, enc = {}) {
   const depto = txt(caso.departamento || enc.departamento, '');
   if (ciudad && depto) return `${ciudad} / ${depto}`;
   return ciudad || depto || '—';
+}
+
+/** Ficha del punto 3 (póliza/cobertura desde Gestionar). */
+function construirFichaPolizaCoberturaAllianz({ caso = {}, enc = {}, info = {} } = {}) {
+  const polizaRows = [
+    campoFila('Tomador', txt(resolverTomadorAllianz(caso, enc))),
+    campoFila('N° póliza', txt(caso.numeroPoliza || enc.poliza)),
+    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza || enc.fechaInicioPoliza)),
+    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza || enc.fechaFinPoliza)),
+    campoFila('Cobertura', txt(resolverCoberturaAllianz(caso, enc))),
+    campoFila('Estado pago primas', txt(caso.estadoPagoPrimas)),
+    campoFila(
+      'Dirección predio',
+      txt(resolverDireccionPredioAllianz(caso, enc, info))
+    ),
+    campoFila('Ciudad / Departamento', textoCiudadDeptoAllianz(caso, enc)),
+  ];
+
+  return [
+    heading('3. Información de póliza y cobertura'),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4200, 5160],
+      borders: bordersCuadro,
+      rows: polizaRows,
+    }),
+  ];
+}
+
+/** Campos Final / Único: nexo causal → cobertura → conclusiones → recomendaciones. */
+function parrafosAnalisisConclusionesFinalUnicoAllianz(info = {}, { titulo = null } = {}) {
+  return [
+    ...(titulo ? [heading(titulo)] : []),
+    p('Análisis de nexo causal', { bold: true, before: titulo ? 40 : 180, after: 40 }),
+    p(txt(info.analisisNexoCausal, 'Pendiente diligenciar el análisis de nexo causal.'), {
+      after: 120,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+    p('Análisis de la cobertura', { bold: true, after: 40 }),
+    p(txt(info.analisisCobertura, 'Pendiente diligenciar el análisis de la cobertura.'), {
+      after: 120,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+    p('Conclusiones', { bold: true, after: 40 }),
+    p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
+      after: 120,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+    p('Recomendaciones', { bold: true, after: 40 }),
+    p(txt(info.recomendacion, 'Pendiente diligenciar recomendaciones.'), {
+      after: 160,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+  ];
+}
+
+/** Ficha + análisis libre del punto 3 (informe preliminar). */
+function construirSeccionPolizaCoberturaAllianz({ caso = {}, enc = {}, info = {} } = {}) {
+  return [
+    ...construirFichaPolizaCoberturaAllianz({ caso, enc, info }),
+    p('Análisis de póliza y cobertura', {
+      bold: true,
+      before: 180,
+      after: 60,
+      size: SIZE_12,
+    }),
+    p(
+      txt(info.analisisCobertura, 'Pendiente diligenciar el análisis de póliza y cobertura.'),
+      {
+        after: 140,
+        alignment: AlignmentType.JUSTIFIED,
+      }
+    ),
+  ];
 }
 
 function textoTipoPolizaWordAllianz(caso = {}, enc = {}) {
@@ -986,85 +1044,6 @@ async function construirZonaFirmasAllianz({ info = {} } = {}) {
 }
 
 
-function tablaAnalisisPolizaAllianz(filas = []) {
-  const lista = (Array.isArray(filas) ? filas : []).filter(
-    (f) =>
-      String(f?.concepto || '').trim() ||
-      String(f?.analisis || '').trim() ||
-      String(f?.conclusion || '').trim()
-  );
-  const rows = [
-    new TableRow({
-      children: [
-        cell('CONCEPTO', {
-          bold: true,
-          width: 2000,
-          cuadro: true,
-          alignment: AlignmentType.CENTER,
-        }),
-        cell('ANÁLISIS', {
-          bold: true,
-          width: 5360,
-          cuadro: true,
-          alignment: AlignmentType.CENTER,
-        }),
-        cell('CONCLUSIÓN', {
-          bold: true,
-          width: 2000,
-          cuadro: true,
-          alignment: AlignmentType.CENTER,
-        }),
-      ],
-    }),
-  ];
-  if (!lista.length) {
-    rows.push(
-      new TableRow({
-        children: [
-          cell('Pendiente diligenciar el análisis de póliza y cobertura.', {
-            width: 9360,
-            columnSpan: 3,
-            cuadro: true,
-            alignment: AlignmentType.CENTER,
-          }),
-        ],
-      })
-    );
-  } else {
-    lista.forEach((f) => {
-      rows.push(
-        new TableRow({
-          children: [
-            cell(txt(f.concepto), {
-              bold: true,
-              width: 2000,
-              cuadro: true,
-              verticalAlign: VerticalAlign.TOP,
-            }),
-            cell(txt(f.analisis), {
-              width: 5360,
-              cuadro: true,
-              verticalAlign: VerticalAlign.TOP,
-            }),
-            cell(txt(f.conclusion), {
-              bold: true,
-              width: 2000,
-              cuadro: true,
-              verticalAlign: VerticalAlign.TOP,
-            }),
-          ],
-        })
-      );
-    });
-  }
-  return new Table({
-    width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [2000, 5360, 2000],
-    borders: bordersCuadro,
-    rows,
-  });
-}
-
 function tablaPresupuestoPreliminarAllianz(filas = []) {
   const lista = Array.isArray(filas) ? filas : [];
   const rows = [
@@ -1243,12 +1222,6 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const liq = liquidador || mapcasoAllianzALiquidador(caso);
   const totales = calcularLiquidacionAllianz(liq);
   const enc = fusionarEncabezadoAllianz(encabezadoDesdecasoAllianz(caso), liq.encabezado);
-  const filasPolizaWord = completarFilasPolizaCoberturaAllianz(info.filasPolizaCobertura, {
-    caso,
-    encabezado: enc,
-    informe: info,
-    liquidador: liq,
-  });
   const items = itemsPlanosAllianz(liq);
   const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
     ? liq.evaluacionSismicaNSR10.presupuesto.items
@@ -1278,10 +1251,12 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const criterio = totales.criterio || {};
   const esPreliminar = esInformePreliminarAllianz(info);
   const esUnico = esInformeUnicoAllianz(info);
+  const esFinal = esInformeFinalAllianz(info);
   const tipoNorm = normalizarTipoInformeAllianz(info.tipoInforme, 'unico');
   const tipoEtiqueta =
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
   const seccionFotos = esPreliminar ? 5 : esUnico ? (incluirNsrWord ? 4 : 3) : 7;
+  const numAnalisisFinalUnico = esUnico ? (incluirNsrWord ? 5 : 4) : 4;
 
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
@@ -1297,12 +1272,27 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const fotoParrafos = [];
   let fotosIncluidas = 0;
   for (const archivo of fotosParaWord.slice(0, 24)) {
+    const nombreFoto =
+      archivo.nombreOriginal || archivo.nombre || `Foto ${fotosIncluidas + 1}`;
+    const descripcionFoto = String(
+      archivo.descripcion || archivo.observacion || archivo.comentario || ''
+    ).trim();
     const img = await bytesDesdeFoto(archivo, urlDescargaArchivoAllianz);
     if (!img) {
       fotoParrafos.push(
-        p(`• ${archivo.nombreOriginal || archivo.nombre || 'Foto'} (no embebida)`, {
+        p(`• ${nombreFoto} (no embebida)`, {
           size: SIZE_12,
-        })
+          after: descripcionFoto ? 30 : 100,
+        }),
+        ...(descripcionFoto
+          ? [
+              p(descripcionFoto, {
+                alignment: AlignmentType.JUSTIFIED,
+                size: SIZE_12,
+                after: 120,
+              }),
+            ]
+          : [])
       );
       continue;
     }
@@ -1319,11 +1309,21 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           }),
         ],
       }),
-      p(archivo.nombreOriginal || archivo.nombre || `Foto ${fotosIncluidas}`, {
+      p(nombreFoto, {
         alignment: AlignmentType.CENTER,
         size: SIZE_12,
-        after: 120,
-      })
+        bold: true,
+        after: descripcionFoto ? 30 : 120,
+      }),
+      ...(descripcionFoto
+        ? [
+            p(descripcionFoto, {
+              alignment: AlignmentType.JUSTIFIED,
+              size: SIZE_12,
+              after: 120,
+            }),
+          ]
+        : [])
     );
   }
   if (!fotoParrafos.length) {
@@ -1466,6 +1466,8 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   }
 
   const desgloseDed = desgloseDeducibleTerremotoAllianz(liq, totales.diagrama);
+  const deducibleEsCompartido =
+    totales.diagrama?.modoAplicacionDeducible === 'compartido';
   if (desgloseDed.aplicado > 0) {
     filasCuadro.push(
       new TableRow({
@@ -1499,7 +1501,12 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
       new TableRow({
         children: [
           cell('', { width: 600, cuadro: true }),
-          cell('Deducible terremoto (se resta el mayor)', { width: 4000, cuadro: true }),
+          cell(
+            deducibleEsCompartido
+              ? 'Deducible compartido (se resta una sola vez)'
+              : 'Deducible infraestructura (se resta el mayor)',
+            { width: 4000, cuadro: true }
+          ),
           cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
           cell(`− ${money(desgloseDed.aplicado)}`, {
             width: 2200,
@@ -1511,7 +1518,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     );
   }
   const deducibleContenidos = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
-  if (deducibleContenidos > 0) {
+  if (!deducibleEsCompartido && deducibleContenidos > 0) {
     filasCuadro.push(
       new TableRow({
         children: [
@@ -1597,7 +1604,6 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const nsrTotalWord = Number(totales.totalPresupuesto ?? totales.presupuesto?.total) || 0;
   const contenidosTotalWord = Number(totales.totalContenidos) || 0;
   const sumaTotalWord = Number(totales.sumaCompleta ?? totales.totalDanios) || 0;
-  const hospedajeWord = Number(totales.diagrama?.gastosHospedaje) || 0;
   const hayMontosNsrWord = nsrTotalWord > 0 || Number(totales.subtotal) > 0;
   const hayDesgloseDedWord =
     Number(desgloseDed.aplicado) > 0 ||
@@ -1639,9 +1645,6 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           }),
         ]
       : []),
-    ...(hospedajeWord > 0
-      ? [campoFila('Gastos de hospedaje', money(hospedajeWord), wResumen)]
-      : []),
     ...(hayDesgloseDedWord
       ? [
           campoFila(desgloseDed.etiquetaPct, money(desgloseDed.montoPct), wResumen),
@@ -1652,20 +1655,8 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           }),
         ]
       : []),
-    ...(deducibleContenidos > 0
+    ...(!deducibleEsCompartido && deducibleContenidos > 0
       ? [campoFila('Deducible contenidos', money(deducibleContenidos), wResumen)]
-      : []),
-    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
-      ? [
-          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), wResumen),
-          ...totales.otrosAmparos.map((it) =>
-            campoFila(
-              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
-              money(it.valor),
-              wResumen
-            )
-          ),
-        ]
       : []),
     ...(hayMontosNsrWord ||
     contenidosTotalWord > 0 ||
@@ -1815,7 +1806,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionAllianz({
     info,
     caso,
-    omitirTablaDanios: esUnico,
+    omitirTablaDanios: true,
   });
 
   const pagePortrait = {
@@ -2023,18 +2014,9 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           ),
           ...fotoParrafos,
           heading(
-            `${incluirNsrWord ? 5 : 4}. Conclusiones y recomendación del ajustador`
+            `${incluirNsrWord ? 5 : 4}. Análisis, cobertura, conclusiones y recomendaciones`
           ),
-          p('Conclusiones', { bold: true, after: 40 }),
-          p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
-            after: 120,
-            alignment: AlignmentType.JUSTIFIED,
-          }),
-          p('Recomendación', { bold: true, after: 40 }),
-          p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
-            after: 200,
-            alignment: AlignmentType.JUSTIFIED,
-          }),
+          ...parrafosAnalisisConclusionesFinalUnicoAllianz(info),
           p(
             `Para constancia se firma el presente informe único en ${txt(
               caso.ciudad || enc.ciudad,
@@ -2052,16 +2034,27 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
       {
         properties: { page: pagePortrait },
         headers: { default: header },
-        children: [
-          heading('3. Información de póliza y cobertura'),
-          tablaAnalisisPolizaAllianz(filasPolizaWord),
-        ],
+        children: esFinal
+          ? construirFichaPolizaCoberturaAllianz({ caso, enc, info })
+          : construirSeccionPolizaCoberturaAllianz({ caso, enc, info }),
       },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: seccionConclusiones,
-      },
+      ...(esFinal
+        ? [
+            {
+              properties: { page: pagePortrait },
+              headers: { default: header },
+              children: parrafosAnalisisConclusionesFinalUnicoAllianz(info, {
+                titulo: `${numAnalisisFinalUnico}. Análisis, cobertura, conclusiones y recomendaciones`,
+              }),
+            },
+          ]
+        : [
+            {
+              properties: { page: pagePortrait },
+              headers: { default: header },
+              children: seccionConclusiones,
+            },
+          ]),
     ];
 
     if (!esPreliminar) {

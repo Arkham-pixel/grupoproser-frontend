@@ -11,7 +11,7 @@ import {
 } from './boletinSemanalBbvaCatHelpers.js';
 
 const TZ = 'America/Bogota';
-const CORTES_KEY = 'bbvaCat.boletinDiario.cortes';
+const CORTES_KEY = 'bbvaCat.boletinDiario.listado.cortes';
 
 /** Categorías del tablero «Gestión terremoto» / comparativo (mutuamente excluyentes). */
 export const CATEGORIAS_GESTION_TERREMOTO = [
@@ -270,9 +270,10 @@ export function clasificarGestionDiscriminada(caso = {}) {
     return 'contactadosSinExito';
   }
 
-  if (estado === 'ANÁLISIS DEL CASO' || estado === 'AUTORIZACIÓN ANALISTA') return 'enLiquidacion';
+  if (estado === 'ANÁLISIS DEL CASO' || estado === 'AUTORIZACIÓN ANALISTA' || estado === 'CASO AJUSTADO') return 'enLiquidacion';
   if (estado === 'PENDIENTE DE DOCUMENTO') return 'pendienteInformacion';
   if (estado === 'COORDINANDO INSPECCIÓN') return 'solicitanInspeccion';
+  if (estado === 'DESISTIMIENTO') return 'desistimientoTramite';
   if (texto) return 'contactadosSinExito';
   return null;
 }
@@ -375,9 +376,15 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
     return clasificarCasoGestionTerremoto(caso);
   }
 
+  if (fechaIsoOnOrBefore(caso.fechaDesistimiento, isoCorte)) return 'desistimientos';
   if (fechaIsoOnOrBefore(caso.fechaCasoPagado, isoCorte) || fechaIsoOnOrBefore(caso.fechaCasoParaPago, isoCorte)) return 'pendientesPagoAlfa';
   if (fechaIsoOnOrBefore(caso.fechaObjetado, isoCorte) || fechaIsoOnOrBefore(caso.fechaObjecion, isoCorte)) return 'objetados';
-  if (fechaIsoOnOrBefore(caso.fechaAutorizacionAnalista, isoCorte)) return 'liquidados';
+  if (
+    fechaIsoOnOrBefore(caso.fechaAutorizacionAnalista, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaCasoAjustado, isoCorte)
+  ) {
+    return 'liquidados';
+  }
   if (
     fechaIsoOnOrBefore(caso.fechaAnalisisCaso, isoCorte) ||
     fechaIsoOnOrBefore(caso.fechaSolicitudDocumento, isoCorte) ||
@@ -391,7 +398,8 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
   ) {
     return 'enInspeccion';
   }
-  return 'verificacion';
+  // Sin hitos ≤ corte: usar estado actual (mejor aproximación que forzar verificación).
+  return clasificarCasoGestionTerremoto(caso);
 }
 
 export function reconstruirCorteDesdeCasos(casos = [], isoCorte) {

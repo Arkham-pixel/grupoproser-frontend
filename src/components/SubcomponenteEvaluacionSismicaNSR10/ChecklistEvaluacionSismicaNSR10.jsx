@@ -93,6 +93,7 @@ function displayMiles(valor) {
 function valorInputDeducible(valor, fallback) {
   if (valor === '') return '';
   if (valor === null || valor === undefined) return fallback;
+  if (typeof valor === 'number' && Number.isNaN(valor)) return fallback;
   return valor;
 }
 
@@ -516,6 +517,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
   totalPresupuestoOverride = null,
   /** Override de reglas por cobertura (p. ej. Sura terremoto 2%). */
   reglasDeduciblePorCobertura = null,
+  /** Oculta gastos y el selector técnico de deducible; usado por Allianz. */
+  simplificarDeducible = false,
 }) {
   const { theme } = useTheme();
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -585,13 +588,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
   );
   const hojaRaw = evalData.hojaActiva || 'portada';
   const hojasMenu = (modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10).filter(
-    (h) => !(ocultarPresupuestoEscrito && h.id === 'presupuesto')
+    (h) =>
+      !(ocultarPresupuestoEscrito && h.id === 'presupuesto') &&
+      !(simplificarDeducible && h.id === 'gastos')
   );
-  const hojaFallback = modoLiquidador
+  const hojaFallback = simplificarDeducible
     ? ocultarPresupuestoEscrito
       ? 'totales'
       : 'presupuesto'
-    : hojaActivaVisibleNSR10(hojaRaw);
+    : modoLiquidador
+      ? ocultarPresupuestoEscrito
+        ? 'totales'
+        : 'presupuesto'
+      : hojaActivaVisibleNSR10(hojaRaw);
   const hoja = hojasMenu.some((h) => h.id === hojaRaw) ? hojaRaw : hojaFallback;
   const portadaSyncRef = useRef('');
 
@@ -641,18 +650,35 @@ export default function ChecklistEvaluacionSismicaNSR10({
           liquidacion.valorAsegurado ||
           formData?.valorAseguradoInmueble ||
           formData?.encabezado?.valorAseguradoInmueble,
+        valorAseguradoContenidos:
+          formData?.valorAseguradoContenidos ||
+          formData?.encabezado?.valorAseguradoContenidos,
+        usarValorAseguradoGeneralParaContenidos: !simplificarDeducible,
         totalDanios: totalDaniosDiagrama,
         totalPresupuesto: totalPresupuestoDiagrama,
         totalContenidos: resumenTotales.totalContenidos,
-        hospedajePorcentaje: liquidacion.hospedajePorcentaje,
-        hospedajeManual: liquidacion.hospedajeManual,
+        hospedajePorcentaje: simplificarDeducible ? 0 : liquidacion.hospedajePorcentaje,
+        hospedajeManual: simplificarDeducible ? 0 : liquidacion.hospedajeManual,
         deducible: liquidacion.deducible,
         deducibleConfig: liquidacion.deducibleConfig || deducibleCfg,
         deducibleConfigContenidos: liquidacion.deducibleConfigContenidos || deducibleCfg,
         deducibleConfigPresupuesto:
           liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto,
-        otrosAmparos: formData.otrosAmparos,
+        otrosAmparos: simplificarDeducible ? [] : formData.otrosAmparos,
+        deducibleCompartido:
+          simplificarDeducible &&
+          liquidacion.modoAplicacionDeducible === 'compartido',
         ...(() => {
+          if (simplificarDeducible) {
+            return {
+              usaDeduciblePorArticuloContenidos: false,
+              usaDeduciblePorArticuloPresupuesto: false,
+              deducibleContenidosPorArticulos: 0,
+              deduciblePresupuestoPorArticulos: 0,
+              contenidosNetoPorArticulo: null,
+              presupuestoNetoPorArticulo: null,
+            };
+          }
           const args = argsDeduciblesPorArticuloDiagrama(liquidacion, resumenTotales);
           if (!usaTotalPresupuestoOverride) return args;
           return {
@@ -672,13 +698,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
       usaTotalPresupuestoOverride,
       totalDaniosDiagrama,
       totalPresupuestoDiagrama,
+      simplificarDeducible,
     ]
   );
-  const usaPorArticuloContenidos = true;
-  const modoDeduciblePresupuesto = resolverModoDeduciblePresupuesto(
-    liquidacion,
-    resumenTotales
-  );
+  const usaPorArticuloContenidos = !simplificarDeducible;
+  const modoDeduciblePresupuesto = simplificarDeducible
+    ? MODO_DEDUCIBLE_NSR10.GENERAL
+    : resolverModoDeduciblePresupuesto(liquidacion, resumenTotales);
   const usaPorArticuloPresupuesto =
     modoDeduciblePresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
   const usaPorArticulo = usaPorArticuloContenidos;
@@ -750,6 +776,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     };
     actualizarLiquidacion({
       deducibleConfigPresupuesto: nextCfg,
+      ...(simplificarDeducible ? { deducibleConfigContenidos: nextCfg } : {}),
     });
   };
 
@@ -1572,14 +1599,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
           </div>
 
-          <PreguntaModoDeducibleNsr
-            modoActual={modoDeduciblePresupuesto}
-            onElegir={elegirModoDeduciblePresupuesto}
-            borderColor={borderColor}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            softBg={softBg}
-          />
+          {!simplificarDeducible ? (
+            <PreguntaModoDeducibleNsr
+              modoActual={modoDeduciblePresupuesto}
+              onElegir={elegirModoDeduciblePresupuesto}
+              borderColor={borderColor}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              softBg={softBg}
+            />
+          ) : null}
 
           {usaPorArticuloPresupuesto ? (
             <label className="block max-w-sm">
@@ -2098,18 +2127,23 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   inputMode="decimal"
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                  value={valorInputDeducible(deducibleCfgPresupuestoInput.porcentaje, 10)}
+                  value={valorInputDeducible(
+                    deducibleCfgPresupuestoInput.porcentaje,
+                    simplificarDeducible ? 2 : 10
+                  )}
                   disabled={Boolean(diagrama.deduciblePresupuesto?.tieneArticulos)}
                   title={
                     diagrama.deduciblePresupuesto?.tieneArticulos
                       ? 'En modo por artículo el % se define en cada fila de la tabla'
                       : undefined
                   }
-                  onChange={(e) =>
-                    actualizarDeduciblePresupuesto({
-                      porcentaje: e.target.value === '' ? '' : Number(e.target.value),
-                    })
-                  }
+                  onChange={(e) => {
+                    const raw = e.target.value
+                      .replace(',', '.')
+                      .replace(/[^\d.]/g, '');
+                    if ((raw.match(/\./g) || []).length > 1) return;
+                    actualizarDeduciblePresupuesto({ porcentaje: raw });
+                  }}
                 />
               </label>
               <label className="block text-xs" style={{ color: textSecondary }}>
@@ -2119,19 +2153,26 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   inputMode="decimal"
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                  value={valorInputDeducible(deducibleCfgPresupuestoInput.cantidadSMMLV, 4)}
+                  value={valorInputDeducible(
+                    deducibleCfgPresupuestoInput.cantidadSMMLV,
+                    simplificarDeducible ? 3 : 4
+                  )}
                   disabled={Boolean(diagrama.deduciblePresupuesto?.tieneArticulos)}
                   title={
                     diagrama.deduciblePresupuesto?.tieneArticulos
                       ? 'En modo por artículo el mínimo se define en cada fila de la tabla'
                       : undefined
                   }
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const raw = e.target.value
+                      .replace(',', '.')
+                      .replace(/[^\d.]/g, '');
+                    if ((raw.match(/\./g) || []).length > 1) return;
                     actualizarDeduciblePresupuesto({
-                      cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                      cantidadSMMLV: raw,
                       tipoMinimo: 'SMMLV',
-                    })
-                  }
+                    });
+                  }}
                 />
               </label>
             </div>
@@ -2212,7 +2253,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </p>
           </div>
 
-          {modoLiquidador ? (
+          {modoLiquidador && !simplificarDeducible ? (
             <div className="space-y-4 border-t pt-4" style={{ borderColor }}>
               <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
                 Diagrama de liquidación
@@ -3003,7 +3044,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
         </section>
       )}
 
-      {hoja === 'gastos' && (
+      {!simplificarDeducible && hoja === 'gastos' && (
         <section className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
@@ -3085,8 +3126,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
             <div
               className="flex justify-between border-b px-4 py-2 font-semibold"
-              style={{ borderColor, backgroundColor: softBg }}
-            >
+                style={{ borderColor, backgroundColor: softBg }}
+              >
               <span style={{ color: textPrimary }}>TOTAL GASTOS SIN DEDUCIBLE</span>
               <span className="text-emerald-600">
                 {money(
@@ -3258,21 +3299,21 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </p>
                 </div>
                 {Number(diagrama.gastosHospedaje) > 0 ? (
-                  <div>
-                    <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                      Hospedaje
-                    </p>
-                    <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                      {money(diagrama.gastosHospedaje)}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Hospedaje
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(diagrama.gastosHospedaje)}
+                  </p>
+                </div>
                 ) : null}
                 {Number(diagrama.totalOtrosAmparos) > 0 ? (
-                  <div>
-                    <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
                       Otros amparos
-                    </p>
-                    <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
                       {money(diagrama.totalOtrosAmparos || 0)}
                     </p>
                   </div>

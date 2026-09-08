@@ -606,6 +606,8 @@ export function calcularDiagramaLiquidacion({
   valorAsegurado = 0,
   /** Si viene y es > 0, el % de contenidos va sobre este VA (no el del inmueble). */
   valorAseguradoContenidos = null,
+  /** Compatibilidad histórica: usar VA general si contenidos no tiene VA propio. */
+  usarValorAseguradoGeneralParaContenidos = true,
   totalDanios = 0,
   totalPresupuesto = null,
   totalContenidos = null,
@@ -627,10 +629,13 @@ export function calcularDiagramaLiquidacion({
   /** Suma de (pérdida − deducible) por categoría. Si viene, sustituye total − deducible global. */
   contenidosNetoPorArticulo = null,
   presupuestoNetoPorArticulo = null,
+  /** Un solo deducible sobre infraestructura + contenidos (p. ej. póliza Allianz). */
+  deducibleCompartido = false,
 } = {}) {
   const va = Number(valorAsegurado) || 0;
   const vaContN = Number(valorAseguradoContenidos);
-  const vaCont = vaContN > 0 ? vaContN : va;
+  const vaCont =
+    vaContN > 0 ? vaContN : usarValorAseguradoGeneralParaContenidos ? va : 0;
   const danios = Number(totalDanios) || 0;
   const presupuestoN =
     totalPresupuesto === null || totalPresupuesto === undefined || totalPresupuesto === ''
@@ -679,6 +684,12 @@ export function calcularDiagramaLiquidacion({
     perdida: basePresupuesto,
     valorAsegurado: va,
   });
+  const calcCompartido = deducibleCompartido
+    ? calcularDeducibleSobreBaseConfig(cfgPresupuesto, {
+        perdida: basePresupuesto + baseContenidos,
+        valorAsegurado: va + (vaContN > 0 ? vaContN : 0),
+      })
+    : null;
   const mayorCont = aplicarMayorEntreSmmlvYPctOVa({
     calcGeneral: calcCont,
     porArticulos: deducibleContenidosPorArticulos,
@@ -721,9 +732,25 @@ export function calcularDiagramaLiquidacion({
   const deducibleContenidosAplicado = usarNetoArticuloCont
     ? Math.round(Math.max(0, baseContenidos - contenidosNeto) * 100) / 100
     : mayorCont.aplicado;
-  const sumaDeducibles =
-    Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
-  const sumaNeta = Math.round((presupuestoNeto + contenidosNeto) * 100) / 100;
+  const deducibleCompartidoAplicado = deducibleCompartido
+    ? redondearCopDeducible(
+        Math.min(
+          Number(calcCompartido?.deducibleAplicado) || 0,
+          basePresupuesto + baseContenidos
+        )
+      )
+    : 0;
+  const sumaDeducibles = deducibleCompartido
+    ? deducibleCompartidoAplicado
+    : Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
+  const sumaNeta = deducibleCompartido
+    ? Math.max(
+        0,
+        Math.round(
+          (basePresupuesto + baseContenidos - deducibleCompartidoAplicado) * 100
+        ) / 100
+      )
+    : Math.round((presupuestoNeto + contenidosNeto) * 100) / 100;
   const totalOtrosAmparos = sumarOtrosAmparos(otrosAmparos);
   const indemnizacionPrincipal = Math.round((sumaNeta + hospedaje) * 100) / 100;
   const totalIndemnizar =
@@ -767,6 +794,17 @@ export function calcularDiagramaLiquidacion({
       usaMinimo: mayorPres.ganaSmmlv,
       texto: mayorPres.texto,
     },
+    deducibleCompartido: deducibleCompartido
+      ? {
+          ...calcCompartido,
+          aplicado: deducibleCompartidoAplicado,
+          montoPctOVa: Number(calcCompartido?.deduciblePorcentaje) || 0,
+          montoSmmlv: Number(calcCompartido?.deducibleSMMLV) || 0,
+          neto: sumaNeta,
+          texto: calcCompartido?.texto || mayorPres.texto,
+        }
+      : null,
+    modoAplicacionDeducible: deducibleCompartido ? 'compartido' : 'individual',
     requiereValorAsegurado: Boolean(
       calcPres.requiereValorAsegurado || calcCont.requiereValorAsegurado
     ),

@@ -121,10 +121,11 @@ export function coincidirCiudadExacta(lista = [], valor = '', departamento = '')
   };
 
   if (deptoNorm) {
-    const enDepto = lista.find(
-      (c) => normalizarCiudadTexto(c.departamento) === deptoNorm && coincide(c)
+    return (
+      lista.find(
+        (c) => normalizarCiudadTexto(c.departamento) === deptoNorm && coincide(c)
+      ) || null
     );
-    if (enDepto) return enDepto;
   }
   return lista.find(coincide) || null;
 }
@@ -198,4 +199,18 @@ export function aOpcionesSelect(lista = []) {
     departamento: c.departamento,
     codigo: c.codigo,
   }));
+}
+
+/** Convierte colombia.json (deptos → ciudades[]) al shape del helper. */
+export function mapearCiudadesDesdeColombiaJson(data = []) {
+  const lista = [];
+  for (const dep of Array.isArray(data) ? data : []) {
+    const departamento = String(dep.departamento || '').trim();
+    for (const ciudadRaw of dep.ciudades || []) {
+      const ciudad = String(ciudadRaw || '').trim();
+      if (!ciudad) continue;
+      lista.push({ ciudad, departamento });
+    }
+  }
+  return lista;
 }
