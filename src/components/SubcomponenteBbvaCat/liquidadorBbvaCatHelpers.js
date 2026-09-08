@@ -107,6 +107,34 @@ function primerMontoPositivo(...cands) {
 }
 
 /**
+ * Valor global del liquidador = valor asegurado inmueble del gestionar.
+ * Si el liquidador guardado viene vacío, no pisa el del caso.
+ */
+export function asegurarValorGlobalDesdeGestionarBbvaCat(
+  encabezado = {},
+  caso = {},
+  liquidacionCatastrofico = {}
+) {
+  const enc = { ...(encabezado && typeof encabezado === 'object' ? encabezado : {}) };
+  const liq =
+    liquidacionCatastrofico && typeof liquidacionCatastrofico === 'object'
+      ? liquidacionCatastrofico
+      : {};
+  const va =
+    primerMontoPositivo(
+      enc.valorGlobal,
+      enc.valorAseguradoInmueble,
+      liq.valorAsegurado,
+      caso.valorAseguradoInmueble
+    ) || 0;
+  if (va > 0) {
+    if (montoHueco(enc.valorGlobal)) enc.valorGlobal = va;
+    if (montoHueco(enc.valorAseguradoInmueble)) enc.valorAseguradoInmueble = va;
+  }
+  return { encabezado: enc, valorAsegurado: va > 0 ? va : liq.valorAsegurado };
+}
+
+/**
  * Sube al caso SOLO lo del ajustador (Proser).
  * Reserva / reclamado / estimado de BBVA no se pisan.
  * valorALiquidar = indemnización neta del liquidador (después del deducible).
@@ -495,9 +523,23 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
 
   // Liquidador FDM antiguo: no migrar ítems; abrir NSR fresco conservando encabezado
   if (!esLiquidadorNsrBbvaCat(guardado)) {
+    const encFdm = asegurarValorGlobalDesdeGestionarBbvaCat(
+      { ...base.encabezado, ...(guardado.encabezado || {}) },
+      caso,
+      base.liquidacionCatastrofico
+    ).encabezado;
     return {
       ...base,
-      encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
+      encabezado: encFdm,
+      liquidacionCatastrofico: {
+        ...base.liquidacionCatastrofico,
+        valorAsegurado:
+          primerMontoPositivo(
+            encFdm.valorGlobal,
+            encFdm.valorAseguradoInmueble,
+            base.liquidacionCatastrofico.valorAsegurado
+          ) || base.liquidacionCatastrofico.valorAsegurado,
+      },
       observaciones: guardado.observaciones || '',
       cotizacionPdf: guardado.cotizacionPdf || null,
       liquidacionCotizacionPdf: guardado.liquidacionCotizacionPdf || null,
@@ -508,20 +550,32 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     };
   }
 
-  const encabezadoFusion = { ...base.encabezado, ...(guardado.encabezado || {}) };
+  const encabezadoFusion = asegurarValorGlobalDesdeGestionarBbvaCat(
+    { ...base.encabezado, ...(guardado.encabezado || {}) },
+    caso,
+    {
+      ...base.liquidacionCatastrofico,
+      ...(guardado.liquidacionCatastrofico || {}),
+    }
+  ).encabezado;
   const tipo = inferirTipoLiquidadorBbvaCat({
     tipoLiquidador: guardado.tipoLiquidador,
     encabezado: encabezadoFusion,
     caso,
   });
+  const vaFusion =
+    primerMontoPositivo(
+      guardado.liquidacionCatastrofico?.valorAsegurado,
+      encabezadoFusion.valorGlobal,
+      encabezadoFusion.valorAseguradoInmueble,
+      base.liquidacionCatastrofico.valorAsegurado,
+      caso.valorAseguradoInmueble
+    ) || '';
   const liqFusion = aplicarTipoLiquidadorEnLiquidacionBbvaCat(
     {
       ...base.liquidacionCatastrofico,
       ...(guardado.liquidacionCatastrofico || {}),
-      valorAsegurado:
-        guardado.liquidacionCatastrofico?.valorAsegurado ??
-        encabezadoFusion.valorAseguradoInmueble ??
-        base.liquidacionCatastrofico.valorAsegurado,
+      valorAsegurado: vaFusion,
     },
     tipo
   );

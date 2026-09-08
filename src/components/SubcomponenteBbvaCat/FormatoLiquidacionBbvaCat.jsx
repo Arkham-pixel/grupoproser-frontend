@@ -12,7 +12,7 @@ import {
   buscarItemBasePrecios,
 } from '../SubcomponenteEvaluacionSismicaNSR10/basePreciosPresupuesto.js';
 import SelectBuscable from '../SelectBuscable.jsx';
-import { formatearMonto, parsearNumero } from './liquidadorBbvaCatHelpers.js';
+import { formatearMonto } from './liquidadorBbvaCatHelpers.js';
 import {
   LOGO_BBVA_URL,
   RAMOS_BBVA_CAT,
@@ -21,10 +21,12 @@ import {
   calcularTotalesFormatoExcelBbvaCat,
   etiquetaAiuBbvaCat,
   esValorGlobal,
-  parsearPorcentajeDeducibleBbva,
+  formatoPorcentajeDeducibleUiBbva,
 } from './formatoLiquidacionBbvaCat.js';
 import { inferirTipoLiquidadorBbvaCat, TIPOS_LIQUIDADOR_BBVA_CAT } from './deduciblesBbvaCat.js';
 import { bbvaCatInput, bbvaCatShell } from './bbvaCatFormUi.js';
+
+const bbvaCatInputEditable = `${bbvaCatInput} rounded hover:bg-[#EEF5FB] focus:bg-white focus:ring-1 focus:ring-[#004481] dark:hover:bg-gray-800`;
 
 const labelExcel =
   'flex min-h-[32px] items-center bg-[#E7EEF5] px-2 py-1 font-body text-[11px] font-semibold uppercase leading-tight text-gray-800 dark:bg-[#1E3A5F] dark:text-gray-100';
@@ -104,14 +106,20 @@ export default function FormatoLiquidacionBbvaCat({
   const ctx = excel.ctx;
   const tipos = excel.tiposDeducible;
   const ded = excel.deducibleFormato;
+  const dedRaw =
+    liquidador.deducibleFormato && typeof liquidador.deducibleFormato === 'object'
+      ? liquidador.deducibleFormato
+      : {};
+  const smmlvUi =
+    dedRaw.smmlv !== undefined && dedRaw.smmlv !== null ? dedRaw.smmlv : (ded.smmlv ?? '');
+  const pctUi = formatoPorcentajeDeducibleUiBbva(
+    dedRaw.porcentaje !== undefined && dedRaw.porcentaje !== null
+      ? dedRaw.porcentaje
+      : ded.porcentaje
+  );
   const ramo = encabezado.ramoAfectado || 'TERREMOTO';
-  const pctUi =
-    ded.porcentaje == null || ded.porcentaje === ''
-      ? ''
-      : String(Math.round(parsearPorcentajeDeducibleBbva(ded.porcentaje) * 10000) / 100).replace(
-          /\.0+$/,
-          ''
-        );
+  const smmlvHint = String(smmlvUi === '' || smmlvUi == null ? ded.smmlv ?? 3 : smmlvUi);
+  const pctHint = pctUi === '' ? formatoPorcentajeDeducibleUiBbva(ded.porcentaje) || '2' : pctUi;
 
   const patchEnc = (campo, valor) => {
     if (soloLectura) return;
@@ -275,10 +283,10 @@ export default function FormatoLiquidacionBbvaCat({
             {tipo === 'leasing' &&
             ramo &&
             !/TERREMOTO|TEMBLOR|ERUPCION|VOLCAN|MAREMOTO|TSUNAMI|CATASTROF/i.test(String(ramo))
-              ? 'Leasing: 1,5 SMMLV o 15% de la pérdida — se aplica el mayor.'
+              ? `Leasing: ${smmlvHint} SMMLV o ${pctHint}% de la pérdida — editable; se aplica el mayor.`
               : tipo === 'leasing'
-                ? 'Leasing CAT: 3 SMMLV o 2% del valor asegurable — se aplica el mayor.'
-                : 'Deudores: 3 SMMLV o 2% del valor global — se aplica el mayor.'}
+                ? `Leasing CAT: ${smmlvHint} SMMLV o ${pctHint}% del valor asegurable — editable; se aplica el mayor.`
+                : `Deudores: ${smmlvHint} SMMLV o ${pctHint}% del valor global — editable; se aplica el mayor.`}
           </div>
           <div className="grid grid-cols-[90px_repeat(4,minmax(0,1fr))]">
             <div className={`${labelExcel} border border-gray-300 dark:border-gray-600`}>
@@ -302,36 +310,50 @@ export default function FormatoLiquidacionBbvaCat({
             </div>
             <div className={cellExcel}>
               <input
-                className={`${bbvaCatInput} text-center`}
+                className={`${bbvaCatInputEditable} text-center`}
                 disabled={soloLectura}
-                value={ded.smmlv ?? ''}
+                inputMode="decimal"
+                title="Editable: cantidad de SMMLV (ej. 2 o 3). Se aplica el mayor entre los cuatro tipos."
+                value={smmlvUi}
                 onChange={(e) => onDeducibleFormatoChange?.({ smmlv: e.target.value })}
               />
             </div>
             <div className={cellExcel}>
               <input
-                className={`${bbvaCatInput} text-center`}
+                className={`${bbvaCatInputEditable} text-center`}
                 disabled={soloLectura}
+                inputMode="decimal"
+                title="Editable: porcentaje del deducible (ej. 2 = 2%). Se aplica el mayor entre los cuatro tipos."
                 value={pctUi}
-                onChange={(e) => {
-                  const n = parsearNumero(String(e.target.value).replace('%', ''));
-                  onDeducibleFormatoChange?.({ porcentaje: n ? n / 100 : 0 });
-                }}
+                onChange={(e) =>
+                  onDeducibleFormatoChange?.({
+                    porcentaje: e.target.value.replace(/%/g, ''),
+                  })
+                }
               />
             </div>
             <div className={cellExcel}>
               <input
-                className={`${bbvaCatInput} text-center`}
+                className={`${bbvaCatInputEditable} text-center`}
                 disabled={soloLectura}
-                value={ded.dolares ?? 0}
+                inputMode="decimal"
+                title="Editable: deducible en dólares"
+                value={dedRaw.dolares ?? ded.dolares ?? 0}
                 onChange={(e) => onDeducibleFormatoChange?.({ dolares: e.target.value })}
               />
             </div>
             <div className={cellExcel}>
               <input
-                className={`${bbvaCatInput} text-right`}
+                className={`${bbvaCatInputEditable} text-right`}
                 disabled={soloLectura}
-                value={ded.pesos === '' || ded.pesos == null ? '' : formatMilesNsr10(ded.pesos)}
+                inputMode="decimal"
+                title="Editable: deducible en pesos u otro"
+                value={
+                  (dedRaw.pesos !== undefined ? dedRaw.pesos : ded.pesos) === '' ||
+                  (dedRaw.pesos !== undefined ? dedRaw.pesos : ded.pesos) == null
+                    ? ''
+                    : formatMilesNsr10(dedRaw.pesos !== undefined ? dedRaw.pesos : ded.pesos)
+                }
                 onChange={(e) =>
                   onDeducibleFormatoChange?.({ pesos: formatMilesInputNsr10(e.target.value) })
                 }
@@ -391,11 +413,13 @@ export default function FormatoLiquidacionBbvaCat({
           />
         </div>
         <div className={`${cellGray} text-left font-body text-xs`}>
-          {excel.valorGlobal
-            ? `2% valor global: $ ${formatearMonto(tipos.montoPct)} · se aplica el mayor: $ ${formatearMonto(
+          {tipos.basePorcentaje > 0
+            ? `${pctHint || Math.round((tipos.porcentaje || 0) * 10000) / 100}% × $ ${formatearMonto(
+                tipos.basePorcentaje
+              )} = $ ${formatearMonto(tipos.montoPct)} · mayor con SMMLV: $ ${formatearMonto(
                 tipos.aplicable
               )} (${tipos.tipoAplicadoLabel})`
-            : 'Indique el valor global para calcular el 2%.'}
+            : 'Se arrastra del gestionar (valor asegurado inmueble). Si falta, indíquelo aquí para el %.'}
         </div>
       </div>
 

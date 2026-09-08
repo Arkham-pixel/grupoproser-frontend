@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatMilesInputNsr10, formatMilesNsr10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { formatearMonto, parsearNumero } from './liquidadorBbvaCatHelpers.js';
+import { formatearMonto } from './liquidadorBbvaCatHelpers.js';
 import {
   calcularLiquidacionCotizacionPdfBbvaCat,
   etiquetaAiuBbvaCat,
-  parsearPorcentajeDeducibleBbva,
+  formatoPorcentajeDeducibleUiBbva,
 } from './formatoLiquidacionBbvaCat.js';
 import { bbvaCatInput, bbvaCatShell } from './bbvaCatFormUi.js';
 
@@ -15,6 +15,7 @@ const cellExcel =
   'min-h-[32px] border border-gray-300 bg-white px-1.5 py-0.5 dark:border-gray-600 dark:bg-gray-900';
 const cellGray =
   'min-h-[32px] border border-gray-300 bg-[#F3F3F3] px-1.5 py-1 text-right font-body text-xs text-gray-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100';
+const bbvaCatInputEditable = `${bbvaCatInput} rounded hover:bg-[#EEF5FB] focus:bg-white focus:ring-1 focus:ring-[#004481] dark:hover:bg-gray-800`;
 
 /**
  * Deducible y AIU propios de la cotización PDF (independientes del formato Excel).
@@ -34,6 +35,11 @@ export default function LiquidacionCotizacionPdfBbvaCat({
   );
   const tipos = cotiz.tiposDeducible || {};
   const ded = cotiz.deducibleFormato || {};
+  const dedRaw =
+    liquidador.liquidacionCotizacionPdf?.deducibleFormato &&
+    typeof liquidador.liquidacionCotizacionPdf.deducibleFormato === 'object'
+      ? liquidador.liquidacionCotizacionPdf.deducibleFormato
+      : {};
   const enc = liquidador.encabezado || {};
   const valorGlobalUi =
     enc.valorGlobal === '' || enc.valorGlobal == null
@@ -41,13 +47,13 @@ export default function LiquidacionCotizacionPdfBbvaCat({
         ? ''
         : formatMilesNsr10(enc.valorAseguradoInmueble)
       : formatMilesNsr10(enc.valorGlobal);
-  const pctUi =
-    ded.porcentaje == null || ded.porcentaje === ''
-      ? ''
-      : String(Math.round(parsearPorcentajeDeducibleBbva(ded.porcentaje) * 10000) / 100).replace(
-          /\.0+$/,
-          ''
-        );
+  const smmlvUi =
+    dedRaw.smmlv !== undefined && dedRaw.smmlv !== null ? dedRaw.smmlv : (ded.smmlv ?? '');
+  const pctUi = formatoPorcentajeDeducibleUiBbva(
+    dedRaw.porcentaje !== undefined && dedRaw.porcentaje !== null
+      ? dedRaw.porcentaje
+      : ded.porcentaje
+  );
   const aiuPctUi = String(Math.round(Number(cotiz.aiuPct || 0) * 10000) / 100);
 
   return (
@@ -72,8 +78,10 @@ export default function LiquidacionCotizacionPdfBbvaCat({
           />
         </div>
         <div className={`${cellGray} text-left font-body text-xs`}>
-          {cotiz.valorGlobal
-            ? `2% valor global: $ ${formatearMonto(tipos.montoPct)} · se aplica el mayor: $ ${formatearMonto(
+          {tipos.basePorcentaje > 0
+            ? `${pctUi || Math.round((tipos.porcentaje || 0) * 10000) / 100}% × $ ${formatearMonto(
+                tipos.basePorcentaje
+              )} = $ ${formatearMonto(tipos.montoPct)} · mayor con SMMLV: $ ${formatearMonto(
                 tipos.aplicable
               )} (${tipos.tipoAplicadoLabel})`
             : t('bbvaCat.settlement.quoteNeedGlobalValue')}
@@ -103,36 +111,46 @@ export default function LiquidacionCotizacionPdfBbvaCat({
         <div className={`${labelExcel} border border-gray-300 dark:border-gray-600`}>Tipos</div>
         <div className={cellExcel}>
           <input
-            className={`${bbvaCatInput} text-center`}
+            className={`${bbvaCatInputEditable} text-center`}
             disabled={disabled}
-            value={ded.smmlv ?? ''}
+            inputMode="decimal"
+            title="Editable: cantidad de SMMLV del deducible"
+            value={smmlvUi}
             onChange={(e) => onDeducibleChange?.({ smmlv: e.target.value })}
           />
         </div>
         <div className={cellExcel}>
           <input
-            className={`${bbvaCatInput} text-center`}
+            className={`${bbvaCatInputEditable} text-center`}
             disabled={disabled}
+            inputMode="decimal"
+            title="Editable: porcentaje del deducible (ej. 2 = 2%)"
             value={pctUi}
-            onChange={(e) => {
-              const n = parsearNumero(String(e.target.value).replace('%', ''));
-              onDeducibleChange?.({ porcentaje: n ? n / 100 : 0 });
-            }}
+            onChange={(e) =>
+              onDeducibleChange?.({ porcentaje: e.target.value.replace(/%/g, '') })
+            }
           />
         </div>
         <div className={cellExcel}>
           <input
-            className={`${bbvaCatInput} text-center`}
+            className={`${bbvaCatInputEditable} text-center`}
             disabled={disabled}
-            value={ded.dolares ?? 0}
+            inputMode="decimal"
+            value={dedRaw.dolares ?? ded.dolares ?? 0}
             onChange={(e) => onDeducibleChange?.({ dolares: e.target.value })}
           />
         </div>
         <div className={cellExcel}>
           <input
-            className={`${bbvaCatInput} text-right`}
+            className={`${bbvaCatInputEditable} text-right`}
             disabled={disabled}
-            value={ded.pesos === '' || ded.pesos == null ? '' : formatMilesNsr10(ded.pesos)}
+            inputMode="decimal"
+            value={
+              (dedRaw.pesos !== undefined ? dedRaw.pesos : ded.pesos) === '' ||
+              (dedRaw.pesos !== undefined ? dedRaw.pesos : ded.pesos) == null
+                ? ''
+                : formatMilesNsr10(dedRaw.pesos !== undefined ? dedRaw.pesos : ded.pesos)
+            }
             onChange={(e) =>
               onDeducibleChange?.({ pesos: formatMilesInputNsr10(e.target.value) })
             }

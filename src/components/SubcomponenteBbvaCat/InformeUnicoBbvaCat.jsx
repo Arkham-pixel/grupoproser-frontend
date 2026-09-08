@@ -20,6 +20,7 @@ import {
   defaultInformeUnicoBbvaCat,
   formatDateLarga,
   mapcasoBbvaCatALiquidador,
+  parsearNumero,
 } from './liquidadorBbvaCatHelpers.js';
 import FormatoLiquidacionBbvaCat from './FormatoLiquidacionBbvaCat.jsx';
 import {
@@ -116,6 +117,32 @@ export default function InformeUnicoBbvaCat({
     setInforme(defaultInformeUnicoBbvaCat(casoBbvaCat || {}));
     setLiquidador(liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {}));
   }, [casoBbvaCat?._id]);
+
+  // Arrastra valor asegurado del gestionar si el liquidador aún no tiene valor global.
+  useEffect(() => {
+    const vaCaso = parsearNumero(casoBbvaCat?.valorAseguradoInmueble);
+    if (!(vaCaso > 0)) return;
+    setLiquidador((prev) => {
+      const enc = prev.encabezado || {};
+      const tiene =
+        parsearNumero(enc.valorGlobal) > 0 ||
+        parsearNumero(enc.valorAseguradoInmueble) > 0 ||
+        parsearNumero(prev.liquidacionCatastrofico?.valorAsegurado) > 0;
+      if (tiene) return prev;
+      return {
+        ...prev,
+        encabezado: {
+          ...enc,
+          valorGlobal: vaCaso,
+          valorAseguradoInmueble: vaCaso,
+        },
+        liquidacionCatastrofico: {
+          ...(prev.liquidacionCatastrofico || {}),
+          valorAsegurado: vaCaso,
+        },
+      };
+    });
+  }, [casoBbvaCat?._id, casoBbvaCat?.valorAseguradoInmueble]);
 
   useEffect(() => {
     onEstadoChange?.(informe);

@@ -123,10 +123,42 @@ export function parsearDemeritoBbva(valor) {
 }
 
 export function parsearPorcentajeDeducibleBbva(valor) {
-  const n = parsearNumero(valor);
-  if (!n) return 0;
-  if (n > 1) return n / 100;
-  return n;
+  if (valor === '' || valor == null) return 0;
+  if (typeof valor === 'string') {
+    const raw = valor.replace(/%/g, '').trim().replace(',', '.');
+    if (!raw || raw === '.' || raw === '-') return 0;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    // «2» o «2.5» = puntos porcentuales; «0.02» = fracción.
+    if (n > 1) return Math.min(1, n / 100);
+    return Math.min(1, n);
+  }
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  if (n > 1) return Math.min(1, n / 100);
+  return Math.min(1, n);
+}
+
+/** Cantidad de SMMLV (1.5, 2, 3…): el punto es decimal, no miles. */
+export function parsearCantidadSmmlvBbva(valor) {
+  if (valor === '' || valor == null) return 0;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+  const s = String(valor).trim().replace(/\s/g, '').replace(',', '.');
+  if (!s || s === '.' || s === '-') return 0;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Texto del input de % (acepta fracción guardada 0.02 o puntos «2»). */
+export function formatoPorcentajeDeducibleUiBbva(valor) {
+  if (valor === '' || valor == null) return '';
+  if (typeof valor === 'string') return valor.replace(/%/g, '').trim();
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return '';
+  if (n > 0 && n <= 1) {
+    return String(Math.round(n * 10000) / 100).replace(/\.0+$/, '');
+  }
+  return String(n);
 }
 
 export function defaultDeducibleFormatoBbvaCat(tipo, ramo = '') {
@@ -154,13 +186,17 @@ export function resolverDeducibleFormatoBbvaCat(liquidador = {}) {
   if (saved && typeof saved === 'object') {
     extras.dolares = saved.dolares ?? 0;
     extras.pesos = saved.pesos ?? 0;
-    const smmlvSaved = parsearNumero(saved.smmlv);
-    if (smmlvSaved > 0) extras.smmlv = smmlvSaved;
-    const pctSaved = parsearPorcentajeDeducibleBbva(saved.porcentaje);
-    const oficial = parsearPorcentajeDeducibleBbva(base.porcentaje);
-    const esResidualCinco =
-      Math.abs(pctSaved - 0.05) < 1e-6 && Math.abs(oficial - 0.02) < 1e-6;
-    if (pctSaved > 0 && !esResidualCinco) extras.porcentaje = pctSaved;
+    if (saved.smmlv !== '' && saved.smmlv != null) {
+      const smmlvSaved = parsearCantidadSmmlvBbva(saved.smmlv);
+      if (smmlvSaved > 0) extras.smmlv = smmlvSaved;
+    }
+    if (saved.porcentaje !== '' && saved.porcentaje != null) {
+      const pctSaved = parsearPorcentajeDeducibleBbva(saved.porcentaje);
+      const oficial = parsearPorcentajeDeducibleBbva(base.porcentaje);
+      const esResidualCinco =
+        Math.abs(pctSaved - 0.05) < 1e-6 && Math.abs(oficial - 0.02) < 1e-6;
+      if (pctSaved > 0 && !esResidualCinco) extras.porcentaje = pctSaved;
+    }
   }
   const cfg =
     liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto ||
@@ -405,18 +441,42 @@ export function calcularTiposDeducibleBbvaCat({
   sumaAsegurable = 0,
   trm = 0,
 } = {}) {
-  const smmlvQty = parsearNumero(deducibleFormato.smmlv);
+  const smmlvQty = parsearCantidadSmmlvBbva(deducibleFormato.smmlv);
   const pct = parsearPorcentajeDeducibleBbva(deducibleFormato.porcentaje);
   const dolares = parsearNumero(deducibleFormato.dolares);
   const pesos = parsearNumero(deducibleFormato.pesos);
   const valorSmmlv = smmlvPorAnioBbva(anio);
   const montoSmmlv = redondear(smmlvQty * valorSmmlv);
   const basePct = String(deducibleFormato.basePct || 'valor_global');
+  const vg = parsearNumero(valorGlobal);
+  const sa = parsearNumero(sumaAsegurable);
+  const st = parsearNumero(subTotal);
   let basePorcentaje = 0;
+  let basePorcentajeOrigen = '';
   if (basePct === 'subtotal') {
-    basePorcentaje = subTotal || sumaAsegurable || 0;
+    // Leasing incendio: % sobre la pérdida (subtotal).
+    if (st > 0) {
+      basePorcentaje = st;
+      basePorcentajeOrigen = 'subtotal';
+    } else if (sa > 0) {
+      basePorcentaje = sa;
+      basePorcentajeOrigen = 'valor_asegurable';
+    } else if (vg > 0) {
+      basePorcentaje = vg;
+      basePorcentajeOrigen = 'valor_global';
+    }
   } else {
-    basePorcentaje = valorGlobal || 0;
+    // Deudores / CAT: % sobre valor global (asegurable); si falta, usa ítems o subtotal.
+    if (vg > 0) {
+      basePorcentaje = vg;
+      basePorcentajeOrigen = 'valor_global';
+    } else if (sa > 0) {
+      basePorcentaje = sa;
+      basePorcentajeOrigen = 'valor_asegurable';
+    } else if (st > 0) {
+      basePorcentaje = st;
+      basePorcentajeOrigen = 'subtotal';
+    }
   }
   const montoPct = redondear(basePorcentaje * pct);
   const montoUsd = redondear(dolares * parsearNumero(trm));
@@ -440,6 +500,7 @@ export function calcularTiposDeducibleBbvaCat({
     anio: Number(anio) || '',
     basePct,
     basePorcentaje,
+    basePorcentajeOrigen,
     montoSmmlv,
     montoPct,
     montoUsd,
@@ -454,9 +515,10 @@ export function calcularTiposDeducibleBbvaCat({
  * Totales de plantilla:
  * Sub total = suma indemnizable de ítems.
  * AIU = % editable del subtotal (default 25%; 0 = no aplica).
- * Total = subtotal + AIU (tope valor global si existe).
- * Deducible = MAX(SMMLV, %, USD, pesos) sobre la regla (2% del valor global, no de la pérdida).
- * Valor a indemnizar = MAX(0, total − min(deducible, total)).
+ * Total = subtotal + AIU.
+ * Deducible = MAX(SMMLV, %, USD, pesos); el % usa valor global (gestionar) como base.
+ * Valor a indemnizar = MAX(0, Total − deducible). El valor global no topea la indemnización
+ * (solo alimenta el cálculo del % del deducible).
  */
 export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
@@ -474,13 +536,13 @@ export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
     parsearNumero(enc.valorGlobal) ||
     parsearNumero(enc.valorAseguradoInmueble) ||
     parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
+    parsearNumero(caso.valorAseguradoInmueble) ||
     0;
   const aiuPct = resolverAiuPorcentajeBbvaCat(liquidador);
   const aiu = redondear(sumaIndemnizable * aiuPct);
   const subTotal = sumaIndemnizable;
   const totalConAiu = redondear(subTotal + aiu);
-  const baseIndemnizable =
-    valorGlobal > 0 ? redondear(Math.min(totalConAiu, valorGlobal)) : totalConAiu;
+  const baseIndemnizable = totalConAiu;
   const dedFmt = resolverDeducibleFormatoBbvaCat(liquidador);
   const tipos = calcularTiposDeducibleBbvaCat({
     deducibleFormato: dedFmt,
@@ -602,6 +664,7 @@ export function calcularLiquidacionCotizacionPdfBbvaCat(liquidador = {}, caso = 
     parsearNumero(enc.valorGlobal) ||
     parsearNumero(enc.valorAseguradoInmueble) ||
     parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
+    parsearNumero(caso.valorAseguradoInmueble) ||
     0;
   const tipos = calcularTiposDeducibleBbvaCat({
     deducibleFormato: cfg.deducibleFormato,
