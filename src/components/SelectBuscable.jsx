@@ -47,7 +47,16 @@ export default function SelectBuscable({
   const opcionesFiltradas = useMemo(() => {
     const q = normalizar(busqueda);
     if (!q) return options;
-    return options.filter((o) => normalizar(o.label).includes(q));
+    const score = (label) => {
+      const n = normalizar(label);
+      if (n === q) return 0;
+      if (n.startsWith(q)) return 1;
+      if (n.includes(q)) return 2;
+      return 3;
+    };
+    return options
+      .filter((o) => score(o.label) < 3)
+      .sort((a, b) => score(a.label) - score(b.label));
   }, [options, busqueda]);
 
   const etiquetaSeleccion =
