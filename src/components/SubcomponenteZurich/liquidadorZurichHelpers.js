@@ -413,11 +413,8 @@ function conceptoPolizaCoincide(fila, ...needles) {
   return needles.some((n) => k.includes(claveConceptoPolizaZurich(n)));
 }
 
-function filasPolizaSinAnalisisZurich(filas) {
-  if (!Array.isArray(filas) || !filas.length) return true;
-  return filas.every(
-    (f) => !textoInforme(f?.analisis) && !textoInforme(f?.conclusion)
-  );
+function esConceptoDeduciblePolizaZurich(fila) {
+  return conceptoPolizaCoincide(fila, 'deducible');
 }
 
 function itemsPolizaDesdeLiquidadorZurich(liquidador = {}) {
@@ -469,6 +466,11 @@ function textoResumenArticuloZurich(resumen, etiqueta) {
 }
 
 function autoAnalisisConceptoZurich(fila, ctx) {
+  // Deducible terremoto: el ajustador lo diligencia a mano; no auto-rellenar.
+  if (esConceptoDeduciblePolizaZurich(fila)) {
+    return { analisis: '', conclusion: '' };
+  }
+
   const caso = ctx.caso || {};
   const enc = ctx.encabezado || {};
   const info = ctx.informe || {};
@@ -579,17 +581,6 @@ function autoAnalisisConceptoZurich(fila, ctx) {
     );
   }
 
-  if (conceptoPolizaCoincide(fila, 'deducible')) {
-    const textoCfg =
-      textoInforme(liq?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.texto) ||
-      textoInforme(liq?.deducible) ||
-      TEXTO_DEDUCIBLE_TERREMOTO_ZURICH;
-    return {
-      analisis: `Condición de deducible tomada de Gestionar / liquidador: ${textoCfg}.`,
-      conclusion: textoCfg,
-    };
-  }
-
   if (conceptoPolizaCoincide(fila, 'reserva')) {
     const reserva = reservaSugeridaZurich(info) || parsearNumero(caso.reserva);
     if (!(reserva > 0)) return { analisis: '', conclusion: '' };
@@ -605,40 +596,31 @@ function autoAnalisisConceptoZurich(fila, ctx) {
 /**
  * Completa filas de análisis de póliza con datos de Gestionar (ficha + Presupuesto)
  * sin pisar texto que el ajustador ya haya escrito.
+ * - No reinyecta filas borradas (p. ej. «Deducible terremoto»).
+ * - «Deducible terremoto» nunca se auto-llena: va vacío para diligencia manual.
  */
 export function completarFilasPolizaCoberturaZurich(filas, ctx = {}) {
-  const origen = filasPolizaSinAnalisisZurich(filas) ? plantillaFilasPolizaZurich() : [...filas];
-  const vistos = new Set(origen.map((f) => claveConceptoPolizaZurich(f?.concepto)).filter(Boolean));
-  CONCEPTOS_POLIZA_PRELIMINAR_ZURICH.forEach((concepto) => {
-    const k = claveConceptoPolizaZurich(concepto);
-    if (!vistos.has(k)) {
-      origen.push({
-        id: `poliza-${k.replace(/\s+/g, '-')}`,
-        concepto,
-        analisis: '',
-        conclusion: '',
-      });
-      vistos.add(k);
-    }
-  });
-
-  const items = itemsPolizaDesdeLiquidadorZurich(ctx.liquidador || ctx.caso?.liquidador || {});
-  const extraElectronico = resumenItemsPolizaZurich(
-    items,
-    (it) =>
-      resolverArticuloPolizaId(it) === 'poliza_eee_fijo' ||
-      /electr[oó]nico/i.test(`${it?.articulo || ''} ${it?.categoria || ''}`)
-  );
-  if (extraElectronico && !vistos.has(claveConceptoPolizaZurich('Equipo electrónico'))) {
-    origen.push({
-      id: 'poliza-equipo-electronico',
-      concepto: 'Equipo electrónico',
-      analisis: '',
-      conclusion: '',
-    });
-  }
+  const origen =
+    Array.isArray(filas) && filas.length > 0
+      ? filas.map((f) => ({ ...f }))
+      : plantillaFilasPolizaZurich();
 
   return origen.map((fila) => {
+    if (esConceptoDeduciblePolizaZurich(fila)) {
+      const analisis = textoInforme(fila?.analisis);
+      const conclusion = textoInforme(fila?.conclusion);
+      // Quita el boilerplate que el sistema metía solo (casos ya guardados).
+      const esAuto =
+        /condici[oó]n de deducible tomada de gestionar/i.test(analisis) ||
+        conclusion === TEXTO_DEDUCIBLE_TERREMOTO_ZURICH ||
+        analisis.includes(TEXTO_DEDUCIBLE_TERREMOTO_ZURICH);
+      return {
+        ...fila,
+        concepto: textoInforme(fila?.concepto) || 'Deducible terremoto',
+        analisis: esAuto ? '' : analisis ? String(fila.analisis) : '',
+        conclusion: esAuto ? '' : conclusion ? String(fila.conclusion) : '',
+      };
+    }
     const auto = autoAnalisisConceptoZurich(fila, {
       caso: ctx.caso || {},
       encabezado: ctx.encabezado || {},

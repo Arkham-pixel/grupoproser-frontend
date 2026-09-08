@@ -1869,12 +1869,20 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           after: 80,
           size: SIZE_12,
         }),
+        // Deducible terremoto: manual; si está vacío no sale en el Word.
         tablaAnalisisPolizaZurich(
           completarFilasPolizaCoberturaZurich(info.filasPolizaCobertura, {
             caso,
             encabezado: enc,
             informe: info,
             liquidador: liq,
+          }).filter((f) => {
+            const concepto = String(f?.concepto || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
+            if (!concepto.includes('deducible')) return true;
+            return String(f?.analisis || '').trim() || String(f?.conclusion || '').trim();
           })
         ),
       ],
