@@ -80,8 +80,10 @@ const TextareaDiferida = memo(function TextareaDiferida({
 
   useEffect(() => {
     const next = value || '';
+    // Si el padre solo confirma lo que ya enviamos, no pises teclas posteriores.
+    if (next === committedRef.current) return;
     committedRef.current = next;
-    setLocalValue((current) => (current === next ? current : next));
+    setLocalValue(next);
   }, [value]);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
@@ -160,7 +162,7 @@ const TablaFilasAllianz = memo(function TablaFilasAllianz({
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {(filas || []).map((fila, idx) => (
-              <tr key={`${idx}-${fila.zona || fila.concepto || fila.capitulo || 'fila'}`}>
+              <tr key={fila.id || `allianz-fila-${idx}`}>
                 {columnas.map((col) => (
                   <td key={col.key} className="align-top px-2 py-2">
                     {col.type === 'select' ? (
@@ -458,7 +460,13 @@ export default function InformeUnicoAllianz({
     [setFila]
   );
   const onAddFilaPresupuesto = useCallback(
-    () => addFila('filasPresupuestoPreliminar', { capitulo: '', descripcion: '', valor: '' }),
+    () =>
+      addFila('filasPresupuestoPreliminar', {
+        id: `cap-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        capitulo: '',
+        descripcion: '',
+        valor: '',
+      }),
     [addFila]
   );
   const onRemoveFilaPresupuesto = useCallback(
