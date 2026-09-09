@@ -36,6 +36,7 @@ import {
   guardarColumnasReporteAlfa,
   guardarFiltrosReporteAlfa,
   homologarEstadoAlfa,
+  etiquetaEstadoAlfaReporte,
   limpiarFiltrosReporteAlfaStorage,
   normTexto,
 } from './segurosAlfaHelpers.js';
@@ -120,7 +121,7 @@ import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenAlfa(item, clave) {
   if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
-  if (clave === 'estado') return homologarEstadoAlfa(item.estado, item);
+  if (clave === 'estado') return etiquetaEstadoAlfaReporte(item.estado, item);
   return item[clave];
 }
 
@@ -171,6 +172,7 @@ const COLUMNAS = [
   { clave: 'fechaAceptacionLiquidacion', labelKey: 'fechaAceptacionLiquidacion' },
   { clave: 'fechaEnvioAseguradora', labelKey: 'fechaEnvioAseguradora' },
   { clave: 'zonaAsignada', labelKey: 'zonaAsignada' },
+  { clave: 'tipoPerdida', labelKey: 'tipoPerdida' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'docs', labelKey: 'docs' },
 ];
@@ -208,6 +210,9 @@ function labelColumnaAlfa(t, col) {
   if (col.clave === 'consecutivo') return t('segurosAlfa.report.consecutivo');
   if (col.clave === 'zonaAsignada') {
     return t('segurosAlfa.fields.zonaAsignada', { defaultValue: 'Zona' });
+  }
+  if (col.clave === 'tipoPerdida') {
+    return t('segurosAlfa.fields.tipoPerdida', { defaultValue: 'Tipo de pérdida' });
   }
   return t(`segurosAlfa.fields.${col.labelKey}`);
 }
@@ -301,13 +306,14 @@ const EXPORT_COLUMNAS_ALFA = [
   { header: 'ESTADO SINIESTRO', clave: 'estado', tipo: 'estado' },
   { header: 'OBSERVACION', clave: 'observacionesGestion' },
   { header: 'ZONA', clave: 'zonaAsignada' },
+  { header: 'TIPO PERDIDA', clave: 'tipoPerdida' },
   { header: 'FUERA DE ZONA', clave: 'fueraDeZona', tipo: 'siNo' },
   { header: 'Documentos', clave: 'docs', tipo: 'docs' },
 ];
 
 function valorExportAlfa(caso, col) {
   if (col.tipo === 'fecha') return formatDate(caso[col.clave]) || '';
-  if (col.tipo === 'estado') return homologarEstadoAlfa(caso.estado, caso);
+  if (col.tipo === 'estado') return etiquetaEstadoAlfaReporte(caso.estado, caso);
   if (col.tipo === 'siNo') return caso.fueraDeZona ? 'SI' : 'NO';
   if (col.tipo === 'docs') return Array.isArray(caso.archivos) ? caso.archivos.length : 0;
   if (col.tipo === 'moneda') {
@@ -741,7 +747,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
 
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
-    if (clave === 'estado') return homologarEstadoAlfa(item.estado, item);
+    if (clave === 'estado') return etiquetaEstadoAlfaReporte(item.estado, item);
     if (CAMPOS_MONEDA.has(clave)) {
       if (item[clave] === null || item[clave] === undefined || item[clave] === '') {
         return CAMPOS_CONTROL_LIQUIDACION.has(clave) ? formatCurrency(0) : '—';

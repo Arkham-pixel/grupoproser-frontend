@@ -32,31 +32,76 @@ export const GRUPOS_BARRA_ESTADOS_ALFA = [
   {
     id: 'gestion',
     label: 'Gestión',
+    tone: 'gestion',
     estados: [
-      'Sin contactar',
-      'Contactado y programado',
-      'Inspeccionado',
-      'Sin respuesta',
-      'Solicitud de documentos',
+      { id: 'Sin contactar', label: 'Sin contactar' },
+      { id: 'Contactado y programado', label: 'Contactado - Programado' },
+      { id: 'Inspeccionado', label: 'Inspeccionado' },
+      { id: 'Sin respuesta', label: 'Sin respuesta efectiva' },
+      { id: 'Solicitud de documentos', label: 'En gestión' },
     ],
   },
   {
     id: 'cierre',
     label: 'Cierre',
-    estados: ['LIQUIDADO', 'ENVIADO ASEGURADORA', 'CERRADO'],
+    tone: 'cierre',
+    estados: [
+      { id: 'LIQUIDADO', label: 'Liquidado' },
+      { id: 'ENVIADO ASEGURADORA', label: 'En proceso de pago' },
+      { id: 'CERRADO', label: 'Cerrado totalmente' },
+    ],
   },
   {
     id: 'cierre_sin_pago',
     label: 'Objeción / desistimiento',
-    hint: 'En SharePoint (ESTADO SINIESTRO) se escribe CERRADO.',
-    estados: ['OBJETADO', 'DESISTIDO'],
+    tone: 'objecion',
+    hint: 'Se escriben tal cual en SharePoint (ESTADO SINIESTRO).',
+    estados: [
+      { id: 'OBJETADO', label: 'Objetado' },
+      { id: 'DESISTIDO', label: 'Desistido' },
+    ],
   },
 ];
+
+/** Etiqueta de reporte (boletín / Excel) para un estado interno Arnald. */
+export function etiquetaEstadoAlfaReporte(estado, extras = {}) {
+  const e = homologarEstadoAlfa(estado, extras);
+  const map = {
+    'Sin contactar': 'Sin contactar',
+    'Contactado y programado': 'Contactado - Programado',
+    Inspeccionado: 'Inspeccionado',
+    'Sin respuesta': 'Sin respuesta efectiva',
+    'Solicitud de documentos': 'En gestión',
+    LIQUIDADO: 'Liquidado',
+    'ENVIADO ASEGURADORA': 'En proceso de pago',
+    CERRADO: 'Cerrado totalmente',
+    OBJETADO: 'Objetado',
+    DESISTIDO: 'Desistido',
+  };
+  return map[e] || e;
+}
 
 export const ESTADOS_REQUIEREN_OBS_ALFA = new Set([
   'Sin respuesta',
   'Solicitud de documentos',
 ]);
+
+/** Tipo de pérdida (casilla solicitada por la compañía). */
+export const TIPOS_PERDIDA_ALFA = [
+  { id: 'PARCIAL', label: 'Parcial' },
+  { id: 'TOTAL', label: 'Total' },
+];
+
+export function homologarTipoPerdidaAlfa(valor) {
+  const n = String(valor || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toUpperCase()
+    .trim();
+  if (n === 'PARCIAL' || n.includes('PARCIAL')) return 'PARCIAL';
+  if (n === 'TOTAL' || n.includes('TOTAL')) return 'TOTAL';
+  return '';
+}
 
 /** @deprecated Alias de ESTADOS_REQUIEREN_OBS_ALFA */
 export const ESTADOS_GESTION_REQUIEREN_OBS = ESTADOS_REQUIEREN_OBS_ALFA;
@@ -71,14 +116,26 @@ const LEGACY_ESTADO_A_UNIFICADO = {
   'EN INSPECCIÓN': 'Contactado y programado',
   DOCUMENTACION: 'Solicitud de documentos',
   DOCUMENTACIÓN: 'Solicitud de documentos',
+  'CONTACTADO - PROGRAMADO': 'Contactado y programado',
+  'SIN RESPUESTA EFECTIVA': 'Sin respuesta',
+  'EN GESTION': 'Solicitud de documentos',
+  'EN GESTIÓN': 'Solicitud de documentos',
   LIQUIDADO: 'LIQUIDADO',
+  'PENDIENTE ACEPTACION DE CIFRAS': 'LIQUIDADO',
+  'PENDIENTE ACEPTACIÓN DE CIFRAS': 'LIQUIDADO',
   'ENVIADO ASEGURADORA': 'ENVIADO ASEGURADORA',
+  'EN PROCESO DE PAGO': 'ENVIADO ASEGURADORA',
+  'PROCESO DE PAGO': 'ENVIADO ASEGURADORA',
   CERRADO: 'CERRADO',
+  'CERRADO TOTALMENTE': 'CERRADO',
+  'CERRADOS TOTALMENTE': 'CERRADO',
   OBJETADO: 'OBJETADO',
+  OBJETADOS: 'OBJETADO',
   'CASO OBJETADO': 'OBJETADO',
   OBJECION: 'OBJETADO',
   'OBJECIÓN': 'OBJETADO',
   DESISTIDO: 'DESISTIDO',
+  DESISTIDOS: 'DESISTIDO',
   DESISTIMIENTO: 'DESISTIDO',
 };
 
@@ -228,19 +285,9 @@ export function aplicarObservacionAutoCierreAlfa(estado, observacionActual = '')
   return actualEsAuto ? '' : actual;
 }
 
-/** ESTADO SINIESTRO en SharePoint: OBJETADO y DESISTIDO se reportan como CERRADO. */
+/** ESTADO SINIESTRO en SharePoint: etiquetas reales del boletín (sin forzar CERRADO). */
 export function estadoAlfaParaSharePoint(estado) {
-  const n = String(estado || '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, ' ');
-  if (n === 'OBJETADO' || n === 'DESISTIDO' || n === 'CASO OBJETADO' || n === 'OBJECION') {
-    return 'CERRADO';
-  }
-  if (n === 'DESISTIMIENTO') return 'CERRADO';
-  return String(estado || '').trim();
+  return etiquetaEstadoAlfaReporte(estado);
 }
 
 export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
@@ -450,6 +497,7 @@ export const FORM_VACIO_ALFA = {
   estado: 'Sin contactar',
   observacionesGestion: '',
   zonaAsignada: '',
+  tipoPerdida: '',
   fueraDeZona: false,
   noAceptacionOferta: false,
   grupoReclamacion: '',
@@ -595,6 +643,7 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
     ),
     fueraDeZona: Boolean(caso.fueraDeZona),
     noAceptacionOferta: Boolean(caso.noAceptacionOferta),
+    tipoPerdida: homologarTipoPerdidaAlfa(caso.tipoPerdida),
   };
   base.estado = homologarEstadoAlfa(caso.estado, {
     fechaInspeccion: caso.fechaInspeccion,

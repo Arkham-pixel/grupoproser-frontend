@@ -753,7 +753,7 @@ export default function LiquidadorSegurosAlfa({
             type="button"
             className={expressBtnGhost}
             disabled={!!exportando}
-            title="Carta cuando la pérdida es inferior al deducible"
+            title="Carta de objeción: pérdida inferior al deducible (sin indemnización)"
             onClick={() =>
               correrExport(
                 'cartaDeducible',
@@ -764,8 +764,8 @@ export default function LiquidadorSegurosAlfa({
             }
           >
             <FaFileWord />{' '}
-            {t('segurosAlfa.settlement.downloadCartaInferiorDeducible', {
-              defaultValue: 'Carta inferior deducible',
+            {t('segurosAlfa.settlement.downloadCartaObjecion', {
+              defaultValue: 'Carta de objeción',
             })}
           </button>
           <button

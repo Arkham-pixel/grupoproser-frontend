@@ -1615,7 +1615,8 @@
       "inspector": "Inspector",
       "fechaAviso": "Fecha aviso",
       "valorAseguradoSid": "Valor asegurado SID",
-      "zonaAsignada": "Zona asignada"
+      "zonaAsignada": "Zona asignada",
+      "tipoPerdida": "Tipo de pérdida"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -1627,6 +1628,7 @@
       "celular": "Ej: 300 000 0000",
       "poliza": "Ej: INC-25334",
       "cobertura": "Ej: TERREMOTO",
+      "tipoPerdida": "Seleccione…",
       "estadoPagoPrimas": "Ej: AL DÍA",
       "selectCity": "Seleccione ciudad",
       "selectDepartmentFirst": "Primero seleccione departamento"
@@ -1875,7 +1877,8 @@
       "notes": "Observaciones",
       "downloadFiniquito": "Descargar finiquito Word",
       "downloadFiniquitoArrendamiento": "Finiquito arrendamiento",
-      "downloadCartaInferiorDeducible": "Carta inferior deducible",
+      "downloadCartaObjecion": "Carta de objeción",
+      "downloadCartaInferiorDeducible": "Carta de objeción",
       "downloadCartaDesistimiento": "Carta desistimiento",
       "downloadExcel": "Descargar Excel",
       "downloadPdf": "Descargar PDF",
@@ -2092,6 +2095,24 @@
       "openWeekly": "Boletín semanal",
       "loadError": "No fue posible cargar el boletín diario.",
       "cutOff": "Fecha de corte",
+      "unificado": {
+        "s1": "1. Resumen general de cartera (Estado actual)",
+        "s1Sub": "Indicadores consolidados de la cartera asignada.",
+        "s2": "2. Estado de gestión actual",
+        "s3": "3. Estado del siniestro",
+        "s4": "4. Cierres del día",
+        "s4Sub": "Durante el día seleccionado (corte Bogotá).",
+        "s5": "5. Clasificación de pérdidas",
+        "indicador": "Indicador",
+        "totalCasos": "Total casos",
+        "estadoGestion": "Estado de gestión",
+        "estadoSiniestro": "Estado del siniestro",
+        "avance": "Avance",
+        "movimiento": "Movimiento",
+        "resultado": "Resultado",
+        "cantidad": "Cantidad",
+        "tipoPerdida": "Tipo de pérdida"
+      },
       "terremoto": {
         "title": "Gestión terremoto",
         "subtitle": "Clasificación actual de los casos",

@@ -38,6 +38,7 @@ import {
   ESTADOS_REQUIEREN_OBS_ALFA,
   FORM_VACIO_ALFA,
   PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE,
+  TIPOS_PERDIDA_ALFA,
   aplicarObservacionAutoCierreAlfa,
   construirFormDesdeCasoAlfa,
   estadoGestionDesdeEstadoAlfa,
@@ -45,6 +46,7 @@ import {
   formatMilesInput,
   pesosOficialesAlfa,
   homologarEstadoAlfa,
+  homologarTipoPerdidaAlfa,
   casoAlfaVenceSla2Dias,
   casoTieneEvidenciaComunicacionBajoDeducible,
 } from './segurosAlfaHelpers.js';
@@ -375,6 +377,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       form.observacionesGestion != null ? String(form.observacionesGestion) : ''
     );
     payload.zonaAsignada = form.zonaAsignada || '';
+    payload.tipoPerdida = homologarTipoPerdidaAlfa(form.tipoPerdida);
     payload.noAceptacionOferta = Boolean(form.noAceptacionOferta);
     return payload;
   };
@@ -625,6 +628,27 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               onChange={setCampo('cobertura')}
               placeholder={t('segurosAlfa.placeholders.cobertura')}
             />
+          </Campo>
+          <Campo
+            label={t('segurosAlfa.fields.tipoPerdida', {
+              defaultValue: 'Tipo de pérdida',
+            })}
+          >
+            <SelectFenix
+              value={form.tipoPerdida || ''}
+              onChange={setCampo('tipoPerdida')}
+            >
+              <option value="">
+                {t('segurosAlfa.placeholders.tipoPerdida', {
+                  defaultValue: 'Seleccione…',
+                })}
+              </option>
+              {TIPOS_PERDIDA_ALFA.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.label}
+                </option>
+              ))}
+            </SelectFenix>
           </Campo>
           <Campo label={t('segurosAlfa.fields.estadoPagoPrimas')}>
             <InputFenix
