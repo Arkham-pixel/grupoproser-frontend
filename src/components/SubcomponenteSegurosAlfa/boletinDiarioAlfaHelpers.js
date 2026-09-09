@@ -4,7 +4,8 @@
  */
 
 import {
-  homologarEstadoAlfa,
+  homologarEstadoGestionAlfa,
+  homologarEstadoSiniestroAlfa,
   homologarTipoPerdidaAlfa,
 } from './segurosAlfaHelpers.js';
 import {
@@ -19,35 +20,36 @@ const CORTES_KEY = 'segurosAlfa.boletinDiario.cortes.v2';
 /** 1. Resumen general de cartera */
 export const FILAS_RESUMEN_CARTERA = [
   { id: 'total', label: 'Total casos asignados' },
-  { id: 'sinContactar', label: 'Sin contactar' },
   { id: 'enGestion', label: 'En gestión' },
-  { id: 'contactadoProgramado', label: 'Contactado - Programado' },
+  { id: 'contactadoProgramado', label: 'Contactado/Programado' },
   { id: 'inspeccionado', label: 'Inspeccionado' },
   { id: 'liquidado', label: 'Liquidado' },
-  { id: 'pendienteAceptacion', label: 'Pendiente aceptación de cifras' },
-  { id: 'procesoPago', label: 'En proceso de pago' },
-  { id: 'cerrados', label: 'Cerrados totalmente' },
-  { id: 'objetados', label: 'Objetados' },
-  { id: 'desistidos', label: 'Desistidos' },
+  { id: 'sinRespuesta', label: 'Sin respuesta efectiva' },
+  { id: 'pendientes', label: 'Pendiente' },
+  { id: 'pendienteAceptacion', label: 'Pendiente aceptacion cifras' },
+  { id: 'procesoPago', label: 'Proceso de pago' },
+  { id: 'cerrados', label: 'Cerrado' },
+  { id: 'objetados', label: 'Objetado' },
+  { id: 'desistidos', label: 'Desistido' },
 ];
 
 /** 2. Estado de gestión actual */
 export const FILAS_ESTADO_GESTION = [
   { id: 'enGestion', label: 'En gestión' },
-  { id: 'contactadoProgramado', label: 'Contactado - Programado' },
-  { id: 'inspeccionado', label: 'Inspeccionado' },
+  { id: 'contactadoProgramado', label: 'Contactado/Programado' },
   { id: 'liquidado', label: 'Liquidado' },
+  { id: 'inspeccionado', label: 'Inspeccionado' },
   { id: 'sinRespuesta', label: 'Sin respuesta efectiva' },
 ];
 
 /** 3. Estado del siniestro */
 export const FILAS_ESTADO_SINIESTRO = [
-  { id: 'pendientes', label: 'Pendientes' },
-  { id: 'pendienteAceptacion', label: 'Pendientes aceptación cifras' },
+  { id: 'pendientes', label: 'Pendiente' },
+  { id: 'desistidos', label: 'Desistido' },
+  { id: 'cerrados', label: 'Cerrado' },
+  { id: 'objetados', label: 'Objetado' },
   { id: 'procesoPago', label: 'Proceso de pago' },
-  { id: 'cerrados', label: 'Cerrados' },
-  { id: 'objetados', label: 'Objetados' },
-  { id: 'desistidos', label: 'Desistidos' },
+  { id: 'pendienteAceptacion', label: 'Pendiente aceptacion cifras' },
 ];
 
 /** 4. Cierres del día */
@@ -100,15 +102,6 @@ function fechaEnDiaIso(fecha, isoDia) {
   return isoDateBogota(fecha) === isoDia;
 }
 
-function aceptoCifras(caso = {}) {
-  const acep = String(caso?.liquidador?.aceptacionIndemnizacion || '')
-    .toUpperCase()
-    .replace(/\s+/g, '_');
-  if (acep === 'ACEPTO') return true;
-  if (caso.fechaAceptacionLiquidacion) return true;
-  return false;
-}
-
 function tipoPerdidaCaso(caso = {}) {
   const tip = homologarTipoPerdidaAlfa(caso.tipoPerdida);
   if (tip) return tip;
@@ -119,43 +112,47 @@ function tipoPerdidaCaso(caso = {}) {
  * Bucket exclusivo del resumen / siniestro a partir del estado Arnald.
  */
 export function clasificarBucketCartera(caso = {}) {
-  const estado = homologarEstadoAlfa(caso.estado, caso);
+  const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
+  const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
 
-  if (estado === 'DESISTIDO') return 'desistidos';
-  if (estado === 'OBJETADO') return 'objetados';
-  if (estado === 'CERRADO') return 'cerrados';
-  if (estado === 'ENVIADO ASEGURADORA') return 'procesoPago';
-  if (estado === 'LIQUIDADO') {
-    return aceptoCifras(caso) ? 'liquidado' : 'pendienteAceptacion';
+  if (estadoSiniestro === 'DESISTIDO') return 'desistidos';
+  if (estadoSiniestro === 'OBJETADO') return 'objetados';
+  if (estadoSiniestro === 'CERRADO') return 'cerrados';
+  if (estadoSiniestro === 'PROCESO DE PAGO') return 'procesoPago';
+  if (estadoSiniestro === 'PENDIENTE ACEPTACION CIFRAS') return 'pendienteAceptacion';
+  if (estadoSiniestro === 'PENDIENTE') {
+    if (estadoGestion === 'LIQUIDADO') return 'liquidado';
+    if (estadoGestion === 'INSPECCIONADO') return 'inspeccionado';
+    if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'contactadoProgramado';
+    if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
+    return 'enGestion';
   }
-  if (estado === 'Inspeccionado') return 'inspeccionado';
-  if (estado === 'Contactado y programado') return 'contactadoProgramado';
-  if (estado === 'Sin respuesta') return 'sinRespuesta';
-  if (estado === 'Solicitud de documentos') return 'enGestion';
-  return 'sinContactar';
+
+  if (estadoGestion === 'LIQUIDADO') return 'liquidado';
+  if (estadoGestion === 'INSPECCIONADO') return 'inspeccionado';
+  if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'contactadoProgramado';
+  if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
+  return 'pendientes';
 }
 
 /** Buckets de la tabla «Estado de gestión». */
 export function clasificarBucketGestion(caso = {}) {
-  const b = clasificarBucketCartera(caso);
-  if (b === 'sinRespuesta') return 'sinRespuesta';
-  if (b === 'contactadoProgramado') return 'contactadoProgramado';
-  if (b === 'inspeccionado') return 'inspeccionado';
-  if (b === 'liquidado' || b === 'pendienteAceptacion') return 'liquidado';
-  if (b === 'enGestion' || b === 'sinContactar') return 'enGestion';
-  // Cierres / pago / objeción no cuentan en gestión operativa
-  return null;
+  const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
+  if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
+  if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'contactadoProgramado';
+  if (estadoGestion === 'INSPECCIONADO') return 'inspeccionado';
+  if (estadoGestion === 'LIQUIDADO') return 'liquidado';
+  return 'enGestion';
 }
 
 /** Buckets de la tabla «Estado del siniestro». */
 export function clasificarBucketSiniestro(caso = {}) {
-  const b = clasificarBucketCartera(caso);
-  if (b === 'desistidos') return 'desistidos';
-  if (b === 'objetados') return 'objetados';
-  if (b === 'cerrados') return 'cerrados';
-  if (b === 'procesoPago') return 'procesoPago';
-  if (b === 'pendienteAceptacion') return 'pendienteAceptacion';
-  // Liquidado con aceptación / en gestión operativa → aún pendientes de cierre siniestro
+  const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
+  if (estadoSiniestro === 'DESISTIDO') return 'desistidos';
+  if (estadoSiniestro === 'OBJETADO') return 'objetados';
+  if (estadoSiniestro === 'CERRADO') return 'cerrados';
+  if (estadoSiniestro === 'PROCESO DE PAGO') return 'procesoPago';
+  if (estadoSiniestro === 'PENDIENTE ACEPTACION CIFRAS') return 'pendienteAceptacion';
   return 'pendientes';
 }
 
@@ -238,7 +235,7 @@ export function contarClasificacionPerdidas(casos = []) {
 export function contarCierresDelDia(casos = [], isoDia) {
   const counts = emptyCounts(FILAS_CIERRES_DIA);
   for (const caso of Array.isArray(casos) ? casos : []) {
-    const estado = homologarEstadoAlfa(caso.estado, caso);
+    const estado = homologarEstadoSiniestroAlfa(caso.estado, caso);
     const tip = tipoPerdidaCaso(caso);
 
     if (estado === 'CERRADO' && fechaEnDiaIso(parseFechaCaso(caso.fechaEnvioAseguradora) || parseFechaCaso(caso.updatedAt), isoDia)) {
@@ -353,18 +350,11 @@ export function reconstruirCorteDesdeCasos(casos = [], isoCorte) {
 
     let casoProxy = caso;
     if (pudoCambiarDespues) {
-      let estadoProxy = 'Sin contactar';
+      let estadoProxy = 'PENDIENTE';
       if (fechaIsoOnOrBefore(caso.fechaEnvioAseguradora, isoCorte)) {
-        estadoProxy = 'ENVIADO ASEGURADORA';
+        estadoProxy = 'PROCESO DE PAGO';
       } else if (fechaIsoOnOrBefore(caso.fechaLiquidado, isoCorte)) {
-        estadoProxy = 'LIQUIDADO';
-      } else if (
-        fechaIsoOnOrBefore(caso.fechaInspeccion, isoCorte) ||
-        fechaIsoOnOrBefore(caso.fechaUltimoDocumento, isoCorte)
-      ) {
-        estadoProxy = 'Inspeccionado';
-      } else if (fechaIsoOnOrBefore(caso.fechaLlamada, isoCorte)) {
-        estadoProxy = 'Contactado y programado';
+        estadoProxy = 'PENDIENTE ACEPTACION CIFRAS';
       }
       casoProxy = { ...caso, estado: estadoProxy };
     }

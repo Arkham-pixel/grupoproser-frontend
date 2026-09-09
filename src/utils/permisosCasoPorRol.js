@@ -218,11 +218,11 @@ export function puedeEditarCampoCaso(rol = obtenerRolAlmacenado(), campo, opts =
   if (puedeEditarTodoElCaso(r, opts)) return true;
   if (esRolEra(r) || esIdentidadEra(opts)) {
     const modo = modoEdicionEraDelCaso(opts.caso, { ...opts, rol: r });
-    if (modo === 'inspector') return key === 'estado';
+    if (modo === 'inspector') return key === 'estado' || key === 'estadoGestion';
     if (modo === 'ajustador') return !esCampoAsignacionCaso(key);
     return false;
   }
-  if (r === ROL_INSPECTOR) return key === 'estado';
+  if (r === ROL_INSPECTOR) return key === 'estado' || key === 'estadoGestion';
   if (r === ROL_AJUSTADOR_CASO) return !esCampoAsignacionCaso(key);
   return true;
 }
@@ -247,6 +247,8 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}
       return {
         payload: {
           estado: payload.estado != null ? payload.estado : base.estado,
+          estadoGestion:
+            payload.estadoGestion != null ? payload.estadoGestion : base.estadoGestion,
         },
         soloEstado: true,
       };
@@ -268,6 +270,8 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}
     return {
       payload: {
         estado: payload.estado != null ? payload.estado : base.estado,
+        estadoGestion:
+          payload.estadoGestion != null ? payload.estadoGestion : base.estadoGestion,
       },
       soloEstado: true,
     };

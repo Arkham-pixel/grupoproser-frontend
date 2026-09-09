@@ -2,88 +2,61 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const ALFA_REPORTE_PAGE_SIZE = 25;
 
-/**
- * Catálogo único de estado (barra Alfa).
- * Une lineamiento correo + cierre de liquidación.
- */
-export const ESTADOS_ALFA = [
-  'Sin contactar',
-  'Contactado y programado',
-  'Inspeccionado',
-  'Sin respuesta',
-  'Solicitud de documentos',
+export const ESTADOS_GESTION_ALFA = [
+  'EN GESTIÓN',
+  'CONTACTADO/PROGRAMADO',
   'LIQUIDADO',
-  'ENVIADO ASEGURADORA',
-  'CERRADO',
-  'OBJETADO',
-  'DESISTIDO',
+  'INSPECCIONADO',
+  'SIN RESPUESTA EFECTIVA',
 ];
 
-/** @deprecated Usar ESTADOS_ALFA (un solo eje). */
-export const ESTADOS_GESTION_ALFA = [
-  'Sin contactar',
-  'Contactado y programado',
-  'Inspeccionado',
-  'Sin respuesta',
-  'Solicitud de documentos',
+export const ESTADOS_SINIESTRO_ALFA = [
+  'PENDIENTE',
+  'DESISTIDO',
+  'CERRADO',
+  'OBJETADO',
+  'PROCESO DE PAGO',
+  'PENDIENTE ACEPTACION CIFRAS',
 ];
+
+/** Alias de compatibilidad (filtro de estado actual). */
+export const ESTADOS_ALFA = ESTADOS_SINIESTRO_ALFA;
 
 export const GRUPOS_BARRA_ESTADOS_ALFA = [
   {
     id: 'gestion',
-    label: 'Gestión',
+    label: 'Estado gestión',
     tone: 'gestion',
     estados: [
-      { id: 'Sin contactar', label: 'Sin contactar' },
-      { id: 'Contactado y programado', label: 'Contactado - Programado' },
-      { id: 'Inspeccionado', label: 'Inspeccionado' },
-      { id: 'Sin respuesta', label: 'Sin respuesta efectiva' },
-      { id: 'Solicitud de documentos', label: 'En gestión' },
+      { id: 'EN GESTIÓN', label: 'En gestión' },
+      { id: 'CONTACTADO/PROGRAMADO', label: 'Contactado/Programado' },
+      { id: 'LIQUIDADO', label: 'Liquidado' },
+      { id: 'INSPECCIONADO', label: 'Inspeccionado' },
+      { id: 'SIN RESPUESTA EFECTIVA', label: 'Sin respuesta efectiva' },
     ],
   },
   {
-    id: 'cierre',
-    label: 'Cierre',
+    id: 'siniestro',
+    label: 'Estado de siniestro',
     tone: 'cierre',
     estados: [
-      { id: 'LIQUIDADO', label: 'Liquidado' },
-      { id: 'ENVIADO ASEGURADORA', label: 'En proceso de pago' },
-      { id: 'CERRADO', label: 'Cerrado totalmente' },
-    ],
-  },
-  {
-    id: 'cierre_sin_pago',
-    label: 'Objeción / desistimiento',
-    tone: 'objecion',
-    hint: 'Se escriben tal cual en SharePoint (ESTADO SINIESTRO).',
-    estados: [
-      { id: 'OBJETADO', label: 'Objetado' },
+      { id: 'PENDIENTE', label: 'Pendiente' },
       { id: 'DESISTIDO', label: 'Desistido' },
+      { id: 'CERRADO', label: 'Cerrado' },
+      { id: 'OBJETADO', label: 'Objetado' },
+      { id: 'PROCESO DE PAGO', label: 'Proceso de pago' },
+      { id: 'PENDIENTE ACEPTACION CIFRAS', label: 'Pendiente aceptacion cifras' },
     ],
   },
 ];
 
-/** Etiqueta de reporte (boletín / Excel) para un estado interno Arnald. */
+/** Etiqueta de reporte (boletín / Excel) para estado de siniestro canonical. */
 export function etiquetaEstadoAlfaReporte(estado, extras = {}) {
-  const e = homologarEstadoAlfa(estado, extras);
-  const map = {
-    'Sin contactar': 'Sin contactar',
-    'Contactado y programado': 'Contactado - Programado',
-    Inspeccionado: 'Inspeccionado',
-    'Sin respuesta': 'Sin respuesta efectiva',
-    'Solicitud de documentos': 'En gestión',
-    LIQUIDADO: 'Liquidado',
-    'ENVIADO ASEGURADORA': 'En proceso de pago',
-    CERRADO: 'Cerrado totalmente',
-    OBJETADO: 'Objetado',
-    DESISTIDO: 'Desistido',
-  };
-  return map[e] || e;
+  return homologarEstadoSiniestroAlfa(estado, extras);
 }
 
 export const ESTADOS_REQUIEREN_OBS_ALFA = new Set([
-  'Sin respuesta',
-  'Solicitud de documentos',
+  'SIN RESPUESTA EFECTIVA',
 ]);
 
 /** Tipo de pérdida (casilla solicitada por la compañía). */
@@ -107,25 +80,27 @@ export function homologarTipoPerdidaAlfa(valor) {
 export const ESTADOS_GESTION_REQUIEREN_OBS = ESTADOS_REQUIEREN_OBS_ALFA;
 
 const ESTADOS_ALFA_SET = new Set(ESTADOS_ALFA);
+const ESTADOS_GESTION_ALFA_SET = new Set(ESTADOS_GESTION_ALFA);
+const ESTADOS_SINIESTRO_ALFA_SET = new Set(ESTADOS_SINIESTRO_ALFA);
 
-const LEGACY_ESTADO_A_UNIFICADO = {
-  PENDIENTE: 'Sin contactar',
-  'EN TRAMITE': 'Contactado y programado',
-  'EN TRÁMITE': 'Contactado y programado',
-  'EN INSPECCION': 'Contactado y programado',
-  'EN INSPECCIÓN': 'Contactado y programado',
-  DOCUMENTACION: 'Solicitud de documentos',
-  DOCUMENTACIÓN: 'Solicitud de documentos',
-  'CONTACTADO - PROGRAMADO': 'Contactado y programado',
-  'SIN RESPUESTA EFECTIVA': 'Sin respuesta',
-  'EN GESTION': 'Solicitud de documentos',
-  'EN GESTIÓN': 'Solicitud de documentos',
+const LEGACY_ESTADO_A_GESTION = {
+  'SIN CONTACTAR': 'EN GESTIÓN',
+  'SOLICITUD DE DOCUMENTOS': 'EN GESTIÓN',
+  'EN GESTION': 'EN GESTIÓN',
+  'EN GESTIÓN': 'EN GESTIÓN',
+  'CONTACTADO Y PROGRAMADO': 'CONTACTADO/PROGRAMADO',
+  'CONTACTADO - PROGRAMADO': 'CONTACTADO/PROGRAMADO',
+  INSPECCIONADO: 'INSPECCIONADO',
+  'SIN RESPUESTA': 'SIN RESPUESTA EFECTIVA',
+  'SIN RESPUESTA EFECTIVA': 'SIN RESPUESTA EFECTIVA',
   LIQUIDADO: 'LIQUIDADO',
-  'PENDIENTE ACEPTACION DE CIFRAS': 'LIQUIDADO',
-  'PENDIENTE ACEPTACIÓN DE CIFRAS': 'LIQUIDADO',
-  'ENVIADO ASEGURADORA': 'ENVIADO ASEGURADORA',
-  'EN PROCESO DE PAGO': 'ENVIADO ASEGURADORA',
-  'PROCESO DE PAGO': 'ENVIADO ASEGURADORA',
+};
+
+const LEGACY_ESTADO_A_SINIESTRO = {
+  PENDIENTE: 'PENDIENTE',
+  DESISTIDO: 'DESISTIDO',
+  DESISTIDOS: 'DESISTIDO',
+  DESISTIMIENTO: 'DESISTIDO',
   CERRADO: 'CERRADO',
   'CERRADO TOTALMENTE': 'CERRADO',
   'CERRADOS TOTALMENTE': 'CERRADO',
@@ -134,9 +109,12 @@ const LEGACY_ESTADO_A_UNIFICADO = {
   'CASO OBJETADO': 'OBJETADO',
   OBJECION: 'OBJETADO',
   'OBJECIÓN': 'OBJETADO',
-  DESISTIDO: 'DESISTIDO',
-  DESISTIDOS: 'DESISTIDO',
-  DESISTIMIENTO: 'DESISTIDO',
+  'ENVIADO ASEGURADORA': 'PROCESO DE PAGO',
+  'EN PROCESO DE PAGO': 'PROCESO DE PAGO',
+  'PROCESO DE PAGO': 'PROCESO DE PAGO',
+  'PENDIENTE ACEPTACION DE CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
+  'PENDIENTE ACEPTACIÓN DE CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
+  'PENDIENTE ACEPTACION CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
 };
 
 function normKeyEstado(value) {
@@ -148,37 +126,55 @@ function normKeyEstado(value) {
     .replace(/\s+/g, ' ');
 }
 
-/** Homologa valores legacy / duales al catálogo único. */
-export function homologarEstadoAlfa(valor, extras = {}) {
+function aceptoCifrasAlfa(extras = {}) {
+  const acep = String(extras?.liquidador?.aceptacionIndemnizacion || extras?.aceptacionIndemnizacion || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, '_');
+  if (acep === 'ACEPTO') return true;
+  return Boolean(extras?.fechaAceptacionLiquidacion);
+}
+
+export function homologarEstadoGestionAlfa(valor) {
   const raw = String(valor || '').trim();
-  if (ESTADOS_ALFA_SET.has(raw)) return raw;
-
+  if (ESTADOS_GESTION_ALFA_SET.has(raw)) return raw;
   const key = normKeyEstado(raw);
-  if (key === 'EN INSPECCION' || key === 'EN TRAMITE') {
-    if (extras.fechaInspeccion) return 'Inspeccionado';
-    return LEGACY_ESTADO_A_UNIFICADO[raw] || LEGACY_ESTADO_A_UNIFICADO['EN INSPECCIÓN'] || 'Contactado y programado';
+  if (LEGACY_ESTADO_A_GESTION[key]) return LEGACY_ESTADO_A_GESTION[key];
+  return 'EN GESTIÓN';
+}
+
+export function homologarEstadoSiniestroAlfa(valor, extras = {}) {
+  const raw = String(valor || '').trim();
+  if (ESTADOS_SINIESTRO_ALFA_SET.has(raw)) return raw;
+  const key = normKeyEstado(raw);
+
+  if (key === 'LIQUIDADO') {
+    return aceptoCifrasAlfa(extras) ? 'PROCESO DE PAGO' : 'PENDIENTE ACEPTACION CIFRAS';
   }
 
-  if (LEGACY_ESTADO_A_UNIFICADO[raw]) return LEGACY_ESTADO_A_UNIFICADO[raw];
-  for (const [k, v] of Object.entries(LEGACY_ESTADO_A_UNIFICADO)) {
-    if (normKeyEstado(k) === key) return v;
+  if (LEGACY_ESTADO_A_SINIESTRO[key]) return LEGACY_ESTADO_A_SINIESTRO[key];
+
+  // Cuando llega un estado de gestión legacy en el campo siniestro, cae en pendiente.
+  const gestion = homologarEstadoGestionAlfa(raw);
+  if (gestion === 'LIQUIDADO') {
+    return aceptoCifrasAlfa(extras) ? 'PROCESO DE PAGO' : 'PENDIENTE ACEPTACION CIFRAS';
   }
 
-  const eg = String(extras.estadoGestion || '').trim();
-  if (ESTADOS_ALFA_SET.has(eg)) return eg;
+  return 'PENDIENTE';
+}
 
-  return 'Sin contactar';
+/** @deprecated Alias de compatibilidad histórica. */
+export function homologarEstadoAlfa(valor, extras = {}) {
+  return homologarEstadoSiniestroAlfa(valor, extras);
 }
 
 /**
- * Vista Excel AD (ESTADO GESTION): solo los 5 del correo.
- * En cierre de liquidación se reporta Inspeccionado.
+ * @deprecated No usar para nuevos guardados. Se mantiene para migraciones.
  */
 export function estadoGestionDesdeEstadoAlfa(estado) {
-  const e = homologarEstadoAlfa(estado);
-  if (isAlfaEstadoDefinido(e)) return 'Inspeccionado';
-  if (ESTADOS_GESTION_ALFA.includes(e)) return e;
-  return 'Sin contactar';
+  return homologarEstadoGestionAlfa(estado);
 }
 
 /** Plantilla de comunicación cuando el reclamo queda bajo deducible. */
@@ -236,17 +232,7 @@ export const ETIQUETAS_ARCHIVO_ALFA = [
 export const SLA_DIAS_POST_INSPECCION_ALFA = 2;
 
 export function isAlfaEstadoDefinido(estado) {
-  const n = String(estado || '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toUpperCase();
-  return (
-    n.includes('LIQUIDADO') ||
-    n.includes('ENVIADO') ||
-    n === 'CERRADO' ||
-    n === 'OBJETADO' ||
-    n === 'DESISTIDO'
-  );
+  return homologarEstadoSiniestroAlfa(estado) !== 'PENDIENTE';
 }
 
 /** Observación que se escribe sola al marcar OBJETADO / DESISTIDO (Excel OBSERVACION). */
@@ -269,7 +255,7 @@ const OBS_AUTO_CIERRE_ALFA_NORM = new Set(
 );
 
 export function observacionAutoCierreAlfa(estado) {
-  const e = homologarEstadoAlfa(estado);
+  const e = homologarEstadoSiniestroAlfa(estado);
   return OBSERVACIONES_AUTO_CIERRE_ALFA[e] || '';
 }
 
@@ -287,20 +273,21 @@ export function aplicarObservacionAutoCierreAlfa(estado, observacionActual = '')
 
 /** ESTADO SINIESTRO en SharePoint: etiquetas reales del boletín (sin forzar CERRADO). */
 export function estadoAlfaParaSharePoint(estado) {
-  return etiquetaEstadoAlfaReporte(estado);
+  return homologarEstadoSiniestroAlfa(estado);
 }
 
 export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
   if (!caso.fechaInspeccion) return false;
-  const estado = homologarEstadoAlfa(caso.estado, caso);
-  if (isAlfaEstadoDefinido(estado)) return false;
+  const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
+  if (estadoSiniestro !== 'PENDIENTE') return false;
   const fi = new Date(caso.fechaInspeccion);
   if (Number.isNaN(fi.getTime())) return false;
   const limite = new Date(fi.getTime() + SLA_DIAS_POST_INSPECCION_ALFA * 86400000);
   const tieneDoc =
     caso.fechaUltimoDocumento ||
     (Array.isArray(caso.archivos) && caso.archivos.length > 0);
-  const gestionOk = ['Inspeccionado', 'Solicitud de documentos'].includes(estado);
+  const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
+  const gestionOk = ['INSPECCIONADO', 'EN GESTIÓN'].includes(estadoGestion);
   if (tieneDoc && gestionOk) return false;
   return ahora.getTime() > limite.getTime();
 }
@@ -317,13 +304,13 @@ export function contarKpisGestionAlfa(casos = []) {
     fueraDeZona: 0,
   };
   for (const c of casos) {
-    const g = homologarEstadoAlfa(c.estado, c);
-    if (g === 'Sin contactar') base.sinContactar += 1;
-    else if (g === 'Contactado y programado') base.contactadoProgramado += 1;
-    else if (g === 'Inspeccionado') base.inspeccionado += 1;
-    else if (g === 'Solicitud de documentos') base.solicitudDocumentos += 1;
-    else if (g === 'Sin respuesta') base.sinRespuesta += 1;
-    if (isAlfaEstadoDefinido(g)) base.definidos += 1;
+    const g = homologarEstadoGestionAlfa(c.estadoGestion || c.estado);
+    if (g === 'EN GESTIÓN') base.sinContactar += 1;
+    else if (g === 'CONTACTADO/PROGRAMADO') base.contactadoProgramado += 1;
+    else if (g === 'INSPECCIONADO') base.inspeccionado += 1;
+    else if (g === 'LIQUIDADO') base.solicitudDocumentos += 1;
+    else if (g === 'SIN RESPUESTA EFECTIVA') base.sinRespuesta += 1;
+    if (homologarEstadoSiniestroAlfa(c.estado, c) !== 'PENDIENTE') base.definidos += 1;
     if (casoAlfaVenceSla2Dias(c)) base.slaVencido += 1;
     if (c.fueraDeZona) base.fueraDeZona += 1;
   }
@@ -494,7 +481,8 @@ export const FORM_VACIO_ALFA = {
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
-  estado: 'Sin contactar',
+  estadoGestion: 'EN GESTIÓN',
+  estado: 'PENDIENTE',
   observacionesGestion: '',
   zonaAsignada: '',
   tipoPerdida: '',
@@ -645,10 +633,10 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
     noAceptacionOferta: Boolean(caso.noAceptacionOferta),
     tipoPerdida: homologarTipoPerdidaAlfa(caso.tipoPerdida),
   };
-  base.estado = homologarEstadoAlfa(caso.estado, {
-    fechaInspeccion: caso.fechaInspeccion,
-    estadoGestion: caso.estadoGestion,
-  });
+  base.estado = homologarEstadoSiniestroAlfa(caso.estado, caso);
+  base.estadoGestion = String(caso.estadoGestion || '').trim()
+    ? homologarEstadoGestionAlfa(caso.estadoGestion)
+    : homologarEstadoGestionAlfa(caso.estado);
   base.observacionesGestion = aplicarObservacionAutoCierreAlfa(
     base.estado,
     base.observacionesGestion

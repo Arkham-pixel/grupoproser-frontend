@@ -41,11 +41,11 @@ import {
   TIPOS_PERDIDA_ALFA,
   aplicarObservacionAutoCierreAlfa,
   construirFormDesdeCasoAlfa,
-  estadoGestionDesdeEstadoAlfa,
   formatMiles,
   formatMilesInput,
   pesosOficialesAlfa,
-  homologarEstadoAlfa,
+  homologarEstadoGestionAlfa,
+  homologarEstadoSiniestroAlfa,
   homologarTipoPerdidaAlfa,
   casoAlfaVenceSla2Dias,
   casoTieneEvidenciaComunicacionBajoDeducible,
@@ -370,8 +370,8 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     payload.observacionLlamada =
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     payload.fueraDeZona = Boolean(form.fueraDeZona);
-    payload.estado = homologarEstadoAlfa(form.estado, form);
-    payload.estadoGestion = estadoGestionDesdeEstadoAlfa(payload.estado);
+    payload.estado = homologarEstadoSiniestroAlfa(form.estado, form);
+    payload.estadoGestion = homologarEstadoGestionAlfa(form.estadoGestion);
     payload.observacionesGestion = aplicarObservacionAutoCierreAlfa(
       payload.estado,
       form.observacionesGestion != null ? String(form.observacionesGestion) : ''
@@ -404,13 +404,15 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       setError(t('segurosAlfa.validation.statusRequired'));
       return;
     }
+    if (!form.estadoGestion.trim()) {
+      setError('Seleccione el estado de gestión.');
+      return;
+    }
     if (
-      ESTADOS_REQUIEREN_OBS_ALFA.has(homologarEstadoAlfa(form.estado, form)) &&
+      ESTADOS_REQUIEREN_OBS_ALFA.has(homologarEstadoGestionAlfa(form.estadoGestion)) &&
       !String(form.observacionesGestion || '').trim()
     ) {
-      setError(
-        'Observaciones de gestión obligatorias para Sin respuesta / Solicitud de documentos.'
-      );
+      setError('Observaciones de gestión obligatorias para Sin respuesta efectiva.');
       return;
     }
     if (form.fueraDeZona && !String(form.observacionesGestion || '').trim()) {
@@ -422,7 +424,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       return;
     }
     if (
-      String(form.estado || '').toUpperCase() === 'CERRADO' &&
+      homologarEstadoSiniestroAlfa(form.estado, form) === 'CERRADO' &&
       form.fechaComunicacionBajoDeducible &&
       !casoTieneEvidenciaComunicacionBajoDeducible(esEdicion ? initialData : form)
     ) {
@@ -658,11 +660,27 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             />
           </Campo>
           <div className="md:col-span-2 lg:col-span-3">
-            <Campo label={t('segurosAlfa.fields.estado')} required>
+            <Campo
+              label={t('segurosAlfa.fields.estadosDuales', {
+                defaultValue: 'Estado gestión / Estado de siniestro',
+              })}
+              required
+            >
               <BarraEstadosSegurosAlfa
-                valor={form.estado}
-                disabled={!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)}
-                onChange={(estado) => {
+                valorGestion={form.estadoGestion}
+                valorSiniestro={form.estado}
+                disabled={
+                  !puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso) &&
+                  !puedeEditarCampoCaso(rolUsuario, 'estadoGestion', ctxPermiso)
+                }
+                onChangeGestion={(estadoGestion) => {
+                  if (!puedeEditarCampoCaso(rolUsuario, 'estadoGestion', ctxPermiso)) return;
+                  setForm((prev) => ({
+                    ...prev,
+                    estadoGestion,
+                  }));
+                }}
+                onChangeSiniestro={(estado) => {
                   if (!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)) return;
                   setForm((prev) => ({
                     ...prev,
@@ -712,9 +730,9 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               value={form.observacionesGestion || ''}
               onChange={setCampo('observacionesGestion')}
               rows={3}
-              placeholder="Al marcar OBJETADO o DESISTIDO se completa sola. También: no aceptación, falta de contacto, info pendiente…"
+              placeholder="Al marcar OBJETADO o DESISTIDO se completa sola. También: SIN RESPUESTA EFECTIVA, no aceptación, info pendiente…"
             />
-            {['OBJETADO', 'DESISTIDO'].includes(homologarEstadoAlfa(form.estado, form)) ? (
+            {['OBJETADO', 'DESISTIDO'].includes(homologarEstadoSiniestroAlfa(form.estado, form)) ? (
               <p className="mt-1 font-body text-[11px] text-gray-500 dark:text-gray-400">
                 Observación completada automáticamente. Puede editarla si necesita más detalle.
               </p>
@@ -1141,7 +1159,10 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         {esEdicion ? (
           <div className="flex flex-wrap gap-2 text-sm">
             <span className="rounded-md border border-gray-200 bg-white px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900">
-              Estado: <strong>{form.estado || '—'}</strong>
+              Estado gestión (AI): <strong>{form.estadoGestion || '—'}</strong>
+            </span>
+            <span className="rounded-md border border-gray-200 bg-white px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900">
+              Estado siniestro (AJ): <strong>{form.estado || '—'}</strong>
             </span>
             {form.grupoReclamacion ? (
               <span className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-indigo-900 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100">

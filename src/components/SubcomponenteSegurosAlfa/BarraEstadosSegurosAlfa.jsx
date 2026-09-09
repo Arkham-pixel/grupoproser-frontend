@@ -1,7 +1,8 @@
 import React from 'react';
 import {
   GRUPOS_BARRA_ESTADOS_ALFA,
-  homologarEstadoAlfa,
+  homologarEstadoGestionAlfa,
+  homologarEstadoSiniestroAlfa,
 } from './segurosAlfaHelpers.js';
 
 /**
@@ -51,48 +52,43 @@ const estiloChip = (activo, deshabilitado, tone = 'gestion') => {
 };
 
 /**
- * Una sola barra de estados Alfa (etiquetas del boletín / correo).
- * El valor persistido sigue siendo el catálogo interno Arnald.
+ * Dos barras independientes:
+ * - Estado gestión (Excel AI)
+ * - Estado de siniestro (Excel AJ)
  */
 export default function BarraEstadosSegurosAlfa({
-  valor,
-  onChange,
+  valorGestion,
+  valorSiniestro,
+  onChangeGestion,
+  onChangeSiniestro,
   disabled = false,
 }) {
-  const actual = homologarEstadoAlfa(valor);
+  const actualGestion = homologarEstadoGestionAlfa(valorGestion);
+  const actualSiniestro = homologarEstadoSiniestroAlfa(valorSiniestro);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
-        Estados con las etiquetas del boletín diario. ARNALD y SharePoint
-        (ESTADO SINIESTRO) reciben el estado real, incluido Objetado y Desistido.
+        Ambos campos se guardan por separado: AI = estado gestión y AJ = estado de
+        siniestro. No se derivan automáticamente entre sí.
       </p>
-      {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => (
-        <div key={grupo.id}>
-          <p className="mb-1.5 font-heading text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-            {grupo.label}
-          </p>
-          {grupo.hint ? (
-            <p className="mb-1.5 font-body text-[11px] text-gray-500 dark:text-gray-400">
-              {grupo.hint}
+      {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => {
+        const esGestion = grupo.id === 'gestion';
+        const actual = esGestion ? actualGestion : actualSiniestro;
+        const onChange = esGestion ? onChangeGestion : onChangeSiniestro;
+        return (
+          <div key={grupo.id}>
+            <p className="mb-1.5 font-heading text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              {grupo.label}
             </p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {grupo.estados.map((estado, idx) => {
-              const id = typeof estado === 'string' ? estado : estado.id;
-              const label = typeof estado === 'string' ? estado : estado.label;
-              const activo = actual === id;
-              return (
-                <React.Fragment key={id}>
-                  {idx > 0 && grupo.id !== 'cierre_sin_pago' ? (
-                    <span
-                      aria-hidden="true"
-                      className="hidden text-gray-300 sm:inline dark:text-gray-600"
-                    >
-                      →
-                    </span>
-                  ) : null}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {grupo.estados.map((estado) => {
+                const id = typeof estado === 'string' ? estado : estado.id;
+                const label = typeof estado === 'string' ? estado : estado.label;
+                const activo = actual === id;
+                return (
                   <button
+                    key={id}
                     type="button"
                     disabled={disabled}
                     aria-pressed={activo}
@@ -100,17 +96,17 @@ export default function BarraEstadosSegurosAlfa({
                     className={estiloChip(activo, disabled, grupo.tone)}
                     onClick={() => {
                       if (disabled || activo) return;
-                      onChange(id);
+                      onChange?.(id);
                     }}
                   >
                     {label}
                   </button>
-                </React.Fragment>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

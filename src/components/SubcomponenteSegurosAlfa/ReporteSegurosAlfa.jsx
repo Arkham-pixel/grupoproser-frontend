@@ -35,7 +35,8 @@ import {
   formatDate,
   guardarColumnasReporteAlfa,
   guardarFiltrosReporteAlfa,
-  homologarEstadoAlfa,
+  homologarEstadoGestionAlfa,
+  homologarEstadoSiniestroAlfa,
   etiquetaEstadoAlfaReporte,
   limpiarFiltrosReporteAlfaStorage,
   normTexto,
@@ -122,6 +123,7 @@ import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 function valorOrdenAlfa(item, clave) {
   if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
   if (clave === 'estado') return etiquetaEstadoAlfaReporte(item.estado, item);
+  if (clave === 'estadoGestion') return homologarEstadoGestionAlfa(item.estadoGestion || item.estado);
   return item[clave];
 }
 
@@ -173,7 +175,9 @@ const COLUMNAS = [
   { clave: 'fechaEnvioAseguradora', labelKey: 'fechaEnvioAseguradora' },
   { clave: 'zonaAsignada', labelKey: 'zonaAsignada' },
   { clave: 'tipoPerdida', labelKey: 'tipoPerdida' },
+  { clave: 'estadoGestion', labelKey: 'estadoGestion' },
   { clave: 'estado', labelKey: 'estado' },
+  { clave: 'observacionesGestion', labelKey: 'observacionesGestion' },
   { clave: 'docs', labelKey: 'docs' },
 ];
 
@@ -201,6 +205,7 @@ const COLUMNAS_INICIALES_VISIBLES = [
   'valorLiquidacionCoberturasAdicionales',
   'deducibleCoberturasAdicionales',
   'valorTotalPagar',
+  'estadoGestion',
   'estado',
   'docs',
 ];
@@ -214,6 +219,9 @@ function labelColumnaAlfa(t, col) {
   if (col.clave === 'tipoPerdida') {
     return t('segurosAlfa.fields.tipoPerdida', { defaultValue: 'Tipo de pérdida' });
   }
+  if (col.clave === 'estadoGestion') return 'Estado gestión (AI)';
+  if (col.clave === 'estado') return 'Estado de siniestro (AJ)';
+  if (col.clave === 'observacionesGestion') return 'Observación (ARNALD)';
   return t(`segurosAlfa.fields.${col.labelKey}`);
 }
 
@@ -304,9 +312,8 @@ const EXPORT_COLUMNAS_ALFA = [
   { header: 'FECHA ENVÍO A LA ASEGURADORA', clave: 'fechaEnvioAseguradora', tipo: 'fecha' },
   { header: 'ESTADO GESTION', clave: 'estadoGestion' },
   { header: 'ESTADO SINIESTRO', clave: 'estado', tipo: 'estado' },
-  { header: 'OBSERVACION', clave: 'observacionesGestion' },
-  { header: 'ZONA', clave: 'zonaAsignada' },
   { header: 'TIPO PERDIDA', clave: 'tipoPerdida' },
+  { header: 'ZONA', clave: 'zonaAsignada' },
   { header: 'FUERA DE ZONA', clave: 'fueraDeZona', tipo: 'siNo' },
   { header: 'Documentos', clave: 'docs', tipo: 'docs' },
 ];
@@ -314,6 +321,7 @@ const EXPORT_COLUMNAS_ALFA = [
 function valorExportAlfa(caso, col) {
   if (col.tipo === 'fecha') return formatDate(caso[col.clave]) || '';
   if (col.tipo === 'estado') return etiquetaEstadoAlfaReporte(caso.estado, caso);
+  if (col.clave === 'estadoGestion') return homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
   if (col.tipo === 'siNo') return caso.fueraDeZona ? 'SI' : 'NO';
   if (col.tipo === 'docs') return Array.isArray(caso.archivos) ? caso.archivos.length : 0;
   if (col.tipo === 'moneda') {
@@ -452,7 +460,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       porNorm.set(normTexto(e), { value: e, label: e, n: 0 });
     }
     for (const c of casos) {
-      const h = homologarEstadoAlfa(c.estado, c);
+      const h = homologarEstadoSiniestroAlfa(c.estado, c);
       const k = normTexto(h);
       if (!porNorm.has(k)) porNorm.set(k, { value: h, label: h, n: 0 });
       porNorm.get(k).n += 1;
@@ -512,7 +520,8 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
-      if (!coincideFiltroTexto(homologarEstadoAlfa(c.estado, c), filtroEstado)) return false;
+      if (!coincideFiltroTexto(homologarEstadoSiniestroAlfa(c.estado, c), filtroEstado))
+        return false;
       if (!coincideFiltroTexto(c.ajustadorLider, filtroAjustadorLider)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
@@ -556,6 +565,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
         c.ciudad,
         c.departamento,
         c.estado,
+        c.estadoGestion,
         c.informacionContacto,
         c.correo,
         c.celular,
@@ -748,6 +758,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
     if (clave === 'estado') return etiquetaEstadoAlfaReporte(item.estado, item);
+    if (clave === 'estadoGestion') return homologarEstadoGestionAlfa(item.estadoGestion || item.estado);
     if (CAMPOS_MONEDA.has(clave)) {
       if (item[clave] === null || item[clave] === undefined || item[clave] === '') {
         return CAMPOS_CONTROL_LIQUIDACION.has(clave) ? formatCurrency(0) : '—';
@@ -902,6 +913,10 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
             </button>
           </div>
         </header>
+        <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+          Excel: AI = estado gestión, AJ = estado de siniestro. La columna OBSERVACION se mantiene
+          como nota operativa de ARNALD.
+        </p>
 
         <AlfaControlSeguimientoBanner
           onCompleted={async () => {
@@ -911,12 +926,12 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            ['Sin contactar', kpisGestion.sinContactar],
-            ['Contactado y programado', kpisGestion.contactadoProgramado],
+            ['En gestión', kpisGestion.sinContactar],
+            ['Contactado/Programado', kpisGestion.contactadoProgramado],
             ['Inspeccionado', kpisGestion.inspeccionado],
-            ['Solicitud docs', kpisGestion.solicitudDocumentos],
-            ['Sin respuesta', kpisGestion.sinRespuesta],
-            ['Definidos', kpisGestion.definidos],
+            ['Liquidado', kpisGestion.solicitudDocumentos],
+            ['Sin respuesta efectiva', kpisGestion.sinRespuesta],
+            ['Siniestro definido', kpisGestion.definidos],
           ].map(([label, n]) => (
             <div
               key={label}
