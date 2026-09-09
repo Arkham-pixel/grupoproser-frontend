@@ -6,6 +6,7 @@ import { useJsApiLoader, GoogleMap, Marker, InfoWindow, Autocomplete } from '@re
 import { FaSearch, FaCrosshairs, FaCamera, FaMapMarkerAlt } from 'react-icons/fa'
 import html2canvas from 'html2canvas'
 import { googleMapsLoaderOptions } from '../config/googleMapsLoader.js'
+import { BASE_URL } from '../config/apiConfig.js'
 
 // Estilo del contenedor del mapa
 const mapContainerStyle = {
@@ -31,21 +32,32 @@ async function obtenerCapturaMapaEstatica(lat, lng, key) {
     markers: `color:red|${lat},${lng}`,
     key
   })
-  const url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
+  const urls = [
+    `${BASE_URL}/api/allianz/mapa-estatico?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
+    `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
+  ]
   try {
-    const res = await fetch(url)
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      console.warn('⚠️ Static Maps:', res.status, errText.slice(0, 180))
-      return null
+    for (const url of urls) {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '')
+          console.warn('⚠️ Static Maps:', res.status, errText.slice(0, 180))
+          continue
+        }
+        const blob = await res.blob()
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+        if (dataUrl) return dataUrl
+      } catch (error) {
+        console.warn('⚠️ Error al obtener Static Map:', error)
+      }
     }
-    const blob = await res.blob()
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
+    return null
   } catch (e) {
     console.warn('⚠️ Error al obtener Static Map:', e)
     return null
@@ -164,9 +176,20 @@ export default function MapaGoogleEarth({
       setError('API Key de Google Maps no configurada')
       setCargando(false)
     } else if (isLoaded) {
+      setError(null)
       setCargando(false)
     }
   }, [apiKey, isLoaded])
+
+  // Evita un spinner infinito cuando el script carga parcialmente o es bloqueado por el navegador.
+  useEffect(() => {
+    if (!apiKey || isLoaded || loadError) return undefined
+    const timer = setTimeout(() => {
+      setError('Google Maps tardó demasiado en responder. Intenta recargar el mapa.')
+      setCargando(false)
+    }, 15000)
+    return () => clearTimeout(timer)
+  }, [apiKey, isLoaded, loadError])
   
   // Manejar errores de carga
   useEffect(() => {
@@ -529,16 +552,26 @@ setMap(mapInstance)
   
   // Si hay error, mostrar mensaje
   if (error) {
+    const fallbackUrl = `https://www.google.com/maps?q=${posicion.lat},${posicion.lng}&z=18&output=embed`
     return (
-      <div className="w-full h-[200px] sm:h-[250px] lg:h-[300px] relative flex items-center justify-center bg-red-50 border-2 border-dashed border-red-300">
-        <div className="text-center p-4">
-          <p className="text-sm font-semibold text-red-700 mb-2">
-            ⚠️ Error
-          </p>
-          <p className="text-xs text-red-600">
-            {error}
-          </p>
+      <div className="w-full space-y-2">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-center">
+          <p className="text-sm font-semibold text-amber-800">{error}</p>
+          <button
+            type="button"
+            className="mt-2 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+            onClick={() => window.location.reload()}
+          >
+            Recargar mapa
+          </button>
         </div>
+        <iframe
+          title="Mapa de ubicación alternativo"
+          src={fallbackUrl}
+          className="h-[300px] w-full rounded-lg border border-gray-300"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
       </div>
     )
   }
@@ -673,8 +706,7 @@ setMap(mapInstance)
             {isLoaded &&
               typeof window !== 'undefined' &&
               window.google &&
-              window.google.maps &&
-              window.google.maps.MapTypeId && (
+              window.google.maps && (
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={posicion}

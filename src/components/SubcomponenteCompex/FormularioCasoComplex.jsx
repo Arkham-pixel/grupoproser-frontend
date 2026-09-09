@@ -34,6 +34,7 @@ import {
   coincidirCiudadExacta,
   extraerListaCiudadesApi,
   mapearCiudadesDesdeApi,
+  normalizarCiudadTexto,
 } from '../../utils/ciudadesColombia.js';
 import {
   registerOfflineSyncHandler,

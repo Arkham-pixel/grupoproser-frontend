@@ -45,7 +45,6 @@ import {
   extraerListaCiudadesApi,
   mapearCiudadesDesdeApi,
   mapearCiudadesDesdeColombiaJson,
-  normalizarCiudadTexto,
 } from '../utils/ciudadesColombia.js';
 import 'leaflet/dist/leaflet.css'
 const MapaDeCalor = lazy(() => import("./MapaDeCalor"));
@@ -6397,67 +6396,13 @@ return (
 
       {/* Información Cliente */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            {t('inspection.fields.client')}
-          </label>
-          <input
-            type="text"
-            value={nombreCliente}
-            onChange={handleNombreClienteChange}
-            className="w-full rounded px-2 sm:px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            placeholder={t('inspection.placeholders.client')}
-            disabled={cargando}
-          />
-        </div>
-
-        <div>
-          <label 
-            className="block text-xs sm:text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            {t('inspection.fields.address')}
-          </label>
-          <input
-            type="text"
-            value={direccion}
-            onChange={handleDireccionChange}
-            className="w-full rounded px-2 sm:px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            placeholder={t('inspection.placeholders.address')}
-            disabled={cargando}
-          />
-        </div>
-      </div>
-
-      
-      
-      
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="contents">
           <SelectorDepartamentoCiudad
             ciudadesRaw={ciudadesRaw}
             departamento={formData.departamento_siniestro || formData.departamento || ''}
-            ciudad={
-              typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro
-                ? (formData.ciudad_siniestro.value || formData.ciudad_siniestro.label || '')
-                : (formData.ciudad_siniestro || formData.ciudad || '')
-            }
+            ciudad={typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro
+            ? (formData.ciudad_siniestro.value || formData.ciudad_siniestro.label || '')
+            : (formData.ciudad_siniestro || formData.ciudad || '')}
             onDepartamentoChange={handleDepartamentoInspeccionChange}
             onCiudadChange={handleCiudadChange}
             disabled={cargando}
@@ -6872,15 +6817,13 @@ return (
       />
     </div>
 
-        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
       <SelectorDepartamentoCiudad
         ciudadesRaw={ciudadesRaw}
         departamento={formData.departamento_siniestro || formData.departamento || ''}
-        ciudad={
-          typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro
+        ciudad={typeof formData.ciudad_siniestro === 'object' && formData.ciudad_siniestro
             ? (formData.ciudad_siniestro.value || formData.ciudad_siniestro.label || '')
-            : (formData.ciudad_siniestro || formData.ciudad || '')
-        }
+            : (formData.ciudad_siniestro || formData.ciudad || '')}
         onDepartamentoChange={handleDepartamentoInspeccionChange}
         onCiudadChange={handleCiudadChange}
         disabled={cargando}
@@ -6892,7 +6835,7 @@ return (
       />
     </div>
 
-<div className="md:col-span-2">
+    <div className="md:col-span-2">
       <label
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
