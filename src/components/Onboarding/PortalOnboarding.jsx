@@ -45,6 +45,7 @@ export default function PortalOnboarding() {
   const [pdfNdaBlob, setPdfNdaBlob] = useState(null);
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [docsLocal, setDocsLocal] = useState({
@@ -165,12 +166,14 @@ export default function PortalOnboarding() {
 
   const crearCuenta = async (e) => {
     e.preventDefault();
-    if (!validatePassword(password)) {
+    const pass1 = String(password || '');
+    const pass2 = String(password2 || '');
+    if (!validatePassword(pass1)) {
       setMensaje('La contraseña debe tener mínimo 8 caracteres, mayúscula, minúscula, número y símbolo');
       return;
     }
-    if (password !== password2) {
-      setMensaje('Las contraseñas no coinciden');
+    if (pass1 !== pass2) {
+      setMensaje('Las contraseñas no coinciden: escriba exactamente la misma en ambos campos (revise mayúsculas, espacios o el autocompletado del navegador).');
       return;
     }
     if (!fechaNacimiento) {
@@ -450,10 +453,13 @@ export default function PortalOnboarding() {
               <div>
                 <label className="block text-xs font-medium mb-1">Contraseña</label>
                 <input
-                  type="password"
+                  type={mostrarPassword ? 'text' : 'password'}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (mensaje.includes('coinciden')) setMensaje('');
+                  }}
                   className="w-full border rounded px-3 py-2 text-sm"
                   autoComplete="new-password"
                 />
@@ -461,14 +467,32 @@ export default function PortalOnboarding() {
               <div>
                 <label className="block text-xs font-medium mb-1">Confirmar contraseña</label>
                 <input
-                  type="password"
+                  type={mostrarPassword ? 'text' : 'password'}
                   required
                   value={password2}
-                  onChange={(e) => setPassword2(e.target.value)}
+                  onChange={(e) => {
+                    setPassword2(e.target.value);
+                    if (mensaje.includes('coinciden')) setMensaje('');
+                  }}
                   className="w-full border rounded px-3 py-2 text-sm"
                   autoComplete="new-password"
                 />
               </div>
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={mostrarPassword}
+                  onChange={(e) => setMostrarPassword(e.target.checked)}
+                />
+                Mostrar contraseñas
+              </label>
+              {password2.length > 0 && (
+                <p className={`text-xs ${password === password2 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  {password === password2
+                    ? 'Las contraseñas coinciden.'
+                    : 'Las contraseñas aún no coinciden.'}
+                </p>
+              )}
               <p className="text-xs text-slate-500">
                 Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.
               </p>
