@@ -17,24 +17,50 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const normalizeSuraItem = (item = {}) => ({
-  ...item,
-  siniestro: item.siniestro ?? '',
-  identificacion: item.identificacion ?? '',
-  tomador: item.tomador ?? '',
-  numeroPoliza: item.numeroPoliza ?? '',
-  estado: item.estado ?? '',
-  fechaLlamada: item.fechaLlamada ?? null,
-  observacionLlamada: item.observacionLlamada ?? '',
-  observacionReserva: item.observacionReserva ?? '',
-  archivos: Array.isArray(item.archivos) ? item.archivos : [],
-});
+export const normalizeSuraItem = (item = {}) => {
+  const nArchivos = Number.isFinite(Number(item.nArchivos))
+    ? Number(item.nArchivos)
+    : Array.isArray(item.archivos)
+      ? item.archivos.length
+      : 0;
+  const tieneInforme = Boolean(
+    item.tieneInforme ?? (item.informeUnico && typeof item.informeUnico === 'object')
+  );
+  const tieneLiquidador = Boolean(
+    item.tieneLiquidador ?? (item.liquidador && typeof item.liquidador === 'object')
+  );
+  return {
+    ...item,
+    siniestro: item.siniestro ?? '',
+    identificacion: item.identificacion ?? '',
+    tomador: item.tomador ?? '',
+    numeroPoliza: item.numeroPoliza ?? '',
+    estado: item.estado ?? '',
+    fechaLlamada: item.fechaLlamada ?? null,
+    observacionLlamada: item.observacionLlamada ?? '',
+    observacionReserva: item.observacionReserva ?? '',
+    archivos: Array.isArray(item.archivos) ? item.archivos : [],
+    nArchivos,
+    tieneInforme,
+    tieneLiquidador,
+    tieneFotosAgil: Boolean(item.tieneFotosAgil),
+    tieneSalvamento: Boolean(item.tieneSalvamento),
+    tipoInforme: item.tipoInforme || item.informeUnico?.tipoInforme || '',
+    liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
+    informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
+  };
+};
 
 const normalizeResponseArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeSuraItem(item ?? {})) : [];
 
-export const getCasosSuraPaginado = async ({ page = 1, limit = 100 } = {}) => {
-  const queryString = buildQueryString({ page, limit, _t: Date.now() });
+export const getCasosSuraPaginado = async ({ page = 1, limit = 100, completo = false } = {}) => {
+  const queryString = buildQueryString({
+    page,
+    limit,
+    _t: Date.now(),
+    ...(completo ? { completo: '1' } : {}),
+  });
   const response = await fetch(`${SURA_API_URL}${queryString}`, { headers: authHeaders() });
   if (!response.ok) {
     throw new Error('Error al obtener los casos Seguros Sura');
@@ -49,13 +75,13 @@ export const getCasosSuraPaginado = async ({ page = 1, limit = 100 } = {}) => {
   return payload;
 };
 
-export const fetchAllCasosSura = async (batchSize = 2000) => {
+export const fetchAllCasosSura = async (batchSize = 2000, { completo = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
 
   while (true) {
-    const respuesta = await getCasosSuraPaginado({ page, limit: batchSize });
+    const respuesta = await getCasosSuraPaginado({ page, limit: batchSize, completo });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') {
       total = respuesta.total;

@@ -19,6 +19,19 @@ const authHeaders = () => {
 
 export const normalizeAllianzItem = (item = {}) => {
   const ub = resolverUbicacionAllianz(item.ciudad, item.departamento);
+  const nArchivos = Number.isFinite(Number(item.nArchivos))
+    ? Number(item.nArchivos)
+    : Array.isArray(item.archivos)
+      ? item.archivos.length
+      : 0;
+  const tieneInforme = Boolean(
+    item.tieneInforme ||
+      (item.informeUnico && typeof item.informeUnico === 'object') ||
+      item.historialCatastroficoId
+  );
+  const tieneLiquidador = Boolean(
+    item.tieneLiquidador ?? (item.liquidador && typeof item.liquidador === 'object')
+  );
   return {
   ...item,
   ciudad: ub.ciudad || homologarCiudadAllianz(item.ciudad) || item.ciudad || '',
@@ -43,6 +56,12 @@ export const normalizeAllianzItem = (item = {}) => {
   causa: item.causa ?? '',
   estado: item.estado ?? '',
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
+  nArchivos,
+  tieneInforme,
+  tieneLiquidador,
+  tipoInforme: item.tipoInforme || item.informeUnico?.tipoInforme || '',
+  liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
+  informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
   };
 };
 
@@ -53,12 +72,14 @@ export const getCasosAllianzPaginado = async ({
   page = 1,
   limit = 100,
   soloChecklistLleno = false,
+  completo = false,
 } = {}) => {
   const queryString = buildQueryString({
     page,
     limit,
     _t: Date.now(),
     ...(soloChecklistLleno ? { soloChecklistLleno: '1' } : {}),
+    ...(completo ? { completo: '1' } : {}),
   });
   const response = await fetch(`${ALLIANZ_API_URL}${queryString}`, { headers: authHeaders() });
   if (!response.ok) {
@@ -79,12 +100,14 @@ export const fetchAllCasosAllianz = async (batchSize = 2000, opciones = {}) => {
   let page = 1;
   let total = null;
   const soloChecklistLleno = opciones.soloChecklistLleno === true;
+  const completo = opciones.completo === true;
 
   while (true) {
     const respuesta = await getCasosAllianzPaginado({
       page,
       limit: batchSize,
       soloChecklistLleno,
+      completo,
     });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') {

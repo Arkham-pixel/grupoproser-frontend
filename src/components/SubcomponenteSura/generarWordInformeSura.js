@@ -44,6 +44,7 @@ import {
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { compactarFotoParaWord, FOTO_FETCH_PARALELO, mapConCurrencia } from '../../utils/fotoWordPipeline.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
@@ -1424,12 +1425,19 @@ export async function descargarWordInformeSura({
     };
   });
 
-  // Embebidas: recorrer candidatas hasta llenar el tope (no cortar en stubs sin bytes)
+  // Embebidas en paralelo (red lenta) hasta llenar el tope
   const topeFotos = 40;
+  const fotosCargadas = await mapConCurrencia(
+    fotosEnriquecidas.slice(0, topeFotos + 8),
+    FOTO_FETCH_PARALELO,
+    async (archivo) => {
+      const img = await resolverBytesFoto(archivo, fotosArchivos);
+      return { archivo, img: img ? await compactarFotoParaWord(img) : null };
+    }
+  );
   const fotosEmbebidas = [];
-  for (const archivo of fotosEnriquecidas) {
+  for (const { archivo, img } of fotosCargadas) {
     if (fotosEmbebidas.length >= topeFotos) break;
-    const img = await resolverBytesFoto(archivo, fotosArchivos);
     if (!img?.bytes?.length) {
       console.warn('Foto no embebida en Word Sura:', archivo?.nombreOriginal || archivo?.nombre);
       continue;

@@ -73,9 +73,17 @@ export function estadoSuraPorTipoInforme(tipoInforme, estadoActual) {
   return ESTADO_SURA_INFORME_UNICO;
 }
 
+export function nArchivosCasoSura(caso = {}) {
+  if (Number.isFinite(Number(caso.nArchivos))) return Number(caso.nArchivos);
+  return Array.isArray(caso.archivos) ? caso.archivos.length : 0;
+}
+
 export function casoSuraTieneDocumentacion(caso = {}) {
+  if (Number(caso.nArchivos) > 0) return true;
   if (Array.isArray(caso.archivos) && caso.archivos.length > 0) return true;
+  if (caso.tieneFotosAgil) return true;
   if (Array.isArray(caso.fotosAgil?.imagenes) && caso.fotosAgil.imagenes.length > 0) return true;
+  if (caso.tieneInforme || caso.tieneLiquidador) return true;
   const inf = caso.informeUnico;
   if (inf && typeof inf === 'object') {
     if (Array.isArray(inf.fotosInspeccion) && inf.fotosInspeccion.length > 0) return true;

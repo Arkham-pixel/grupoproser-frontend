@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoSura,
   fetchAllCasosSura,
+  getCasoSuraById,
 } from '../../services/segurosSuraService.js';
 import FormularioCasoSura from './FormularioCasoSura.jsx';
 import ModalImportarExcelSura, { esAdminOSoporteSura } from './ModalImportarExcelSura.jsx';
@@ -21,6 +22,7 @@ import {
   fechaEnRango,
   formatCurrency,
   formatDate,
+  nArchivosCasoSura,
   normalizarEstadoSura,
   normTexto,
 } from './segurosSuraHelpers.js';
@@ -55,7 +57,7 @@ import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenSura(item, clave) {
-  if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+  if (clave === 'docs') return nArchivosCasoSura(item);
   if (clave === 'zonaAtencion') return zonaAtencionSura(item);
   if (clave === 'estado') return normalizarEstadoSura(item.estado);
   if (clave === 'sede') return item.sede || item.sedeRiesgo;
@@ -167,7 +169,7 @@ const buildExportRow = (caso) => ({
   'FECHA ACEPTACIÓN LIQUIDACIÓN': formatDate(caso.fechaAceptacionLiquidacion),
   'FECHA ENVÍO A LA ASEGURADORA': formatDate(caso.fechaEnvioAseguradora),
   ESTADO: caso.estado ?? '',
-  Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
+  Documentos: nArchivosCasoSura(caso),
 });
 
 export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsignados = false }) {
@@ -198,6 +200,15 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteSura();
   const puedeExcelVerificacion = esSesionExcelVerificacionSura();
+
+  const abrirEdicion = useCallback(async (item) => {
+    if (!item?._id) return;
+    try {
+      setCasoEdicion(await getCasoSuraById(item._id));
+    } catch {
+      setCasoEdicion(item);
+    }
+  }, []);
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -342,7 +353,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
   };
 
   const obtenerValorCelda = (item, clave) => {
-    if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+    if (clave === 'docs') return nArchivosCasoSura(item);
     if (clave === 'zonaAtencion') return zonaAtencionSura(item);
     if (clave === 'estado') return normalizarEstadoSura(item.estado);
     if (CAMPOS_MONEDA.has(clave)) {
@@ -707,10 +718,10 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
                     >
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesSuraMenu
-                          docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico}
-                          onGestionar={() => setCasoEdicion(item)}
+                          docsCount={nArchivosCasoSura(item)}
+                          tieneLiquidador={!!(item.tieneLiquidador || item.liquidador)}
+                          tieneInforme={!!(item.tieneInforme || item.informeUnico)}
+                          onGestionar={() => abrirEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
                             navigate(`/sura/caso?casoId=${item._id}&tab=informe-agil`, {

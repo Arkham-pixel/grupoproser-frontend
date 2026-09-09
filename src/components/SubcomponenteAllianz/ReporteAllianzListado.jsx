@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoAllianzListado,
   fetchAllCasosAllianzListado,
+  getCasoAllianzListadoById,
 } from '../../services/allianzListadoService.js';
 import FormularioAllianz from './FormularioAllianz.jsx';
 import AccionesAllianzMenu from './AccionesAllianzMenu.jsx';
@@ -25,6 +26,7 @@ import {
   etiquetaTipoPolizaAllianz,
   fechaEnRango,
   formatDate,
+  nArchivosCasoAllianz,
   diasEnEstadoAllianz,
   ultimaGestionAllianz,
   normTexto,
@@ -180,6 +182,15 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteAllianz();
+
+  const abrirEdicion = useCallback(async (item) => {
+    if (!item?._id) return;
+    try {
+      setCasoEdicion(await getCasoAllianzListadoById(item._id));
+    } catch {
+      setCasoEdicion(item);
+    }
+  }, []);
 
   const columnas = useMemo(
     () => (soloInformes ? [COLUMNA_DOCUMENTOS, ...COLUMNAS] : COLUMNAS),
@@ -597,10 +608,10 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesAllianzMenu
-                          docsCount={item.archivos?.length || 0}
+                          docsCount={nArchivosCasoAllianz(item)}
                           tieneLiquidador={casoAllianzTieneLiquidador(item)}
                           tieneInforme={casoAllianzTieneInforme(item)}
-                          onGestionar={() => setCasoEdicion(item)}
+                          onGestionar={() => abrirEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
                             navigate(`/allianz/listado/caso?casoId=${item._id}&tab=informe`)

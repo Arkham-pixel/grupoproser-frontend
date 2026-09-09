@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoAllianz,
   fetchAllCasosAllianz,
+  getCasoAllianzById,
 } from '../../services/allianzService.js';
 import FormularioAllianz from './FormularioAllianz.jsx';
 import ArchiveroAllianz from './ArchiveroAllianz.jsx';
@@ -19,6 +20,7 @@ import {
   formatCurrency,
   formatDate,
   labelSeveridadCat,
+  nArchivosCasoAllianz,
   normTexto,
   evidenciaAplicaSi,
   normalizeEvidenciaItem,
@@ -50,7 +52,7 @@ import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
 
 function valorOrdenAllianz(item, clave) {
-  if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+  if (clave === 'docs') return nArchivosCasoAllianz(item);
   if (clave === 'severidadCat') return labelSeveridadCat(item.severidadCat);
   if (clave === 'diasEnEstado') return diasEnEstadoAllianz(item);
   if (clave === 'ultimaGestion') return ultimaGestionAllianz(item);
@@ -249,7 +251,7 @@ const buildExportRow = (caso) => ({
   'OBS EQUIPOS CRITICOS': normalizeEvidenciaItem(caso.evidenciaCat?.equiposCriticos).observacion || '',
   'OBS MITIGACION': normalizeEvidenciaItem(caso.evidenciaCat?.mitigacion).observacion || '',
   'OBS NO ACCESO': normalizeEvidenciaItem(caso.evidenciaCat?.noAcceso).observacion || '',
-  Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
+  Documentos: nArchivosCasoAllianz(caso),
 });
 
 export default function ReporteAllianz() {
@@ -273,6 +275,15 @@ export default function ReporteAllianz() {
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
+
+  const abrirEdicion = useCallback(async (item) => {
+    if (!item?._id) return;
+    try {
+      setCasoEdicion(await getCasoAllianzById(item._id));
+    } catch {
+      setCasoEdicion(item);
+    }
+  }, []);
 
   const recargar = useCallback(async ({ silencioso = false } = {}) => {
     if (!silencioso) {
@@ -400,7 +411,7 @@ export default function ReporteAllianz() {
   };
 
   const obtenerValorCelda = (item, clave) => {
-    if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+    if (clave === 'docs') return nArchivosCasoAllianz(item);
     if (clave === 'severidadCat') return labelSeveridadCat(item.severidadCat);
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
@@ -630,10 +641,12 @@ export default function ReporteAllianz() {
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesAllianzMenu
-                          docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico || !!item.historialCatastroficoId}
-                          onGestionar={() => setCasoEdicion(item)}
+                          docsCount={nArchivosCasoAllianz(item)}
+                          tieneLiquidador={!!(item.tieneLiquidador || item.liquidador)}
+                          tieneInforme={
+                            !!(item.tieneInforme || item.informeUnico || item.historialCatastroficoId)
+                          }
+                          onGestionar={() => abrirEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onLiquidador={() =>
                             navigate(`/allianz/liquidador?casoId=${item._id}&tab=liquidador`, {

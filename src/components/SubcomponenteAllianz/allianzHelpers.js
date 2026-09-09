@@ -833,17 +833,24 @@ function claveTipoInformeReporteAllianz(valor) {
     .trim();
 }
 
+export function nArchivosCasoAllianz(caso = {}) {
+  if (Number.isFinite(Number(caso.nArchivos))) return Number(caso.nArchivos);
+  return Array.isArray(caso.archivos) ? caso.archivos.length : 0;
+}
+
 /** Tipo de informe guardado (único / final / preliminar). Vacío si no hay informe. */
 export function tipoInformeCasoAllianz(caso = {}) {
+  const directo = claveTipoInformeReporteAllianz(caso.tipoInforme);
+  if (TIPOS_INFORME_REPORTE_ALLIANZ.has(directo)) return directo;
   const inf = caso.informeUnico;
-  if (!inf || typeof inf !== 'object') return '';
+  if (!inf || typeof inf !== 'object') return caso.tieneInforme ? 'unico' : '';
   const clave = claveTipoInformeReporteAllianz(inf.tipoInforme);
   if (TIPOS_INFORME_REPORTE_ALLIANZ.has(clave)) return clave;
   return Object.keys(inf).length ? 'unico' : '';
 }
 
 export function casoAllianzTieneLiquidador(caso = {}) {
-  return Boolean(caso?.liquidador && typeof caso.liquidador === 'object');
+  return Boolean(caso?.tieneLiquidador || (caso?.liquidador && typeof caso.liquidador === 'object'));
 }
 
 export function casoAllianzTieneInforme(caso = {}) {

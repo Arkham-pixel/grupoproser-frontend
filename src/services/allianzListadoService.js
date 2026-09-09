@@ -11,6 +11,17 @@ const authHeaders = () => {
 
 export const normalizeAllianzListadoItem = (item = {}) => {
   const ub = resolverUbicacionAllianz(item.ciudad, item.departamento);
+  const nArchivos = Number.isFinite(Number(item.nArchivos))
+    ? Number(item.nArchivos)
+    : Array.isArray(item.archivos)
+      ? item.archivos.length
+      : 0;
+  const tieneInforme = Boolean(
+    item.tieneInforme ?? (item.informeUnico && typeof item.informeUnico === 'object')
+  );
+  const tieneLiquidador = Boolean(
+    item.tieneLiquidador ?? (item.liquidador && typeof item.liquidador === 'object')
+  );
   return {
   ...item,
   zc: item.zc ?? '',
@@ -40,14 +51,23 @@ export const normalizeAllianzListadoItem = (item = {}) => {
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
+  nArchivos,
+  tieneInforme,
+  tieneLiquidador,
+  tipoInforme: item.tipoInforme || item.informeUnico?.tipoInforme || '',
   };
 };
 
 const normalizeArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeAllianzListadoItem(item ?? {})) : [];
 
-export const getCasosAllianzListadoPaginado = async ({ page = 1, limit = 100 } = {}) => {
+export const getCasosAllianzListadoPaginado = async ({
+  page = 1,
+  limit = 100,
+  completo = false,
+} = {}) => {
   const qs = new URLSearchParams({ page, limit, _t: Date.now() });
+  if (completo) qs.set('completo', '1');
   const response = await fetch(`${API_URL}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
@@ -62,12 +82,12 @@ export const getCasosAllianzListadoPaginado = async ({ page = 1, limit = 100 } =
   return payload;
 };
 
-export const fetchAllCasosAllianzListado = async (batchSize = 2000) => {
+export const fetchAllCasosAllianzListado = async (batchSize = 2000, { completo = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
   while (true) {
-    const respuesta = await getCasosAllianzListadoPaginado({ page, limit: batchSize });
+    const respuesta = await getCasosAllianzListadoPaginado({ page, limit: batchSize, completo });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') total = respuesta.total;
     if (!lote.length) break;
