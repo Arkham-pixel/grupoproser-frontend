@@ -177,7 +177,8 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   }
   if (estadoGestion === 'INSPECCIONADO') return 'enLiquidacion';
   if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'enInspeccion';
-  // EN GESTIÓN / SIN RESPUESTA EFECTIVA / PENDIENTE → verificación
+  // Solo pendientes de primer contacto / sin respuesta efectiva.
+  // (Solicitud de documentos → INSPECCIONADO → enLiquidacion, no aquí.)
   return 'verificacion';
 }
 
