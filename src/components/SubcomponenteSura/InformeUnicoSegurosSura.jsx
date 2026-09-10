@@ -173,6 +173,7 @@ export default function InformeUnicoSegurosSura({
   guardandoCaso = false,
   liquidadorInicial = null,
   forzarTipoUnico = false,
+  onLiberarForzarTipoUnico,
 }) {
   const { t } = useTranslation();
   const [informe, setInforme] = useState(() =>
@@ -238,23 +239,12 @@ export default function InformeUnicoSegurosSura({
     });
   };
 
-  const tipoInformeGuardado = casoSura?.informeUnico
-    ? normalizarTipoInformeSura(casoSura.informeUnico.tipoInforme, 'unico')
-    : '';
-
   useEffect(() => {
     setInforme(informeUnicoConFotosAgil(casoSura || {}, fotosAgil));
     setLiquidador(liquidadorInicial || mapCasoSuraALiquidador(casoSura || {}));
   }, [casoSura?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!tipoInformeGuardado) return;
-    setInforme((prev) => {
-      const actual = normalizarTipoInformeSura(prev?.tipoInforme, 'preliminar');
-      if (actual === tipoInformeGuardado) return prev;
-      return informeUnicoConFotosAgil(casoSura || {}, fotosAgil);
-    });
-  }, [casoSura?._id, tipoInformeGuardado]); // eslint-disable-line react-hooks/exhaustive-deps
+  // No recrear el informe al cambiar solo el tipo: se conserva todo el contenido.
 
   useEffect(() => {
     if (!forzarTipoUnico) return;
@@ -313,9 +303,15 @@ export default function InformeUnicoSegurosSura({
   const elegirTipoInforme = (tipo) => {
     const nextTipo = normalizarTipoInformeSura(tipo, tipoInforme);
     if (nextTipo === tipoInforme) return;
-    const next = { ...informe, tipoInforme: nextTipo };
-    setInforme(next);
-    onGuardarEnCaso?.(next);
+    // Solo cambia la etiqueta del informe; el resto del contenido se mantiene.
+    setInforme((prev) => {
+      const next = { ...prev, tipoInforme: nextTipo };
+      queueMicrotask(() => {
+        onLiberarForzarTipoUnico?.();
+        onGuardarEnCaso?.(next);
+      });
+      return next;
+    });
   };
 
   const setFila = (campo, idx, key, valor) => {

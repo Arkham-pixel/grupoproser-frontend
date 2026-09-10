@@ -575,6 +575,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
                 salvamento={salvamentoState || casoSura?.salvamento}
                 liquidadorInicial={liquidadorState}
                 forzarTipoUnico={forzarTipoUnico}
+                onLiberarForzarTipoUnico={() => setForzarTipoUnico(false)}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
                   setLiquidadorState(liq);

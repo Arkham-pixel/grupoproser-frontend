@@ -1,5 +1,6 @@
 ﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { estadoSuraPorTipoInforme } from '../components/SubcomponenteSura/segurosSuraHelpers.js';
+import { construirResumenReporteLiquidacionSura } from '../components/SubcomponenteSura/liquidadorSuraHelpers.js';
 import { sanitizarInformeUnicoCamposWord } from '../utils/limpiarTextoInformeWord.js';
 
 const SURA_API_URL = `${BASE_URL}/api/sura`;
@@ -380,7 +381,7 @@ export const getAlertasSura = async () => {
   return payload;
 };
 
-/** Guarda el liquidador en el caso y sincroniza valores reclamado/liquidado. */
+/** Guarda el liquidador en el caso y sincroniza valores reclamado/liquidado + resumen reporte. */
 export const guardarLiquidadorEnCasoSura = async ({
   casoId,
   liquidador,
@@ -389,13 +390,30 @@ export const guardarLiquidadorEnCasoSura = async ({
 }) => {
   if (!casoId) throw new Error('El caso Sura debe estar guardado antes de adjuntar el liquidador.');
 
+  const resumen = construirResumenReporteLiquidacionSura(liquidador || {}, totales);
+  const liquidadorConResumen = {
+    ...(liquidador || {}),
+    resumenReporte: resumen,
+  };
+
   const payload = {
     ...casoBase,
-    liquidador: liquidador || {},
+    liquidador: liquidadorConResumen,
     valorReclamado:
       totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
     valorLiquidado:
-      totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
+      totales.totalIndemnizar != null
+        ? totales.totalIndemnizar
+        : resumen.totalIndemnizar || casoBase.valorLiquidado,
+    liquidacionPresupuestoTotal: resumen.totalPresupuesto,
+    liquidacionDeduciblePresupuesto: resumen.deduciblePresupuesto,
+    liquidacionValorIndemnizarPresupuesto: resumen.valorIndemnizarPresupuesto,
+    liquidacionTotalContenidos: resumen.totalContenidos,
+    liquidacionDeducibleContenidos: resumen.deducibleContenidos,
+    liquidacionValorIndemnizarContenidos: resumen.valorIndemnizarContenidos,
+    liquidacionTotalIndemnizar: resumen.totalIndemnizar,
+    valorAseguradoFechaSiniestro: resumen.valorAseguradoFechaSiniestro,
+    valorDeducibleCalculo: resumen.valorDeducibleCalculo,
   };
 
   delete payload._id;

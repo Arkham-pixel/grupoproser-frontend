@@ -6,9 +6,12 @@ import {
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
+  calcularValorAseguradoFechaSiniestroNsr10,
+  esModoDeduciblePorArticuloPresupuesto,
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
+  resolverCalculoValorAseguradoNsr10,
   camposValorAseguradoParaNsr,
   valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -652,7 +655,10 @@ export function calcularLiquidacionSura(liquidador = {}) {
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
     otrosAmparos: liquidador.otrosAmparos,
     ...(() => {
-      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
+      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen, {
+        deduciblePresupuestoFallback:
+          presupuesto?.calculoValorAsegurado?.valorDeducible,
+      });
       if (!usaCotiz) return args;
       return {
         ...args,
@@ -702,6 +708,124 @@ export function calcularLiquidacionSura(liquidador = {}) {
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
+  };
+}
+
+/**
+ * Resumen plano para Reporte Sura (tabla / Excel): liquidación presupuesto + totales.
+ * Misma lógica que la caja «Liquidación presupuesto» del liquidador.
+ */
+export function construirResumenReporteLiquidacionSura(liquidador = {}, totalesArg = null) {
+  const totales =
+    totalesArg && typeof totalesArg === 'object' && totalesArg.diagrama
+      ? totalesArg
+      : calcularLiquidacionSura(liquidador || {});
+  const diagrama = totales.diagrama || {};
+  const presDed = diagrama.deduciblePresupuesto || {};
+  const contDed = diagrama.deducibleContenidos || {};
+  const liq = liquidador?.liquidacionCatastrofico || {};
+  const presupuesto =
+    liquidador?.evaluacionSismicaNSR10?.presupuesto || {};
+  const porArticulo = esModoDeduciblePorArticuloPresupuesto(liq, {
+    usaDeduciblePorArticuloPresupuesto: totales.presupuesto?.usaDeduciblePorArticulo,
+  });
+  const calcBase = resolverCalculoValorAseguradoNsr10(presupuesto, liquidador || {});
+  const calcRes = porArticulo
+    ? calcularValorAseguradoFechaSiniestroNsr10(calcBase)
+    : null;
+  const deFilas = Number(totales.presupuesto?.deduciblePorArticulos) || 0;
+  const deCalc = Number(
+    calcRes?.valorDeducible ?? presupuesto?.calculoValorAsegurado?.valorDeducible
+  );
+  let deduciblePresupuesto = Number(presDed.aplicado) || 0;
+  if (porArticulo) {
+    if (deFilas > 0) deduciblePresupuesto = deFilas;
+    else if (Number.isFinite(deCalc) && deCalc > 0) deduciblePresupuesto = Math.round(deCalc);
+  }
+  const totalPresupuesto = Number(totales.totalPresupuesto) || 0;
+  const valorIndemnizarPresupuesto = Math.max(
+    0,
+    Math.round((totalPresupuesto - deduciblePresupuesto) * 100) / 100
+  );
+  return {
+    totalPresupuesto,
+    deduciblePresupuesto,
+    valorIndemnizarPresupuesto,
+    totalContenidos: Number(totales.totalContenidos) || 0,
+    deducibleContenidos: Number(contDed.aplicado) || 0,
+    valorIndemnizarContenidos: Number(contDed.neto) || 0,
+    totalIndemnizar: Number(totales.totalIndemnizar) || 0,
+    valorAseguradoFechaSiniestro:
+      calcRes?.valorAseguradoFechaSiniestro ??
+      presupuesto?.calculoValorAsegurado?.valorAseguradoFechaSiniestro ??
+      null,
+    valorDeducibleCalculo:
+      Number.isFinite(deCalc) && deCalc > 0
+        ? Math.round(deCalc)
+        : calcRes?.valorDeducible ?? null,
+    modoDeduciblePresupuesto: porArticulo ? 'por_articulo' : 'general',
+  };
+}
+
+/** Lee resumen ya persistido en el caso (lista liviana) o lo calcula si hay liquidador. */
+export function leerResumenReporteLiquidacionCasoSura(caso = {}) {
+  const guardado = caso?.liquidador?.resumenReporte;
+  if (guardado && typeof guardado === 'object') {
+    return {
+      totalPresupuesto: Number(caso.liquidacionPresupuestoTotal ?? guardado.totalPresupuesto) || 0,
+      deduciblePresupuesto:
+        Number(caso.liquidacionDeduciblePresupuesto ?? guardado.deduciblePresupuesto) || 0,
+      valorIndemnizarPresupuesto:
+        Number(
+          caso.liquidacionValorIndemnizarPresupuesto ?? guardado.valorIndemnizarPresupuesto
+        ) || 0,
+      totalContenidos: Number(caso.liquidacionTotalContenidos ?? guardado.totalContenidos) || 0,
+      deducibleContenidos:
+        Number(caso.liquidacionDeducibleContenidos ?? guardado.deducibleContenidos) || 0,
+      valorIndemnizarContenidos:
+        Number(
+          caso.liquidacionValorIndemnizarContenidos ?? guardado.valorIndemnizarContenidos
+        ) || 0,
+      totalIndemnizar: Number(caso.liquidacionTotalIndemnizar ?? guardado.totalIndemnizar) || 0,
+      valorAseguradoFechaSiniestro:
+        caso.valorAseguradoFechaSiniestro ?? guardado.valorAseguradoFechaSiniestro ?? null,
+      valorDeducibleCalculo:
+        caso.valorDeducibleCalculo ?? guardado.valorDeducibleCalculo ?? null,
+      modoDeduciblePresupuesto: guardado.modoDeduciblePresupuesto || '',
+    };
+  }
+  if (
+    caso.liquidacionPresupuestoTotal != null ||
+    caso.liquidacionDeduciblePresupuesto != null ||
+    caso.liquidacionTotalIndemnizar != null
+  ) {
+    return {
+      totalPresupuesto: Number(caso.liquidacionPresupuestoTotal) || 0,
+      deduciblePresupuesto: Number(caso.liquidacionDeduciblePresupuesto) || 0,
+      valorIndemnizarPresupuesto: Number(caso.liquidacionValorIndemnizarPresupuesto) || 0,
+      totalContenidos: Number(caso.liquidacionTotalContenidos) || 0,
+      deducibleContenidos: Number(caso.liquidacionDeducibleContenidos) || 0,
+      valorIndemnizarContenidos: Number(caso.liquidacionValorIndemnizarContenidos) || 0,
+      totalIndemnizar: Number(caso.liquidacionTotalIndemnizar) || 0,
+      valorAseguradoFechaSiniestro: caso.valorAseguradoFechaSiniestro ?? null,
+      valorDeducibleCalculo: caso.valorDeducibleCalculo ?? null,
+      modoDeduciblePresupuesto: caso.modoDeduciblePresupuesto || '',
+    };
+  }
+  if (caso.liquidador && typeof caso.liquidador === 'object') {
+    return construirResumenReporteLiquidacionSura(caso.liquidador);
+  }
+  return {
+    totalPresupuesto: 0,
+    deduciblePresupuesto: 0,
+    valorIndemnizarPresupuesto: 0,
+    totalContenidos: 0,
+    deducibleContenidos: 0,
+    valorIndemnizarContenidos: 0,
+    totalIndemnizar: 0,
+    valorAseguradoFechaSiniestro: null,
+    valorDeducibleCalculo: null,
+    modoDeduciblePresupuesto: '',
   };
 }
 
@@ -1061,7 +1185,8 @@ export function formDataNsrDesdeLiquidadorSura(liquidador = {}, caso = {}) {
     ciudad: enc.ciudad,
     direccionRiesgo: enc.direccion,
     numeroPoliza: enc.poliza,
-    fechaSiniestro: enc.fechaSiniestro,
+    fechaSiniestro: enc.fechaSiniestro || fechaInput(caso.fechaSiniestro || caso.fchaSinstro),
+    fechaInicioPoliza: fechaInput(caso.fechaInicioPoliza || enc.fechaInicioPoliza),
     actaAjustadorNombre: enc.ajustador || caso.ajustador || '',
   };
 }

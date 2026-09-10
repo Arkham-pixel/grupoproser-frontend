@@ -16,7 +16,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto, MODO_DEDUCIBLE_NSR10, resolverCalculoValorAseguradoNsr10, calcularValorAseguradoFechaSiniestroNsr10, calculoValorAseguradoTieneDatosNsr10, parseMontoNsr10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionSura,
@@ -1346,6 +1346,23 @@ export async function descargarWordInformeSura({
     : [];
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
+  const formLikeCalculoVA = {
+    valorAseguradoInmueble:
+      enc.valorAseguradoInmueble ?? caso.valorAseguradoInmueble ?? '',
+    fechaInicioPoliza: caso.fechaInicioPoliza || enc.fechaInicioPoliza || '',
+    fechaSiniestro:
+      enc.fechaSiniestro || caso.fechaSiniestro || caso.fchaSinstro || '',
+  };
+  const modoDedPresupuesto = String(
+    liq?.liquidacionCatastrofico?.modoDeduciblePresupuesto || ''
+  ).trim();
+  const esPorArticuloPresupuestoWord =
+    modoDedPresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  const calculoVA = resolverCalculoValorAseguradoNsr10(presupuesto, formLikeCalculoVA);
+  const resultadoVA = calcularValorAseguradoFechaSiniestroNsr10(calculoVA);
+  const tieneCalculoValorAsegurado =
+    esPorArticuloPresupuestoWord &&
+    calculoValorAseguradoTieneDatosNsr10(presupuesto, formLikeCalculoVA);
   const aiuPct = Math.round(
     (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
   );
@@ -1678,6 +1695,47 @@ export async function descargarWordInformeSura({
   const tablaResumenContenidos = tablaDosColumnasSura(resumenInd.contenidos, money);
   const tablaResumenGastos = tablaDosColumnasSura(resumenInd.gastosSinDeducible || [], money);
   const tablaResumenConsolidado = tablaDosColumnasSura(resumenInd.consolidado, money);
+  const tablaCalculoValorAsegurado = tieneCalculoValorAsegurado
+    ? tablaDosColumnasSura(
+        [
+          {
+            label: 'Valor asegurado',
+            value: parseMontoNsr10(calculoVA.valorAsegurado) || 0,
+          },
+          {
+            label: 'Valor índice variable',
+            value: parseMontoNsr10(calculoVA.valorIndiceVariable) || 0,
+          },
+          {
+            label: 'Fecha inicio vigencia',
+            value: fmtFechaCorta(calculoVA.fechaInicioVigencia) || '—',
+            tipo: 'texto',
+          },
+          {
+            label: 'Fecha siniestro',
+            value: fmtFechaCorta(calculoVA.fechaSiniestro) || '—',
+            tipo: 'texto',
+          },
+          {
+            label: 'Días siniestro',
+            value:
+              resultadoVA.diasSiniestro == null ? '—' : String(resultadoVA.diasSiniestro),
+            tipo: 'texto',
+          },
+          {
+            label: 'Valor asegurado fecha siniestro',
+            value: resultadoVA.valorAseguradoFechaSiniestro || 0,
+            bold: true,
+          },
+          {
+            label: `Valor deducible (${resultadoVA.porcentajeDeducible ?? 2}%)`,
+            value: resultadoVA.valorDeducible || 0,
+            destacado: true,
+          },
+        ],
+        money
+      )
+    : null;
   const tablaArticulosContenidos =
     resumenInd.contenidosPorArticulo && resumenInd.grupos.length
       ? tablaDeducibleContenidosPorArticuloSura(resumenInd.grupos, money)
@@ -1928,6 +1986,21 @@ export async function descargarWordInformeSura({
             liquidador: liq,
           })
         ),
+        ...(tieneCalculoValorAsegurado && tablaCalculoValorAsegurado
+          ? [
+              p('Cálculo valor asegurado a fecha de siniestro (por artículo de póliza)', {
+                bold: true,
+                before: 200,
+                after: 80,
+                size: SIZE_12,
+              }),
+              p(
+                'Valor a fecha = asegurado + (índice variable × días) / 365; deducible = % sobre ese valor.',
+                { after: 80, size: SIZE_META, color: '555555' }
+              ),
+              tablaCalculoValorAsegurado,
+            ]
+          : []),
       ],
     },
     {
@@ -1941,6 +2014,21 @@ export async function descargarWordInformeSura({
     const hijosLiquidador = [
       heading(`${numLiquidador}. Liquidación de pérdidas (liquidador NSR-10)`),
     ];
+    if (tieneCalculoValorAsegurado && tablaCalculoValorAsegurado) {
+      hijosLiquidador.push(
+        p('Cálculo valor asegurado a fecha de siniestro (por artículo de póliza)', {
+          bold: true,
+          before: 120,
+          after: 80,
+          size: SIZE_12,
+        }),
+        p(
+          'Valor a fecha = asegurado + (índice variable × días) / 365; deducible = % sobre ese valor.',
+          { after: 80, size: SIZE_META, color: '555555' }
+        ),
+        tablaCalculoValorAsegurado
+      );
+    }
     if (tienePresupuestoNsr) {
       hijosLiquidador.push(
         p(

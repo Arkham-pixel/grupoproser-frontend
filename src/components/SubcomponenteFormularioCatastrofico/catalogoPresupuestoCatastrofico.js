@@ -529,7 +529,11 @@ export function aplicarMayorEntreSmmlvYPctOVa({
     : pctGeneral;
   const bruto = Math.max(smmlv, montoPctOVa);
   const tope = Math.max(0, Number(topePerdida) || 0);
-  const aplicado = redondearCopDeducible(Math.min(bruto, tope));
+  // Por artículo: mostrar el deducible de la tabla/cálculo completo.
+  // El tope en la pérdida solo afecta el neto (no oculta el deducible si la pérdida aún es 0).
+  const aplicado = redondearCopDeducible(
+    tieneArticulos ? (Number.isFinite(artN) ? Math.max(0, artN) : 0) : Math.min(bruto, tope)
+  );
   const ganaSmmlv = !tieneArticulos && smmlv > montoPctOVa;
   const tipoMinimo = calcGeneral.tipoMinimo || 'SMMLV';
   const tipoGanador = tieneArticulos
@@ -716,11 +720,12 @@ export function calcularDiagramaLiquidacion({
     Number.isFinite(dedArtPresN) &&
     dedArtPresN > 0;
   /**
-   * Presupuesto por artículo: el deducible es la suma de categorías.
+   * Presupuesto por artículo: el deducible es la suma de categorías (sin topearte a 0
+   * cuando el presupuesto aún no tiene cantidades). El neto sí se topea en 0.
    * No usar (totalConAIU − netoSinAIU): eso metía el AIU dentro del «deducible aplicado».
    */
   const deduciblePresupuestoAplicado = usarSumaArticulosPres
-    ? redondearCopDeducible(Math.min(dedArtPresN, basePresupuesto))
+    ? redondearCopDeducible(dedArtPresN)
     : mayorPres.aplicado;
   const presupuestoNeto = Math.max(
     0,

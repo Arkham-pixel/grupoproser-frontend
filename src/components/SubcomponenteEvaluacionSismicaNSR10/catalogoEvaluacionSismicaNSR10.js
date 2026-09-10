@@ -220,15 +220,29 @@ export function esModoDeduciblePorArticuloNsr() {
   return true;
 }
 
-/** Si hay cálculo por artículo, no se mezcla el SMMLV/% general: solo se suma esa vía. */
-export function argsDeduciblesPorArticuloDiagrama(liquidacion = {}, resumen = {}) {
+/**
+ * Si hay cálculo por artículo, no se mezcla el SMMLV/% general: solo se suma esa vía.
+ * opts.deduciblePresupuestoFallback: valor del panel «Cálculo valor asegurado» si las filas
+ * aún no tienen deducible sumado (p. ej. presupuesto en $0).
+ */
+export function argsDeduciblesPorArticuloDiagrama(
+  liquidacion = {},
+  resumen = {},
+  opts = {}
+) {
   const usaPresPorArticulo = esModoDeduciblePorArticuloPresupuesto(liquidacion, resumen);
+  const dedFilas = Number(resumen.deduciblePorArticulosPresupuesto) || 0;
+  const dedFallback = Number(opts.deduciblePresupuestoFallback);
+  const dedPres =
+    dedFilas > 0
+      ? dedFilas
+      : Number.isFinite(dedFallback) && dedFallback > 0
+        ? Math.round(dedFallback)
+        : 0;
   return {
     deducibleContenidosPorArticulos:
       resumen.deduciblePorArticulosContenidos ?? resumen.deduciblePorArticulos ?? 0,
-    deduciblePresupuestoPorArticulos: usaPresPorArticulo
-      ? resumen.deduciblePorArticulosPresupuesto ?? 0
-      : 0,
+    deduciblePresupuestoPorArticulos: usaPresPorArticulo ? dedPres : 0,
     usaDeduciblePorArticuloContenidos: Boolean(resumen.usaDeduciblePorArticulo),
     usaDeduciblePorArticuloPresupuesto: usaPresPorArticulo,
     contenidosNetoPorArticulo: resumen.contenidos?.valorAIndemnizar,
@@ -1087,6 +1101,11 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
         ? Number(opts.baseValor) || 0
         : 0;
 
+  // Índice variable / cálculo valor asegurado: no pisar el deducible ya fijado.
+  if (next.deducibleManual) {
+    return next;
+  }
+
   if (regla) {
     if (va <= 0) return next;
     const pct =
@@ -1238,7 +1257,12 @@ export function aplicarDeduciblesAgrupados(items = [], smmlvCfg = {}, opts = {})
       deducibleGrupoSumaVA: grupo.sumaVA,
       deducibleGrupoSumaPL: grupo.sumaPL,
       deducibleGrupoIncluido: !esPrimero,
-      deducibleCalculado: esPrimero ? grupo.aplicado : '',
+      // Si viene del cálculo valor asegurado (índice variable), no pisar el deducible.
+      deducibleCalculado: !esPrimero
+        ? ''
+        : row.deducibleManual
+          ? row.deducibleCalculado
+          : grupo.aplicado,
       valorAsegurable: esPrimero ? row.valorAsegurable : '',
     };
   });
@@ -1616,4 +1640,208 @@ export function ocultarHojasEvaluacionYDictamenExcel(workbook) {
       visibility: 'visible',
     },
   ];
+}
+
+/**
+ * Cálculo Valor Asegurado a fecha de siniestro (plantilla SURA).
+ * Solo aplica con deducible por artículo de póliza.
+ *
+ * DÍAS = fechaSiniestro − fechaInicioVigencia + 1
+ * VALOR FECHA = ROUND(valorAsegurado + (índiceVariable × días) / 365, 0)
+ * DEDUCIBLE = ROUND(valorFecha × pct/100, 0)  (default 2%)
+ */
+export function fechaSoloDiaNsr10(valor) {
+  if (!valor) return '';
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    const y = valor.getFullYear();
+    const m = String(valor.getMonth() + 1).padStart(2, '0');
+    const d = String(valor.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(valor).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const dt = new Date(s);
+  if (Number.isNaN(dt.getTime())) return '';
+  return fechaSoloDiaNsr10(dt);
+}
+
+export function diasEntreFechasNsr10(inicio, fin) {
+  const a = fechaSoloDiaNsr10(inicio);
+  const b = fechaSoloDiaNsr10(fin);
+  if (!a || !b) return null;
+  const [ya, ma, da] = a.split('-').map(Number);
+  const [yb, mb, db] = b.split('-').map(Number);
+  const t0 = Date.UTC(ya, ma - 1, da);
+  const t1 = Date.UTC(yb, mb - 1, db);
+  return Math.round((t1 - t0) / 86400000) + 1;
+}
+
+export function defaultCalculoValorAseguradoNsr10(formData = {}) {
+  const va =
+    parseMontoNsr10(formData.valorAseguradoInmueble) ??
+    parseMontoNsr10(formData.liquidacionCatastrofico?.valorAsegurado) ??
+    parseMontoNsr10(formData.encabezado?.valorAseguradoInmueble);
+  return {
+    valorAsegurado: va != null && va > 0 ? va : '',
+    valorIndiceVariable: '',
+    fechaInicioVigencia: fechaSoloDiaNsr10(
+      formData.fechaInicioPoliza || formData.encabezado?.fechaInicioPoliza || ''
+    ),
+    fechaSiniestro: fechaSoloDiaNsr10(
+      formData.fechaSiniestro ||
+        formData.fechaOcurrencia ||
+        formData.encabezado?.fechaSiniestro ||
+        ''
+    ),
+    porcentajeDeducible: 2,
+  };
+}
+
+export function resolverCalculoValorAseguradoNsr10(presupuesto = {}, formData = {}) {
+  const guardado =
+    presupuesto?.calculoValorAsegurado && typeof presupuesto.calculoValorAsegurado === 'object'
+      ? presupuesto.calculoValorAsegurado
+      : {};
+  const base = defaultCalculoValorAseguradoNsr10(formData);
+  return {
+    valorAsegurado:
+      guardado.valorAsegurado !== undefined && guardado.valorAsegurado !== ''
+        ? guardado.valorAsegurado
+        : base.valorAsegurado,
+    valorIndiceVariable:
+      guardado.valorIndiceVariable !== undefined && guardado.valorIndiceVariable !== ''
+        ? guardado.valorIndiceVariable
+        : base.valorIndiceVariable,
+    fechaInicioVigencia:
+      fechaSoloDiaNsr10(guardado.fechaInicioVigencia) || base.fechaInicioVigencia,
+    fechaSiniestro: fechaSoloDiaNsr10(guardado.fechaSiniestro) || base.fechaSiniestro,
+    porcentajeDeducible:
+      guardado.porcentajeDeducible !== undefined && guardado.porcentajeDeducible !== ''
+        ? Number(guardado.porcentajeDeducible)
+        : base.porcentajeDeducible,
+  };
+}
+
+export function calcularValorAseguradoFechaSiniestroNsr10(datos = {}) {
+  const valorAsegurado = parseMontoNsr10(datos.valorAsegurado) || 0;
+  const indice = parseMontoNsr10(datos.valorIndiceVariable) || 0;
+  const dias = diasEntreFechasNsr10(datos.fechaInicioVigencia, datos.fechaSiniestro);
+  const pct = Number(datos.porcentajeDeducible);
+  const pctOk = Number.isFinite(pct) ? pct : 2;
+
+  if (dias == null || dias < 0) {
+    return {
+      diasSiniestro: dias,
+      valorAseguradoFechaSiniestro: null,
+      valorDeducible: null,
+      porcentajeDeducible: pctOk,
+    };
+  }
+
+  const valorFecha = Math.round(valorAsegurado + (indice * dias) / 365);
+  const valorDeducible = Math.round(valorFecha * (pctOk / 100));
+  return {
+    diasSiniestro: dias,
+    valorAseguradoFechaSiniestro: valorFecha,
+    valorDeducible,
+    porcentajeDeducible: pctOk,
+  };
+}
+
+export function calculoValorAseguradoTieneDatosNsr10(presupuesto = {}, formData = {}) {
+  const d = resolverCalculoValorAseguradoNsr10(presupuesto, formData);
+  const r = calcularValorAseguradoFechaSiniestroNsr10(d);
+  return (
+    (parseMontoNsr10(d.valorAsegurado) || 0) > 0 ||
+    (parseMontoNsr10(d.valorIndiceVariable) || 0) > 0 ||
+    Boolean(d.fechaInicioVigencia) ||
+    Boolean(d.fechaSiniestro) ||
+    (r.valorAseguradoFechaSiniestro != null && r.valorAseguradoFechaSiniestro > 0)
+  );
+}
+
+/**
+ * Empuja al presupuesto UNA sola vez (vale para todo el grupo):
+ * - Suma asegurada = valor asegurado fecha siniestro (solo en la 1.ª fila)
+ * - Deducible = valor deducible del cálculo (solo en la 1.ª fila)
+ * El resto de filas queda incluido en el mismo artículo / cobertura.
+ */
+export function aplicarCalculoValorAseguradoAFilasPresupuesto(
+  items = [],
+  resultado = {},
+  {
+    coberturaPredeterminada = '',
+    smmlvCfg = {},
+    reglasDeducible = null,
+  } = {}
+) {
+  const suma = Number(resultado.valorAseguradoFechaSiniestro);
+  const ded = Number(resultado.valorDeducible);
+  const pct = Number(resultado.porcentajeDeducible);
+  if (!Number.isFinite(suma) || suma <= 0) return items;
+  const lista = Array.isArray(items) ? items : [];
+  if (!lista.length) return lista;
+
+  const sumaFmt = formatMilesNsr10(suma);
+  const pctOk = Number.isFinite(pct) ? pct : 2;
+  const dedOk = Number.isFinite(ded) && ded >= 0 ? Math.round(ded) : '';
+  const cobertura =
+    String(coberturaPredeterminada || '').trim() ||
+    String(
+      lista.find((r) => String(r.coberturaAfectar || r.tipoCobertura || '').trim())
+        ?.coberturaAfectar ||
+        lista.find((r) => String(r.coberturaAfectar || r.tipoCobertura || '').trim())
+          ?.tipoCobertura ||
+        ''
+    ).trim() ||
+    'terremoto';
+  const etiqueta = etiquetaCoberturaArticulo(cobertura);
+
+  let asignado = false;
+  return lista.map((row) => {
+    const base = {
+      ...row,
+      coberturaAfectar: String(row.coberturaAfectar || '').trim() || cobertura,
+      tipoCobertura: String(row.tipoCobertura || '').trim() || etiqueta || row.tipoCobertura || '',
+      articuloPolizaId: row.articuloPolizaId || GRUPO_DEDUCIBLE_EDIFICIO,
+    };
+
+    if (!asignado) {
+      asignado = true;
+      const preparado = prepararFilaDeduciblePresupuesto(
+        {
+          ...base,
+          valorAsegurable: sumaFmt,
+          porcentajeDeducible: pctOk,
+        },
+        smmlvCfg,
+        cobertura,
+        { reglasDeducible }
+      );
+      return {
+        ...preparado,
+        valorAsegurable: sumaFmt,
+        porcentajeDeducible: pctOk,
+        deducibleCalculado: dedOk,
+        deducibleManual: true,
+        deducibleGrupoRepresentante: true,
+        deducibleGrupoIncluido: false,
+        deducibleGrupoFilas: lista.length,
+      };
+    }
+
+    return {
+      ...base,
+      valorAsegurable: '',
+      porcentajeDeducible: '',
+      valorMinimo: '',
+      cantidadMinimoSMMLV: '',
+      deducibleCalculado: '',
+      deducibleManual: false,
+      deducibleGrupoRepresentante: false,
+      deducibleGrupoIncluido: true,
+      deducibleGrupoFilas: lista.length,
+      deducibleGrupoClave: claveGrupoDeducible(base, GRUPO_DEDUCIBLE_EDIFICIO),
+    };
+  });
 }

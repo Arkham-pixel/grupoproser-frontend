@@ -16,6 +16,7 @@ import {
   UNIDADES_PRESUPUESTO_NSR10,
   aplicarCatalogoAFilaContenido,
   aplicarCatalogoAFilaPresupuesto,
+  aplicarCalculoValorAseguradoAFilasPresupuesto,
   aplicarDeducibleCoberturaFila,
   aplicarDeduciblesAgrupados,
   aplicarRecargosPresupuestoNsr10,
@@ -43,12 +44,14 @@ import {
   aplicarEstadoAItem,
   calcularCriterioFinal,
   calcularTotalesPresupuesto,
+  calcularValorAseguradoFechaSiniestroNsr10,
   crearEvaluacionSismicaNSR10Inicial,
   crearFilaContenidoVacia,
   crearFilaPresupuestoVacia,
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
   parseMontoNsr10,
+  resolverCalculoValorAseguradoNsr10,
   sugerirFilasPresupuestoDesdeEvaluacion,
   totalFilaContenido,
   totalFilaPresupuesto,
@@ -643,6 +646,34 @@ export default function ChecklistEvaluacionSismicaNSR10({
           100
       ) / 100
     : resumenTotales.sumaCompleta;
+  const usaPorArticuloContenidos = !simplificarDeducible;
+  const modoDeduciblePresupuesto = simplificarDeducible
+    ? MODO_DEDUCIBLE_NSR10.GENERAL
+    : resolverModoDeduciblePresupuesto(liquidacion, resumenTotales);
+  const usaPorArticuloPresupuesto =
+    modoDeduciblePresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  const usaPorArticulo = usaPorArticuloContenidos;
+  const calculoValorAsegurado = useMemo(
+    () =>
+      usaPorArticuloPresupuesto
+        ? resolverCalculoValorAseguradoNsr10(presupuesto, formData || {})
+        : null,
+    [
+      usaPorArticuloPresupuesto,
+      presupuesto.calculoValorAsegurado,
+      formData?.valorAseguradoInmueble,
+      formData?.fechaInicioPoliza,
+      formData?.fechaSiniestro,
+      formData?.fechaOcurrencia,
+    ]
+  );
+  const resultadoCalculoValorAsegurado = useMemo(
+    () =>
+      calculoValorAsegurado
+        ? calcularValorAseguradoFechaSiniestroNsr10(calculoValorAsegurado)
+        : null,
+    [calculoValorAsegurado]
+  );
   const diagrama = useMemo(
     () =>
       calcularDiagramaLiquidacion({
@@ -679,7 +710,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
               presupuestoNetoPorArticulo: null,
             };
           }
-          const args = argsDeduciblesPorArticuloDiagrama(liquidacion, resumenTotales);
+          const args = argsDeduciblesPorArticuloDiagrama(liquidacion, resumenTotales, {
+            deduciblePresupuestoFallback:
+              resultadoCalculoValorAsegurado?.valorDeducible ??
+              presupuesto?.calculoValorAsegurado?.valorDeducible,
+          });
           if (!usaTotalPresupuestoOverride) return args;
           return {
             ...args,
@@ -699,19 +734,36 @@ export default function ChecklistEvaluacionSismicaNSR10({
       totalDaniosDiagrama,
       totalPresupuestoDiagrama,
       simplificarDeducible,
+      resultadoCalculoValorAsegurado?.valorDeducible,
+      presupuesto?.calculoValorAsegurado?.valorDeducible,
     ]
   );
-  const usaPorArticuloContenidos = !simplificarDeducible;
-  const modoDeduciblePresupuesto = simplificarDeducible
-    ? MODO_DEDUCIBLE_NSR10.GENERAL
-    : resolverModoDeduciblePresupuesto(liquidacion, resumenTotales);
-  const usaPorArticuloPresupuesto =
-    modoDeduciblePresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
-  const usaPorArticulo = usaPorArticuloContenidos;
-  const indemnizarPresupuestoVentana =
-    diagrama.deduciblePresupuesto?.neto ??
-    resumenTotales.valorAIndemnizarPresupuesto ??
-    0;
+  const totalPresupuestoLiquidacion = usaTotalPresupuestoOverride
+    ? totalPresupuestoDiagrama
+    : Number(totales.total) || 0;
+  /** Por artículo: solo trae lo ya calculado arriba (filas o panel valor asegurado). */
+  const deduciblePresupuestoLiquidacion = (() => {
+    if (!usaPorArticuloPresupuesto) {
+      return Number(diagrama.deduciblePresupuesto?.aplicado) || 0;
+    }
+    const deFilas = Number(totales.deduciblePorArticulos) || 0;
+    if (deFilas > 0) return deFilas;
+    const deCalc = Number(
+      resultadoCalculoValorAsegurado?.valorDeducible ??
+        presupuesto?.calculoValorAsegurado?.valorDeducible
+    );
+    if (Number.isFinite(deCalc) && deCalc > 0) return Math.round(deCalc);
+    return Number(diagrama.deduciblePresupuesto?.aplicado) || 0;
+  })();
+  const valorIndemnizarPresupuestoLiquidacion = Math.max(
+    0,
+    Math.round((totalPresupuestoLiquidacion - deduciblePresupuestoLiquidacion) * 100) / 100
+  );
+  const indemnizarPresupuestoVentana = usaPorArticuloPresupuesto
+    ? valorIndemnizarPresupuestoLiquidacion
+    : diagrama.deduciblePresupuesto?.neto ??
+      resumenTotales.valorAIndemnizarPresupuesto ??
+      0;
   const indemnizarContenidosVentana =
     diagrama.deducibleContenidos?.neto ??
     resumenTotales.valorAIndemnizarContenidos ??
@@ -1066,6 +1118,54 @@ export default function ChecklistEvaluacionSismicaNSR10({
     valorSMMLV: parseMontoNsr10(deducibleCfg.valorSMMLV) || deducibleCfg.valorSMMLV,
   };
   const optsReglaDeducible = { reglasDeducible: reglasDeduciblePorCobertura };
+
+  const empujarCalculoValorAseguradoATabla = (resultado, calculoBase) => {
+    if (!(resultado?.valorAseguradoFechaSiniestro > 0)) return;
+    const nextItems = aplicarCalculoValorAseguradoAFilasPresupuesto(
+      filasPresupuesto,
+      resultado,
+      {
+        coberturaPredeterminada: presupuesto.coberturaAfectar,
+        smmlvCfg: smmlvFilaContenido,
+        reglasDeducible: reglasDeduciblePorCobertura,
+      }
+    );
+    const igual = nextItems.every((row, i) => {
+      const prev = filasPresupuesto[i] || {};
+      return (
+        String(prev.valorAsegurable || '') === String(row.valorAsegurable || '') &&
+        String(prev.deducibleCalculado ?? '') === String(row.deducibleCalculado ?? '') &&
+        String(prev.porcentajeDeducible ?? '') === String(row.porcentajeDeducible ?? '') &&
+        Boolean(prev.deducibleManual) === Boolean(row.deducibleManual) &&
+        Boolean(prev.deducibleGrupoIncluido) === Boolean(row.deducibleGrupoIncluido)
+      );
+    });
+    if (igual && nextItems.length === filasPresupuesto.length) return;
+    setPresupuesto({
+      ...presupuesto,
+      coberturaAfectar: presupuesto.coberturaAfectar || 'terremoto',
+      calculoValorAsegurado: {
+        ...(calculoBase || calculoValorAsegurado || {}),
+        ...resultado,
+      },
+      items: nextItems,
+    });
+  };
+
+  // Suma asegurada ← valor a fecha siniestro; Deducible ← valor deducible del cálculo.
+  useEffect(() => {
+    if (!usaPorArticuloPresupuesto || !resultadoCalculoValorAsegurado) return;
+    if (!(resultadoCalculoValorAsegurado.valorAseguradoFechaSiniestro > 0)) return;
+    if (!filasPresupuesto.length) return;
+    empujarCalculoValorAseguradoATabla(resultadoCalculoValorAsegurado, calculoValorAsegurado);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    usaPorArticuloPresupuesto,
+    filasPresupuesto.length,
+    resultadoCalculoValorAsegurado?.valorAseguradoFechaSiniestro,
+    resultadoCalculoValorAsegurado?.valorDeducible,
+    resultadoCalculoValorAsegurado?.porcentajeDeducible,
+  ]);
 
   const hidratoDeducibleAmbosRef = useRef(false);
   const vaPlatKey = `${valoresAsegurablesCaso.inmueble}|${valoresAsegurablesCaso.contenidos}|${valoresAsegurablesCaso.general}`;
@@ -1652,6 +1752,198 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </label>
           ) : null}
 
+          {usaPorArticuloPresupuesto && calculoValorAsegurado ? (
+            <div
+              className="rounded-xl border p-4 space-y-3"
+              style={{ borderColor, backgroundColor: softBg }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                    Cálculo valor asegurado a fecha de siniestro
+                  </h4>
+                  <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
+                    Un solo valor vale para todo el presupuesto: la 1.ª fila recibe la{' '}
+                    <strong>suma asegurada</strong> (valor a fecha de siniestro) y el{' '}
+                    <strong>deducible</strong>; el resto queda incluido en el mismo artículo
+                    (no se repite fila a fila).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-semibold text-blue-600 disabled:opacity-40"
+                  style={{ borderColor }}
+                  disabled={
+                    !(resultadoCalculoValorAsegurado?.valorAseguradoFechaSiniestro > 0)
+                  }
+                  onClick={() =>
+                    empujarCalculoValorAseguradoATabla(
+                      resultadoCalculoValorAsegurado,
+                      calculoValorAsegurado
+                    )
+                  }
+                >
+                  Aplicar una vez a todo el presupuesto
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="block">
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Valor asegurado
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className={inputClass}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={displayMiles(calculoValorAsegurado.valorAsegurado)}
+                    onChange={(e) =>
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          valorAsegurado: formatMilesInputNsr10(e.target.value),
+                        },
+                      })
+                    }
+                    onBlur={() => {
+                      const n = parseMontoNsr10(calculoValorAsegurado.valorAsegurado);
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          valorAsegurado: n == null ? '' : n,
+                        },
+                      });
+                    }}
+                  />
+                </label>
+                <label className="block">
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Valor índice variable
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className={inputClass}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={displayMiles(calculoValorAsegurado.valorIndiceVariable)}
+                    onChange={(e) =>
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          valorIndiceVariable: formatMilesInputNsr10(e.target.value),
+                        },
+                      })
+                    }
+                    onBlur={() => {
+                      const n = parseMontoNsr10(calculoValorAsegurado.valorIndiceVariable);
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          valorIndiceVariable: n == null ? '' : n,
+                        },
+                      });
+                    }}
+                  />
+                </label>
+                <label className="block">
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Fecha inicio vigencia
+                  </span>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={calculoValorAsegurado.fechaInicioVigencia || ''}
+                    onChange={(e) =>
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          fechaInicioVigencia: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <label className="block">
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Fecha siniestro
+                  </span>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={calculoValorAsegurado.fechaSiniestro || ''}
+                    onChange={(e) =>
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          fechaSiniestro: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Días siniestro
+                  </span>
+                  <p className="rounded-lg border px-2 py-1.5 text-sm font-mono" style={{ borderColor, color: textPrimary }}>
+                    {resultadoCalculoValorAsegurado?.diasSiniestro ?? '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Valor asegurado fecha siniestro
+                  </span>
+                  <p className="rounded-lg border px-2 py-1.5 text-sm font-mono" style={{ borderColor, color: textPrimary }}>
+                    {resultadoCalculoValorAsegurado?.valorAseguradoFechaSiniestro != null
+                      ? money(resultadoCalculoValorAsegurado.valorAseguradoFechaSiniestro)
+                      : '—'}
+                  </p>
+                </div>
+                <label className="block">
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    % deducible
+                  </span>
+                  <input
+                    type="number"
+                    className={inputClass}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={calculoValorAsegurado.porcentajeDeducible ?? 2}
+                    onChange={(e) =>
+                      setPresupuesto({
+                        ...presupuesto,
+                        calculoValorAsegurado: {
+                          ...calculoValorAsegurado,
+                          porcentajeDeducible:
+                            e.target.value === '' ? '' : Number(e.target.value),
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <div>
+                  <span className={labelClass} style={{ color: textSecondary }}>
+                    Valor deducible
+                  </span>
+                  <p className="rounded-lg border px-2 py-1.5 text-sm font-semibold font-mono" style={{ borderColor, color: textPrimary }}>
+                    {resultadoCalculoValorAsegurado?.valorDeducible != null
+                      ? money(resultadoCalculoValorAsegurado.valorDeducible)
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
             <table className={`${usaPorArticuloPresupuesto ? 'min-w-[1880px]' : 'min-w-[1280px]'} w-full text-left text-xs`}>
               <thead style={{ backgroundColor: softBg }}>
@@ -2119,6 +2411,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 Liquidación presupuesto
               </h4>
             </div>
+            {usaPorArticuloPresupuesto ? null : (
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible
@@ -2131,12 +2424,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     deducibleCfgPresupuestoInput.porcentaje,
                     simplificarDeducible ? 2 : 10
                   )}
-                  disabled={Boolean(diagrama.deduciblePresupuesto?.tieneArticulos)}
-                  title={
-                    diagrama.deduciblePresupuesto?.tieneArticulos
-                      ? 'En modo por artículo el % se define en cada fila de la tabla'
-                      : undefined
-                  }
                   onChange={(e) => {
                     const raw = e.target.value
                       .replace(',', '.')
@@ -2157,12 +2444,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     deducibleCfgPresupuestoInput.cantidadSMMLV,
                     simplificarDeducible ? 3 : 4
                   )}
-                  disabled={Boolean(diagrama.deduciblePresupuesto?.tieneArticulos)}
-                  title={
-                    diagrama.deduciblePresupuesto?.tieneArticulos
-                      ? 'En modo por artículo el mínimo se define en cada fila de la tabla'
-                      : undefined
-                  }
                   onChange={(e) => {
                     const raw = e.target.value
                       .replace(',', '.')
@@ -2176,6 +2457,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 />
               </label>
             </div>
+            )}
             <div className="overflow-hidden rounded border" style={{ borderColor }}>
               <table className="w-full text-sm">
                 <tbody style={{ color: textPrimary }}>
@@ -2185,10 +2467,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       {usaTotalPresupuestoOverride ? ' (cotización)' : ''}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">
-                      {money(usaTotalPresupuestoOverride ? totalPresupuestoDiagrama : totales.total)}
+                      {money(totalPresupuestoLiquidacion)}
                     </td>
                   </tr>
-                  {diagrama.deduciblePresupuesto?.tieneArticulos ? null : (
+                  {usaPorArticuloPresupuesto ? null : (
                     <>
                       <tr className="border-b" style={{ borderColor }}>
                         <td className="px-3 py-2" style={{ color: textSecondary }}>
@@ -2215,40 +2497,32 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2 font-semibold">
                       DEDUCIBLE APLICADO
-                      {diagrama.deduciblePresupuesto?.tieneArticulos
+                      {usaPorArticuloPresupuesto
                         ? ' (por artículo)'
                         : ` (el mayor: ${
                             diagrama.deduciblePresupuesto?.tipoGanadorLabel || 'SMMLV'
                           })`}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">
-                      {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
+                      {money(deduciblePresupuestoLiquidacion)}
                     </td>
                   </tr>
                   <tr style={{ backgroundColor: softBg }}>
                     <td className="px-3 py-2.5 font-bold text-emerald-600">
-                      {diagrama.deduciblePresupuesto?.tieneArticulos
+                      {usaPorArticuloPresupuesto
                         ? 'VALOR A INDEMNIZAR'
                         : 'PRESUPUESTO NETO'}
                     </td>
                     <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
-                      {money(
-                        diagrama.deduciblePresupuesto?.neto ??
-                          totales.valorAIndemnizar ??
-                          Math.max(
-                            0,
-                            (Number(totales.total) || 0) -
-                              (diagrama.deduciblePresupuesto?.aplicado || 0)
-                          )
-                      )}
+                      {money(valorIndemnizarPresupuestoLiquidacion)}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p className="text-xs" style={{ color: textSecondary }}>
-              {diagrama.deduciblePresupuesto?.tieneArticulos
-                ? 'Solo se resta un deducible: la suma de (pérdida − deducible) por categoría. El % / SMMLV general de arriba no se vuelve a cobrar.'
+              {usaPorArticuloPresupuesto
+                ? 'Toma el total del presupuesto y el deducible ya calculado arriba. No se vuelve a aplicar % / SMMLV general.'
                 : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
           </div>

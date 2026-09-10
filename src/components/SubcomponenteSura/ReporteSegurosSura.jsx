@@ -26,6 +26,7 @@ import {
   normalizarEstadoSura,
   normTexto,
 } from './segurosSuraHelpers.js';
+import { leerResumenReporteLiquidacionCasoSura } from './liquidadorSuraHelpers.js';
 import { zonaAtencionSura, ZONAS_ATENCION_SURA } from './suraZonas.js';
 import {
   expressBadge,
@@ -61,6 +62,21 @@ function valorOrdenSura(item, clave) {
   if (clave === 'zonaAtencion') return zonaAtencionSura(item);
   if (clave === 'estado') return normalizarEstadoSura(item.estado);
   if (clave === 'sede') return item.sede || item.sedeRiesgo;
+  const resumenClaves = {
+    liquidacionPresupuestoTotal: 'totalPresupuesto',
+    liquidacionDeduciblePresupuesto: 'deduciblePresupuesto',
+    liquidacionValorIndemnizarPresupuesto: 'valorIndemnizarPresupuesto',
+    liquidacionTotalContenidos: 'totalContenidos',
+    liquidacionDeducibleContenidos: 'deducibleContenidos',
+    liquidacionValorIndemnizarContenidos: 'valorIndemnizarContenidos',
+    liquidacionTotalIndemnizar: 'totalIndemnizar',
+    valorAseguradoFechaSiniestro: 'valorAseguradoFechaSiniestro',
+    valorDeducibleCalculo: 'valorDeducibleCalculo',
+  };
+  if (resumenClaves[clave]) {
+    const r = leerResumenReporteLiquidacionCasoSura(item);
+    return r[resumenClaves[clave]];
+  }
   return item[clave];
 }
 
@@ -101,6 +117,15 @@ const COLUMNAS = [
   { clave: 'observacionReserva', labelKey: 'observacionReserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
   { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
+  { clave: 'valorAseguradoFechaSiniestro', labelKey: 'valorAseguradoFechaSiniestro' },
+  { clave: 'valorDeducibleCalculo', labelKey: 'valorDeducibleCalculo' },
+  { clave: 'liquidacionPresupuestoTotal', labelKey: 'liquidacionPresupuestoTotal' },
+  { clave: 'liquidacionDeduciblePresupuesto', labelKey: 'liquidacionDeduciblePresupuesto' },
+  { clave: 'liquidacionValorIndemnizarPresupuesto', labelKey: 'liquidacionValorIndemnizarPresupuesto' },
+  { clave: 'liquidacionTotalContenidos', labelKey: 'liquidacionTotalContenidos' },
+  { clave: 'liquidacionDeducibleContenidos', labelKey: 'liquidacionDeducibleContenidos' },
+  { clave: 'liquidacionValorIndemnizarContenidos', labelKey: 'liquidacionValorIndemnizarContenidos' },
+  { clave: 'liquidacionTotalIndemnizar', labelKey: 'liquidacionTotalIndemnizar' },
   { clave: 'fechaInspeccion', labelKey: 'fechaInspeccion' },
   { clave: 'fechaUltimoDocumento', labelKey: 'fechaUltimoDocumento' },
   { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
@@ -118,6 +143,15 @@ const CAMPOS_MONEDA = new Set([
   'valorAseguradoContenidos',
   'valorReservaPreventivaPromedio',
   'valorComercialInmueble',
+  'valorAseguradoFechaSiniestro',
+  'valorDeducibleCalculo',
+  'liquidacionPresupuestoTotal',
+  'liquidacionDeduciblePresupuesto',
+  'liquidacionValorIndemnizarPresupuesto',
+  'liquidacionTotalContenidos',
+  'liquidacionDeducibleContenidos',
+  'liquidacionValorIndemnizarContenidos',
+  'liquidacionTotalIndemnizar',
 ]);
 const CAMPOS_FECHA = new Set([
   'fechaSiniestro',
@@ -129,8 +163,10 @@ const CAMPOS_FECHA = new Set([
   'fechaEnvioAseguradora',
 ]);
 
-/** Encabezados de export en el mismo orden/nombre que la hoja BD */
-const buildExportRow = (caso) => ({
+/** Encabezados de export en el mismo orden/nombre que la hoja BD + liquidación NSR-10 */
+const buildExportRow = (caso) => {
+  const liq = leerResumenReporteLiquidacionCasoSura(caso);
+  return {
   SINIESTRO: caso.siniestro ?? '',
   Consecutivo: caso.consecutivo ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
@@ -163,6 +199,15 @@ const buildExportRow = (caso) => ({
   'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
   'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
+  'VALOR ASEGURADO FECHA SINIESTRO': liq.valorAseguradoFechaSiniestro ?? '',
+  'VALOR DEDUCIBLE (CÁLCULO)': liq.valorDeducibleCalculo ?? '',
+  'TOTAL PRESUPUESTO': liq.totalPresupuesto || '',
+  'DEDUCIBLE APLICADO PRESUPUESTO': liq.deduciblePresupuesto || '',
+  'VALOR A INDEMNIZAR PRESUPUESTO': liq.valorIndemnizarPresupuesto || '',
+  'TOTAL CONTENIDOS': liq.totalContenidos || '',
+  'DEDUCIBLE APLICADO CONTENIDOS': liq.deducibleContenidos || '',
+  'VALOR A INDEMNIZAR CONTENIDOS': liq.valorIndemnizarContenidos || '',
+  'TOTAL A INDEMNIZAR': liq.totalIndemnizar || '',
   'FECHA INSPECCIÓN': formatDate(caso.fechaInspeccion),
   'FECHA ULTIMO DOCUMENTO': formatDate(caso.fechaUltimoDocumento),
   'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
@@ -170,7 +215,8 @@ const buildExportRow = (caso) => ({
   'FECHA ENVÍO A LA ASEGURADORA': formatDate(caso.fechaEnvioAseguradora),
   ESTADO: caso.estado ?? '',
   Documentos: nArchivosCasoSura(caso),
-});
+  };
+};
 
 export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsignados = false }) {
   const { t } = useTranslation();
@@ -357,7 +403,27 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
     if (clave === 'zonaAtencion') return zonaAtencionSura(item);
     if (clave === 'estado') return normalizarEstadoSura(item.estado);
     if (CAMPOS_MONEDA.has(clave)) {
-      return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
+      const bruto = valorOrdenSura(item, clave);
+      if (bruto === null || bruto === undefined || bruto === '') return '—';
+      const esLiquidacionNsr = [
+        'valorAseguradoFechaSiniestro',
+        'valorDeducibleCalculo',
+        'liquidacionPresupuestoTotal',
+        'liquidacionDeduciblePresupuesto',
+        'liquidacionValorIndemnizarPresupuesto',
+        'liquidacionTotalContenidos',
+        'liquidacionDeducibleContenidos',
+        'liquidacionValorIndemnizarContenidos',
+        'liquidacionTotalIndemnizar',
+      ].includes(clave);
+      if (
+        esLiquidacionNsr &&
+        !(Number(bruto) > 0) &&
+        !(item.tieneLiquidador || item.liquidador)
+      ) {
+        return '—';
+      }
+      return formatCurrency(bruto);
     }
     if (CAMPOS_FECHA.has(clave)) return formatDate(item[clave]) || '—';
     if (clave === 'sede') {
