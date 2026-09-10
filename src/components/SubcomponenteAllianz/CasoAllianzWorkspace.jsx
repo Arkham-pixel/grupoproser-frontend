@@ -698,7 +698,9 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         <div className={expressCard}>
           <div className={expressCardBody}>
             {cargandoCaso || (Boolean(casoIdFromQuery) && !casoHidratado) ? (
-              <p className="text-sm text-gray-500">{t('allianz.workspace.loading')}</p>
+              <p className="text-sm text-gray-500" data-allianz-hydrate="v2">
+                {t('allianz.workspace.loading')}
+              </p>
             ) : tabActivo === TABS_ALLIANZ.INFORME_AGIL ? (
               <InformeAgilAllianz
                 key={`agil-${casoId}-${restoreNonce}`}
