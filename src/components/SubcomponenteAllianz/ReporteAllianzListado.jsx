@@ -207,7 +207,7 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAllCasosAllianzListado(2000);
+      const data = await fetchAllCasosAllianzListado(2000, { conInforme: soloInformes });
       let lista = modoAsignados ? filtrarCasosAsignadosASesion(data) : data;
       if (soloInformes) lista = lista.filter(casoAllianzEnReporteInformes);
       setCasos(lista);

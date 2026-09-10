@@ -843,7 +843,12 @@ export function tipoInformeCasoAllianz(caso = {}) {
   const directo = claveTipoInformeReporteAllianz(caso.tipoInforme);
   if (TIPOS_INFORME_REPORTE_ALLIANZ.has(directo)) return directo;
   const inf = caso.informeUnico;
-  if (!inf || typeof inf !== 'object') return caso.tieneInforme ? 'unico' : '';
+  if (!inf || typeof inf !== 'object') {
+    if (caso.tieneInforme === true || caso.tieneInforme === 'true' || caso.tieneInforme === 1) {
+      return 'unico';
+    }
+    return '';
+  }
   const clave = claveTipoInformeReporteAllianz(inf.tipoInforme);
   if (TIPOS_INFORME_REPORTE_ALLIANZ.has(clave)) return clave;
   return Object.keys(inf).length ? 'unico' : '';

@@ -65,9 +65,11 @@ export const getCasosAllianzListadoPaginado = async ({
   page = 1,
   limit = 100,
   completo = false,
+  conInforme = false,
 } = {}) => {
   const qs = new URLSearchParams({ page, limit, _t: Date.now() });
   if (completo) qs.set('completo', '1');
+  if (conInforme) qs.set('conInforme', '1');
   const response = await fetch(`${API_URL}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
@@ -82,12 +84,12 @@ export const getCasosAllianzListadoPaginado = async ({
   return payload;
 };
 
-export const fetchAllCasosAllianzListado = async (batchSize = 2000, { completo = false } = {}) => {
+export const fetchAllCasosAllianzListado = async (batchSize = 2000, { completo = false, conInforme = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
   while (true) {
-    const respuesta = await getCasosAllianzListadoPaginado({ page, limit: batchSize, completo });
+    const respuesta = await getCasosAllianzListadoPaginado({ page, limit: batchSize, completo, conInforme });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') total = respuesta.total;
     if (!lote.length) break;
