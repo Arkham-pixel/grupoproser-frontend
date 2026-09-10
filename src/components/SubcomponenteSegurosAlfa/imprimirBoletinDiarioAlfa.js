@@ -53,7 +53,7 @@ function estilosImpresion() {
       background: #FEF2F2; color: #DC2626; border-radius: 8px;
       padding: 4px 10px; font-size: 11px; font-weight: 600;
     }
-    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
     .card {
@@ -104,13 +104,24 @@ export function construirHtmlBoletinDiarioAlfa(boletin, labels = {}) {
   const L = labels;
 
   const cardsTerremoto = (gestionTerremoto?.filas || [])
-    .map(
-      (f) => `
+    .map((f) => {
+      const desglose =
+        Array.isArray(f.desglose) && f.desglose.length > 1
+          ? `<ul style="margin:6px 0 0;padding:6px 0 0;border-top:1px dashed #E6E6E6;list-style:none;font-size:10px;color:#6B6B6B">${f.desglose
+              .map(
+                (d) =>
+                  `<li style="display:flex;justify-content:space-between;gap:8px"><span>${esc(d.label)}</span><strong>${esc(d.cantidad)}</strong></li>`
+              )
+              .join('')}</ul>`
+          : '';
+      return `
       <div class="card">
         <div class="n">${esc(f.cantidad)}</div>
+        <div class="t">${esc(f.label || f.labelCorto || '')}</div>
         <div class="d">${esc(f.descripcion)}</div>
-      </div>`
-    )
+        ${desglose}
+      </div>`;
+    })
     .join('');
 
   const filasComp = (comparativo?.filas || [])

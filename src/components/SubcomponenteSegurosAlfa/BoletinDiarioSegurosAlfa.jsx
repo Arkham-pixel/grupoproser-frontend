@@ -36,6 +36,8 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 
 const ICONS_TERREMOTO = {
+  enGestion: FaPhoneAlt,
+  sinRespuesta: FaPhoneAlt,
   verificacion: FaPhoneAlt,
   enInspeccion: FaSearch,
   enLiquidacion: FaFileAlt,
@@ -78,7 +80,7 @@ function VariacionCell({ valor, maloSiSube = false }) {
   );
 }
 
-function MetricCardTerremoto({ icon: Icon, cantidad, descripcion }) {
+function MetricCardTerremoto({ icon: Icon, cantidad, label, descripcion, desglose = [] }) {
   return (
     <article className="flex flex-col rounded-xl border border-fenix-borde bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
       <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-fenix-primario dark:bg-red-950/40 dark:text-red-300">
@@ -87,9 +89,22 @@ function MetricCardTerremoto({ icon: Icon, cantidad, descripcion }) {
       <div className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
         {cantidad}
       </div>
+      {label ? (
+        <h3 className="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100">{label}</h3>
+      ) : null}
       <div className="mt-2 border-t border-dashed border-fenix-borde pt-2 text-sm leading-snug text-gray-600 dark:border-gray-700 dark:text-gray-300">
         {descripcion}
       </div>
+      {Array.isArray(desglose) && desglose.length > 1 ? (
+        <ul className="mt-2 space-y-0.5 border-t border-dashed border-gray-200 pt-2 text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          {desglose.map((d) => (
+            <li key={d.label} className="flex justify-between gap-2 tabular-nums">
+              <span className="truncate">{d.label}</span>
+              <span className="font-semibold text-gray-700 dark:text-gray-200">{d.cantidad}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   );
 }
@@ -288,7 +303,7 @@ export default function BoletinDiarioSegurosAlfa() {
               </span>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {gestionTerremoto.filas.map((fila) => {
               const Icon = ICONS_TERREMOTO[fila.id] || FaFileAlt;
               return (
@@ -296,7 +311,9 @@ export default function BoletinDiarioSegurosAlfa() {
                   key={fila.id}
                   icon={Icon}
                   cantidad={fila.cantidad}
+                  label={fila.label}
                   descripcion={fila.descripcion}
+                  desglose={fila.desglose}
                 />
               );
             })}
@@ -366,7 +383,10 @@ export default function BoletinDiarioSegurosAlfa() {
                       <span className="ml-1 text-xs text-gray-400">({fila.pctAyer}%)</span>
                     </td>
                     <td className="border border-red-50 bg-red-50/40 px-3 py-2 text-center dark:border-red-950 dark:bg-red-950/20">
-                      <VariacionCell valor={fila.variacion} maloSiSube={fila.id === 'verificacion'} />
+                      <VariacionCell
+                        valor={fila.variacion}
+                        maloSiSube={fila.id === 'enGestion' || fila.id === 'sinRespuesta' || fila.id === 'verificacion'}
+                      />
                     </td>
                     <td className="border border-red-100 bg-red-50/70 px-3 py-2 text-center tabular-nums font-semibold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
                       {fila.hoy}

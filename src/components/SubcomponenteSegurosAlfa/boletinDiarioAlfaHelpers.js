@@ -20,58 +20,66 @@ const CORTES_KEY = 'segurosAlfa.boletinDiario.cortes';
 /** Categorías del tablero «Gestión terremoto» / comparativo (mutuamente excluyentes). */
 export const CATEGORIAS_GESTION_TERREMOTO = [
   {
-    id: 'verificacion',
-    label: 'Verificación (no atendidos)',
-    labelCorto: 'Verificación',
-    descripcion:
-      'Asignados en proceso de verificación de pérdidas mediante llamadas a los asegurados',
+    id: 'enGestion',
+    label: 'En gestión (por llamar)',
+    labelCorto: 'En gestión',
+    descripcion: 'Estado gestión: EN GESTIÓN — pendientes de primer contacto / verificación por llamada',
+  },
+  {
+    id: 'sinRespuesta',
+    label: 'Sin respuesta efectiva',
+    labelCorto: 'Sin respuesta',
+    descripcion: 'Estado gestión: SIN RESPUESTA EFECTIVA — se llamó y no hubo contacto útil',
   },
   {
     id: 'enInspeccion',
-    label: 'En inspección',
-    labelCorto: 'En inspección',
-    descripcion: 'En proceso de inspección',
+    label: 'Contactado / programado',
+    labelCorto: 'Contactado',
+    descripcion: 'Estado gestión: CONTACTADO/PROGRAMADO — en proceso de inspección',
   },
   {
     id: 'enLiquidacion',
-    label: 'En liquidación',
-    labelCorto: 'En liquidación',
-    descripcion: 'En proceso de liquidación',
+    label: 'Inspeccionado',
+    labelCorto: 'Inspeccionado',
+    descripcion: 'Estado gestión: INSPECCIONADO — en liquidación / solicitud de documentos',
   },
   {
     id: 'liquidados',
-    label: 'Liquidación concluida y en recolecta de documentos',
-    labelCorto: 'Liq. concluida',
-    descripcion: 'Liquidación concluida y en recolecta de documentos',
+    label: 'Liquidado / acept. cifras',
+    labelCorto: 'Liquidado',
+    descripcion: 'Gestión LIQUIDADO o siniestro PENDIENTE ACEPTACION CIFRAS — recolecta de documentos',
   },
   {
     id: 'pendientesPagoAlfa',
-    label: 'Cerrados',
+    label: 'Cerrado / proceso de pago',
     labelCorto: 'Cerrados',
-    descripcion: 'Cerrados',
+    descripcion: 'Estado siniestro: CERRADO o PROCESO DE PAGO',
   },
   {
     id: 'objetados',
     label: 'Objetados',
     labelCorto: 'Objetados',
-    descripcion: 'Objetados',
+    descripcion: 'Estado siniestro: OBJETADO',
   },
   {
     id: 'perdidasTotales',
     label: 'Pérdidas totales',
     labelCorto: 'Pérdidas totales',
-    descripcion: 'Pérdidas totales confirmadas',
+    descripcion: 'Tipo de pérdida: TOTAL',
   },
   {
     id: 'desistimientos',
     label: 'Desistimientos',
     labelCorto: 'Desistimientos',
-    descripcion: 'Desistimientos',
+    descripcion: 'Estado siniestro: DESISTIDO',
   },
 ];
 
 /** Orden de avance para detectar retrocesos (menor = más temprano). */
 const ORDEN_ETAPA = {
+  enGestion: 0,
+  sinRespuesta: 0,
+  /** @deprecated Cortes viejos en localStorage */
   verificacion: 0,
   enInspeccion: 1,
   enLiquidacion: 2,
@@ -151,7 +159,7 @@ export function esPerdidaTotalTexto(...textos) {
 
 /**
  * Asigna un caso a una categoría del tablero gestión terremoto.
- * Conserva las mismas 8 gráficas; solo homologa a los ejes duales actuales.
+ * Cada tarjeta refleja un estado oficial (gestión o siniestro) para lectura clara.
  */
 export function clasificarCasoGestionTerremoto(caso = {}) {
   const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
@@ -177,17 +185,44 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   }
   if (estadoGestion === 'INSPECCIONADO') return 'enLiquidacion';
   if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'enInspeccion';
-  // Solo pendientes de primer contacto / sin respuesta efectiva.
-  // (Solicitud de documentos → INSPECCIONADO → enLiquidacion, no aquí.)
-  return 'verificacion';
+  if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
+  return 'enGestion';
+}
+
+/** Detalle interno de una tarjeta (p. ej. CERRADO vs PROCESO DE PAGO). */
+function desgloseCasoTerremoto(caso = {}, cat) {
+  const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
+  const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
+  if (cat === 'enGestion') return 'EN GESTIÓN';
+  if (cat === 'sinRespuesta') return 'SIN RESPUESTA EFECTIVA';
+  if (cat === 'enInspeccion') return 'CONTACTADO/PROGRAMADO';
+  if (cat === 'enLiquidacion') return 'INSPECCIONADO';
+  if (cat === 'liquidados') {
+    if (estadoSiniestro === 'PENDIENTE ACEPTACION CIFRAS') {
+      return 'PENDIENTE ACEPTACION CIFRAS';
+    }
+    return 'LIQUIDADO';
+  }
+  if (cat === 'pendientesPagoAlfa') {
+    if (estadoSiniestro === 'PROCESO DE PAGO') return 'PROCESO DE PAGO';
+    return 'CERRADO';
+  }
+  if (cat === 'objetados') return 'OBJETADO';
+  if (cat === 'perdidasTotales') return 'PÉRDIDA TOTAL';
+  if (cat === 'desistimientos') return 'DESISTIDO';
+  return estadoGestion || estadoSiniestro || '—';
 }
 
 export function contarGestionTerremoto(casos = []) {
   const counts = Object.fromEntries(CATEGORIAS_GESTION_TERREMOTO.map((c) => [c.id, 0]));
+  const desgloseCounts = Object.fromEntries(CATEGORIAS_GESTION_TERREMOTO.map((c) => [c.id, {}]));
   const porCaso = {};
   for (const caso of Array.isArray(casos) ? casos : []) {
     const cat = clasificarCasoGestionTerremoto(caso);
     counts[cat] = (counts[cat] || 0) + 1;
+    const detalle = desgloseCasoTerremoto(caso, cat);
+    const bag = desgloseCounts[cat] || (desgloseCounts[cat] = {});
+    bag[detalle] = (bag[detalle] || 0) + 1;
     const id = casoIdAlfa(caso);
     if (id) porCaso[id] = cat;
   }
@@ -195,15 +230,18 @@ export function contarGestionTerremoto(casos = []) {
   const filas = CATEGORIAS_GESTION_TERREMOTO.map((meta) => {
     const cantidad = counts[meta.id] || 0;
     const pct = total > 0 ? Math.round((cantidad / total) * 1000) / 10 : 0;
-    return { ...meta, cantidad, pct };
+    const desglose = Object.entries(desgloseCounts[meta.id] || {})
+      .map(([label, n]) => ({ label, cantidad: n }))
+      .sort((a, b) => b.cantidad - a.cantidad);
+    return { ...meta, cantidad, pct, desglose };
   });
   return { counts, filas, total, porCaso };
 }
 
-/** Casos con gestión efectiva = todo excepto verificación. */
+/** Casos con gestión efectiva = todo excepto por llamar / sin respuesta. */
 export function casosConGestionEfectiva(counts = {}) {
   return Object.entries(counts).reduce((acc, [id, n]) => {
-    if (id === 'verificacion') return acc;
+    if (id === 'enGestion' || id === 'sinRespuesta' || id === 'verificacion') return acc;
     return acc + (Number(n) || 0);
   }, 0);
 }
@@ -436,7 +474,7 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
     return 'enLiquidacion';
   }
   if (fechaIsoOnOrBefore(caso.fechaLlamada, isoCorte)) return 'enInspeccion';
-  return 'verificacion';
+  return 'enGestion';
 }
 
 /**
@@ -473,6 +511,16 @@ export function contarNuevasAsignacionesDia(casos = [], isoDia) {
   return n;
 }
 
+/** Migra cortes viejos con `verificacion` → `enGestion` (+ `sinRespuesta` si existía). */
+function normalizarCountsCorteLegacy(counts = {}) {
+  const next = { ...(counts || {}) };
+  if (next.verificacion != null) {
+    next.enGestion = Number(next.enGestion || 0) + Number(next.verificacion || 0);
+    delete next.verificacion;
+  }
+  return next;
+}
+
 /**
  * Compara corte de hoy vs ayer (snapshot guardado o conteo reconstruido).
  */
@@ -484,24 +532,31 @@ export function calcularComparativoDiario({
   nuevasAsignaciones = null,
   fuenteAyer = null,
 } = {}) {
+  const countsAyer = normalizarCountsCorteLegacy(ayer?.counts);
+  const countsHoy = normalizarCountsCorteLegacy(hoy?.counts);
+  const totalAyerNorm =
+    Number(ayer?.total) || Object.values(countsAyer).reduce((a, b) => a + (Number(b) || 0), 0);
+  const totalHoyNorm =
+    Number(hoy?.total) || Object.values(countsHoy).reduce((a, b) => a + (Number(b) || 0), 0);
+
   const filas = CATEGORIAS_GESTION_TERREMOTO.map((meta) => {
-    const a = Number(ayer?.counts?.[meta.id] || 0);
-    const h = Number(hoy?.counts?.[meta.id] || 0);
+    const a = Number(countsAyer?.[meta.id] || 0);
+    const h = Number(countsHoy?.[meta.id] || 0);
     return {
       ...meta,
       ayer: a,
       hoy: h,
       variacion: h - a,
-      pctAyer: pct(a, ayer?.total || 0),
-      pctHoy: pct(h, hoy?.total || 0),
+      pctAyer: pct(a, totalAyerNorm),
+      pctHoy: pct(h, totalHoyNorm),
     };
   });
 
-  const totalAyer = Number(ayer?.total || 0);
-  const totalHoy = Number(hoy?.total || 0);
+  const totalAyer = totalAyerNorm;
+  const totalHoy = totalHoyNorm;
   const variacionTotal = totalHoy - totalAyer;
-  const gestionAyer = casosConGestionEfectiva(ayer?.counts || {});
-  const gestionHoy = casosConGestionEfectiva(hoy?.counts || {});
+  const gestionAyer = casosConGestionEfectiva(countsAyer);
+  const gestionHoy = casosConGestionEfectiva(countsHoy);
   const incrementoGestion = gestionHoy - gestionAyer;
   const pctBase =
     totalAyer > 0 ? Math.round((variacionTotal / totalAyer) * 1000) / 10 : null;
@@ -509,9 +564,11 @@ export function calcularComparativoDiario({
   let retrocesos = 0;
   const porCasoAyer = ayer?.porCaso || {};
   const porCasoHoy = hoy?.porCaso || {};
-  for (const [id, catAyer] of Object.entries(porCasoAyer)) {
-    const catHoy = porCasoHoy[id];
-    if (!catHoy) continue;
+  for (const [id, catAyerRaw] of Object.entries(porCasoAyer)) {
+    const catHoyRaw = porCasoHoy[id];
+    if (!catHoyRaw) continue;
+    const catAyer = catAyerRaw === 'verificacion' ? 'enGestion' : catAyerRaw;
+    const catHoy = catHoyRaw === 'verificacion' ? 'enGestion' : catHoyRaw;
     const oA = ORDEN_ETAPA[catAyer] ?? 0;
     const oH = ORDEN_ETAPA[catHoy] ?? 0;
     if (oH < oA) retrocesos += 1;
