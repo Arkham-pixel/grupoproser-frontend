@@ -13,6 +13,23 @@ export async function crearInvitacionRemota(payload) {
   return data;
 }
 
+export async function cancelarInvitacionOnboarding({ id, cedula, correo } = {}) {
+  if (id) {
+    const { data } = await axios.post(
+      `${BASE_URL}/api/onboarding/invitaciones/${id}/cancelar`,
+      {},
+      { headers: authHeaders() }
+    );
+    return data;
+  }
+  const { data } = await axios.post(
+    `${BASE_URL}/api/onboarding/cancelar`,
+    { cedula, correo },
+    { headers: authHeaders() }
+  );
+  return data;
+}
+
 export async function listarInvitacionesOnboarding() {
   const { data } = await axios.get(`${BASE_URL}/api/onboarding/invitaciones`, {
     headers: authHeaders(),
@@ -26,6 +43,11 @@ export async function reenviarInvitacionOnboarding(id) {
     {},
     { headers: authHeaders() }
   );
+  return data;
+}
+
+export async function completarDatosOnboarding(token, payload) {
+  const { data } = await axios.post(`${BASE_URL}/api/onboarding/public/${token}/datos`, payload);
   return data;
 }
 

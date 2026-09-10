@@ -1592,7 +1592,7 @@
       "valorAseguradoInmueble": "Insured building value",
       "valorAseguradoContenidos": "Insured contents value",
       "cobertura": "Coverage",
-      "estadoPagoPrimas": "Premium payment status",
+      "estadoPagoPrimas": "Criterion",
       "valorReservaPreventivaPromedio": "Average preventive reserve value",
       "valorComercialInmueble": "Commercial building value",
       "reserva": "Reserve",
@@ -1606,6 +1606,7 @@
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
       "estado": "Status",
+      "descripcionEstado": "Last comment",
       "ajustadorLider": "Lead adjuster (assigns cases)",
       "inspector": "Inspector"
     },
@@ -1619,7 +1620,9 @@
       "celular": "E.g. 300 000 0000",
       "poliza": "E.g. INC-25334",
       "cobertura": "E.g. EARTHQUAKE",
-      "estadoPagoPrimas": "E.g. UP TO DATE",
+      "estadoPagoPrimas": "Critical / Medium / Low",
+      "descripcionEstado": "Filled when you pick a status; you can adjust it here.",
+      "descripcionEstadoSoloLectura": "Only Ligia García or Bernardo Sojo can edit the last comment.",
       "selectCity": "Select city",
       "selectDepartmentFirst": "Select department first"
     },

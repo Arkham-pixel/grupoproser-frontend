@@ -156,7 +156,7 @@ const buildExportRow = (caso) => ({
   'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
   'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
   COBERTURA: caso.cobertura ?? '',
-  'ESTADO PAGO PRIMAS': caso.estadoPagoPrimas ?? '',
+  'CRITERIO': caso.estadoPagoPrimas ?? '',
   'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
   'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
   RESERVA: caso.reserva ?? '',

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   FaCheck,
   FaFileExcel,
-  FaMinus,
   FaSync,
   FaTimes,
   FaUpload,
@@ -17,6 +16,7 @@ import {
 import { formatDate, fechaParaInput } from './segurosSuraHelpers.js';
 import {
   CRITERIOS_FACILITADOR,
+  deduplicarFilasFacilitadores,
   descargarPlantillaFacilitadores,
   erroresFilaPortal,
   filaParaInput,
@@ -46,9 +46,9 @@ const navActive =
 const inputSm =
   'w-full min-w-[7rem] rounded-md border border-gray-200 bg-white px-2 py-1.5 font-body text-xs text-gray-800 dark:border-gray-700 dark:bg-[#0F0F0F] dark:text-gray-200';
 
-/** Solo Visita se edita con chulo / X / N/A; se guarda al hacer clic. */
+/** Solo Visita se edita con chulo / X; se guarda al hacer clic. */
 function MarcaVisitaEditable({ value, disabled, onPick }) {
-  const v = normalizarSinoNa(value);
+  const v = normalizarSinoNa(value, { permitirNA: false });
   const btn = (marca, activeClass, Icon, title) => {
     const activo = v === marca;
     return (
@@ -69,15 +69,16 @@ function MarcaVisitaEditable({ value, disabled, onPick }) {
     <div className="flex items-center gap-1">
       {btn('SI', 'bg-emerald-600', FaCheck, 'Visita hecha (SI)')}
       {btn('NO', 'bg-red-600', FaTimes, 'Visita no hecha (NO)')}
-      {btn('N/A', 'bg-amber-500', FaMinus, 'No aplica (N/A)')}
     </div>
   );
 }
 
 function Dato({ children }) {
-  const txt = children == null || children === '' ? '—' : String(children);
+  if (children == null || children === '') return null;
   return (
-    <span className="font-body text-xs text-gray-800 dark:text-gray-200">{txt}</span>
+    <span className="font-body text-xs text-gray-800 dark:text-gray-200">
+      {String(children)}
+    </span>
   );
 }
 
@@ -103,7 +104,7 @@ export default function ReporteFacilitadoresSura() {
     setLoading(true);
     try {
       const data = await listarFacilitadoresSura();
-      setFilas(data.map(filaParaInput));
+      setFilas(deduplicarFilasFacilitadores(data).map(filaParaInput));
     } catch (err) {
       setAviso({
         tipo: 'error',
@@ -150,11 +151,11 @@ export default function ReporteFacilitadoresSura() {
     try {
       const rows = await parsearPlantillaFacilitadores(file);
       const result = await importarFacilitadoresSura(rows);
-      setFilas((result.data || []).map(filaParaInput));
+      setFilas(deduplicarFilasFacilitadores(result.data || []).map(filaParaInput));
       setAviso({
         tipo: 'success',
         titulo: 'Plantilla cargada',
-        mensaje: `Se aplicaron los SI / NO / N/A del Excel. Creados: ${result.created || 0}. Actualizados: ${result.updated || 0}.`,
+        mensaje: `Se aplicaron los SI / NO del Excel. Creados: ${result.created || 0}. Actualizados: ${result.updated || 0}.`,
       });
     } catch (err) {
       setAviso({
@@ -172,7 +173,7 @@ export default function ReporteFacilitadoresSura() {
     setBusy('sugerir');
     try {
       const result = await sugerirFacilitadoresDesdeArnald();
-      setFilas((result.data || []).map(filaParaInput));
+      setFilas(deduplicarFilasFacilitadores(result.data || []).map(filaParaInput));
       setAviso({
         tipo: 'success',
         titulo: 'Actualizado desde gestionar',
@@ -206,8 +207,8 @@ export default function ReporteFacilitadoresSura() {
         tipo: invalid ? 'warning' : 'success',
         titulo: invalid ? 'Excel descargado con alertas' : 'Excel descargado',
         mensaje: invalid
-          ? `Hoja Seguimiento (como la pantalla) + hoja BD (portal). ${invalid} fila(s) aún con faltantes.`
-          : 'Hoja Seguimiento con chulo/X como en la plataforma, y hoja BD lista para el portal.',
+          ? `Una sola hoja, sin duplicados. ${invalid} fila(s) aún con faltantes.`
+          : 'Una sola hoja como la pantalla; Visita en SI o NO, sin duplicados.',
       });
     } catch (err) {
       setAviso({
@@ -266,7 +267,7 @@ export default function ReporteFacilitadoresSura() {
               <h1 className={expressPageTitle}>Plantilla Facilitadores SURA</h1>
               <p className={expressPageSubtitle}>
                 Lo demás lo alimentan el Excel y Gestionar. Aquí solo se edita el detalle de visita:
-                chulo = hecha, X = no, guion = N/A. Se guarda al marcar; no hace falta botón Guardar.
+                chulo = hecha (SI), X = no. Se guarda al marcar; no hace falta botón Guardar.
                 También puede fijar la fecha y el criterio (Crítico / Medio / Bajo).
               </p>
             </div>
@@ -401,7 +402,9 @@ export default function ReporteFacilitadoresSura() {
                           <Dato>{formatDate(fila.fechaAsignacion)}</Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>{formatDate(fila.fechaPrimerContacto)}</Dato>
+                          <Dato>
+                            {formatDate(fila.fechaPrimerContacto)}
+                          </Dato>
                         </td>
                         <td className="px-3 py-3">
                           <MarcaVisitaEditable
@@ -411,7 +414,7 @@ export default function ReporteFacilitadoresSura() {
                           />
                         </td>
                         <td className="px-3 py-3">
-                          {normalizarSinoNa(fila.visitaRealizada) === 'SI' ? (
+                          {normalizarSinoNa(fila.visitaRealizada, { permitirNA: false }) === 'SI' ? (
                             <input
                               type="date"
                               className={inputSm}
@@ -451,7 +454,7 @@ export default function ReporteFacilitadoresSura() {
                               void guardarDetalleVisita(fila._id, { criterioDetalle });
                             }}
                           >
-                            <option value="">—</option>
+                            <option value=""></option>
                             {CRITERIOS_FACILITADOR.map((c) => (
                               <option key={c.value} value={c.value}>
                                 {c.label}
@@ -463,13 +466,13 @@ export default function ReporteFacilitadoresSura() {
                           <Dato>{fila.ultimoComentario}</Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>{normalizarSinoNa(fila.informeEnviado) || ''}</Dato>
+                          <Dato>{normalizarSinoNa(fila.informeEnviado, { permitirNA: false }) || ''}</Dato>
                         </td>
                         <td className="px-3 py-3">
                           <Dato>{formatDate(fila.fechaInforme)}</Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>{normalizarSinoNa(fila.documentacionCompleta) || ''}</Dato>
+                          <Dato>{normalizarSinoNa(fila.documentacionCompleta, { permitirNA: false }) || ''}</Dato>
                         </td>
                         <td className="px-3 py-3">
                           <Dato>{formatDate(fila.fechaDocumentacionCompleta)}</Dato>

@@ -39,6 +39,7 @@ import useAlfaSharePointSyncStatus from '../../hooks/useAlfaSharePointSyncStatus
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import { valorMostrarOtroAmparo } from '../liquidacion/otrosAmparosLiquidacion.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -113,7 +114,7 @@ function resumenLiquidadorAlfa(liq) {
     .filter((it) => it?.aplica !== false)
     .map((it) => ({
       tipo: String(it?.tipo || ''),
-      valor: normalizarValorHuella(it?.valor),
+      valor: normalizarValorHuella(valorMostrarOtroAmparo(it)),
     }))
     .filter((it) => it.valor > 0 || it.tipo)
     .sort((a, b) => a.tipo.localeCompare(b.tipo));

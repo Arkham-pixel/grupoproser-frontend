@@ -893,9 +893,10 @@ export default function FormatoLiquidacionAlfa({
           Otros amparos (sin deducible)
         </div>
         <p className="border-b border-gray-200 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-          Arriendo, retiro de escombros y similares se liquidan por aparte: no se les aplica
-          deducible ni AIU. Elija la unidad (m³, m², mes…), indique cantidad y valor unitario: el
-          valor se calcula solo (cantidad × valor unitario) y entra directo al total a indemnizar.
+          Arriendo, retiro de escombros, demostración del siniestro y similares se liquidan por
+          aparte: no se les aplica deducible ni AIU. Elija la unidad (m³, m², mes…), indique
+          cantidad y valor unitario: el valor se calcula solo (cantidad × valor unitario) y entra
+          directo al total a indemnizar.
         </p>
         <div className="overflow-x-auto">
           <table className="min-w-[980px] w-full border-collapse text-sm">
@@ -963,7 +964,9 @@ export default function FormatoLiquidacionAlfa({
                         placeholder={
                           it.tipo === 'arriendo'
                             ? 'Ej. 3 meses de inhabitabilidad'
-                            : 'Soporte / nota'
+                            : it.tipo === 'demostracion_siniestro'
+                              ? 'Ej. peritaje / informes / ensayos'
+                              : 'Soporte / nota'
                         }
                       />
                     </td>

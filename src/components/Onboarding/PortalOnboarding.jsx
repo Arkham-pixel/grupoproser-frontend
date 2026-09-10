@@ -5,6 +5,7 @@ import FirmaPad from './FirmaPad';
 import {
   obtenerOnboardingPublico,
   urlPlantillaOnboarding,
+  completarDatosOnboarding,
   firmarAcuerdoOnboarding,
   registrarCuentaOnboarding,
   subirDocumentoHrOnboarding,
@@ -15,6 +16,7 @@ import {
 } from '../../utils/onboardingFirmasPdf';
 
 const STEPS = [
+  { id: 'datos', label: 'Sus datos' },
   { id: 'politica', label: 'Política de datos' },
   { id: 'confidencialidad', label: 'Confidencialidad' },
   { id: 'cuenta', label: 'Crear cuenta' },
@@ -23,12 +25,13 @@ const STEPS = [
 ];
 
 function pasoActual(data) {
-  if (!data) return 'politica';
+  if (!data) return 'datos';
   if (data.pasos?.puedeIngresar) return 'listo';
   if (data.pasos?.crearCuenta) return 'documentos';
   if (data.pasos?.firmarPolitica && data.pasos?.firmarConfidencialidad) return 'cuenta';
   if (data.pasos?.firmarPolitica) return 'confidencialidad';
-  return 'politica';
+  if (data.pasos?.datosPersonales) return 'politica';
+  return 'datos';
 }
 
 export default function PortalOnboarding() {
@@ -48,6 +51,13 @@ export default function PortalOnboarding() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [mensaje, setMensaje] = useState('');
+  const [datosForm, setDatosForm] = useState({
+    nombre: '',
+    correo: '',
+    celular: '',
+    cedula: '',
+    fechaNacimiento: '',
+  });
   const [docsLocal, setDocsLocal] = useState({
     hojaVida: null,
     certificadoBancario: null,
@@ -61,6 +71,15 @@ export default function PortalOnboarding() {
     try {
       const res = await obtenerOnboardingPublico(token);
       setData(res);
+      setDatosForm({
+        nombre: res.nombre || '',
+        correo: res.correo || '',
+        celular: res.celular || '',
+        cedula: res.cedula || '',
+        fechaNacimiento: res.fechaNacimiento
+          ? String(res.fechaNacimiento).slice(0, 10)
+          : '',
+      });
       if (res.fechaNacimiento) {
         setFechaNacimiento(String(res.fechaNacimiento).slice(0, 10));
       }
@@ -113,6 +132,22 @@ export default function PortalOnboarding() {
 
   const validatePassword = (p) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/.test(p);
+
+  const guardarDatosPersonales = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setMensaje('');
+    try {
+      await completarDatosOnboarding(token, datosForm);
+      await cargar();
+      setFechaNacimiento(datosForm.fechaNacimiento);
+      setMensaje('Datos guardados. Continúe con la firma de los acuerdos.');
+    } catch (err) {
+      setMensaje(err.response?.data?.message || 'Error al guardar los datos');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const firmarPolitica = async () => {
     if (!firmaPolitica) {
@@ -295,7 +330,9 @@ export default function PortalOnboarding() {
           <p className="text-xs uppercase tracking-wide text-slate-500">Grupo Proser · Onboarding</p>
           <h1 className="text-xl font-semibold text-slate-900">Registro remoto</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Hola <strong>{data.nombre}</strong> — complete los pasos para activar su cuenta.
+            {data.nombre
+              ? <>Hola <strong>{data.nombre}</strong> — complete los pasos para activar su cuenta.</>
+              : 'Complete sus datos y los pasos siguientes para activar su cuenta.'}
           </p>
         </div>
       </header>
@@ -305,6 +342,7 @@ export default function PortalOnboarding() {
           {STEPS.map((s) => {
             const activo = s.id === step;
             const done =
+              (s.id === 'datos' && data.pasos.datosPersonales) ||
               (s.id === 'politica' && data.pasos.firmarPolitica) ||
               (s.id === 'confidencialidad' && data.pasos.firmarConfidencialidad) ||
               (s.id === 'cuenta' && data.pasos.crearCuenta) ||
@@ -357,9 +395,73 @@ export default function PortalOnboarding() {
           </div>
         )}
 
+        {step === 'datos' && (
+          <section className="bg-white border rounded-lg p-4 sm:p-6 space-y-4 shadow-sm">
+            <h2 className="text-lg font-semibold">1. Sus datos personales</h2>
+            <p className="text-sm text-slate-600">
+              Complete la información con la que se creará su usuario. La cédula será su login.
+            </p>
+            <form onSubmit={guardarDatosPersonales} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium mb-1">Nombre completo</label>
+                <input
+                  required
+                  value={datosForm.nombre}
+                  onChange={(e) => setDatosForm((p) => ({ ...p, nombre: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Correo</label>
+                <input
+                  type="email"
+                  required
+                  value={datosForm.correo}
+                  onChange={(e) => setDatosForm((p) => ({ ...p, correo: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Celular</label>
+                <input
+                  value={datosForm.celular}
+                  onChange={(e) => setDatosForm((p) => ({ ...p, celular: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Cédula (login)</label>
+                <input
+                  required
+                  value={datosForm.cedula}
+                  onChange={(e) => setDatosForm((p) => ({ ...p, cedula: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  required
+                  value={datosForm.fechaNacimiento}
+                  onChange={(e) => setDatosForm((p) => ({ ...p, fechaNacimiento: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full sm:w-auto px-4 py-2 rounded bg-red-700 text-white text-sm font-medium disabled:opacity-60"
+              >
+                {busy ? 'Guardando…' : 'Guardar y continuar'}
+              </button>
+            </form>
+          </section>
+        )}
+
         {step === 'politica' && (
           <section className="bg-white border rounded-lg p-4 sm:p-6 space-y-4 shadow-sm">
-            <h2 className="text-lg font-semibold">1. Política de tratamiento de datos</h2>
+            <h2 className="text-lg font-semibold">2. Política de tratamiento de datos</h2>
             <p className="text-sm text-slate-600">
               Lea el documento y firme para continuar.
             </p>
@@ -390,7 +492,7 @@ export default function PortalOnboarding() {
 
         {step === 'confidencialidad' && (
           <section className="bg-white border rounded-lg p-4 sm:p-6 space-y-4 shadow-sm">
-            <h2 className="text-lg font-semibold">2. Acuerdo de confidencialidad</h2>
+            <h2 className="text-lg font-semibold">3. Acuerdo de confidencialidad</h2>
             <div
               className="prose prose-sm max-w-none max-h-[420px] overflow-y-auto border rounded p-3 bg-slate-50"
               dangerouslySetInnerHTML={{ __html: ndaHtml }}
@@ -415,7 +517,7 @@ export default function PortalOnboarding() {
 
         {step === 'cuenta' && (
           <section className="bg-white border rounded-lg p-4 sm:p-6 space-y-4 shadow-sm">
-            <h2 className="text-lg font-semibold">3. Crear su cuenta</h2>
+            <h2 className="text-lg font-semibold">4. Crear su cuenta</h2>
             <p className="text-sm text-slate-600">
               Usuario (login): <strong>{data.cedula}</strong> — Correo: <strong>{data.correo}</strong>
             </p>
@@ -509,7 +611,7 @@ export default function PortalOnboarding() {
 
         {step === 'documentos' && (
           <section className="bg-white border rounded-lg p-4 sm:p-6 space-y-5 shadow-sm">
-            <h2 className="text-lg font-semibold">4. Documentación requerida</h2>
+            <h2 className="text-lg font-semibold">5. Documentación requerida</h2>
             <p className="text-sm text-slate-600">
               Suba los tres documentos. Al completarlos se activará su acceso a la plataforma.
             </p>

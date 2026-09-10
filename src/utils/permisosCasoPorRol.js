@@ -43,6 +43,12 @@ export const SURA_LOGINS_EXCEL_VERIFICACION = Object.freeze([
 ]);
 
 /**
+ * Último comentario (antes Descripción del Estado) en Gestionar SURA.
+ * Solo Ligia García y Bernardo Sojo pueden editarlo a mano.
+ */
+export const SURA_LOGINS_ULTIMO_COMENTARIO = Object.freeze(['66901947', '72134505']);
+
+/**
  * Alfa: estos logins ocultan del reporte los casos con fecha de llamada
  * (cola de contactos). El buscador sí los vuelve a mostrar.
  * Leyna Lucía Alfonso Rojas.
@@ -153,6 +159,18 @@ export function esLoginExcelVerificacionSura(login) {
 export function esSesionExcelVerificacionSura() {
   const ctx = obtenerContextoPermisoCaso('sura');
   return [ctx.login, ctx.cedula].some((v) => esLoginExcelVerificacionSura(v));
+}
+
+export function esLoginUltimoComentarioSura(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return SURA_LOGINS_ULTIMO_COMENTARIO.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+/** Ligia García o Bernardo Sojo: pueden editar a mano el Último comentario en Gestionar SURA. */
+export function esSesionUltimoComentarioSura() {
+  const ctx = obtenerContextoPermisoCaso('sura');
+  return [ctx.login, ctx.cedula].some((v) => esLoginUltimoComentarioSura(v));
 }
 
 export function esLoginReporteInformesAllianz(login) {

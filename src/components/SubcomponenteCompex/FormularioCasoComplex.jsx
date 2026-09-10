@@ -24,6 +24,7 @@ import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
 import { getCasoComplex, updateCasoComplex, moverCasoComplexASura } from '../../services/complexService.js';
 import { getCasoSuraById, actualizarCasoSura } from '../../services/segurosSuraService.js';
+import { esSesionUltimoComentarioSura } from '../../utils/permisosCasoPorRol.js';
 import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { enriquecerPlantillaContactoInicial } from '../../utils/contactoInicialPlantillaCorreo.js';
@@ -1039,6 +1040,9 @@ localStorage.removeItem(storageKey);
   // Handler de cambios
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
+    if (name === 'descripcionEstado' && !esSesionUltimoComentarioSura()) {
+      return;
+    }
     if (CAMPOS_FECHA_HITOS_TRAZABILIDAD.includes(name)) {
       fechasHitoEditadasRef.current.add(name);
     }

@@ -45,6 +45,7 @@ import {
   attrsCampoCaso,
   esRolInspector,
   esSesionConPermisoLiderSura,
+  esSesionUltimoComentarioSura,
   filtrarPayloadCasoPorRol,
   obtenerContextoPermisoCaso,
   puedeEditarCampoCaso,
@@ -74,6 +75,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
   const rolUsuario = obtenerRolAlmacenado();
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('sura'), []);
   const soloInspector = esRolInspector(rolUsuario) && !esSesionConPermisoLiderSura();
+  const puedeEditarUltimoComentario = esSesionUltimoComentarioSura();
   const esEdicion = Boolean(initialData?._id);
   const puedeImportarExcel = esAdminOSoporteSura();
   const [form, setForm] = useState(() =>
@@ -212,6 +214,16 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     payload.observacionReserva =
       form.observacionReserva != null ? String(form.observacionReserva) : '';
+    payload.descripcionEstado =
+      form.descripcionEstado != null ? String(form.descripcionEstado) : '';
+    if (!puedeEditarUltimoComentario) {
+      // Quien no está autorizado solo puede llevar el auto-llenado del estado.
+      if (esEdicion && String(form.estado || '') === String(initialData?.estado || '')) {
+        delete payload.descripcionEstado;
+      } else {
+        payload.descripcionEstado = String(form.estado || '').trim();
+      }
+    }
     return payload;
   };
 
@@ -281,7 +293,20 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
   const selectSimple = (clave, opciones, placeholder = t('common.select')) => (
     <SelectFenix
       value={form[clave]}
-      onChange={setCampo(clave)}
+      onChange={
+        clave === 'estado'
+          ? (e) => {
+              if (!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)) return;
+              const valor = e?.target ? e.target.value : e;
+              setForm((prev) => ({
+                ...prev,
+                estado: valor,
+                // Se llena solo al seleccionar el estado (Último comentario).
+                descripcionEstado: valor || prev.descripcionEstado,
+              }));
+            }
+          : setCampo(clave)
+      }
       {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
     >
       <option value="">{placeholder}</option>
@@ -414,15 +439,53 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
               placeholder={t('segurosSura.placeholders.cobertura')}
             />
           </Campo>
-          <Campo label={t('segurosSura.fields.estadoPagoPrimas')}>
-            <InputFenix
+          <Campo label="Criterio">
+            <SelectFenix
               value={form.estadoPagoPrimas}
               onChange={setCampo('estadoPagoPrimas')}
-              placeholder={t('segurosSura.placeholders.estadoPagoPrimas')}
-            />
+              {...attrsCampoCaso(rolUsuario, 'estadoPagoPrimas', ctxPermiso)}
+            >
+              <option value="">{t('common.select')}</option>
+              <option value="Critico">Crítico</option>
+              <option value="Medio">Medio</option>
+              <option value="Bajo">Bajo</option>
+              {form.estadoPagoPrimas &&
+                !['Critico', 'Medio', 'Bajo'].includes(form.estadoPagoPrimas) && (
+                  <option value={form.estadoPagoPrimas}>{form.estadoPagoPrimas}</option>
+                )}
+            </SelectFenix>
           </Campo>
           <Campo label={t('segurosSura.fields.estado')} required>
             {selectSimple('estado', ESTADOS_SURA)}
+          </Campo>
+          <Campo
+            label={t('segurosSura.fields.descripcionEstado', {
+              defaultValue: 'Último comentario',
+            })}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <TextareaFenix
+              rows={3}
+              value={form.descripcionEstado || ''}
+              disabled={!puedeEditarUltimoComentario}
+              onChange={(e) => {
+                if (!puedeEditarUltimoComentario) return;
+                setForm((prev) => ({
+                  ...prev,
+                  descripcionEstado: e?.target ? e.target.value : e,
+                }));
+              }}
+              placeholder={
+                puedeEditarUltimoComentario
+                  ? t('segurosSura.placeholders.descripcionEstado', {
+                      defaultValue: 'Se llena al elegir el estado; puede ajustarlo aquí.',
+                    })
+                  : t('segurosSura.placeholders.descripcionEstadoSoloLectura', {
+                      defaultValue:
+                        'Solo Ligia García o Bernardo Sojo pueden modificar el último comentario.',
+                    })
+              }
+            />
           </Campo>
           <CamposAsignacionCaso
             form={form}

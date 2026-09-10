@@ -62,8 +62,10 @@ export default function Cuenta() {
     }
   };
 
+  const anchoAncho = pestana === "agregarRemoto";
+
   return (
-    <div className="max-w-2xl mx-auto p-3 sm:p-4 lg:p-6 bg-white rounded shadow">
+    <div className={`${anchoAncho ? 'max-w-5xl' : 'max-w-2xl'} mx-auto p-3 sm:p-4 lg:p-6 bg-white rounded shadow`}>
       <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-3 sm:mb-4">{t('account.ui.cuenta.title')}</h2>
 
       <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">

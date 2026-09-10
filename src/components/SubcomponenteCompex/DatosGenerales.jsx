@@ -21,6 +21,7 @@ import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import CampoTomadorSura from '../SubcomponenteSura/CampoTomadorSura.jsx';
 import { coincidirCiudadExacta } from '../../utils/ciudadesColombia.js';
+import { esSesionUltimoComentarioSura } from '../../utils/permisosCasoPorRol.js';
 
 function resolverEstadoSelect(formData, estados = []) {
   const seleccionUsuario = String(formData?.estado ?? '').trim();
@@ -165,6 +166,8 @@ export default function DatosGenerales({
     () => resolverEstadoSelect(formData, estados),
     [formData, estados]
   );
+
+  const puedeEditarUltimoComentario = esSesionUltimoComentarioSura();
 
   const tipoDocumentoSelect = useMemo(
     () => normalizarTipoDocumento(formData.tipoDucumento),
@@ -584,21 +587,21 @@ export default function DatosGenerales({
         </Campo>
 
         {mostrarAsignacionCatastrofico ? (
-          <Campo
-            label={t('segurosSura.fields.estadoPagoPrimas', {
-              defaultValue: 'Estado pago primas',
-            })}
-          >
-            <InputFenix
-              type="text"
+          <Campo label="Criterio">
+            <SelectFenix
               name="estadoPagoPrimas"
               value={formData.estadoPagoPrimas || ''}
               onChange={handleChange}
-              autoComplete="off"
-              placeholder={t('segurosSura.placeholders.estadoPagoPrimas', {
-                defaultValue: 'Ej: AL DÍA',
-              })}
-            />
+            >
+              <option value="">Seleccione…</option>
+              <option value="Critico">Crítico</option>
+              <option value="Medio">Medio</option>
+              <option value="Bajo">Bajo</option>
+              {formData.estadoPagoPrimas &&
+                !['Critico', 'Medio', 'Bajo'].includes(String(formData.estadoPagoPrimas)) && (
+                  <option value={formData.estadoPagoPrimas}>{formData.estadoPagoPrimas}</option>
+                )}
+            </SelectFenix>
           </Campo>
         ) : null}
 
@@ -618,16 +621,19 @@ export default function DatosGenerales({
           )}
         </Campo>
 
-        <Campo label={t("complex.ui.datos_generales.descripcion_del_estado")} className="md:col-span-2">
+        <Campo label="Último comentario" className="md:col-span-2">
           <TextareaFenix
             name="descripcionEstado"
             value={formData.descripcionEstado || ''}
             onChange={handleChange}
             rows={3}
+            disabled={!puedeEditarUltimoComentario}
             placeholder={
-              String(formData.estado || '').includes('ANULADO')
-                ? 'Observaciones de la anulación / dado de baja (obligatorio en SURA)'
-                : t("complex.ui.datos_generales.describe_el_estado_del_caso")
+              puedeEditarUltimoComentario
+                ? String(formData.estado || '').includes('ANULADO')
+                  ? 'Observaciones de la anulación / dado de baja (obligatorio en SURA)'
+                  : 'Se llena al elegir el estado; puede ajustarlo aquí.'
+                : 'Solo Ligia García o Bernardo Sojo pueden modificar el último comentario.'
             }
           />
         </Campo>

@@ -270,6 +270,7 @@ export const FORM_VACIO_SURA = {
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
   estado: 'PENDIENTE',
+  descripcionEstado: '',
 };
 
 export const CAMPOS_FECHA_SURA = [

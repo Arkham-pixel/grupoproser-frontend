@@ -36,6 +36,11 @@ function formatearMonto(valor) {
 export const TIPOS_OTROS_AMPAROS = [
   { id: 'arriendo', nombre: 'Arriendo / pérdida de rentas', unidadDefault: 'mes' },
   { id: 'retiro_escombros', nombre: 'Retiro de escombros', unidadDefault: 'm³' },
+  {
+    id: 'demostracion_siniestro',
+    nombre: 'Gastos para demostración del siniestro',
+    unidadDefault: 'glb',
+  },
   { id: 'otro', nombre: 'Otro amparo (sin deducible)', unidadDefault: 'glb' },
 ];
 
@@ -112,6 +117,10 @@ export function defaultOtrosAmparos() {
   return [
     nuevoOtroAmparo({ tipo: 'arriendo', id: 'oa-arriendo' }),
     nuevoOtroAmparo({ tipo: 'retiro_escombros', id: 'oa-escombros' }),
+    nuevoOtroAmparo({
+      tipo: 'demostracion_siniestro',
+      id: 'oa-demostracion-siniestro',
+    }),
   ];
 }
 
@@ -146,9 +155,23 @@ export function valorMostrarOtroAmparo(fila = {}) {
   return recalcularValorOtroAmparo(fila).valor;
 }
 
+/** Tipos fijos que siempre deben aparecer en la tabla (además de filas «otro»). */
+const TIPOS_DEFAULT_OTROS_AMPAROS = [
+  'arriendo',
+  'retiro_escombros',
+  'demostracion_siniestro',
+];
+
 export function normalizarOtrosAmparos(lista) {
   if (!Array.isArray(lista) || !lista.length) return defaultOtrosAmparos();
-  return lista.map((it) => nuevoOtroAmparo(it));
+  const normalizados = lista.map((it) => nuevoOtroAmparo(it));
+  const tiposPresentes = new Set(normalizados.map((it) => String(it.tipo || '')));
+  for (const tipo of TIPOS_DEFAULT_OTROS_AMPAROS) {
+    if (tiposPresentes.has(tipo)) continue;
+    const def = defaultOtrosAmparos().find((d) => d.tipo === tipo);
+    if (def) normalizados.push(def);
+  }
+  return normalizados;
 }
 
 export function esOtroAmparoActivo(it = {}) {
@@ -177,10 +200,9 @@ export function textoResumenOtrosAmparos(lista = []) {
   return activos
     .map((it) => {
       const nombre = nombreTipoOtroAmparo(it.tipo, it.nombre);
+      const monto = formatearMonto(valorMostrarOtroAmparo(it));
       const extra = String(it.observacion || '').trim();
-      return extra
-        ? `${nombre}: $ ${formatearMonto(it.valor)} (${extra})`
-        : `${nombre}: $ ${formatearMonto(it.valor)}`;
+      return extra ? `${nombre}: $ ${monto} (${extra})` : `${nombre}: $ ${monto}`;
     })
     .join('; ');
 }

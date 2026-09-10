@@ -21,7 +21,7 @@ export const SURA_FIELD_LABELS = Object.freeze({
   departamento: 'Departamento',
   canalRadicacion: 'Canal de radicación',
   cobertura: 'Cobertura',
-  estadoPagoPrimas: 'Estado pago de primas',
+  estadoPagoPrimas: 'Criterio',
   fechaSiniestro: 'Fecha del siniestro',
   fechaInicioPoliza: 'Fecha inicio póliza',
   fechaFinPoliza: 'Fecha fin póliza',

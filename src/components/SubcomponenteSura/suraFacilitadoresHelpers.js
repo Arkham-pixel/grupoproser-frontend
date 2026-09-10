@@ -123,19 +123,12 @@ export function parsearPlantillaFacilitadores(file) {
   });
 }
 
-function fechaExcel(valor) {
-  const iso = fechaParaInput(valor);
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
 export function erroresFilaPortal(fila = {}) {
   const errores = [];
   if (digitsReclamacion(fila.reclamacion).length !== 13) errores.push('reclamación 13 dígitos');
-  const visita = normalizarSinoNa(fila.visitaRealizada);
-  const informe = normalizarSinoNa(fila.informeEnviado);
-  const docs = normalizarSinoNa(fila.documentacionCompleta);
+  const visita = normalizarSinoNa(fila.visitaRealizada, { permitirNA: false });
+  const informe = normalizarSinoNa(fila.informeEnviado, { permitirNA: false });
+  const docs = normalizarSinoNa(fila.documentacionCompleta, { permitirNA: false });
   const cerrado = normalizarSinoNa(fila.casoCerrado, { permitirNA: false });
   if (!visita) errores.push('visita');
   if (visita === 'SI' && !fechaParaInput(fila.fechaVisita)) errores.push('fecha visita');
@@ -178,62 +171,28 @@ function estiloCeldaBase(cell, { bold = false, center = false, fill = null, font
   if (fill) cell.fill = fill;
 }
 
-/** Chulo / X / N/A como en la plataforma (cuadro de color). */
+/** Visita en Excel: texto SI / NO (sin N/A ni íconos). */
 function pintarMarcaVisita(cell, valor) {
-  const v = normalizarSinoNa(valor);
-  if (v === 'SI') {
-    cell.value = '✓';
-    estiloCeldaBase(cell, {
-      bold: true,
-      center: true,
-      fill: fillSolid('FF059669'),
-      fontColor: 'FFFFFFFF',
-    });
-    return;
-  }
-  if (v === 'NO') {
-    cell.value = '✗';
-    estiloCeldaBase(cell, {
-      bold: true,
-      center: true,
-      fill: fillSolid('FFDC2626'),
-      fontColor: 'FFFFFFFF',
-    });
-    return;
-  }
-  if (v === 'N/A') {
-    cell.value = '—';
-    estiloCeldaBase(cell, {
-      bold: true,
-      center: true,
-      fill: fillSolid('FFF59E0B'),
-      fontColor: 'FFFFFFFF',
-    });
-    return;
-  }
-  cell.value = '';
-  estiloCeldaBase(cell, { center: true, fill: fillSolid('FFF3F4F6'), fontColor: 'FF9CA3AF' });
+  const v = normalizarSinoNa(valor, { permitirNA: false });
+  cell.value = v || '';
+  const fill =
+    v === 'SI' ? fillSolid('FFECFDF5') : v === 'NO' ? fillSolid('FFFEF2F2') : fillSolid('FFFFFFFF');
+  const fontColor = v === 'SI' ? 'FF047857' : v === 'NO' ? 'FFB91C1C' : 'FF111827';
+  estiloCeldaBase(cell, { bold: Boolean(v), center: true, fill, fontColor });
 }
 
-function pintarDatoSino(cell, valor, { permitirNA = true } = {}) {
-  const v = normalizarSinoNa(valor, { permitirNA });
-  cell.value = v || '—';
+function pintarDatoSino(cell, valor) {
+  const v = normalizarSinoNa(valor, { permitirNA: false });
+  cell.value = v || '';
   const fill =
-    v === 'SI'
-      ? fillSolid('FFECFDF5')
-      : v === 'NO'
-        ? fillSolid('FFFEF2F2')
-        : v === 'N/A'
-          ? fillSolid('FFFFFBEB')
-          : fillSolid('FFF9FAFB');
-  const fontColor =
-    v === 'SI' ? 'FF047857' : v === 'NO' ? 'FFB91C1C' : v === 'N/A' ? 'FFB45309' : 'FF6B7280';
+    v === 'SI' ? fillSolid('FFECFDF5') : v === 'NO' ? fillSolid('FFFEF2F2') : fillSolid('FFFFFFFF');
+  const fontColor = v === 'SI' ? 'FF047857' : v === 'NO' ? 'FFB91C1C' : 'FF111827';
   estiloCeldaBase(cell, { bold: Boolean(v), center: true, fill, fontColor });
 }
 
 function fechaPresentable(valor) {
   const iso = fechaParaInput(valor);
-  if (!iso) return '—';
+  if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
 }
@@ -243,16 +202,15 @@ function labelCriterio(valor) {
   if (v === 'Critico') return 'Crítico';
   if (v === 'Medio') return 'Medio';
   if (v === 'Bajo') return 'Bajo';
-  return '—';
+  return '';
 }
 
 /**
- * Excel alineado a la plataforma:
- * - Hoja "Seguimiento": Visita con chulo/X/— en cuadro de color (como la UI).
- * - Hoja "BD": columnas exactas del Portal (SI / NO / N/A) para el líder.
+ * Excel alineado a la plataforma (una sola hoja, sin duplicar filas).
+ * Visita / Informe / Docs / Cerrado en texto SI o NO.
  */
 export async function descargarPlantillaFacilitadores(filas = []) {
-  const lista = Array.isArray(filas) ? filas : [];
+  const lista = deduplicarFilasFacilitadores(filas);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Arnald · Grupo Proser';
   workbook.created = new Date();
@@ -316,14 +274,14 @@ export async function descargarPlantillaFacilitadores(filas = []) {
       '', // Visita se pinta aparte
       fechaPresentable(f.fechaVisita),
       labelCriterio(f.criterioDetalle),
-      String(f.ultimoComentario || '').trim() || '—',
+      String(f.ultimoComentario || '').trim(),
       '',
       fechaPresentable(f.fechaInforme),
       '',
       fechaPresentable(f.fechaDocumentacionCompleta),
       '',
       fechaPresentable(f.fechaCierre),
-      normalizarEstadoFacilitador(f.estadoSiniestro) || '—',
+      normalizarEstadoFacilitador(f.estadoSiniestro) || '',
       errs.length ? `Falta: ${errs.slice(0, 3).join(', ')}` : 'OK',
     ]);
     row.height = 20;
@@ -343,7 +301,7 @@ export async function descargarPlantillaFacilitadores(filas = []) {
         continue;
       }
       if (c === 12) {
-        pintarDatoSino(cell, f.casoCerrado, { permitirNA: false });
+        pintarDatoSino(cell, f.casoCerrado);
         continue;
       }
       const portalOk = c === 15 && !errs.length;
@@ -365,65 +323,6 @@ export async function descargarPlantillaFacilitadores(filas = []) {
     }
   }
 
-  // Hoja técnica del portal (valores SI/NO/N/A exactos).
-  const wsBd = workbook.addWorksheet('BD', {
-    views: [{ state: 'frozen', ySplit: 1 }],
-  });
-  wsBd.columns = COLUMNAS_EXPORT_FACILITADORES.map((h) => ({
-    header: h,
-    key: h,
-    width: Math.max(18, h.length + 2),
-  }));
-  const bdHeader = wsBd.getRow(1);
-  bdHeader.height = 20;
-  bdHeader.eachCell((cell) => {
-    estiloCeldaBase(cell, {
-      bold: true,
-      center: true,
-      fill: FILL_HEADER,
-      fontColor: 'FFFFFFFF',
-    });
-  });
-
-  for (const f of lista) {
-    const row = wsBd.addRow({
-      RECLAMACION: digitsReclamacion(f.reclamacion),
-      PROVEEDOR_ASSIGNADO_A_SERVICIO: f.proveedor || PROVEEDOR_FACILITADORES_SURA,
-      INFORMACIÓN: String(f.informacion ?? '0'),
-      FECHA_ASIGNACION: fechaExcel(f.fechaAsignacion) || null,
-      FECHA_PRIMER_CONTACTO: fechaExcel(f.fechaPrimerContacto) || null,
-      VISITA_REALIZADA: normalizarSinoNa(f.visitaRealizada),
-      FECHA_VISITA: fechaExcel(f.fechaVisita) || null,
-      CRITERIO_DETALLE: normalizarCriterioFacilitador(f.criterioDetalle),
-      ULTIMO_COMENTARIO: String(f.ultimoComentario || ''),
-      INFORME_ENVIADO: normalizarSinoNa(f.informeEnviado),
-      FECHA_INFORME: fechaExcel(f.fechaInforme) || null,
-      DOCUMENTACION_COMPLETA: normalizarSinoNa(f.documentacionCompleta),
-      FECHA_DOCUMENTACION_COMPLETA: fechaExcel(f.fechaDocumentacionCompleta) || null,
-      CASO_CERRADO: normalizarSinoNa(f.casoCerrado, { permitirNA: false }),
-      FECHA_CIERRE: fechaExcel(f.fechaCierre) || null,
-      ESTADO_SINIESTRO: normalizarEstadoFacilitador(f.estadoSiniestro),
-    });
-    row.height = 18;
-    row.eachCell((cell, colNumber) => {
-      estiloCeldaBase(cell, { center: colNumber !== 9 });
-      if (colNumber === 1) cell.numFmt = '@';
-      if ([6, 10, 12, 14].includes(colNumber)) {
-        const v = String(cell.value || '');
-        if (v === 'SI') {
-          cell.fill = fillSolid('FFECFDF5');
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF047857' } };
-        } else if (v === 'NO') {
-          cell.fill = fillSolid('FFFEF2F2');
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFB91C1C' } };
-        } else if (v === 'N/A') {
-          cell.fill = fillSolid('FFFFFBEB');
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFB45309' } };
-        }
-      }
-    });
-  }
-
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -441,13 +340,33 @@ export function filaParaInput(fila = {}) {
     fechaInforme: fechaParaInput(fila.fechaInforme),
     fechaDocumentacionCompleta: fechaParaInput(fila.fechaDocumentacionCompleta),
     fechaCierre: fechaParaInput(fila.fechaCierre),
-    visitaRealizada: normalizarSinoNa(fila.visitaRealizada),
-    informeEnviado: normalizarSinoNa(fila.informeEnviado),
-    documentacionCompleta: normalizarSinoNa(fila.documentacionCompleta),
+    visitaRealizada: normalizarSinoNa(fila.visitaRealizada, { permitirNA: false }),
+    informeEnviado: normalizarSinoNa(fila.informeEnviado, { permitirNA: false }),
+    documentacionCompleta: normalizarSinoNa(fila.documentacionCompleta, { permitirNA: false }),
     casoCerrado: normalizarSinoNa(fila.casoCerrado, { permitirNA: false }) || 'NO',
     criterioDetalle: normalizarCriterioFacilitador(fila.criterioDetalle),
     estadoSiniestro: normalizarEstadoFacilitador(fila.estadoSiniestro),
   };
+}
+
+/** Una entrada por reclamación (dígitos), conserva la más reciente. */
+export function deduplicarFilasFacilitadores(filas = []) {
+  const porRec = new Map();
+  for (const f of Array.isArray(filas) ? filas : []) {
+    const rec = digitsReclamacion(f?.reclamacion);
+    if (rec.length < 10) continue;
+    const prev = porRec.get(rec);
+    if (!prev) {
+      porRec.set(rec, f);
+      continue;
+    }
+    const tPrev = new Date(prev.updatedAt || prev.createdAt || 0).getTime();
+    const tNext = new Date(f.updatedAt || f.createdAt || 0).getTime();
+    if (tNext >= tPrev) porRec.set(rec, f);
+  }
+  return [...porRec.values()].sort((a, b) =>
+    digitsReclamacion(a.reclamacion).localeCompare(digitsReclamacion(b.reclamacion))
+  );
 }
 
 export { fechaParaInput, crearFechaLocal };
