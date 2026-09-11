@@ -28,7 +28,7 @@ import {
   homologarEstadoZurich,
   normTexto,
   valorFechaFiltroZurich,
-  CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA,
+  coincideFiltroContieneZurich,
 } from './zurichHelpers.js';
 import {
   expressBadge,
@@ -53,6 +53,7 @@ import {
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 import { useFiltroCasoExclusivo } from '../../utils/filtroCasoExclusivo.js';
+import FiltrosLiderZurich from './FiltrosLiderZurich.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -175,6 +176,8 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [tipoFecha, setTipoFecha] = useState('createdAt');
+  const [filtroPoliza, setFiltroPoliza] = useState('');
+  const [filtroTipoPoliza, setFiltroTipoPoliza] = useState('');
   const [pagina, setPagina] = useState(1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
@@ -204,6 +207,16 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const estados = ESTADOS_ZURICH;
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
+  const tiposPoliza = useMemo(() => {
+    const porNorm = new Map();
+    for (const c of casos) {
+      const label = etiquetaTipoPolizaZurich(c);
+      const norm = normTexto(label);
+      if (!norm) continue;
+      if (!porNorm.has(norm)) porNorm.set(norm, { value: label, label });
+    }
+    return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  }, [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -214,6 +227,8 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
       if (filtroEstado && homologarEstadoZurich(c.estado) !== filtroEstado) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.inspector, filtroInspector)) return false;
+      if (!coincideFiltroContieneZurich(c.numeroPoliza, filtroPoliza)) return false;
+      if (!coincideFiltroTexto(etiquetaTipoPolizaZurich(c), filtroTipoPoliza)) return false;
       if (fechaInicio || fechaFin) {
         const fechaRef = valorFechaFiltroZurich(c, tipoFecha, () => c.createdAt);
         if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
@@ -245,7 +260,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, casoIdUrl, coincideCasoUrl]);
+  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, filtroPoliza, filtroTipoPoliza, fechaInicio, fechaFin, tipoFecha, casoIdUrl, coincideCasoUrl]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
@@ -259,7 +274,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc, casoIdUrl]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, filtroPoliza, filtroTipoPoliza, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -267,6 +282,8 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     setFiltroEstado('');
     setFiltroAjustador('');
     setFiltroInspector('');
+    setFiltroPoliza('');
+    setFiltroTipoPoliza('');
     setFechaInicio('');
     setFechaFin('');
     setTipoFecha('createdAt');
@@ -371,7 +388,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   };
 
   const filtrosActivos = Boolean(
-    busqueda || filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || fechaInicio || fechaFin || filtroCasoUrl
+    busqueda || filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || filtroPoliza || filtroTipoPoliza || fechaInicio || fechaFin || filtroCasoUrl
   );
 
   return (
@@ -516,20 +533,22 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
               </SelectFenix>
             </Campo>
             )}
-            <Campo label={t('zurich.report.filterByDate')}>
-              <SelectFenix value={tipoFecha} onChange={(e) => setTipoFecha(e.target.value)}>
-                <option value="createdAt">{t('zurich.report.dateCreated')}</option>
-                <option value={CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA}>
-                  {t('zurich.fields.fechaCoordinandoInspeccion')}
-                </option>
-              </SelectFenix>
-            </Campo>
-            <Campo label={t('zurich.report.from')}>
-              <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-            </Campo>
-            <Campo label={t('zurich.report.to')}>
-              <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
-            </Campo>
+          </div>
+          <div className="mt-4">
+            <FiltrosLiderZurich
+              variante="listado"
+              filtroPoliza={filtroPoliza}
+              onFiltroPoliza={setFiltroPoliza}
+              filtroTipoPoliza={filtroTipoPoliza}
+              onFiltroTipoPoliza={setFiltroTipoPoliza}
+              opcionesTipoPoliza={tiposPoliza}
+              tipoFecha={tipoFecha}
+              onTipoFecha={setTipoFecha}
+              fechaInicio={fechaInicio}
+              onFechaInicio={setFechaInicio}
+              fechaFin={fechaFin}
+              onFechaFin={setFechaFin}
+            />
           </div>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading

@@ -2661,7 +2661,9 @@
       "goReport": "Go to report",
       "downloadAgileExcel": "Download agile Excel",
       "exporting": "Generating Excel…",
-      "excelError": "The agile format could not be generated."
+      "excelError": "The agile format could not be generated.",
+      "manageHint": "Edit the case data without leaving the report.",
+      "backToInforme": "Back to the case report"
     },
     "informeAgil": {
       "title": "Agile report",
@@ -11311,7 +11313,7 @@
     "listadoReport": {
       "title": "Zurich list report",
       "subtitle": "Client list cases (ZC, STRO, insured and contacts). Independent from CAT inspection.",
-      "searchPlaceholder": "ZC, STRO, insured, city…"
+      "searchPlaceholder": "ZC, STRO, policy, insured, city…"
     },
     "listadoDashboard": {
       "title": "Zurich CAT control tower",
@@ -11561,7 +11563,13 @@
       "filterByDate": "Filter dates by",
       "dateSiniestro": "Claim date",
       "dateCreated": "Created date",
-      "searchPlaceholder": "Insured, Risk ID, claim, city…",
+      "filterBy": "Filter by",
+      "filterByHint": "Choose policy or a date type. From / To uses that date.",
+      "filterGroupPolicy": "Policy",
+      "filterGroupDates": "Dates",
+      "policyPlaceholder": "Policy number",
+      "removeFilter": "Remove filter",
+      "searchPlaceholder": "Insured, Risk ID, claim, policy, city…",
       "actions": "Actions",
       "manage": "Manage",
       "archive": "File cabinet",
@@ -11765,7 +11773,7 @@
       "adjuster": "Adjuster name",
       "reportDate": "Report date",
       "suggestedReserve": "Suggested reserve",
-      "suggestedReserveHint": "Updates from the sum of the preliminary budget chapters ($ {{valor}}).",
+      "suggestedReserveHint": "Loss $ {{perdida}} minus {{pct}}% deductible = reserve $ {{valor}}. Choose the percentage in the preliminary budget.",
       "colZona": "Element / zone",
       "colCondicion": "Observed condition",
       "colNivel": "Damage level",
@@ -11782,6 +11790,10 @@
       "addBudgetRow": "Add chapter",
       "emptyBudgetRows": "No budget chapters. Use the template or add rows.",
       "totalPreliminaryReserve": "Preliminary reserve total",
+      "lossValue": "Loss value",
+      "deductiblePct": "% deductible on the loss",
+      "deductibleAmount": "Deductible ({{pct}}% of the loss)",
+      "reserveBreakdownHint": "The deductible is calculated on the loss value. The percentage is free to choose. Reserve = loss − deductible.",
       "finalAddsSettlement": "Values come from the Budget tab. The settlement only appears in the final and unique reports.",
       "complementPreliminar": "Preliminary report: reserve, damages and conclusions. No settlement. That content is reused when you switch to final.",
       "complementFinal": "Final report: reuses the preliminary and adds the settlement fed by the Budget tab.",

@@ -8,6 +8,7 @@ import {
 } from '../components/SubcomponenteZurich/zurichHelpers.js';
 import {
   fechasInformeParaCasoZurich,
+  desgloseReservaPreliminarZurich,
   reservaSugeridaZurich,
   sanitizarInformeUnicoZurich,
   sanitizarLiquidadorZurich,
@@ -389,15 +390,19 @@ export const guardarInformeUnicoEnCasoZurich = async ({
 }) => {
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el informe.');
   const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
-  const reservaPerito = reservaSugeridaZurich(sanitizado);
-  if (reservaPerito > 0) sanitizado.reservaSugerida = String(reservaPerito);
+  const desglose = desgloseReservaPreliminarZurich(sanitizado);
+  const reservaPerito =
+    desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado);
+  if (desglose.perdida > 0 || reservaPerito > 0) {
+    sanitizado.reservaSugerida = String(reservaPerito);
+  }
   const payload = {
     ...fichaSinHuecos(omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR)),
     ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
     informeUnico: sanitizado,
     ...fechasInformeParaCasoZurich(sanitizado, casoBase),
   };
-  if (reservaPerito > 0) payload.reserva = reservaPerito;
+  if (desglose.perdida > 0 || reservaPerito > 0) payload.reserva = reservaPerito;
 
   delete payload._id;
   delete payload.__v;

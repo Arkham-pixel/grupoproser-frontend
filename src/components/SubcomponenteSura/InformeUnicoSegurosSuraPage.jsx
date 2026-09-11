@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaSave } from 'react-icons/fa';
 import InformeUnicoSegurosSura from './InformeUnicoSegurosSura.jsx';
+import FormularioCasoSura from './FormularioCasoSura.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -13,6 +14,7 @@ import {
   expressPageWrap,
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   getCasoSuraById,
   guardarInformeUnicoEnCasoSura,
@@ -32,6 +34,7 @@ export default function InformeUnicoSegurosSuraPage() {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [gestionarAbierto, setGestionarAbierto] = useState(false);
 
   const casoId = casoSura?._id || casoIdFromQuery || null;
 
@@ -115,6 +118,23 @@ export default function InformeUnicoSegurosSuraPage() {
             {casoId && (
               <button
                 type="button"
+                className={expressBtnGhost}
+                onClick={async () => {
+                  try {
+                    const fresco = await getCasoSuraById(casoId);
+                    setCasoSura(fresco);
+                  } catch {
+                    /* se abre con lo que hay en memoria */
+                  }
+                  setGestionarAbierto(true);
+                }}
+              >
+                <FaEdit /> {t('segurosSura.report.manage')}
+              </button>
+            )}
+            {casoId && (
+              <button
+                type="button"
                 className={expressBtnPrimary}
                 disabled={guardando || !informeState}
                 onClick={() => handleGuardar()}
@@ -156,6 +176,43 @@ export default function InformeUnicoSegurosSuraPage() {
           </div>
         </div>
       </div>
+      {gestionarAbierto && casoSura && (
+        <ExpressModal
+          open
+          onClose={() => setGestionarAbierto(false)}
+          title={t('segurosSura.page.editCase', { caseNumber: casoSura.consecutivo || '' })}
+          wide
+        >
+          <div className="p-4 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+              <p className="font-body text-sm text-gray-600 dark:text-gray-400">
+                {t('segurosSura.workspace.manageHint')}
+              </p>
+              <button
+                type="button"
+                className={expressBtnPrimary}
+                onClick={() => setGestionarAbierto(false)}
+              >
+                {t('segurosSura.workspace.backToInforme')}
+              </button>
+            </div>
+            <FormularioCasoSura
+              embed
+              initialData={casoSura}
+              onClose={() => setGestionarAbierto(false)}
+              onSaved={async (guardado) => {
+                setCasoSura((prev) => ({ ...(prev || {}), ...(guardado || {}) }));
+                try {
+                  const fresco = await getCasoSuraById(casoId);
+                  setCasoSura(fresco);
+                } catch {
+                  /* ya aplicamos el guardado */
+                }
+              }}
+            />
+          </div>
+        </ExpressModal>
+      )}
     </div>
   );
 }

@@ -40,8 +40,9 @@ import {
   normalizarTipoInformeZurich,
   parsearNumero,
   prefijoArchivoInformeZurich,
+  desgloseReservaPreliminarZurich,
+  formatearPorcentajeLibreZurich,
   reservaSugeridaZurich,
-  totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
 import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
@@ -422,7 +423,9 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
       : '—';
 
   const esPreliminar = esInformePreliminarZurich(info);
-  const reserva = reservaSugeridaZurich(info);
+  const desgloseReserva = desgloseReservaPreliminarZurich(info);
+  const reserva = desgloseReserva.perdida > 0 ? desgloseReserva.reserva : reservaSugeridaZurich(info);
+  const pctReservaTxt = formatearPorcentajeLibreZurich(desgloseReserva.porcentaje);
   const ciudad = caso.ciudad || enc.ciudad || portada.municipio || '';
   const departamento = resolverDepartamentoZurich({
     ciudad,
@@ -464,7 +467,14 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
     ['AJUSTADOR', txt(info.ajustadorNombre)],
     ...(esPreliminar
-      ? [['RESERVA SUGERIDA', money(reserva)]]
+      ? [
+          ['VALOR DE LA PÉRDIDA', money(desgloseReserva.perdida)],
+          [
+            `DEDUCIBLE ${pctReservaTxt}% SOBRE LA PÉRDIDA`,
+            desgloseReserva.deducible > 0 ? `− ${money(desgloseReserva.deducible)}` : money(0),
+          ],
+          ['RESERVA SUGERIDA', money(reserva)],
+        ]
       : [
           ['RESERVA PRELIMINAR', money(reserva)],
           ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
@@ -1133,8 +1143,13 @@ function tablaAnalisisPolizaZurich(filas = []) {
   });
 }
 
-function tablaPresupuestoPreliminarZurich(filas = []) {
+function tablaPresupuestoPreliminarZurich(filas = [], info = {}) {
   const lista = Array.isArray(filas) ? filas : [];
+  const desglose = desgloseReservaPreliminarZurich({
+    ...info,
+    filasPresupuestoPreliminar: lista,
+  });
+  const pctTxt = formatearPorcentajeLibreZurich(desglose.porcentaje);
   const rows = [
     new TableRow({
       children: [
@@ -1208,14 +1223,44 @@ function tablaPresupuestoPreliminarZurich(filas = []) {
   rows.push(
     new TableRow({
       children: [
-        cell('TOTAL RESERVA PRELIMINAR', {
+        cell('VALOR DE LA PÉRDIDA', {
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(money(desglose.perdida), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell(`DEDUCIBLE ${pctTxt}% SOBRE LA PÉRDIDA`, {
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(desglose.deducible > 0 ? `− ${money(desglose.deducible)}` : money(0), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('RESERVA SUGERIDA', {
           bold: true,
           width: 7360,
           columnSpan: 2,
           cuadro: true,
           alignment: AlignmentType.RIGHT,
         }),
-        cell(money(totalPresupuestoPreliminarZurich(lista)), {
+        cell(money(desglose.reserva), {
           bold: true,
           width: 2000,
           cuadro: true,
@@ -1785,7 +1830,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             before: 40,
             after: 120,
           }),
-          tablaPresupuestoPreliminarZurich(info.filasPresupuestoPreliminar),
+          tablaPresupuestoPreliminarZurich(info.filasPresupuestoPreliminar, info),
         ]),
     p('Conclusiones', { bold: true, before: 180, after: 40 }),
     p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {

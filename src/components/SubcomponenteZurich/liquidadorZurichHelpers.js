@@ -582,8 +582,19 @@ function autoAnalisisConceptoZurich(fila, ctx) {
   }
 
   if (conceptoPolizaCoincide(fila, 'reserva')) {
-    const reserva = reservaSugeridaZurich(info) || parsearNumero(caso.reserva);
-    if (!(reserva > 0)) return { analisis: '', conclusion: '' };
+    const desglose = desgloseReservaPreliminarZurich(info);
+    const reserva = desglose.reserva || parsearNumero(caso.reserva);
+    if (!(desglose.perdida > 0) && !(reserva > 0)) return { analisis: '', conclusion: '' };
+    if (desglose.perdida > 0) {
+      const pctTxt = formatearPorcentajeLibreZurich(desglose.porcentaje);
+      return {
+        analisis:
+          `Valor de la pérdida (presupuesto preliminar): $ ${formatearMonto(desglose.perdida)}. ` +
+          `Deducible ${pctTxt}% sobre la pérdida: $ ${formatearMonto(desglose.deducible)}. ` +
+          `Reserva sugerida: $ ${formatearMonto(desglose.reserva)}.`,
+        conclusion: `$ ${formatearMonto(desglose.reserva)}`,
+      };
+    }
     return {
       analisis: `Reserva preliminar según presupuesto / ficha de Gestionar: $ ${formatearMonto(reserva)}.`,
       conclusion: `$ ${formatearMonto(reserva)}`,
@@ -724,9 +735,45 @@ export function totalPresupuestoPreliminarZurich(filas = []) {
   );
 }
 
+/** Porcentaje libre (admite 3, 3.5, 3,5). No usa parsearNumero: ese quita el punto decimal. */
+export function parsearPorcentajeLibreZurich(valor) {
+  if (valor === '' || valor == null) return 0;
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) && valor > 0 ? valor : 0;
+  }
+  const str = String(valor)
+    .trim()
+    .replace(/%/g, '')
+    .replace(/\s/g, '')
+    .replace(',', '.');
+  if (!str) return 0;
+  const n = Number.parseFloat(str);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+export function formatearPorcentajeLibreZurich(valor) {
+  const n = parsearPorcentajeLibreZurich(valor);
+  if (!(n > 0)) return '0';
+  const redondeado = Math.round(n * 100) / 100;
+  if (Math.abs(redondeado % 1) < 1e-9) return String(Math.round(redondeado));
+  return String(redondeado);
+}
+
+/**
+ * Reserva preliminar = pérdida − deducible.
+ * El deducible es el % libre sobre el valor de la pérdida (presupuesto preliminar).
+ */
+export function desgloseReservaPreliminarZurich(info = {}) {
+  const perdida = Math.round(totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar));
+  const porcentaje = parsearPorcentajeLibreZurich(info?.porcentajeDeducibleReserva);
+  const deducible = perdida > 0 && porcentaje > 0 ? Math.round((perdida * porcentaje) / 100) : 0;
+  const reserva = Math.max(0, perdida - deducible);
+  return { perdida, porcentaje, deducible, reserva };
+}
+
 export function reservaSugeridaZurich(info = {}) {
-  const delPresupuesto = totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar);
-  if (delPresupuesto > 0) return delPresupuesto;
+  const desglose = desgloseReservaPreliminarZurich(info);
+  if (desglose.perdida > 0) return desglose.reserva;
   return parsearNumero(info?.reservaSugerida);
 }
 
@@ -1173,9 +1220,13 @@ export function sanitizarInformeUnicoZurich(informe = {}) {
   const tipo = limpio.tipoInforme
     ? normalizarTipoInformeZurich(limpio.tipoInforme, 'preliminar')
     : undefined;
+  const desglose = desgloseReservaPreliminarZurich(limpio);
   return {
     ...limpio,
     ...(tipo ? { tipoInforme: tipo } : {}),
+    porcentajeDeducibleReserva:
+      limpio.porcentajeDeducibleReserva == null ? '' : String(limpio.porcentajeDeducibleReserva),
+    ...(desglose.perdida > 0 ? { reservaSugerida: String(desglose.reserva) } : {}),
     fotosInspeccion: serializarFotosInspeccionZurich(limpio.fotosInspeccion),
     fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
   };
@@ -1251,6 +1302,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
     reservaSugerida: caso.reserva != null && caso.reserva !== '' ? String(caso.reserva) : '',
+    porcentajeDeducibleReserva: '',
     filasDanios: plantillaFilasDaniosZurich(),
     filasPolizaCobertura: completarFilasPolizaCoberturaZurich(plantillaFilasPolizaZurich(), {
       caso,
@@ -1271,7 +1323,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     firmaAjustador: '',
   };
   if (!guardado) return base;
-  return sanitizarInformeUnicoCamposWord({
+  const limpio = sanitizarInformeUnicoCamposWord({
     ...base,
     ...guardado,
     tipoInforme: guardado
@@ -1286,13 +1338,27 @@ export function defaultInformeUnicoZurich(caso = {}) {
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
     reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
+    porcentajeDeducibleReserva:
+      guardado.porcentajeDeducibleReserva != null && guardado.porcentajeDeducibleReserva !== ''
+        ? String(guardado.porcentajeDeducibleReserva)
+        : base.porcentajeDeducibleReserva,
     filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
     filasPolizaCobertura: completarFilasPolizaCoberturaZurich(
       usarPlantillaSiVacio(guardado.filasPolizaCobertura, base.filasPolizaCobertura),
       {
         caso,
         encabezado: encabezadoDesdecasoZurich(caso),
-        informe: guardado,
+        informe: {
+          ...guardado,
+          filasPresupuestoPreliminar: usarPlantillaSiVacio(
+            guardado.filasPresupuestoPreliminar,
+            base.filasPresupuestoPreliminar
+          ),
+          porcentajeDeducibleReserva:
+            guardado.porcentajeDeducibleReserva != null && guardado.porcentajeDeducibleReserva !== ''
+              ? String(guardado.porcentajeDeducibleReserva)
+              : base.porcentajeDeducibleReserva,
+        },
         liquidador: caso.liquidador,
       }
     ),
@@ -1303,6 +1369,9 @@ export function defaultInformeUnicoZurich(caso = {}) {
     fotosInspeccion: fotosInformeDesdeCasoZurich(caso, guardado),
     fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
   });
+  const desglose = desgloseReservaPreliminarZurich(limpio);
+  if (desglose.perdida > 0) limpio.reservaSugerida = String(desglose.reserva);
+  return limpio;
 }
 
 export function formatDateLarga(value) {

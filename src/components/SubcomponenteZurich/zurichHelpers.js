@@ -707,13 +707,51 @@ export const CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA = 'fechaCoordinandoInspecc
  * Si el campo es inspección coordinada, no hay fallback a ingreso.
  */
 export function valorFechaFiltroZurich(caso = {}, campo = '', fallback) {
-  if (campo === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA) {
-    return caso.fechaCoordinandoInspeccion || null;
+  const clave = String(campo || '').trim();
+  if (clave) {
+    const directo = caso[clave];
+    if (directo != null && directo !== '') return directo;
+    if (clave === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA) return null;
+    return null;
   }
   if (typeof fallback === 'function') return fallback(caso);
   if (fallback !== undefined) return fallback;
   return caso.fechaCasoNuevo || caso.fechaSiniestro || caso.fechaAviso || caso.createdAt;
 }
+
+/** Fechas que el líder puede elegir en el reporte (CAT). */
+export const OPCIONES_FECHA_FILTRO_ZURICH_CAT = [
+  { value: 'fechaSiniestro', labelKey: 'zurich.fields.fechaSiniestro' },
+  { value: 'fechaCasoNuevo', labelKey: 'zurich.fields.fechaCasoNuevo' },
+  { value: 'fechaAsignacion', labelKey: 'zurich.fields.fechaAsignacion' },
+  { value: CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA, labelKey: 'zurich.fields.fechaCoordinandoInspeccion' },
+  { value: 'fechaInspeccion', labelKey: 'zurich.fields.fechaInspeccion' },
+  { value: 'fechaLlamada', labelKey: 'zurich.fields.fechaLlamada' },
+  { value: 'fechaInformePreliminar', labelKey: 'zurich.fields.fechaInformePreliminar' },
+  { value: 'fechaInformeFinal', labelKey: 'zurich.fields.fechaInformeFinal' },
+  { value: 'fechaFinalizado', labelKey: 'zurich.fields.fechaFinalizado' },
+  { value: 'fechaLiquidado', labelKey: 'zurich.fields.fechaLiquidado' },
+  { value: 'createdAt', labelKey: 'zurich.report.dateCreated' },
+];
+
+/** Fechas que el líder puede elegir en el reporte listado. */
+export const OPCIONES_FECHA_FILTRO_ZURICH_LISTADO = [
+  { value: 'createdAt', labelKey: 'zurich.report.dateCreated' },
+  { value: 'fechaCasoNuevo', labelKey: 'zurich.fields.fechaCasoNuevo' },
+  { value: 'fechaAsignacion', labelKey: 'zurich.fields.fechaAsignacion' },
+  { value: CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA, labelKey: 'zurich.fields.fechaCoordinandoInspeccion' },
+  { value: 'fechaVisita', labelKey: 'zurich.fields.fechaVisita' },
+  { value: 'fechaInformePreliminar', labelKey: 'zurich.fields.fechaInformePreliminar' },
+  { value: 'fechaInformeFinal', labelKey: 'zurich.fields.fechaInformeFinal' },
+  { value: 'fechaFinalizado', labelKey: 'zurich.fields.fechaFinalizado' },
+  { value: 'fechaInicioPoliza', labelKey: 'zurich.fields.fechaInicioPoliza' },
+  { value: 'fechaFinPoliza', labelKey: 'zurich.fields.fechaFinPoliza' },
+];
+
+export const coincideFiltroContieneZurich = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  return normTexto(valorCaso).includes(normTexto(filtro));
+};
 
 export const normTexto = (value) =>
   String(value ?? '')

@@ -32,6 +32,8 @@ import {
   mapcasoZurichALiquidador,
   migrarLiquidadorDeducibleTerremotoZurich,
   normalizarTipoInformeZurich,
+  desgloseReservaPreliminarZurich,
+  formatearPorcentajeLibreZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
@@ -300,12 +302,16 @@ export default function InformeUnicoZurich({
     () => totalPresupuestoPreliminarZurich(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
   );
+  const desgloseReserva = useMemo(
+    () => desgloseReservaPreliminarZurich(informe),
+    [informe.filasPresupuestoPreliminar, informe.porcentajeDeducibleReserva]
+  );
   const reservaMostrada = useMemo(() => reservaSugeridaZurich(informe), [informe]);
   useEffect(() => {
-    if (!esPreliminar || totalPreliminar <= 0) return;
-    if (String(informe.reservaSugerida || '') === String(totalPreliminar)) return;
-    setInforme((prev) => ({ ...prev, reservaSugerida: String(totalPreliminar) }));
-  }, [esPreliminar, totalPreliminar, informe.reservaSugerida]);
+    if (!esPreliminar || desgloseReserva.perdida <= 0) return;
+    if (String(informe.reservaSugerida || '') === String(desgloseReserva.reserva)) return;
+    setInforme((prev) => ({ ...prev, reservaSugerida: String(desgloseReserva.reserva) }));
+  }, [esPreliminar, desgloseReserva.perdida, desgloseReserva.reserva, informe.reservaSugerida]);
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
     [informe.coordenadasRiesgo]
@@ -406,9 +412,18 @@ export default function InformeUnicoZurich({
 
   const conReservaDesdePresupuesto = (prev, filasPpto) => {
     const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
-    const suma = totalPresupuestoPreliminarZurich(filasPpto);
-    if (suma > 0) next.reservaSugerida = String(suma);
+    const desglose = desgloseReservaPreliminarZurich(next);
+    if (desglose.perdida > 0) next.reservaSugerida = String(desglose.reserva);
     return next;
+  };
+
+  const setPorcentajeDeducibleReserva = (valor) => {
+    setInforme((prev) => {
+      const next = { ...prev, porcentajeDeducibleReserva: valor };
+      const desglose = desgloseReservaPreliminarZurich(next);
+      if (desglose.perdida > 0) next.reservaSugerida = String(desglose.reserva);
+      return next;
+    });
   };
 
   const setFila = (campo, idx, key, valor) => {
@@ -600,6 +615,8 @@ export default function InformeUnicoZurich({
         <p className="mt-2 font-body text-xs text-gray-500">
           {t('zurich.reportUnique.suggestedReserveHint', {
             valor: formatearMonto(reservaMostrada),
+            pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
+            perdida: formatearMonto(desgloseReserva.perdida),
           })}
         </p>
       </section>
@@ -853,10 +870,44 @@ export default function InformeUnicoZurich({
           addLabel={t('zurich.reportUnique.addBudgetRow')}
           emptyLabel={t('zurich.reportUnique.emptyBudgetRows')}
         />
-        <div className="mt-3 flex max-w-xl justify-between rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold dark:border-gray-700">
-          <span>{t('zurich.reportUnique.totalPreliminaryReserve')}</span>
-          <span>$ {formatearMonto(totalPreliminar)}</span>
+        <div className="mt-3 max-w-xl overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>{t('zurich.reportUnique.lossValue')}</span>
+            <span className="font-mono tabular-nums">$ {formatearMonto(totalPreliminar)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>{t('zurich.reportUnique.deductiblePct')}</span>
+            <label className="flex items-center gap-1">
+              <InputFenix
+                type="number"
+                min="0"
+                step="any"
+                className="w-24 text-right font-mono"
+                value={informe.porcentajeDeducibleReserva ?? ''}
+                onChange={(e) => setPorcentajeDeducibleReserva(e.target.value)}
+                placeholder="3"
+              />
+              <span>%</span>
+            </label>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>
+              {t('zurich.reportUnique.deductibleAmount', {
+                pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
+              })}
+            </span>
+            <span className="font-mono tabular-nums">
+              − $ {formatearMonto(desgloseReserva.deducible)}
+            </span>
+          </div>
+          <div className="flex justify-between px-4 py-2 text-sm font-bold">
+            <span>{t('zurich.reportUnique.totalPreliminaryReserve')}</span>
+            <span className="font-mono tabular-nums">$ {formatearMonto(desgloseReserva.reserva)}</span>
+          </div>
         </div>
+        <p className="mt-2 max-w-xl font-body text-xs text-gray-500">
+          {t('zurich.reportUnique.reserveBreakdownHint')}
+        </p>
           </>
         )}
 

@@ -2708,7 +2708,9 @@
       "goReport": "Ir al reporte",
       "downloadAgileExcel": "Descargar formato ágil Excel",
       "exporting": "Generando Excel…",
-      "excelError": "No se pudo generar el formato ágil."
+      "excelError": "No se pudo generar el formato ágil.",
+      "manageHint": "Edite los datos del caso sin salir del informe.",
+      "backToInforme": "Volver al informe"
     },
     "informeAgil": {
       "title": "Informe ágil",
@@ -11367,7 +11369,7 @@
     "listadoReport": {
       "title": "Reporte listado Zurich",
       "subtitle": "Casos del listado cliente (ZC, STRO, asegurado y contactos). Base independiente de la inspección CAT.",
-      "searchPlaceholder": "ZC, STRO, asegurado, ciudad…"
+      "searchPlaceholder": "ZC, STRO, póliza, asegurado, ciudad…"
     },
     "listadoDashboard": {
       "title": "Torre de control CAT Zurich",
@@ -11617,7 +11619,13 @@
       "filterByDate": "Filtrar fechas por",
       "dateSiniestro": "Fecha siniestro",
       "dateCreated": "Fecha de creación",
-      "searchPlaceholder": "Asegurado, Risk ID, siniestro, ciudad…",
+      "filterBy": "Filtrar por",
+      "filterByHint": "Elija póliza o el tipo de fecha. El rango Desde / Hasta usa esa fecha.",
+      "filterGroupPolicy": "Póliza",
+      "filterGroupDates": "Fechas",
+      "policyPlaceholder": "Número de póliza",
+      "removeFilter": "Quitar filtro",
+      "searchPlaceholder": "Asegurado, Risk ID, siniestro, póliza, ciudad…",
       "actions": "Acciones",
       "manage": "Gestionar",
       "archive": "Archivero",
@@ -11821,7 +11829,7 @@
       "adjuster": "Nombre del ajustador",
       "reportDate": "Fecha del informe",
       "suggestedReserve": "Reserva sugerida",
-      "suggestedReserveHint": "Se actualiza solo con la suma de los capítulos del presupuesto preliminar ($ {{valor}}).",
+      "suggestedReserveHint": "Pérdida $ {{perdida}} menos deducible {{pct}}% = reserva $ {{valor}}. El porcentaje se elige en el presupuesto preliminar.",
       "colZona": "Elemento / zona",
       "colCondicion": "Condición observada",
       "colNivel": "Nivel de afectación",
@@ -11838,6 +11846,10 @@
       "addBudgetRow": "Agregar capítulo",
       "emptyBudgetRows": "No hay capítulos de presupuesto. Use la plantilla o agregue filas.",
       "totalPreliminaryReserve": "Total reserva preliminar",
+      "lossValue": "Valor de la pérdida",
+      "deductiblePct": "% deducible sobre la pérdida",
+      "deductibleAmount": "Deducible ({{pct}}% de la pérdida)",
+      "reserveBreakdownHint": "El deducible se calcula sobre el valor de la pérdida. El porcentaje es libre. Reserva = pérdida − deducible.",
       "finalAddsSettlement": "Valores tomados de la pestaña Presupuesto. El liquidador solo sale en el informe final y en el único.",
       "complementPreliminar": "Informe preliminar: reserva, daños y conclusiones. No incluye liquidador. Ese contenido se reutiliza al pasar a final.",
       "complementFinal": "Informe final: reutiliza el preliminar y añade el liquidador alimentado por la pestaña Presupuesto.",
