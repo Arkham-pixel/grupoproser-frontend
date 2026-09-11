@@ -152,10 +152,11 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   if (textoLibre && /desist/.test(normTexto(textoLibre))) return 'desistimientos';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
   if (estado === 'OBJECIÓN') return 'objetados';
-  if (estado === 'CASO PARA PAGO') return 'pendientesPagoAlfa';
+  if (estado === 'DESISTIMIENTO') return 'desistimientos';
+  if (estado === 'CASO CERRADO') return 'liquidados';
   if (estado === 'AUTORIZACIÓN ANALISTA') return 'liquidados';
-  if (estado === 'ANÁLISIS DEL CASO' || estado === 'PENDIENTE DE DOCUMENTO') return 'enLiquidacion';
-  if (estado === 'COORDINANDO INSPECCIÓN') return 'enInspeccion';
+  if (estado === 'PRESENTACIÓN DE CIFRAS' || estado === 'PENDIENTE DE DOCUMENTOS') return 'enLiquidacion';
+  if (estado === 'CASO INSPECCIONADO') return 'enInspeccion';
   return 'verificacion';
 }
 
@@ -229,7 +230,7 @@ export function clasificarGestionDiscriminada(caso = {}) {
   ) {
     return 'accesoRestringido';
   }
-  if (texto.includes('desist') || estado === 'ANULADO' || estado === 'DESISTIDO') {
+  if (texto.includes('desist') || estado === 'ANULADO' || estado === 'DESISTIDO' || estado === 'DESISTIMIENTO') {
     return 'desistimientoTramite';
   }
   if (
@@ -269,9 +270,9 @@ export function clasificarGestionDiscriminada(caso = {}) {
     return 'contactadosSinExito';
   }
 
-  if (estado === 'ANÁLISIS DEL CASO' || estado === 'AUTORIZACIÓN ANALISTA') return 'enLiquidacion';
-  if (estado === 'PENDIENTE DE DOCUMENTO' || estado === 'OBJECIÓN') return 'pendienteInformacion';
-  if (estado === 'COORDINANDO INSPECCIÓN') return 'solicitanInspeccion';
+  if (estado === 'PRESENTACIÓN DE CIFRAS' || estado === 'AUTORIZACIÓN ANALISTA') return 'enLiquidacion';
+  if (estado === 'PENDIENTE DE DOCUMENTOS' || estado === 'OBJECIÓN') return 'pendienteInformacion';
+  if (estado === 'CASO INSPECCIONADO') return 'solicitanInspeccion';
   if (texto) return 'contactadosSinExito';
   return null;
 }
@@ -374,18 +375,19 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
     return clasificarCasoGestionTerremoto(caso);
   }
 
-  if (fechaIsoOnOrBefore(caso.fechaCasoParaPago, isoCorte)) return 'pendientesPagoAlfa';
+  if (fechaIsoOnOrBefore(caso.fechaCasoCerrado || caso.fechaCasoParaPago, isoCorte)) return 'liquidados';
+  if (fechaIsoOnOrBefore(caso.fechaDesistimiento, isoCorte)) return 'desistimientos';
   if (fechaIsoOnOrBefore(caso.fechaObjecion, isoCorte)) return 'objetados';
   if (fechaIsoOnOrBefore(caso.fechaAutorizacionAnalista, isoCorte)) return 'liquidados';
   if (
-    fechaIsoOnOrBefore(caso.fechaAnalisisCaso, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaPresentacionCifras || caso.fechaAnalisisCaso, isoCorte) ||
     fechaIsoOnOrBefore(caso.fechaSolicitudDocumento, isoCorte) ||
     fechaIsoOnOrBefore(caso.fechaRecepcionDocumento, isoCorte)
   ) {
     return 'enLiquidacion';
   }
   if (
-    fechaIsoOnOrBefore(caso.fechaCoordinandoInspeccion, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaCasoInspeccionado || caso.fechaCoordinandoInspeccion, isoCorte) ||
     fechaIsoOnOrBefore(caso.fechaLlamada, isoCorte)
   ) {
     return 'enInspeccion';

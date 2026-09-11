@@ -22,6 +22,9 @@ import {
   evidenciaAplicaSi,
   normalizeEvidenciaItem,
   esChecklistCatLleno,
+  nArchivosCasoPrevisora,
+  casoPrevisoraTieneLiquidador,
+  casoPrevisoraTieneInforme,
 } from './previsoraHelpers.js';
 import {
   expressBadge,
@@ -91,8 +94,8 @@ const COLUMNAS = [
   { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
   { clave: 'cobertura', labelKey: 'cobertura' },
   { clave: 'estadoPagoPrimas', labelKey: 'estadoPagoPrimas' },
-  { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
-  { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
+  { clave: 'solicitudAnticipo', labelKey: 'solicitudAnticipo' },
+  { clave: 'valorSolicitudAnticipo', labelKey: 'valorSolicitudAnticipo' },
   { clave: 'reserva', labelKey: 'reserva' },
   { clave: 'observacionReserva', labelKey: 'observacionReserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
@@ -104,13 +107,14 @@ const COLUMNAS = [
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
-  { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
-  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaCasoInspeccionado', labelKey: 'fechaCasoInspeccionado' },
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
-  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
   { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
-  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'fechaPresentacionCifras', labelKey: 'fechaPresentacionCifras' },
+  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
+  { clave: 'fechaDesistimiento', labelKey: 'fechaDesistimiento' },
+  { clave: 'fechaCasoCerrado', labelKey: 'fechaCasoCerrado' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -126,8 +130,7 @@ const CAMPOS_MONEDA = new Set([
   'reserva',
   'valorAseguradoInmueble',
   'valorAseguradoContenidos',
-  'valorReservaPreventivaPromedio',
-  'valorComercialInmueble',
+  'valorSolicitudAnticipo',
 ]);
 const CAMPOS_FECHA = new Set([
   'fechaSiniestro',
@@ -140,13 +143,14 @@ const CAMPOS_FECHA = new Set([
   'fechaAsignacion',
   'fechaVisita',
   'fechaCasoNuevo',
-  'fechaCoordinandoInspeccion',
-  'fechaAnalisisCaso',
+  'fechaCasoInspeccionado',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
-  'fechaObjecion',
   'fechaAutorizacionAnalista',
-  'fechaCasoParaPago',
+  'fechaPresentacionCifras',
+  'fechaObjecion',
+  'fechaDesistimiento',
+  'fechaCasoCerrado',
   'ultimaGestion',
 ]);
 
@@ -192,8 +196,8 @@ const buildExportRow = (caso) => ({
   'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
   COBERTURA: caso.cobertura ?? '',
   'ESTADO PAGO PRIMAS': caso.estadoPagoPrimas ?? '',
-  'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
-  'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
+  'SOLICITUD ANTICIPO': caso.solicitudAnticipo ?? '',
+  'VALOR SOLICITUD ANTICIPO': caso.valorSolicitudAnticipo ?? '',
   RESERVA: caso.reserva ?? '',
   'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
@@ -205,13 +209,14 @@ const buildExportRow = (caso) => ({
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
-  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
-  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
-  'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
+  'FECHA CASO INSPECCIONADO': formatDate(caso.fechaCasoInspeccionado || caso.fechaCoordinandoInspeccion),
+  'FECHA PENDIENTE DOCUMENTOS': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
-  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
   'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
-  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'FECHA PRESENTACIÓN DE CIFRAS': formatDate(caso.fechaPresentacionCifras || caso.fechaAnalisisCaso),
+  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
+  'FECHA DESISTIMIENTO': formatDate(caso.fechaDesistimiento),
+  'FECHA CASO CERRADO': formatDate(caso.fechaCasoCerrado || caso.fechaCasoParaPago),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -229,7 +234,7 @@ const buildExportRow = (caso) => ({
   'OBS EQUIPOS CRITICOS': normalizeEvidenciaItem(caso.evidenciaCat?.equiposCriticos).observacion || '',
   'OBS MITIGACION': normalizeEvidenciaItem(caso.evidenciaCat?.mitigacion).observacion || '',
   'OBS NO ACCESO': normalizeEvidenciaItem(caso.evidenciaCat?.noAcceso).observacion || '',
-  Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
+  Documentos: nArchivosCasoPrevisora(caso),
 });
 
 export default function ReportePrevisora() {
@@ -380,7 +385,7 @@ export default function ReportePrevisora() {
   };
 
   const obtenerValorCelda = (item, clave) => {
-    if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+    if (clave === 'docs') return nArchivosCasoPrevisora(item);
     if (clave === 'severidadCat') return labelSeveridadCat(item.severidadCat);
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
@@ -608,9 +613,9 @@ export default function ReportePrevisora() {
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesPrevisoraMenu
-                          docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico || !!item.historialCatastroficoId}
+                          docsCount={nArchivosCasoPrevisora(item)}
+                          tieneLiquidador={casoPrevisoraTieneLiquidador(item)}
+                          tieneInforme={casoPrevisoraTieneInforme(item)}
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>

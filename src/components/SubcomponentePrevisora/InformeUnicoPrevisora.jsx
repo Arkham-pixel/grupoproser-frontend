@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
@@ -33,7 +33,6 @@ import { descargarWordInformePrevisora } from './generarWordInformePrevisora.js'
 import { previsoraArchivosApi } from './previsoraArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
@@ -44,6 +43,10 @@ import {
   montoCotizacionPdf,
   usaCotizacionComoBasePresupuesto,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
+
+const ChecklistEvaluacionSismicaNSR10 = lazy(() =>
+  import('../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx')
+);
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -312,7 +315,8 @@ export default function InformeUnicoPrevisora({
         const creado = await api.subir(
           casoId,
           file,
-          etiquetaArchivoInformePrevisora(informe.tipoInforme)
+          etiquetaArchivoInformePrevisora(informe.tipoInforme),
+          { replaceSameSlot: true }
         );
         appendArchivosAlCaso([creado]);
         setMensaje(t('previsora.reportUnique.wordSavedArchive'));
@@ -335,9 +339,13 @@ export default function InformeUnicoPrevisora({
       if (!prev) return prev;
       const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
       const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const next = actuales.map((a) => {
+        const upd = lista.find((n) => n?._id && String(n._id) === String(a._id));
+        return upd || a;
+      });
       const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
-      if (!extra.length) return prev;
-      return { ...prev, archivos: [...actuales, ...extra] };
+      if (!extra.length && next.every((a, i) => a === actuales[i])) return prev;
+      return { ...prev, archivos: [...next, ...extra] };
     });
   };
 
@@ -662,18 +670,24 @@ export default function InformeUnicoPrevisora({
           </div>
         </div>
 
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador
-          recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
-          ocultarPresupuestoEscrito={tieneCotizacionPdf}
-          totalPresupuestoOverride={
-            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-              ? montoCotizacionPdf(liquidador.cotizacionPdf)
-              : null
+        <Suspense
+          fallback={
+            <p className="font-body text-sm text-gray-500">Cargando liquidador NSR-10…</p>
           }
-        />
+        >
+          <ChecklistEvaluacionSismicaNSR10
+            formData={formDataNsr}
+            onInputChange={handleNsrChange}
+            modoLiquidador
+            recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+            ocultarPresupuestoEscrito={tieneCotizacionPdf}
+            totalPresupuestoOverride={
+              usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+                ? montoCotizacionPdf(liquidador.cotizacionPdf)
+                : null
+            }
+          />
+        </Suspense>
       </section>
 
       <section className={expressFormSection}>

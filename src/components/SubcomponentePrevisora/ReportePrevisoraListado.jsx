@@ -9,6 +9,7 @@ import {
 } from '../../services/previsoraListadoService.js';
 import FormularioPrevisora from './FormularioPrevisora.jsx';
 import AccionesPrevisoraMenu from './AccionesPrevisoraMenu.jsx';
+import ArchiveroPrevisora from './ArchiveroPrevisora.jsx';
 import ModalImportarExcelPrevisora, {
   esAdminOSoportePrevisora,
 } from './ModalImportarExcelPrevisora.jsx';
@@ -21,6 +22,9 @@ import {
   formatCurrency,
   formatDate,
   normTexto,
+  nArchivosCasoPrevisora,
+  casoPrevisoraTieneLiquidador,
+  casoPrevisoraTieneInforme,
 } from './previsoraHelpers.js';
 import {
   expressBadge,
@@ -68,8 +72,8 @@ const COLUMNAS = [
   { clave: 'departamento', labelKey: 'departamento' },
   { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
   { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
-  { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
-  { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
+  { clave: 'solicitudAnticipo', labelKey: 'solicitudAnticipo' },
+  { clave: 'valorSolicitudAnticipo', labelKey: 'valorSolicitudAnticipo' },
   { clave: 'reserva', labelKey: 'reserva' },
   { clave: 'observacionReserva', labelKey: 'observacionReserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
@@ -82,13 +86,14 @@ const COLUMNAS = [
   { clave: 'fechaAsignacion', labelKey: 'fechaAsignacion' },
   { clave: 'fechaVisita', labelKey: 'fechaVisita' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
-  { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
-  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaCasoInspeccionado', labelKey: 'fechaCasoInspeccionado' },
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
-  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
   { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
-  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'fechaPresentacionCifras', labelKey: 'fechaPresentacionCifras' },
+  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
+  { clave: 'fechaDesistimiento', labelKey: 'fechaDesistimiento' },
+  { clave: 'fechaCasoCerrado', labelKey: 'fechaCasoCerrado' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -114,8 +119,8 @@ const buildExportRow = (caso) => ({
   DEPARTAMENTO: caso.departamento ?? '',
   'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
   'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
-  'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
-  'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
+  'SOLICITUD ANTICIPO': caso.solicitudAnticipo ?? '',
+  'VALOR SOLICITUD ANTICIPO': caso.valorSolicitudAnticipo ?? '',
   RESERVA: caso.reserva ?? '',
   'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
@@ -128,13 +133,14 @@ const buildExportRow = (caso) => ({
   'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
   'FECHA VISITA': formatDate(caso.fechaVisita),
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
-  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
-  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
-  'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
+  'FECHA CASO INSPECCIONADO': formatDate(caso.fechaCasoInspeccionado || caso.fechaCoordinandoInspeccion),
+  'FECHA PENDIENTE DOCUMENTOS': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
-  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
   'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
-  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'FECHA PRESENTACIÓN DE CIFRAS': formatDate(caso.fechaPresentacionCifras || caso.fechaAnalisisCaso),
+  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
+  'FECHA DESISTIMIENTO': formatDate(caso.fechaDesistimiento),
+  'FECHA CASO CERRADO': formatDate(caso.fechaCasoCerrado || caso.fechaCasoParaPago),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -160,6 +166,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
   const [pagina, setPagina] = useState(1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
+  const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoportePrevisora();
@@ -255,21 +262,21 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
     'fechaAsignacion',
     'fechaVisita',
     'fechaCasoNuevo',
-    'fechaCoordinandoInspeccion',
-    'fechaAnalisisCaso',
+    'fechaCasoInspeccionado',
     'fechaSolicitudDocumento',
     'fechaRecepcionDocumento',
-    'fechaObjecion',
     'fechaAutorizacionAnalista',
-    'fechaCasoParaPago',
+    'fechaPresentacionCifras',
+    'fechaObjecion',
+    'fechaDesistimiento',
+    'fechaCasoCerrado',
     'ultimaGestion',
   ]);
 
   const CAMPOS_MONEDA = new Set([
     'valorAseguradoInmueble',
     'valorAseguradoContenidos',
-    'valorReservaPreventivaPromedio',
-    'valorComercialInmueble',
+    'valorSolicitudAnticipo',
     'reserva',
     'valorReclamado',
     'valorLiquidado',
@@ -523,9 +530,11 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesPrevisoraMenu
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico}
+                          docsCount={nArchivosCasoPrevisora(item)}
+                          tieneLiquidador={casoPrevisoraTieneLiquidador(item)}
+                          tieneInforme={casoPrevisoraTieneInforme(item)}
                           onGestionar={() => setCasoEdicion(item)}
+                          onArchivero={() => setCasoArchivero(item)}
                           onLiquidador={() =>
                             navigate(`/previsora/listado/caso?casoId=${item._id}&tab=liquidador`, {
                               state: { casoPrevisora: item },
@@ -594,6 +603,27 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
             onSaved={async () => {
               setCasoEdicion(null);
               await recargar();
+            }}
+          />
+        </ExpressModal>
+      )}
+
+      {casoArchivero && (
+        <ExpressModal
+          open
+          onClose={() => setCasoArchivero(null)}
+          title={t('previsora.archive.title')}
+          wide
+        >
+          <ArchiveroPrevisora
+            caso={casoArchivero}
+            origen="listado"
+            onClose={() => setCasoArchivero(null)}
+            onChanged={(actualizado) => {
+              setCasoArchivero(actualizado);
+              setCasos((prev) =>
+                prev.map((c) => (c._id === actualizado._id ? { ...c, ...actualizado } : c))
+              );
             }}
           />
         </ExpressModal>

@@ -214,4 +214,5 @@ export async function generarLiquidadorPrevisoraExcelBlob(liquidador) {
 export async function descargarLiquidadorPrevisoraExcel(liquidador, totales) {
   const { blob, filename } = await generarLiquidadorPrevisoraExcelBlob(liquidador, totales);
   saveAs(blob, filename);
+  return { blob, filename };
 }

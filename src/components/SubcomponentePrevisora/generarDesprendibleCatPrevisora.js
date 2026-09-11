@@ -524,5 +524,5 @@ export async function descargarDesprendibleCatPrevisora(caso) {
   const blob = await Packer.toBlob(doc);
   const nombre = `Desprendible_CAT_PREVISORA_CAT_${caso.consecutivo || caso.identificacion || 'caso'}.docx`;
   saveAs(blob, nombre);
-  return nombre;
+  return { blob, filename: nombre, nombre };
 }

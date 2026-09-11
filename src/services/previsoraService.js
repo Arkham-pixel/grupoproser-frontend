@@ -47,6 +47,15 @@ export const normalizePrevisoraItem = (item = {}) => {
     estado,
     diasEnEstado: diasEnEstadoPrevisora(caso),
     ultimaGestion: ultimaGestionPrevisora(caso),
+    tieneInforme: Boolean(item.tieneInforme || (item.informeUnico && typeof item.informeUnico === 'object')),
+    tieneLiquidador: Boolean(
+      item.tieneLiquidador || (item.liquidador && typeof item.liquidador === 'object')
+    ),
+    nArchivos: Number.isFinite(Number(item.nArchivos))
+      ? Number(item.nArchivos)
+      : Array.isArray(item.archivos)
+        ? item.archivos.length
+        : 0,
     archivos: Array.isArray(item.archivos) ? item.archivos : [],
   };
 };
@@ -58,12 +67,14 @@ export const getCasosPrevisoraPaginado = async ({
   page = 1,
   limit = 100,
   soloChecklistLleno = false,
+  completo = false,
 } = {}) => {
   const queryString = buildQueryString({
     page,
     limit,
     _t: Date.now(),
     ...(soloChecklistLleno ? { soloChecklistLleno: '1' } : {}),
+    ...(completo ? { completo: '1' } : {}),
   });
   const response = await fetch(`${PREVISORA_API_URL}${queryString}`, { headers: authHeaders() });
   if (!response.ok) {
@@ -84,12 +95,14 @@ export const fetchAllCasosPrevisora = async (batchSize = 2000, opciones = {}) =>
   let page = 1;
   let total = null;
   const soloChecklistLleno = opciones.soloChecklistLleno === true;
+  const completo = opciones.completo === true;
 
   while (true) {
     const respuesta = await getCasosPrevisoraPaginado({
       page,
       limit: batchSize,
       soloChecklistLleno,
+      completo,
     });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') {
@@ -209,6 +222,9 @@ export const subirArchivoPrevisora = async (casoId, file, etiqueta = 'GENERAL', 
   formData.append('etiqueta', etiqueta);
   if (extras?.descripcion != null) {
     formData.append('descripcion', String(extras.descripcion));
+  }
+  if (extras?.replaceSameSlot) {
+    formData.append('replaceSameSlot', 'true');
   }
   const response = await fetch(`${PREVISORA_API_URL}/${casoId}/archivos`, {
     method: 'POST',

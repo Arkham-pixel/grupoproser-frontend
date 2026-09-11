@@ -72,11 +72,18 @@ export function normEstado(estado) {
 
 export function esLiquidadoEstado(estado) {
   const e = normEstado(estado);
-  return e === 'LIQUIDADO' || e === 'ENVIADO ASEGURADORA' || e === 'CERRADO';
+  return (
+    e === 'LIQUIDADO' ||
+    e === 'ENVIADO ASEGURADORA' ||
+    e === 'CERRADO' ||
+    e === 'CASO CERRADO' ||
+    e === 'DESISTIMIENTO'
+  );
 }
 
 export function esActivo(estado) {
-  return normEstado(estado) !== 'CERRADO';
+  const e = normEstado(estado);
+  return e !== 'CERRADO' && e !== 'CASO CERRADO' && e !== 'DESISTIMIENTO' && e !== 'DESISTIDO';
 }
 
 export function num(v) {

@@ -4,47 +4,60 @@ export const PREVISORA_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_PREVISORA = [
   'CASO NUEVO',
-  'COORDINANDO INSPECCIÓN',
-  'ANÁLISIS DEL CASO',
-  'PENDIENTE DE DOCUMENTO',
-  'OBJECIÓN',
+  'CASO INSPECCIONADO',
+  'PENDIENTE DE DOCUMENTOS',
   'AUTORIZACIÓN ANALISTA',
-  'CASO PARA PAGO',
+  'PRESENTACIÓN DE CIFRAS',
+  'OBJECIÓN',
+  'DESISTIMIENTO',
+  'CASO CERRADO',
 ];
 
 export const MODALIDADES_PREVISORA = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_PREVISORA = {
   'CASO NUEVO': 'fechaCasoNuevo',
-  'COORDINANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
-  'ANÁLISIS DEL CASO': 'fechaAnalisisCaso',
-  'PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
-  OBJECIÓN: 'fechaObjecion',
+  'CASO INSPECCIONADO': 'fechaCasoInspeccionado',
+  'PENDIENTE DE DOCUMENTOS': 'fechaSolicitudDocumento',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
-  'CASO PARA PAGO': 'fechaCasoParaPago',
+  'PRESENTACIÓN DE CIFRAS': 'fechaPresentacionCifras',
+  OBJECIÓN: 'fechaObjecion',
+  DESISTIMIENTO: 'fechaDesistimiento',
+  'CASO CERRADO': 'fechaCasoCerrado',
 };
 
 export const CAMPOS_FECHA_ACCION_PREVISORA = [
   'fechaCasoNuevo',
+  'fechaCasoInspeccionado',
   'fechaCoordinandoInspeccion',
+  'fechaPresentacionCifras',
   'fechaAnalisisCaso',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
   'fechaAutorizacionAnalista',
+  'fechaDesistimiento',
+  'fechaCasoCerrado',
   'fechaCasoParaPago',
 ];
 
 const ESTADOS_PREVISORA_LEGACY = {
   PENDIENTE: 'CASO NUEVO',
   AVISADO: 'CASO NUEVO',
-  'EN INSPECCION': 'COORDINANDO INSPECCIÓN',
-  'EN AJUSTE': 'ANÁLISIS DEL CASO',
-  DOCUMENTACION: 'PENDIENTE DE DOCUMENTO',
-  LIQUIDADO: 'CASO PARA PAGO',
-  'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
-  CERRADO: 'CASO PARA PAGO',
-  'CERRADO MANUAL': 'CASO PARA PAGO',
+  'EN INSPECCION': 'CASO INSPECCIONADO',
+  'COORDINANDO INSPECCION': 'CASO INSPECCIONADO',
+  INSPECCIONADO: 'CASO INSPECCIONADO',
+  'EN AJUSTE': 'PRESENTACIÓN DE CIFRAS',
+  'ANALISIS DEL CASO': 'PRESENTACIÓN DE CIFRAS',
+  DOCUMENTACION: 'PENDIENTE DE DOCUMENTOS',
+  'PENDIENTE DE DOCUMENTO': 'PENDIENTE DE DOCUMENTOS',
+  LIQUIDADO: 'CASO CERRADO',
+  'ENVIADO ASEGURADORA': 'CASO CERRADO',
+  'CASO PARA PAGO': 'CASO CERRADO',
+  CERRADO: 'CASO CERRADO',
+  'CERRADO MANUAL': 'CASO CERRADO',
+  DESISTIDO: 'DESISTIMIENTO',
+  ANULADO: 'DESISTIMIENTO',
 };
 
 const claveEstadoPrevisora = (valor) =>
@@ -65,10 +78,18 @@ export function homologarEstadoPrevisora(valor) {
   return ESTADOS_PREVISORA_LEGACY[key] || raw;
 }
 
+const FECHA_LEGADO_POR_ESTADO = {
+  'CASO INSPECCIONADO': ['fechaCoordinandoInspeccion', 'fechaInspeccion'],
+  'PRESENTACIÓN DE CIFRAS': ['fechaAnalisisCaso'],
+  'CASO CERRADO': ['fechaCasoParaPago', 'fechaLiquidado'],
+};
+
 export function diasEnEstadoPrevisora(caso = {}) {
   const estado = homologarEstadoPrevisora(caso.estado);
   const clave = FECHA_ACCION_POR_ESTADO_PREVISORA[estado];
-  const origen = caso[clave] || caso.updatedAt || caso.createdAt;
+  const legado = FECHA_LEGADO_POR_ESTADO[estado] || [];
+  const origen =
+    caso[clave] || legado.map((k) => caso[k]).find(Boolean) || caso.updatedAt || caso.createdAt;
   if (!origen) return '';
   const d = new Date(origen);
   if (Number.isNaN(d.getTime())) return '';
@@ -145,6 +166,8 @@ export const ETIQUETAS_ARCHIVO_PREVISORA = [
   'INFORME_PRELIMINAR',
   'INFORME_UNICO',
   'INFORME_FINAL',
+  'FINIQUITO',
+  'DESPRENDIBLE_CAT',
   'FOTOS',
   /** Manual CAT — evidencia fotográfica/documental */
   'FOTO_GENERAL',
@@ -509,19 +532,24 @@ export const FORM_VACIO_PREVISORA = {
   fechaVisita: '',
   modalidadAtencion: '',
   fechaCasoNuevo: '',
+  fechaCasoInspeccionado: '',
   fechaCoordinandoInspeccion: '',
   horaInicioCoordinacion: '',
   horaFinCoordinacion: '',
+  fechaPresentacionCifras: '',
   fechaAnalisisCaso: '',
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',
   fechaObjecion: '',
   fechaAutorizacionAnalista: '',
+  fechaDesistimiento: '',
+  fechaCasoCerrado: '',
   fechaCasoParaPago: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',
-  responsableAporteDocumento: '',
+  solicitudAnticipo: '',
+  valorSolicitudAnticipo: '',
   numeroPoliza: '',
   tipoPoliza: '',
   tipoPolizaOtro: '',
@@ -541,8 +569,6 @@ export const FORM_VACIO_PREVISORA = {
   valorAseguradoContenidos: '',
   cobertura: '',
   estadoPagoPrimas: '',
-  valorReservaPreventivaPromedio: '',
-  valorComercialInmueble: '',
   reserva: '',
   observacionReserva: '',
   valorReclamado: '',
@@ -618,11 +644,10 @@ export const CAMPOS_FECHA_Previsora = [
 export const CAMPOS_NUMERICOS_PREVISORA = [
   'valorAseguradoInmueble',
   'valorAseguradoContenidos',
-  'valorReservaPreventivaPromedio',
-  'valorComercialInmueble',
   'reserva',
   'valorReclamado',
   'valorLiquidado',
+  'valorSolicitudAnticipo',
 ];
 
 /** Decimales libres (distancia epicentro, etc.) — no usan formato de miles */
@@ -639,6 +664,23 @@ export const formatMiles = (valor) => {
 
 /** Al escribir: solo dígitos + puntos de miles */
 export const formatMilesInput = (valor) => formatMiles(valor);
+
+export function nArchivosCasoPrevisora(caso = {}) {
+  if (Number.isFinite(Number(caso.nArchivos))) return Number(caso.nArchivos);
+  return Array.isArray(caso.archivos) ? caso.archivos.length : 0;
+}
+
+export function casoPrevisoraTieneLiquidador(caso = {}) {
+  return Boolean(caso?.tieneLiquidador || (caso?.liquidador && typeof caso.liquidador === 'object'));
+}
+
+export function casoPrevisoraTieneInforme(caso = {}) {
+  return Boolean(
+    caso?.tieneInforme ||
+      (caso?.informeUnico && typeof caso.informeUnico === 'object') ||
+      caso?.historialCatastroficoId
+  );
+}
 
 export const construirFormDesdecasoPrevisora = (caso = {}) => {
   const base = {
@@ -695,5 +737,19 @@ export const construirFormDesdecasoPrevisora = (caso = {}) => {
     base.tipoPoliza = 'OTRO';
   }
   base.estado = homologarEstadoPrevisora(base.estado);
+  if (!base.fechaCasoInspeccionado) {
+    base.fechaCasoInspeccionado = fechaParaInput(
+      caso.fechaCasoInspeccionado || caso.fechaCoordinandoInspeccion
+    );
+  }
+  if (!base.fechaPresentacionCifras) {
+    base.fechaPresentacionCifras = fechaParaInput(
+      caso.fechaPresentacionCifras || caso.fechaAnalisisCaso
+    );
+  }
+  if (!base.fechaCasoCerrado) {
+    base.fechaCasoCerrado = fechaParaInput(caso.fechaCasoCerrado || caso.fechaCasoParaPago);
+  }
+  base.solicitudAnticipo = normalizarSiNoPrevisora(base.solicitudAnticipo);
   return base;
 };

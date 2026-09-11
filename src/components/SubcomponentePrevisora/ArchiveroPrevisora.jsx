@@ -1,11 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaTrash, FaUpload } from 'react-icons/fa';
-import {
-  eliminarArchivoPrevisora,
-  getCasoPrevisoraById,
-  subirArchivoPrevisora,
-} from '../../services/previsoraService.js';
+import { previsoraArchivosApi } from './previsoraArchivosApi.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -24,8 +20,9 @@ const formatBytes = (n) => {
   return `${(num / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
+export default function ArchiveroPrevisora({ caso, onClose, onChanged, origen = 'cat' }) {
   const { t } = useTranslation();
+  const api = useMemo(() => previsoraArchivosApi(origen), [origen]);
   const inputRef = useRef(null);
   const [archivos, setArchivos] = useState(() => caso?.archivos || []);
   const [etiqueta, setEtiqueta] = useState('GENERAL');
@@ -33,8 +30,29 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
 
+  useEffect(() => {
+    setArchivos(caso?.archivos || []);
+  }, [caso?._id, caso?.archivos]);
+
+  useEffect(() => {
+    if (!caso?._id) return undefined;
+    let cancelado = false;
+    (async () => {
+      try {
+        const actualizado = await api.getById(caso._id);
+        if (cancelado) return;
+        setArchivos(actualizado.archivos || []);
+      } catch {
+        /* el listado no trae archivos; el getById los hidrata */
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [caso?._id, api]);
+
   const refrescar = async () => {
-    const actualizado = await getCasoPrevisoraById(caso._id);
+    const actualizado = await api.getById(caso._id);
     setArchivos(actualizado.archivos || []);
     if (onChanged) onChanged(actualizado);
     return actualizado;
@@ -48,7 +66,7 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
     setExito(null);
     setSubiendo(true);
     try {
-      await subirArchivoPrevisora(caso._id, file, etiqueta);
+      await api.subir(caso._id, file, etiqueta);
       await refrescar();
       setExito(t('previsora.archive.uploadOk'));
     } catch (err) {
@@ -63,7 +81,7 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
     setError(null);
     setExito(null);
     try {
-      await eliminarArchivoPrevisora(caso._id, archivoId);
+      await api.eliminar(caso._id, archivoId);
       await refrescar();
       setExito(t('previsora.archive.deleteOk'));
     } catch (err) {
@@ -82,9 +100,14 @@ export default function ArchiveroPrevisora({ caso, onClose, onChanged }) {
             caseNumber: caso?.consecutivo || caso?.identificacion || '',
           })}
         </p>
-        <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
-          {t('previsora.cat.evidenciaHint')}
+        <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
+          {t('previsora.archive.latestHint')}
         </p>
+        {origen !== 'listado' ? (
+          <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
+            {t('previsora.cat.evidenciaHint')}
+          </p>
+        ) : null}
       </div>
 
       {error && <div className={expressAlertError}>{error}</div>}

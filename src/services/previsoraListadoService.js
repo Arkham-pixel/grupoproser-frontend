@@ -49,6 +49,15 @@ export const normalizePrevisoraListadoItem = (item = {}) => {
     ultimaGestion: ultimaGestionPrevisora(caso),
     liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
     informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
+    tieneInforme: Boolean(item.tieneInforme || (item.informeUnico && typeof item.informeUnico === 'object')),
+    tieneLiquidador: Boolean(
+      item.tieneLiquidador || (item.liquidador && typeof item.liquidador === 'object')
+    ),
+    nArchivos: Number.isFinite(Number(item.nArchivos))
+      ? Number(item.nArchivos)
+      : Array.isArray(item.archivos)
+        ? item.archivos.length
+        : 0,
     archivos: Array.isArray(item.archivos) ? item.archivos : [],
   };
 };
@@ -56,8 +65,13 @@ export const normalizePrevisoraListadoItem = (item = {}) => {
 const normalizeArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizePrevisoraListadoItem(item ?? {})) : [];
 
-export const getCasosPrevisoraListadoPaginado = async ({ page = 1, limit = 100 } = {}) => {
+export const getCasosPrevisoraListadoPaginado = async ({
+  page = 1,
+  limit = 100,
+  completo = false,
+} = {}) => {
   const qs = new URLSearchParams({ page, limit, _t: Date.now() });
+  if (completo) qs.set('completo', '1');
   const response = await fetch(`${API_URL}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
@@ -72,12 +86,12 @@ export const getCasosPrevisoraListadoPaginado = async ({ page = 1, limit = 100 }
   return payload;
 };
 
-export const fetchAllCasosPrevisoraListado = async (batchSize = 2000) => {
+export const fetchAllCasosPrevisoraListado = async (batchSize = 2000, { completo = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
   while (true) {
-    const respuesta = await getCasosPrevisoraListadoPaginado({ page, limit: batchSize });
+    const respuesta = await getCasosPrevisoraListadoPaginado({ page, limit: batchSize, completo });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') total = respuesta.total;
     if (!lote.length) break;
@@ -201,6 +215,9 @@ export const subirArchivoPrevisoraListado = async (casoId, file, etiqueta = 'GEN
   formData.append('etiqueta', etiqueta);
   if (extras?.descripcion != null) {
     formData.append('descripcion', String(extras.descripcion));
+  }
+  if (extras?.replaceSameSlot) {
+    formData.append('replaceSameSlot', 'true');
   }
   const response = await fetch(`${API_URL}/${casoId}/archivos`, {
     method: 'POST',

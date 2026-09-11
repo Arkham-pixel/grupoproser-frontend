@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaFileExcel, FaFilePdf, FaFileWord } from 'react-icons/fa';
 import {
@@ -14,7 +14,6 @@ import {
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import CampoTomadorPrevisora from './CampoTomadorPrevisora.jsx';
 import {
@@ -27,6 +26,7 @@ import { descargarFiniquitoPrevisoraWord } from './generarFiniquitoPrevisoraWord
 import { descargarLiquidadorPrevisoraExcel } from './generarLiquidadorPrevisoraExcel.js';
 import { descargarLiquidadorPrevisoraPdf } from './generarLiquidadorPrevisoraPdf.js';
 import { previsoraArchivosApi } from './previsoraArchivosApi.js';
+import { archivarBlobEnCasoPrevisora, MIME_ARCHIVO_PREVISORA } from './archivarDocumentoPrevisora.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
@@ -34,6 +34,10 @@ import {
   montoCotizacionPdf,
   usaCotizacionComoBasePresupuesto,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
+
+const ChecklistEvaluacionSismicaNSR10 = lazy(() =>
+  import('../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx')
+);
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -104,14 +108,39 @@ export default function LiquidadorPrevisora({
       if (!prev) return prev;
       const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
       const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const next = actuales.map((a) => {
+        const upd = lista.find((n) => n?._id && String(n._id) === String(a._id));
+        return upd || a;
+      });
       const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
-      if (!extra.length) return prev;
-      return { ...prev, archivos: [...actuales, ...extra] };
+      if (!extra.length && next.every((a, i) => a === actuales[i])) return prev;
+      return { ...prev, archivos: [...next, ...extra] };
     });
+  };
+
+  const copiarAlArchivero = async (blob, nombre, mime, etiqueta) => {
+    const casoId = casoPrevisora?._id;
+    if (!casoId || !blob || !nombre) return;
+    const creado = await archivarBlobEnCasoPrevisora({
+      subir: api.subir,
+      casoId,
+      blob,
+      nombre,
+      mime,
+      etiqueta,
+    });
+    appendArchivosAlCaso([creado]);
+    setMensaje(t('previsora.settlement.archiveSaved'));
   };
 
   const handleCotizacionChange = (cotizacionPdf) => {
     setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+  };
+
+  const MIME_EXPORT = {
+    excel: MIME_ARCHIVO_PREVISORA.xlsx,
+    pdf: MIME_ARCHIVO_PREVISORA.pdf,
+    finiquito: MIME_ARCHIVO_PREVISORA.docx,
   };
 
   const correrExport = async (tipo, fn) => {
@@ -119,7 +148,22 @@ export default function LiquidadorPrevisora({
     setMensaje('');
     setExportando(tipo);
     try {
-      await fn(liquidador, totales);
+      const resultado = await fn(liquidador, totales);
+      const blob = resultado?.blob;
+      const nombre = resultado?.filename || resultado?.nombre;
+      if (blob && nombre) {
+        try {
+          await copiarAlArchivero(
+            blob,
+            nombre,
+            MIME_EXPORT[tipo] || 'application/octet-stream',
+            tipo === 'finiquito' ? 'FINIQUITO' : 'LIQUIDACION'
+          );
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar en el archivero Previsora:', errArchivo);
+          setError(t('previsora.settlement.archiveError'));
+        }
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || t('previsora.settlement.exportError'));
@@ -331,18 +375,24 @@ export default function LiquidadorPrevisora({
                 })}
           </h3>
         )}
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador={embeberEnInforme}
-          recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
-          ocultarPresupuestoEscrito={tieneCotizacionPdf}
-          totalPresupuestoOverride={
-            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-              ? montoCotizacionPdf(liquidador.cotizacionPdf)
-              : null
+        <Suspense
+          fallback={
+            <p className="font-body text-sm text-gray-500">Cargando liquidador NSR-10…</p>
           }
-        />
+        >
+          <ChecklistEvaluacionSismicaNSR10
+            formData={formDataNsr}
+            onInputChange={handleNsrChange}
+            modoLiquidador={embeberEnInforme}
+            recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+            ocultarPresupuestoEscrito={tieneCotizacionPdf}
+            totalPresupuestoOverride={
+              usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+                ? montoCotizacionPdf(liquidador.cotizacionPdf)
+                : null
+            }
+          />
+        </Suspense>
       </section>
     </div>
   );

@@ -320,4 +320,5 @@ export async function descargarFiniquitoPrevisoraWord(liquidador = {}, totalesIn
     .slice(0, 50);
   const nombre = `Finiquito_Constancia_Previsora_${safe}.docx`;
   saveAs(blob, nombre);
+  return { blob, filename: nombre, nombre };
 }

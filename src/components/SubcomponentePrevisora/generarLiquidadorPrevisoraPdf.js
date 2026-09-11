@@ -490,5 +490,7 @@ export async function descargarLiquidadorPrevisoraPdf(liquidador, totales) {
   const safe = String(enc.siniestro || enc.consecutivo || 'NSR10')
     .replace(/[^\w.-]+/g, '_')
     .slice(0, 40);
-  saveAs(blob, `Evaluacion_Sismica_NSR10_Previsora_${safe}.pdf`);
+  const filename = `Evaluacion_Sismica_NSR10_Previsora_${safe}.pdf`;
+  saveAs(blob, filename);
+  return { blob, filename };
 }

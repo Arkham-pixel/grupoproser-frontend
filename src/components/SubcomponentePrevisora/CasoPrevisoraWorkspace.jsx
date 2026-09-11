@@ -1,10 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
-import LiquidadorPrevisora from './LiquidadorPrevisora.jsx';
-import InspeccionCatPrevisora from './InspeccionCatPrevisora.jsx';
-import InformeUnicoPrevisora from './InformeUnicoPrevisora.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -35,6 +32,10 @@ import usePrevisoraCasoAutosave from '../../hooks/usePrevisoraCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+
+const LiquidadorPrevisora = lazy(() => import('./LiquidadorPrevisora.jsx'));
+const InspeccionCatPrevisora = lazy(() => import('./InspeccionCatPrevisora.jsx'));
+const InformeUnicoPrevisora = lazy(() => import('./InformeUnicoPrevisora.jsx'));
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -141,11 +142,11 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [casoPrevisora, setCasoPrevisora] = useState(location.state?.casoPrevisora ?? null);
+  const [casoPrevisora, setCasoPrevisora] = useState(null);
   const [liquidadorState, setLiquidadorState] = useState(null);
   const [totalesState, setTotalesState] = useState(null);
   const [informeState, setInformeState] = useState(null);
-  const [cargandoCaso, setCargandoCaso] = useState(false);
+  const [cargandoCaso, setCargandoCaso] = useState(Boolean(casoIdFromQuery));
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -170,13 +171,6 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
   useEffect(() => {
     let cancelado = false;
     async function cargar() {
-      if (!casoIdFromQuery && location.state?.casoPrevisora) {
-        const caso = location.state.casoPrevisora;
-        setCasoPrevisora(caso);
-        setLiquidadorState((prev) => prev || caso?.liquidador || null);
-        setInformeState((prev) => prev || caso?.informeUnico || null);
-        return;
-      }
       if (!casoIdFromQuery) return;
       setCargandoCaso(true);
       setError('');
@@ -199,7 +193,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state, t, esModuloListado]);
+  }, [casoIdFromQuery, t, esModuloListado]);
 
   useEffect(() => {
     if (casoIdFromQuery) return undefined;
@@ -542,51 +536,55 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
           <div className={expressCardBody}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('previsora.workspace.loading')}</p>
-            ) : !esModuloListado && tabActivo === TABS_PREVISORA.CAT ? (
-              <InspeccionCatPrevisora
-                key={`cat-${casoId}-${restoreNonce}`}
-                casoPrevisora={casoPrevisora}
-                onCasoChange={setCasoPrevisora}
-              />
-            ) : tabActivo === TABS_PREVISORA.INFORME ? (
-              <InformeUnicoPrevisora
-                key={`inf-${casoId}-${restoreNonce}`}
-                origen={esModuloListado ? 'listado' : 'cat'}
-                casoPrevisora={casoPrevisora}
-                liquidadorInicial={liquidadorState}
-                onEstadoChange={setInformeState}
-                onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState(liq);
-                  setTotalesState(tot);
-                }}
-                onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
-                onCasoChange={setCasoPrevisora}
-                guardandoCaso={guardando}
-              />
             ) : (
-              <LiquidadorPrevisora
-                key={`liq-${casoId}-${restoreNonce}`}
-                origen={esModuloListado ? 'listado' : 'cat'}
-                casoPrevisora={casoPrevisora}
-                liquidadorInicial={liquidadorState}
-                onEstadoChange={(liq, tot) => {
-                  setLiquidadorState(liq);
-                  setTotalesState(tot);
-                  if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
-                    setInformeState((prev) => {
-                      if (!prev) return prev;
-                      const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
-                      const prevKey = JSON.stringify(prev.fotosCotizacion || []);
-                      const nextKey = JSON.stringify(nextFotos);
-                      if (prevKey === nextKey) return prev;
-                      return { ...prev, fotosCotizacion: nextFotos };
-                    });
-                  }
-                }}
-                onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
-                onCasoChange={setCasoPrevisora}
-                guardandoCaso={guardando}
-              />
+              <Suspense fallback={<p className="text-sm text-gray-500">{t('previsora.workspace.loading')}</p>}>
+                {!esModuloListado && tabActivo === TABS_PREVISORA.CAT ? (
+                  <InspeccionCatPrevisora
+                    key={`cat-${casoId}-${restoreNonce}`}
+                    casoPrevisora={casoPrevisora}
+                    onCasoChange={setCasoPrevisora}
+                  />
+                ) : tabActivo === TABS_PREVISORA.INFORME ? (
+                  <InformeUnicoPrevisora
+                    key={`inf-${casoId}-${restoreNonce}`}
+                    origen={esModuloListado ? 'listado' : 'cat'}
+                    casoPrevisora={casoPrevisora}
+                    liquidadorInicial={liquidadorState}
+                    onEstadoChange={setInformeState}
+                    onLiquidadorChange={(liq, tot) => {
+                      setLiquidadorState(liq);
+                      setTotalesState(tot);
+                    }}
+                    onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
+                    onCasoChange={setCasoPrevisora}
+                    guardandoCaso={guardando}
+                  />
+                ) : (
+                  <LiquidadorPrevisora
+                    key={`liq-${casoId}-${restoreNonce}`}
+                    origen={esModuloListado ? 'listado' : 'cat'}
+                    casoPrevisora={casoPrevisora}
+                    liquidadorInicial={liquidadorState}
+                    onEstadoChange={(liq, tot) => {
+                      setLiquidadorState(liq);
+                      setTotalesState(tot);
+                      if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
+                        setInformeState((prev) => {
+                          if (!prev) return prev;
+                          const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
+                          const prevKey = JSON.stringify(prev.fotosCotizacion || []);
+                          const nextKey = JSON.stringify(nextFotos);
+                          if (prevKey === nextKey) return prev;
+                          return { ...prev, fotosCotizacion: nextFotos };
+                        });
+                      }
+                    }}
+                    onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                    onCasoChange={setCasoPrevisora}
+                    guardandoCaso={guardando}
+                  />
+                )}
+              </Suspense>
             )}
           </div>
         </div>

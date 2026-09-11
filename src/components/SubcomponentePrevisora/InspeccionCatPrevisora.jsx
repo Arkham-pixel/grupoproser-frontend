@@ -37,6 +37,7 @@ import {
   formatDateIso,
 } from './previsoraHelpers.js';
 import { descargarDesprendibleCatPrevisora } from './generarDesprendibleCatPrevisora.js';
+import { archivarBlobEnCasoPrevisora, MIME_ARCHIVO_PREVISORA } from './archivarDocumentoPrevisora.js';
 import { AUTOSAVE_DEBOUNCE_MS } from '../../config/autoSaveConfig.js';
 import { ACCEPT_ARCHIVOS_IMAGEN, asegurarJpeg, esArchivoImagen } from '../../utils/heicToJpeg.js';
 import StorageLazyImage from '../shared/StorageLazyImage.jsx';
@@ -393,7 +394,22 @@ export default function InspeccionCatPrevisora({ casoPrevisora = null, onCasoCha
         ...cat,
         archivos: archivos?.length ? archivos : guardado?.archivos || casoPrevisora.archivos || [],
       };
-      const nombre = await descargarDesprendibleCatPrevisora(base);
+      const resultado = await descargarDesprendibleCatPrevisora(base);
+      const nombre = resultado?.nombre || resultado?.filename || resultado;
+      if (resultado?.blob) {
+        try {
+          await archivarBlobEnCasoPrevisora({
+            subir: subirArchivoPrevisora,
+            casoId: casoPrevisora._id,
+            blob: resultado.blob,
+            nombre,
+            mime: MIME_ARCHIVO_PREVISORA.docx,
+            etiqueta: 'DESPRENDIBLE_CAT',
+          });
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar el desprendible en el archivero:', errArchivo);
+        }
+      }
       setMensaje(`Guardado en el caso y desprendible descargado: ${nombre}`);
     } catch (err) {
       setError(err.message || 'No se pudo guardar o generar el desprendible Word');
@@ -414,7 +430,22 @@ export default function InspeccionCatPrevisora({ casoPrevisora = null, onCasoCha
         ...cat,
         archivos: archivos?.length ? archivos : casoPrevisora?.archivos || [],
       };
-      const nombre = await descargarDesprendibleCatPrevisora(base);
+      const resultado = await descargarDesprendibleCatPrevisora(base);
+      const nombre = resultado?.nombre || resultado?.filename || resultado;
+      if (resultado?.blob && casoPrevisora?._id) {
+        try {
+          await archivarBlobEnCasoPrevisora({
+            subir: subirArchivoPrevisora,
+            casoId: casoPrevisora._id,
+            blob: resultado.blob,
+            nombre,
+            mime: MIME_ARCHIVO_PREVISORA.docx,
+            etiqueta: 'DESPRENDIBLE_CAT',
+          });
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar el desprendible en el archivero:', errArchivo);
+        }
+      }
       setMensaje(`Desprendible exportado (sin guardar): ${nombre}`);
     } catch (err) {
       setError(err.message || 'No se pudo generar el desprendible Word');

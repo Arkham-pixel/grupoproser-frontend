@@ -61,7 +61,6 @@ import ModalImportarExcelPrevisora, {
 } from './ModalImportarExcelPrevisora.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
-import SelectBuscable from '../SelectBuscable.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
@@ -79,9 +78,7 @@ import {
 import {
   aplicarCambioDepartamento,
   extraerListaCiudadesApi,
-  filtrarCiudadesPorDepartamento,
   mapearCiudadesDesdeApi,
-  opcionesCiudadSelect,
 } from '../../utils/ciudadesColombia.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
@@ -204,16 +201,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     };
   }, []);
 
-  /** Listado: todas las ciudades sin filtrar por departamento. */
-  const opcionesCiudadListado = useMemo(
-    () =>
-      opcionesCiudadSelect(
-        filtrarCiudadesPorDepartamento(ciudadesRaw, '', { requireDepto: false }),
-        form.ciudad
-      ),
-    [ciudadesRaw, form.ciudad]
-  );
-
   const ajustadoresPorCiudad = useMemo(
     () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
     [ajustadoresCat, form.ajustador]
@@ -307,12 +294,13 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         departamento: form.departamento,
         valorAseguradoInmueble: aNumero(form.valorAseguradoInmueble),
         valorAseguradoContenidos: aNumero(form.valorAseguradoContenidos),
-        valorReservaPreventivaPromedio: aNumero(form.valorReservaPreventivaPromedio),
-        valorComercialInmueble: aNumero(form.valorComercialInmueble),
         reserva: aNumero(form.reserva),
         observacionReserva: form.observacionReserva,
         valorReclamado: aNumero(form.valorReclamado),
         valorLiquidado: aNumero(form.valorLiquidado),
+        solicitudAnticipo: form.solicitudAnticipo,
+        valorSolicitudAnticipo:
+          form.solicitudAnticipo === 'SI' ? aNumero(form.valorSolicitudAnticipo) : null,
         ajustadorLider: form.ajustadorLider,
         ajustador: form.ajustador,
         inspector: form.inspector,
@@ -320,19 +308,22 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         fechaVisita: form.fechaVisita,
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
-        fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
+        fechaCasoInspeccionado: form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion,
+        fechaCoordinandoInspeccion: form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion,
         horaInicioCoordinacion: form.horaInicioCoordinacion,
         horaFinCoordinacion: form.horaFinCoordinacion,
-        fechaAnalisisCaso: form.fechaAnalisisCaso,
+        fechaPresentacionCifras: form.fechaPresentacionCifras || form.fechaAnalisisCaso,
+        fechaAnalisisCaso: form.fechaPresentacionCifras || form.fechaAnalisisCaso,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
         fechaObjecion: form.fechaObjecion,
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
-        fechaCasoParaPago: form.fechaCasoParaPago,
+        fechaDesistimiento: form.fechaDesistimiento,
+        fechaCasoCerrado: form.fechaCasoCerrado || form.fechaCasoParaPago,
+        fechaCasoParaPago: form.fechaCasoCerrado || form.fechaCasoParaPago,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
-        responsableAporteDocumento: form.responsableAporteDocumento,
         estado: homologarEstadoPrevisora(form.estado),
       };
       if (!String(payload.identificacion || '').trim()) {
@@ -342,6 +333,21 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     }
     const payload = { ...form };
     payload.estado = homologarEstadoPrevisora(payload.estado);
+    payload.fechaCasoInspeccionado =
+      form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion;
+    payload.fechaCoordinandoInspeccion =
+      form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion;
+    payload.fechaPresentacionCifras =
+      form.fechaPresentacionCifras || form.fechaAnalisisCaso;
+    payload.fechaAnalisisCaso = form.fechaPresentacionCifras || form.fechaAnalisisCaso;
+    payload.fechaCasoCerrado = form.fechaCasoCerrado || form.fechaCasoParaPago;
+    payload.fechaCasoParaPago = form.fechaCasoCerrado || form.fechaCasoParaPago;
+    payload.solicitudAnticipo = form.solicitudAnticipo;
+    payload.valorSolicitudAnticipo =
+      form.solicitudAnticipo === 'SI' ? aNumero(form.valorSolicitudAnticipo) : null;
+    delete payload.responsableAporteDocumento;
+    delete payload.valorReservaPreventivaPromedio;
+    delete payload.valorComercialInmueble;
     if (!esTipoPolizaOtroPrevisora(payload.tipoPoliza)) payload.tipoPolizaOtro = '';
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
@@ -573,35 +579,18 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               placeholder={t('previsora.placeholders.telefonoIntermediario')}
             />
           </Campo>
-          {esModuloListado ? (
-            <Campo label={t('previsora.fields.ciudad')}>
-              <SelectBuscable
-                options={opcionesCiudadListado}
-                value={form.ciudad || ''}
-                onChange={(val) => setCiudad(val)}
-                disabled={
-                  attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
-                  (cargandoCatalogos && opcionesCiudadListado.length === 0)
-                }
-                placeholder={t('previsora.placeholders.selectCity')}
-                searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
-                buttonClassName={BTN_CIUDAD_PREVISORA}
-              />
-            </Campo>
-          ) : (
-            <SelectorDepartamentoCiudad
-              ciudadesRaw={ciudadesRaw}
-              departamento={form.departamento}
-              ciudad={form.ciudad}
-              onDepartamentoChange={setDepartamento}
-              onCiudadChange={setCiudad}
-              cargando={cargandoCatalogos}
-              disabledDepartamento={!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)}
-              disabledCiudad={attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled}
-              i18nNs="previsora"
-              buttonClassName={BTN_CIUDAD_PREVISORA}
-            />
-          )}
+          <SelectorDepartamentoCiudad
+            ciudadesRaw={ciudadesRaw}
+            departamento={form.departamento}
+            ciudad={form.ciudad}
+            onDepartamentoChange={setDepartamento}
+            onCiudadChange={setCiudad}
+            cargando={cargandoCatalogos}
+            disabledDepartamento={!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)}
+            disabledCiudad={attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled}
+            i18nNs="previsora"
+            buttonClassName={BTN_CIUDAD_PREVISORA}
+          />
           <Campo label={t('previsora.fields.estado')} required>
             {selectSimple('estado', ESTADOS_PREVISORA)}
           </Campo>
@@ -665,12 +654,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
           <Campo label={t('previsora.fields.valorAseguradoContenidos')}>
             {inputMiles('valorAseguradoContenidos')}
           </Campo>
-          <Campo label={t('previsora.fields.valorReservaPreventivaPromedio')}>
-            {inputMiles('valorReservaPreventivaPromedio')}
-          </Campo>
-          <Campo label={t('previsora.fields.valorComercialInmueble')}>
-            {inputMiles('valorComercialInmueble')}
-          </Campo>
           <Campo label={t('previsora.fields.reserva')}>{inputMiles('reserva')}</Campo>
           <Campo label={t('previsora.fields.valorReclamado')}>
             {inputMiles('valorReclamado')}
@@ -690,6 +673,21 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
       </section>
 
       <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>{t('previsora.sections.anticipo')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('previsora.sections.anticipoHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('previsora.fields.solicitudAnticipo')}>
+            {selectSimple('solicitudAnticipo', OPCIONES_SI_NO_PREVISORA)}
+          </Campo>
+          <Campo label={t('previsora.fields.valorSolicitudAnticipo')}>
+            {inputMiles('valorSolicitudAnticipo')}
+          </Campo>
+        </div>
+      </section>
+
+      <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('previsora.sections.actionDates')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('previsora.sections.actionDatesHint')}
@@ -699,11 +697,11 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
             <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
           </Campo>
           <CampoFranjaCoordinacion
-            labelFecha={t('previsora.fields.fechaCoordinandoInspeccion')}
-            fecha={form.fechaCoordinandoInspeccion}
+            labelFecha={t('previsora.fields.fechaCasoInspeccionado')}
+            fecha={form.fechaCasoInspeccionado}
             horaInicio={form.horaInicioCoordinacion}
             horaFin={form.horaFinCoordinacion}
-            onFecha={setCampo('fechaCoordinandoInspeccion')}
+            onFecha={setCampo('fechaCasoInspeccionado')}
             onHoraInicio={setCampo('horaInicioCoordinacion')}
             onHoraFin={setCampo('horaFinCoordinacion')}
             ajustador={form.ajustador}
@@ -711,13 +709,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
             casoId={initialData?._id}
             disabled={attrsCampoCaso(rolUsuario, 'fechaCoordinandoInspeccion', ctxPermiso).disabled}
           />
-          <Campo label={t('previsora.fields.fechaAnalisisCaso')}>
-            <InputFenix
-              type="date"
-              value={form.fechaAnalisisCaso}
-              onChange={setCampo('fechaAnalisisCaso')}
-            />
-          </Campo>
           <Campo label={t('previsora.fields.fechaSolicitudDocumento')}>
             <InputFenix
               type="date"
@@ -732,9 +723,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               onChange={setCampo('fechaRecepcionDocumento')}
             />
           </Campo>
-          <Campo label={t('previsora.fields.fechaObjecion')}>
-            <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
-          </Campo>
           <Campo label={t('previsora.fields.fechaAutorizacionAnalista')}>
             <InputFenix
               type="date"
@@ -742,11 +730,28 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               onChange={setCampo('fechaAutorizacionAnalista')}
             />
           </Campo>
-          <Campo label={t('previsora.fields.fechaCasoParaPago')}>
+          <Campo label={t('previsora.fields.fechaPresentacionCifras')}>
             <InputFenix
               type="date"
-              value={form.fechaCasoParaPago}
-              onChange={setCampo('fechaCasoParaPago')}
+              value={form.fechaPresentacionCifras}
+              onChange={setCampo('fechaPresentacionCifras')}
+            />
+          </Campo>
+          <Campo label={t('previsora.fields.fechaObjecion')}>
+            <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
+          </Campo>
+          <Campo label={t('previsora.fields.fechaDesistimiento')}>
+            <InputFenix
+              type="date"
+              value={form.fechaDesistimiento}
+              onChange={setCampo('fechaDesistimiento')}
+            />
+          </Campo>
+          <Campo label={t('previsora.fields.fechaCasoCerrado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaCasoCerrado}
+              onChange={setCampo('fechaCasoCerrado')}
             />
           </Campo>
           <Campo label={t('previsora.fields.diasEnEstado')}>
@@ -760,12 +765,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               value={form.documentoFaltante}
               onChange={setCampo('documentoFaltante')}
               placeholder={t('previsora.placeholders.documentoFaltante')}
-            />
-          </Campo>
-          <Campo label={t('previsora.fields.responsableAporteDocumento')}>
-            <InputFenix
-              value={form.responsableAporteDocumento}
-              onChange={setCampo('responsableAporteDocumento')}
             />
           </Campo>
           <Campo label={t('previsora.fields.observacionPendienteDocumento')} className="md:col-span-2">

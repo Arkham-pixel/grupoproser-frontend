@@ -71,7 +71,10 @@ export function esLiquidadoEstado(estado) {
     e === 'FINALIZADO' ||
     e === 'ENVIADO ASEGURADORA' ||
     e === 'CERRADO' ||
-    e === 'ANULADO'
+    e === 'CASO CERRADO' ||
+    e === 'ANULADO' ||
+    e === 'DESISTIMIENTO' ||
+    e === 'DESISTIDO'
   );
 }
 
@@ -85,10 +88,12 @@ export function esActivo(estado) {
   if (esLiquidadoEstado(e)) return false;
   return (
     e !== 'CERRADO' &&
+    e !== 'CASO CERRADO' &&
     e !== 'ANULADO' &&
     e !== 'FINALIZADO' &&
     e !== 'OBJETADO' &&
-    e !== 'DESISTIDO'
+    e !== 'DESISTIDO' &&
+    e !== 'DESISTIMIENTO'
   );
 }
 
