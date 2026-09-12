@@ -33,6 +33,7 @@ import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { calcularTotalesFormatoExcelBbvaCat, esValorGlobal } from './formatoLiquidacionBbvaCat.js';
 import { inferirTipoLiquidadorBbvaCat, textosLetrerosBbvaCat } from './deduciblesBbvaCat.js';
+import { parrafosFirmaClienteAlfa } from '../SubcomponenteSegurosAlfa/firmaClienteAlfaWord.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -468,25 +469,66 @@ function construirTablaFormatoExcelBbva({ liquidador = {}, totales = {} } = {}) 
   });
 }
 
-function parrafosLetrerosBbvaWord(liquidador = {}) {
+async function parrafosLetrerosBbvaWord(liquidador = {}) {
   const tipo = inferirTipoLiquidadorBbvaCat({
     tipoLiquidador: liquidador.tipoLiquidador,
     encabezado: liquidador.encabezado,
   });
   const textos = textosLetrerosBbvaCat(tipo);
+  const enc = liquidador.encabezado || {};
+  const datos = liquidador.datosFiniquito || {};
   const obs = String(liquidador.observacionesFiniquito || '').trim();
+  const aceptacion = String(liquidador.aceptacionIndemnizacion || '').toUpperCase();
+  const marcaAcepto = aceptacion === 'ACEPTO' ? 'X' : ' ';
+  const marcaRechazo = aceptacion === 'RECHAZO' ? 'X' : ' ';
+  const meses = [
+    '',
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  const ciudadFirma =
+    String(datos.ciudadFirma || enc.ciudad || '').trim() || '________________';
+  const diaFirma = String(datos.diaFirma || '').trim() || '________';
+  const mesFirma = meses[Number(datos.mesFirma)] || String(datos.mesFirma || '').trim() || '________';
+  const anioFirma = String(datos.anioFirma || '').trim() || '________';
+  const nombre =
+    String(liquidador.nombreFirmante || enc.asegurado || enc.tomador || '').trim() || '—';
+  const cedula = String(enc.identificacion || '').trim();
+
+  const parrafosFirma = await parrafosFirmaClienteAlfa({
+    liquidador,
+    cedula,
+    nombre,
+    etiquetaFirma: 'FIRMA DEL CLIENTE',
+  });
+
   return [
     p(textos.avisoDeducible, { after: 80, size: SIZE_META }),
     p(textos.objetoPoliza, { after: 80, size: SIZE_META }),
     p(textos.pazYSalvo, { after: 80, size: SIZE_META }),
     p(
-      liquidador.aceptacionIndemnizacion
-        ? `Decisión: ${liquidador.aceptacionIndemnizacion}`
-        : 'ACEPTO INDEMNIZACIÓN          RECHAZO INDEMNIZACIÓN',
-      { after: 80, bold: true }
+      `ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          RECHAZO INDEMNIZACIÓN  ( ${marcaRechazo} )`,
+      { after: 80, bold: true, alignment: AlignmentType.CENTER }
     ),
-    p(textos.autorizacionPago, { after: 80, size: SIZE_META }),
-    ...(obs ? [p(`OBSERVACIONES: ${obs}`, { after: 80, size: SIZE_META })] : []),
+    p(
+      `En aceptación de lo anterior, firmamos el presente documento en la ciudad de ${ciudadFirma}, a los ${diaFirma} días del mes de ${mesFirma} de ${anioFirma}.`,
+      { after: 80, size: SIZE_META }
+    ),
+    ...parrafosFirma,
+    p(textos.autorizacionPago, { after: 80, size: SIZE_META, bold: true }),
+    obs
+      ? p(`OBSERVACIONES: ${obs}`, { after: 80, size: SIZE_META })
+      : p('OBSERVACIONES:', { after: 80, size: SIZE_META }),
   ];
 }
 
@@ -964,6 +1006,7 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
   const info = informe || defaultInformeUnicoBbvaCat(caso);
   const liq = liquidador || mapcasoBbvaCatALiquidador(caso);
   const totales = calcularLiquidacionBbvaCat(liq);
+  const letrerosLiquidacion = await parrafosLetrerosBbvaWord(liq);
   const enc = liq.encabezado || {};
   const items = itemsPlanosBbvaCat(liq);
   const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
@@ -1528,7 +1571,7 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
             { after: 120 }
           ),
           construirTablaFormatoExcelBbva({ liquidador: liq, totales }),
-          ...parrafosLetrerosBbvaWord(liq),
+          ...letrerosLiquidacion,
           p('Presupuesto NSR-10 (apoyo técnico)', {
             bold: true,
             before: 180,

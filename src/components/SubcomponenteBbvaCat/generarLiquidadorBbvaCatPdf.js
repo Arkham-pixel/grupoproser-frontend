@@ -211,15 +211,42 @@ export async function generarLiquidadorBbvaCatPdfBlob(liquidador, totales) {
   doc.setTextColor(...INK);
   y += 6;
 
+  if (y + 50 > PAGE_H - M) {
+    doc.addPage();
+    y = M;
+  }
+
+  const datos = liquidador?.datosFiniquito || {};
+  const aceptacion = String(liquidador?.aceptacionIndemnizacion || '').toUpperCase();
+  const marcaAcepto = aceptacion === 'ACEPTO' ? 'X' : ' ';
+  const marcaRechazo = aceptacion === 'RECHAZO' ? 'X' : ' ';
+  const meses = [
+    '',
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  const ciudadFirma = String(datos.ciudadFirma || enc.ciudad || '').trim() || '________________';
+  const diaFirma = String(datos.diaFirma || '').trim() || '________';
+  const mesFirma =
+    meses[Number(datos.mesFirma)] || String(datos.mesFirma || '').trim() || '________';
+  const anioFirma = String(datos.anioFirma || '').trim() || '________';
+  const nombreFirmante =
+    String(liquidador?.nombreFirmante || enc.asegurado || '').trim() || '________________';
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
-  const bloques = [
-    textos.avisoDeducible,
-    textos.pazYSalvo,
-    textos.autorizacionPago,
-    txt(liquidador?.observacionesFiniquito, ''),
-  ].filter(Boolean);
-  bloques.forEach((t) => {
+  const bloquesTexto = [textos.avisoDeducible, textos.pazYSalvo].filter(Boolean);
+  bloquesTexto.forEach((t) => {
     const lines = doc.splitTextToSize(t, PAGE_W - M * 2);
     if (y + lines.length * 3.2 > PAGE_H - M) {
       doc.addPage();
@@ -228,6 +255,79 @@ export async function generarLiquidadorBbvaCatPdfBlob(liquidador, totales) {
     doc.text(lines, M, y);
     y += lines.length * 3.2 + 2;
   });
+
+  if (y + 12 > PAGE_H - M) {
+    doc.addPage();
+    y = M;
+  }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(
+    `ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          RECHAZO INDEMNIZACIÓN  ( ${marcaRechazo} )`,
+    PAGE_W / 2,
+    y,
+    { align: 'center' }
+  );
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  const fechaFirma = `En aceptación de lo anterior, firmamos el presente documento en la ciudad de ${ciudadFirma}, a los ${diaFirma} días del mes de ${mesFirma} de ${anioFirma}.`;
+  {
+    const lines = doc.splitTextToSize(fechaFirma, PAGE_W - M * 2);
+    doc.text(lines, M, y);
+    y += lines.length * 3.2 + 3;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.text('FIRMA DEL CLIENTE', M, y);
+  y += 4;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nombre: ${nombreFirmante}`, M, y);
+  y += 3;
+
+  const firmaUrl = String(liquidador?.firmaCliente || '').trim();
+  if (firmaUrl.startsWith('data:image')) {
+    try {
+      if (y + 28 > PAGE_H - M) {
+        doc.addPage();
+        y = M;
+      }
+      const formato = firmaUrl.includes('image/jpeg') || firmaUrl.includes('image/jpg') ? 'JPEG' : 'PNG';
+      doc.addImage(firmaUrl, formato, M, y, 70, 22);
+      y += 24;
+    } catch {
+      y += 2;
+    }
+  } else {
+    doc.text('___________________________', M, y + 8);
+    y += 14;
+  }
+
+  if (y + 20 > PAGE_H - M) {
+    doc.addPage();
+    y = M;
+  }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  {
+    const lines = doc.splitTextToSize(textos.autorizacionPago, PAGE_W - M * 2);
+    doc.text(lines, M, y);
+    y += lines.length * 3.2 + 3;
+  }
+
+  const obs = txt(liquidador?.observacionesFiniquito, '');
+  doc.setFont('helvetica', 'normal');
+  {
+    const t = obs ? `OBSERVACIONES: ${obs}` : 'OBSERVACIONES:';
+    const lines = doc.splitTextToSize(t, PAGE_W - M * 2);
+    if (y + lines.length * 3.2 > PAGE_H - M) {
+      doc.addPage();
+      y = M;
+    }
+    doc.text(lines, M, y);
+  }
 
   return doc.output('blob');
 }

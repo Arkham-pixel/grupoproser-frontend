@@ -76,6 +76,9 @@ export default function LetrerosBbvaCat({
               className="h-4 w-4 accent-[#1F4E79]"
               checked={aceptacionIndemnizacion === 'ACEPTO'}
               onChange={() => onAceptacionChange?.('ACEPTO')}
+              onClick={() => {
+                if (aceptacionIndemnizacion === 'ACEPTO') onAceptacionChange?.('');
+              }}
             />
             {t('bbvaCat.settlement.acceptIndemnity')}
           </label>
@@ -86,6 +89,9 @@ export default function LetrerosBbvaCat({
               className="h-4 w-4 accent-[#1F4E79]"
               checked={aceptacionIndemnizacion === 'RECHAZO'}
               onChange={() => onAceptacionChange?.('RECHAZO')}
+              onClick={() => {
+                if (aceptacionIndemnizacion === 'RECHAZO') onAceptacionChange?.('');
+              }}
             />
             {t('bbvaCat.settlement.rejectIndemnity')}
           </label>

@@ -1,7 +1,8 @@
 ﻿import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { inferirTipoLiquidadorBbvaCat, TIPO_LIQUIDADOR_LEASING } from './deduciblesBbvaCat.js';
+import { inferirTipoLiquidadorBbvaCat, TIPO_LIQUIDADOR_LEASING, textosLetrerosBbvaCat } from './deduciblesBbvaCat.js';
 import {
+  LOGO_BBVA_URL,
   PLANTILLA_LIQUIDADOR_BBVA_URL,
   calcularFilaDetalleBbvaCat,
   calcularTotalesFormatoExcelBbvaCat,
@@ -11,6 +12,22 @@ import { parsearNumero } from './liquidadorBbvaCatHelpers.js';
 
 const ITEM_FIRST = 15;
 const ITEM_LAST = 24;
+
+const MESES = [
+  '',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
 
 async function cargarPlantillaBbva() {
   const response = await fetch(PLANTILLA_LIQUIDADOR_BBVA_URL);
@@ -52,6 +69,44 @@ function setVal(sheet, row, col, value) {
     if (cell.formula) cell.formula = undefined;
   } catch {
     /* ok */
+  }
+}
+
+function aUint8(buffer) {
+  if (!buffer) return null;
+  if (buffer instanceof Uint8Array) return buffer;
+  if (buffer instanceof ArrayBuffer) return new Uint8Array(buffer);
+  if (ArrayBuffer.isView(buffer)) {
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  }
+  return null;
+}
+
+function dataUrlABuffer(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+  try {
+    const idx = dataUrl.indexOf('base64,');
+    const raw = idx !== -1 ? dataUrl.slice(idx + 7) : '';
+    if (!raw) return null;
+    const binary = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+    return {
+      buffer: binary,
+      extension: dataUrl.includes('image/png') ? 'png' : 'jpeg',
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function logoBbvaBuffer() {
+  try {
+    const res = await fetch(LOGO_BBVA_URL);
+    if (!res.ok) return null;
+    const buffer = aUint8(await res.arrayBuffer());
+    if (!buffer?.length) return null;
+    return { buffer, extension: 'png' };
+  } catch {
+    return null;
   }
 }
 
@@ -159,13 +214,120 @@ function rellenarHoja(sheet, liquidador, totales) {
     4,
     txt(liquidador.areaLiquidador) || 'Indemnizaciones Seguros Generales'
   );
-
-  const obs = txt(liquidador.observacionesFiniquito);
-  if (obs) setVal(sheet, 39, 4, `OBSERVACIONES: ${obs}`);
 }
 
 /**
- * Excel liquidador BBVA CAT = plantilla oficial deudores / leasing.
+ * Pie del liquidador: ACEPTO/RECHAZO, ciudad/fecha, firma, autorización BBVA, observaciones.
+ * Filas a partir de 30 (debajo de “Liquidado por”).
+ */
+async function rellenarPieLetrerosYFirma(workbook, sheet, liquidador = {}) {
+  const enc = liquidador.encabezado || {};
+  const datos = liquidador.datosFiniquito || {};
+  const tipo = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: liquidador.tipoLiquidador,
+    encabezado: enc,
+  });
+  const textos = textosLetrerosBbvaCat(tipo);
+
+  const aceptacion = String(liquidador.aceptacionIndemnizacion || '').toUpperCase();
+  const marcaAcepto = aceptacion === 'ACEPTO' ? 'X' : ' ';
+  const marcaRechazo = aceptacion === 'RECHAZO' ? 'X' : ' ';
+
+  const ciudad =
+    txt(datos.ciudadFirma) || txt(enc.ciudad) || '________________';
+  const dia = txt(datos.diaFirma) || '________';
+  const mes =
+    MESES[Number(datos.mesFirma)] || txt(datos.mesFirma) || '________';
+  const anio = txt(datos.anioFirma) || '________';
+  const nombre =
+    txt(liquidador.nombreFirmante) ||
+    txt(enc.asegurado) ||
+    txt(enc.tomador) ||
+    '________________';
+
+  setVal(sheet, 29, 4, textos.avisoDeducible);
+  sheet.getCell(29, 4).alignment = { wrapText: true, vertical: 'top' };
+  sheet.getRow(29).height = 36;
+
+  setVal(sheet, 30, 4, textos.pazYSalvo);
+  sheet.getCell(30, 4).alignment = { wrapText: true, vertical: 'top' };
+  sheet.getRow(30).height = 42;
+
+  setVal(
+    sheet,
+    31,
+    4,
+    `ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          RECHAZO INDEMNIZACIÓN  ( ${marcaRechazo} )`
+  );
+  sheet.getCell(31, 4).font = { bold: true, name: 'Calibri', size: 11 };
+  sheet.getCell(31, 4).alignment = { horizontal: 'center', wrapText: true };
+
+  setVal(
+    sheet,
+    32,
+    4,
+    `En aceptación de lo anterior, firmamos el presente documento en la ciudad de ${ciudad}, a los ${dia} días del mes de ${mes} de ${anio}.`
+  );
+  sheet.getCell(32, 4).alignment = { wrapText: true };
+
+  setVal(sheet, 33, 4, 'FIRMA DEL CLIENTE');
+  sheet.getCell(33, 4).font = { bold: true, name: 'Calibri', size: 10 };
+
+  setVal(sheet, 34, 4, `Nombre: ${nombre}`);
+  sheet.getRow(35).height = 56;
+
+  const firmaImg = dataUrlABuffer(liquidador.firmaCliente);
+  if (firmaImg?.buffer) {
+    try {
+      const imageId = workbook.addImage({
+        buffer: aUint8(firmaImg.buffer),
+        extension: firmaImg.extension || 'png',
+      });
+      sheet.addImage(imageId, {
+        tl: { col: 3.15, row: 34.15 },
+        ext: { width: 280, height: 70 },
+        editAs: 'oneCell',
+      });
+    } catch {
+      /* ok */
+    }
+  } else {
+    setVal(sheet, 35, 4, '___________________________');
+  }
+
+  setVal(sheet, 37, 4, textos.autorizacionPago);
+  sheet.getCell(37, 4).font = { bold: true, name: 'Calibri', size: 9 };
+  sheet.getCell(37, 4).alignment = { wrapText: true, vertical: 'top' };
+  sheet.getRow(37).height = 48;
+
+  const obs = txt(liquidador.observacionesFiniquito);
+  setVal(sheet, 39, 4, obs ? `OBSERVACIONES: ${obs}` : 'OBSERVACIONES:');
+  sheet.getCell(39, 4).alignment = { wrapText: true, vertical: 'top' };
+  if (obs) sheet.getRow(39).height = Math.min(80, 18 + Math.ceil(obs.length / 80) * 14);
+}
+
+async function asegurarLogoBbva(workbook, sheet) {
+  const logo = await logoBbvaBuffer();
+  if (!logo?.buffer) return;
+  // Si la plantilla ya trae logo en media, igual reforzamos uno flotante arriba a la izquierda.
+  try {
+    const imageId = workbook.addImage({
+      buffer: aUint8(logo.buffer),
+      extension: logo.extension || 'png',
+    });
+    sheet.addImage(imageId, {
+      tl: { col: 3.05, row: 0.15 },
+      ext: { width: 140, height: 48 },
+      editAs: 'oneCell',
+    });
+  } catch {
+    /* ok */
+  }
+}
+
+/**
+ * Excel liquidador BBVA CAT = plantilla oficial deudores / leasing
+ * + pie completo (logo, ACEPTO/RECHAZO, firma, autorización, observaciones).
  */
 export async function generarLiquidadorBbvaCatExcelBlob(liquidador, totales) {
   const workbook = await cargarPlantillaBbva();
@@ -180,6 +342,8 @@ export async function generarLiquidadorBbvaCatExcelBlob(liquidador, totales) {
     throw new Error(`La plantilla no tiene la hoja «${nombreHoja}».`);
   }
   rellenarHoja(hoja, liquidador || {}, totales || {});
+  await asegurarLogoBbva(workbook, hoja);
+  await rellenarPieLetrerosYFirma(workbook, hoja, liquidador || {});
   workbook.worksheets.forEach((ws) => {
     if (ws.name !== nombreHoja) ws.state = 'hidden';
   });
