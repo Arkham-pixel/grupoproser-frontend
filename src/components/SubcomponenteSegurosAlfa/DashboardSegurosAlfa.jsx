@@ -3,6 +3,7 @@ import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/Dashboa
 import { fetchAllCasosAlfa } from '../../services/segurosAlfaService.js';
 import {
   ESTADOS_ALFA,
+  KPI_GESTION_ALFA_FILAS,
   buildOpcionesFiltro,
   coincideFiltroTexto,
   contarKpisGestionAlfa,
@@ -18,20 +19,15 @@ function AlfaKpisGestionStrip({ casos = [] }) {
         Tablero gestión (lineamiento Alfa)
       </h2>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {[
-          ['Sin contactar', kpis.sinContactar],
-          ['Contactado y programado', kpis.contactadoProgramado],
-          ['Inspeccionado', kpis.inspeccionado],
-          ['Solicitud docs', kpis.solicitudDocumentos],
-          ['Sin respuesta', kpis.sinRespuesta],
-          ['Definidos', kpis.definidos],
-        ].map(([label, n]) => (
+        {KPI_GESTION_ALFA_FILAS.map(({ key, label }) => (
           <div
-            key={label}
+            key={key}
             className="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
           >
             <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{n}</div>
+            <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {kpis[key] ?? 0}
+            </div>
           </div>
         ))}
       </div>

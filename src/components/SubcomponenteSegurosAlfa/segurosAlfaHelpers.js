@@ -295,28 +295,42 @@ export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
 
 export function contarKpisGestionAlfa(casos = []) {
   const base = {
-    sinContactar: 0,
+    enGestion: 0,
     contactadoProgramado: 0,
     inspeccionado: 0,
-    solicitudDocumentos: 0,
+    liquidado: 0,
     sinRespuesta: 0,
-    definidos: 0,
+    siniestroDefinido: 0,
     slaVencido: 0,
     fueraDeZona: 0,
   };
   for (const c of casos) {
     const g = homologarEstadoGestionAlfa(c.estadoGestion || c.estado);
-    if (g === 'EN GESTIÓN') base.sinContactar += 1;
+    if (g === 'EN GESTIÓN') base.enGestion += 1;
     else if (g === 'CONTACTADO/PROGRAMADO') base.contactadoProgramado += 1;
     else if (g === 'INSPECCIONADO') base.inspeccionado += 1;
-    else if (g === 'LIQUIDADO') base.solicitudDocumentos += 1;
+    else if (g === 'LIQUIDADO') base.liquidado += 1;
     else if (g === 'SIN RESPUESTA EFECTIVA') base.sinRespuesta += 1;
-    if (homologarEstadoSiniestroAlfa(c.estado, c) !== 'PENDIENTE') base.definidos += 1;
+    if (homologarEstadoSiniestroAlfa(c.estado, c) !== 'PENDIENTE') base.siniestroDefinido += 1;
     if (casoAlfaVenceSla2Dias(c)) base.slaVencido += 1;
     if (c.fueraDeZona) base.fueraDeZona += 1;
   }
+  // Alias legacy (UI/reporte antiguos)
+  base.sinContactar = base.enGestion;
+  base.solicitudDocumentos = base.liquidado;
+  base.definidos = base.siniestroDefinido;
   return base;
 }
+
+/** Filas del tablero de gestión (etiquetas oficiales actuales). */
+export const KPI_GESTION_ALFA_FILAS = [
+  { key: 'enGestion', label: 'EN GESTIÓN' },
+  { key: 'contactadoProgramado', label: 'CONTACTADO/PROGRAMADO' },
+  { key: 'inspeccionado', label: 'INSPECCIONADO' },
+  { key: 'liquidado', label: 'LIQUIDADO' },
+  { key: 'sinRespuesta', label: 'SIN RESPUESTA EFECTIVA' },
+  { key: 'siniestroDefinido', label: 'SINIESTRO DEFINIDO' },
+];
 
 /** Fecha de llamada con valor usable (no vacío / no fecha inválida). */
 export function casoAlfaTieneFechaLlamada(caso = {}) {
