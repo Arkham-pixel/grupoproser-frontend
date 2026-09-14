@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BASE_URL } from '../../config/apiConfig.js';
+import { BASE_URL, resolveUploadsUrl } from '../../config/apiConfig.js';
 import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
@@ -199,6 +199,12 @@ export default function Seguimiento({
       ...prev,
       [field]: value
     }));
+  };
+
+  const construirUrlDescarga = (valor) => {
+    if (!valor || typeof valor !== 'string') return '';
+    if (valor.startsWith('data:')) return valor;
+    return resolveUploadsUrl(valor) || '';
   };
 
   const handleDocumentoSelect = async (event) => {
