@@ -3,6 +3,7 @@ import {
   diasEnEstadoPrevisora,
   homologarEstadoPrevisora,
   ultimaGestionPrevisora,
+  casoPrevisoraTieneInformeLleno,
 } from '../components/SubcomponentePrevisora/previsoraHelpers.js';
 import {
   parsearNumero,
@@ -50,6 +51,7 @@ export const normalizePrevisoraListadoItem = (item = {}) => {
     liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
     informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
     tieneInforme: Boolean(item.tieneInforme || (item.informeUnico && typeof item.informeUnico === 'object')),
+    tieneInformeLleno: casoPrevisoraTieneInformeLleno(item),
     tieneLiquidador: Boolean(
       item.tieneLiquidador || (item.liquidador && typeof item.liquidador === 'object')
     ),

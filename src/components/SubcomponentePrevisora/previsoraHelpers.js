@@ -682,6 +682,52 @@ export function casoPrevisoraTieneInforme(caso = {}) {
   );
 }
 
+const textoInformePrevisora = (valor) => String(valor ?? '').trim();
+
+const ETIQUETAS_ARCHIVO_INFORME_PREVISORA = new Set([
+  'INFORME_UNICO',
+  'INFORME_PRELIMINAR',
+  'INFORME_FINAL',
+]);
+
+/** Puntaje de narrativa real (ignora plantilla de infoEvento y filas de póliza). */
+export function scoreInformeLlenoPrevisora(informe) {
+  if (!informe || typeof informe !== 'object') return 0;
+  const textos = [
+    informe.descripcionDanios,
+    informe.conclusiones,
+    informe.recomendacion,
+    informe.analisisCobertura,
+    informe.analisisNexoCausal,
+  ]
+    .map(textoInformePrevisora)
+    .filter((s) => s.length > 40);
+  const fotos = Array.isArray(informe.fotosInspeccion) ? informe.fotosInspeccion.length : 0;
+  return textos.reduce((n, s) => n + s.length, 0) + fotos * 20;
+}
+
+export function casoPrevisoraTieneArchivoInforme(caso = {}) {
+  const archivos = Array.isArray(caso?.archivos) ? caso.archivos : [];
+  return archivos.some((a) =>
+    ETIQUETAS_ARCHIVO_INFORME_PREVISORA.has(String(a?.etiqueta || '').trim().toUpperCase())
+  );
+}
+
+export function casoPrevisoraTieneInformeLleno(caso = {}) {
+  if (typeof caso?.tieneInformeLleno === 'boolean') return caso.tieneInformeLleno;
+  if (casoPrevisoraTieneArchivoInforme(caso)) return true;
+  return scoreInformeLlenoPrevisora(caso?.informeUnico) > 0;
+}
+
+/** '' = todos · 'con' = informe lleno · 'sin' = sin informe lleno */
+export function casoPrevisoraCoincideFiltroInforme(caso, filtro) {
+  if (!filtro) return true;
+  const lleno = casoPrevisoraTieneInformeLleno(caso);
+  if (filtro === 'con') return lleno;
+  if (filtro === 'sin') return !lleno;
+  return true;
+}
+
 export const construirFormDesdecasoPrevisora = (caso = {}) => {
   const base = {
     ...FORM_VACIO_PREVISORA,

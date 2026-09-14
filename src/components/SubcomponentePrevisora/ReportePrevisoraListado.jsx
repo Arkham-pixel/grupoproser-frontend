@@ -25,6 +25,8 @@ import {
   nArchivosCasoPrevisora,
   casoPrevisoraTieneLiquidador,
   casoPrevisoraTieneInforme,
+  casoPrevisoraTieneInformeLleno,
+  casoPrevisoraCoincideFiltroInforme,
 } from './previsoraHelpers.js';
 import {
   expressBadge,
@@ -161,6 +163,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInforme, setFiltroInforme] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -191,6 +194,13 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const resumenInforme = useMemo(() => {
+    let con = 0;
+    casos.forEach((c) => {
+      if (casoPrevisoraTieneInformeLleno(c)) con += 1;
+    });
+    return { con, sin: casos.length - con };
+  }, [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -200,6 +210,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!casoPrevisoraCoincideFiltroInforme(c, filtroInforme)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
       }
@@ -232,7 +243,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, casoIdUrl, coincideCasoUrl]);
+  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInforme, fechaInicio, fechaFin, casoIdUrl, coincideCasoUrl]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
@@ -246,13 +257,14 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInforme, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setFiltroCiudad('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInforme('');
     setFechaInicio('');
     setFechaFin('');
     limpiarCasoUrl();
@@ -340,7 +352,14 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
   };
 
   const filtrosActivos = Boolean(
-    busqueda || filtroCiudad || filtroEstado || filtroAjustador || fechaInicio || fechaFin || filtroCasoUrl
+    busqueda ||
+      filtroCiudad ||
+      filtroEstado ||
+      filtroAjustador ||
+      filtroInforme ||
+      fechaInicio ||
+      fechaFin ||
+      filtroCasoUrl
   );
 
   return (
@@ -466,6 +485,16 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
                 ))}
               </SelectFenix>
             </Campo>
+            <Campo label={t('previsora.report.filterInforme')}>
+              <SelectFenix
+                value={filtroInforme}
+                onChange={(e) => setFiltroInforme(e.target.value)}
+              >
+                <option value="">{t('previsora.report.all')}</option>
+                <option value="con">{t('previsora.report.withInforme')}</option>
+                <option value="sin">{t('previsora.report.withoutInforme')}</option>
+              </SelectFenix>
+            </Campo>
             <Campo label={t('previsora.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
@@ -482,6 +511,14 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
                   totalPages: totalPaginas,
                 })}
           </p>
+          {!loading && (
+            <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">
+              {t('previsora.report.informeSummary', {
+                with: resumenInforme.con,
+                without: resumenInforme.sin,
+              })}
+            </p>
+          )}
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>

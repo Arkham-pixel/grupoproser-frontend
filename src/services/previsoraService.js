@@ -3,6 +3,7 @@ import {
   diasEnEstadoPrevisora,
   homologarEstadoPrevisora,
   ultimaGestionPrevisora,
+  casoPrevisoraTieneInformeLleno,
 } from '../components/SubcomponentePrevisora/previsoraHelpers.js';
 import { sanitizarInformeUnicoPrevisora, sanitizarLiquidadorPrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
 
@@ -48,6 +49,7 @@ export const normalizePrevisoraItem = (item = {}) => {
     diasEnEstado: diasEnEstadoPrevisora(caso),
     ultimaGestion: ultimaGestionPrevisora(caso),
     tieneInforme: Boolean(item.tieneInforme || (item.informeUnico && typeof item.informeUnico === 'object')),
+    tieneInformeLleno: casoPrevisoraTieneInformeLleno(item),
     tieneLiquidador: Boolean(
       item.tieneLiquidador || (item.liquidador && typeof item.liquidador === 'object')
     ),

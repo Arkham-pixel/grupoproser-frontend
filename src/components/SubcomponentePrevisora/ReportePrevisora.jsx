@@ -25,6 +25,8 @@ import {
   nArchivosCasoPrevisora,
   casoPrevisoraTieneLiquidador,
   casoPrevisoraTieneInforme,
+  casoPrevisoraTieneInformeLleno,
+  casoPrevisoraCoincideFiltroInforme,
 } from './previsoraHelpers.js';
 import {
   expressBadge,
@@ -251,6 +253,7 @@ export default function ReportePrevisora() {
   const [filtroDepto, setFiltroDepto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInforme, setFiltroInforme] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -303,6 +306,13 @@ export default function ReportePrevisora() {
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const resumenInforme = useMemo(() => {
+    let con = 0;
+    casos.forEach((c) => {
+      if (casoPrevisoraTieneInformeLleno(c)) con += 1;
+    });
+    return { con, sin: casos.length - con };
+  }, [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -313,6 +323,7 @@ export default function ReportePrevisora() {
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!casoPrevisoraCoincideFiltroInforme(c, filtroInforme)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
       }
@@ -353,6 +364,7 @@ export default function ReportePrevisora() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroInforme,
     fechaInicio,
     fechaFin,
     casoIdUrl,
@@ -371,7 +383,7 @@ export default function ReportePrevisora() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInforme, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -379,6 +391,7 @@ export default function ReportePrevisora() {
     setFiltroDepto('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInforme('');
     setFechaInicio('');
     setFechaFin('');
     limpiarCasoUrl();
@@ -450,6 +463,7 @@ export default function ReportePrevisora() {
       filtroDepto ||
       filtroEstado ||
       filtroAjustador ||
+      filtroInforme ||
       fechaInicio ||
       fechaFin ||
       filtroCasoUrl
@@ -545,6 +559,16 @@ export default function ReportePrevisora() {
                 ))}
               </SelectFenix>
             </Campo>
+            <Campo label={t('previsora.report.filterInforme')}>
+              <SelectFenix
+                value={filtroInforme}
+                onChange={(e) => setFiltroInforme(e.target.value)}
+              >
+                <option value="">{t('previsora.report.all')}</option>
+                <option value="con">{t('previsora.report.withInforme')}</option>
+                <option value="sin">{t('previsora.report.withoutInforme')}</option>
+              </SelectFenix>
+            </Campo>
             <Campo label={t('previsora.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
@@ -561,6 +585,14 @@ export default function ReportePrevisora() {
                   totalPages: totalPaginas,
                 })}
           </p>
+          {!loading && (
+            <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">
+              {t('previsora.report.informeSummary', {
+                with: resumenInforme.con,
+                without: resumenInforme.sin,
+              })}
+            </p>
+          )}
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
