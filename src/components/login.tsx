@@ -11,25 +11,20 @@ import LanguageSelector from './LanguageSelector';
 // @ts-ignore
 import i18n from '../i18n.js';
 import { normalizeLocale } from '../context/LanguageContext';
+// @ts-ignore
+import { esErrorCuotaStorage, persistirSesionLogin, setItemConEspacio } from '../utils/localStorageSafe.js';
 
 async function applyUserLocale(locale?: string) {
   if (!locale) return;
   const normalized = normalizeLocale(locale);
-  localStorage.setItem('appLocale', normalized);
+  setItemConEspacio('appLocale', normalized);
   await i18n.changeLanguage(normalized);
   document.documentElement.lang = normalized;
 }
 
-function persistirSesionUsuario(usuario: {
-  role?: string;
-  login?: string;
-  name?: string;
-  cedula?: string | null;
-}) {
-  if (usuario.role) localStorage.setItem('rol', usuario.role);
-  if (usuario.login) localStorage.setItem('login', usuario.login);
-  if (usuario.name) localStorage.setItem('nombre', usuario.name);
-  if (usuario.cedula) localStorage.setItem('cedula', String(usuario.cedula));
+function mensajeErrorLogin(err: any, t: (key: string) => string) {
+  if (esErrorCuotaStorage(err)) return t('auth.storageFull');
+  return err.response?.data?.message || err.response?.data?.mensaje || t('auth.invalidCredentials');
 }
 
 export default function Login() {
@@ -79,11 +74,12 @@ const res = await axios.post(`${BASE_URL}/api/secur-auth/login`, requestData, {
 if (res.data.token && res.data.usuario) {
          // Login exitoso - guardar datos y redirigir
          const currentTime = Date.now();
-         localStorage.setItem('token', res.data.token);
-         localStorage.setItem('tipoUsuario', 'secur');
-         persistirSesionUsuario(res.data.usuario);
+         persistirSesionLogin({
+           token: res.data.token,
+           usuario: res.data.usuario,
+           extras: { sessionStartTime: String(currentTime) }
+         });
          await applyUserLocale(res.data.usuario.locale);
-         localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
          sessionStorage.removeItem('sessionWarning30Dismissed');
          if (res.data.twoFASetupRecommended || res.data.twoFASetupPending) {
            sessionStorage.setItem('aviso2fa_mostrar', '1');
@@ -104,7 +100,7 @@ setStep(2);
       console.error('❌ Error response:', err.response);
       console.error('❌ Error data:', err.response?.data);
       console.error('❌ Error status:', err.response?.status);
-      const errorMessage = err.response?.data?.message || err.response?.data?.mensaje || t('auth.invalidCredentials');
+      const errorMessage = mensajeErrorLogin(err, t);
       console.error('❌ Mensaje de error:', errorMessage);
       setError(errorMessage);
     } finally {
@@ -125,12 +121,15 @@ const res = await axios.post(`${BASE_URL}/api/secur-auth/login/2fa`, {
       
 if (res.data.token && res.data.usuario && res.data.usuario.role) {
         const currentTime = Date.now();
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('tipoUsuario', 'secur');
-        persistirSesionUsuario(res.data.usuario);
+        persistirSesionLogin({
+          token: res.data.token,
+          usuario: res.data.usuario,
+          extras: {
+            sessionStartTime: String(currentTime),
+            sessionStart: String(currentTime)
+          }
+        });
         await applyUserLocale(res.data.usuario.locale);
-        localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
-        localStorage.setItem('sessionStart', currentTime.toString());
         sessionStorage.removeItem('sessionWarning30Dismissed');
         
 navigate('/inicio');
@@ -140,7 +139,7 @@ navigate('/inicio');
       }
     } catch (err: any) {
       console.error('❌ Error en 2FA:', err.response?.data);
-      setError(err.response?.data?.message || t('auth.invalidCredentials'));
+      setError(mensajeErrorLogin(err, t));
     } finally {
       setIsLoading(false);
     }

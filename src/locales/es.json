@@ -100,6 +100,7 @@
     "username": "Usuario o correo",
     "password": "Contraseña",
     "invalidCredentials": "Usuario o contraseña incorrectos",
+    "storageFull": "El navegador no tiene espacio para guardar la sesión. En la consola ejecute localStorage.clear() y vuelva a iniciar sesión. La contraseña no es el problema.",
     "twoFactorCode": "Código de verificación",
     "unexpectedResponse": "Respuesta inesperada del servidor",
     "pageTitle": "Iniciar sesión",
@@ -465,6 +466,7 @@
       "alfaSettlement": "Liquidador Seguros Alfa",
       "alfaUniqueReport": "Informe único Seguros Alfa",
       "zurichAdd": "Agregar caso Zurich",
+      "zurichBillingTray": "Bandeja control de horas Zurich",
       "zurichListadoReport": "Reporte listado Zurich",
       "zurichMyCases": "Mis casos Zurich",
       "zurichListadoDashboard": "Torre de control CAT Zurich",
@@ -545,6 +547,7 @@
     "alfaSettlement": "Liquidador Alfa",
     "alfaUniqueReport": "Informe único",
     "zurichAddCase": "Agregar caso",
+    "zurichBillingTray": "Bandeja control de horas",
     "zurichListadoReport": "Reporte listado",
     "zurichListadoDashboard": "Torre de control",
     "zurichReport": "Reporte CAT",
@@ -11159,7 +11162,30 @@
       "catZurich": "CAT Zurich (exposición)",
       "catZurichHint": "Datos del Excel CAT_ZURICH: Risk ID, ubicación, afectación y referencias de inspección.",
       "generalInfo": "Información general de personas / póliza",
-      "generalInfoHint": "Despliegue para completar identificación, contacto, póliza, valores y fechas adicionales."
+      "generalInfoHint": "Despliegue para completar identificación, contacto, póliza, valores y fechas adicionales.",
+      "billing": "Control de horas y facturación"
+    },
+    "tabs": {
+      "datosGenerales": "Datos del caso",
+      "facturacion": "Facturación"
+    },
+    "bandejaFacturacion": {
+      "subtitle": "Controles de horas y envíos a gerencia de Zurich. Destino: {{destino}}.",
+      "todosLosEnvios": "todos los destinos",
+      "modulo": "Módulo",
+      "origenCat": "CAT",
+      "origenListado": "Listado",
+      "buscarPlaceholder": "Consecutivo, siniestro, asegurado, ajustador…",
+      "copiaLider": " Copia enviada a {{nombre}} (líder Zurich)."
+    },
+    "billing": {
+      "openMenu": "Menú",
+      "hint": "Editor, Excel y envío a gerencia. Ábralo en una ventana para no recargar el formulario.",
+      "summary": "{{horas}} h registradas · {{total}}",
+      "menuHours": "Control de horas",
+      "menuSend": "Envío de control de horas",
+      "menuAuth": "Autorización",
+      "menuInvoice": "Facturación"
     },
     "fields": {
       "siniestro": "STRO / Siniestro",

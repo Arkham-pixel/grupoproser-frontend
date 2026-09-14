@@ -100,6 +100,7 @@
     "username": "Username or email",
     "password": "Password",
     "invalidCredentials": "Incorrect username or password",
+    "storageFull": "The browser has no space to save the session. In the console run localStorage.clear() and sign in again. The password is not the problem.",
     "twoFactorCode": "Verification code",
     "unexpectedResponse": "Unexpected server response",
     "pageTitle": "Sign in",
@@ -464,6 +465,7 @@
       "alfaSettlement": "Seguros Alfa settlement",
       "alfaUniqueReport": "Seguros Alfa unique report",
       "zurichAdd": "Add Zurich case",
+      "zurichBillingTray": "Zurich hours-control inbox",
       "zurichListadoReport": "Zurich list report",
       "zurichMyCases": "My Zurich cases",
       "zurichListadoDashboard": "Zurich CAT control tower",
@@ -544,6 +546,7 @@
     "alfaSettlement": "Alfa settlement",
     "alfaUniqueReport": "Unique report",
     "zurichAddCase": "Add case",
+    "zurichBillingTray": "Hours-control inbox",
     "zurichListadoReport": "List report",
     "zurichListadoDashboard": "Control tower",
     "zurichReport": "CAT report",
@@ -11103,7 +11106,30 @@
       "catZurich": "CAT Zurich (exposure)",
       "catZurichHint": "Fields from CAT_ZURICH Excel: Risk ID, location, damage and inspection references.",
       "generalInfo": "General person / policy information",
-      "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates."
+      "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates.",
+      "billing": "Time tracking and billing"
+    },
+    "tabs": {
+      "datosGenerales": "Case data",
+      "facturacion": "Billing"
+    },
+    "bandejaFacturacion": {
+      "subtitle": "Zurich hours controls and management sends. Destination: {{destino}}.",
+      "todosLosEnvios": "all recipients",
+      "modulo": "Module",
+      "origenCat": "CAT",
+      "origenListado": "Listing",
+      "buscarPlaceholder": "File number, claim, insured, adjuster…",
+      "copiaLider": " Copy sent to {{nombre}} (Zurich lead)."
+    },
+    "billing": {
+      "openMenu": "Menu",
+      "hint": "Editor, Excel and send to management. Opens in a window so it does not clutter the form.",
+      "summary": "{{horas}} h recorded · {{total}}",
+      "menuHours": "Time tracking",
+      "menuSend": "Send time tracking",
+      "menuAuth": "Authorization",
+      "menuInvoice": "Billing"
     },
     "fields": {
       "siniestro": "STRO / Claim",
