@@ -163,6 +163,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [filtroInforme, setFiltroInforme] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
@@ -194,6 +195,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
   const resumenInforme = useMemo(() => {
     let con = 0;
     casos.forEach((c) => {
@@ -210,6 +212,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (!casoPrevisoraCoincideFiltroInforme(c, filtroInforme)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
@@ -243,7 +246,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInforme, fechaInicio, fechaFin, casoIdUrl, coincideCasoUrl]);
+  }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, filtroInforme, fechaInicio, fechaFin, casoIdUrl, coincideCasoUrl]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
@@ -257,13 +260,14 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInforme, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, filtroInforme, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setFiltroCiudad('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInspector('');
     setFiltroInforme('');
     setFechaInicio('');
     setFechaFin('');
@@ -356,6 +360,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
       filtroCiudad ||
       filtroEstado ||
       filtroAjustador ||
+      filtroInspector ||
       filtroInforme ||
       fechaInicio ||
       fechaFin ||
@@ -479,6 +484,19 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
               >
                 <option value="">{t('previsora.report.all')}</option>
                 {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('previsora.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('previsora.report.all')}</option>
+                {inspectores.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

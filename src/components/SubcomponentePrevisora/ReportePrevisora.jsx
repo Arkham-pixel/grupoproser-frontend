@@ -253,6 +253,7 @@ export default function ReportePrevisora() {
   const [filtroDepto, setFiltroDepto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [filtroInforme, setFiltroInforme] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
@@ -306,6 +307,7 @@ export default function ReportePrevisora() {
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
   const resumenInforme = useMemo(() => {
     let con = 0;
     casos.forEach((c) => {
@@ -323,6 +325,7 @@ export default function ReportePrevisora() {
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (!casoPrevisoraCoincideFiltroInforme(c, filtroInforme)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
@@ -364,6 +367,7 @@ export default function ReportePrevisora() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
     filtroInforme,
     fechaInicio,
     fechaFin,
@@ -383,7 +387,7 @@ export default function ReportePrevisora() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInforme, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, filtroInforme, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -391,6 +395,7 @@ export default function ReportePrevisora() {
     setFiltroDepto('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInspector('');
     setFiltroInforme('');
     setFechaInicio('');
     setFechaFin('');
@@ -463,6 +468,7 @@ export default function ReportePrevisora() {
       filtroDepto ||
       filtroEstado ||
       filtroAjustador ||
+      filtroInspector ||
       filtroInforme ||
       fechaInicio ||
       fechaFin ||
@@ -553,6 +559,19 @@ export default function ReportePrevisora() {
               >
                 <option value="">{t('previsora.report.all')}</option>
                 {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('previsora.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('previsora.report.all')}</option>
+                {inspectores.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
