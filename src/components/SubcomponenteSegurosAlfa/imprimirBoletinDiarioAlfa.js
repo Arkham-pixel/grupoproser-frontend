@@ -1,6 +1,7 @@
 /**
- * Imprime / PDF del boletín diario Alfa con las 3 gráficas completas
- * (Gestión terremoto, Comparativo diario, Gestión discriminada).
+ * Imprime / PDF del boletín diario Alfa:
+ * 1. Gestión terremoto · 2. Estado de gestión · 3. Estado del siniestro
+ * · 4. Cierres del día · 5. Clasificación de pérdidas.
  */
 
 function esc(valor) {
@@ -53,7 +54,7 @@ function estilosImpresion() {
       background: #FEF2F2; color: #DC2626; border-radius: 8px;
       padding: 4px 10px; font-size: 11px; font-weight: 600;
     }
-    .grid-4 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
     .card {
@@ -99,8 +100,38 @@ function estilosImpresion() {
  * @param {object} boletin - resultado de calcularBoletinDiarioAlfa
  * @param {object} labels - textos ya resueltos (i18n)
  */
+function filasTablaComparativoHtml(filas = []) {
+  const totalAyer = (filas || []).reduce((a, f) => a + (Number(f.ayer) || 0), 0);
+  const totalHoy = (filas || []).reduce((a, f) => a + (Number(f.hoy) || 0), 0);
+  const body = (filas || [])
+    .map((f) => {
+      const pctAyer = totalAyer ? Math.round(((Number(f.ayer) || 0) / totalAyer) * 1000) / 10 : 0;
+      const pctHoy = totalHoy ? Math.round(((Number(f.hoy) || 0) / totalHoy) * 1000) / 10 : 0;
+      return `
+      <tr>
+        <td class="left">${esc(f.label)}</td>
+        <td class="num">${esc(f.ayer)} <span style="color:#9CA3AF">(${esc(pctAyer)}%)</span></td>
+        <td class="var">${esc(fmtVar(f.avance))}</td>
+        <td class="hoy">${esc(f.hoy)} <span style="color:#DC2626;font-weight:500">(${esc(pctHoy)}%)</span></td>
+      </tr>`;
+    })
+    .join('');
+  return {
+    body,
+    totalAyer,
+    totalHoy,
+    variacionTotal: totalHoy - totalAyer,
+  };
+}
+
 export function construirHtmlBoletinDiarioAlfa(boletin, labels = {}) {
-  const { gestionTerremoto, comparativo, discriminada } = boletin;
+  const {
+    gestionTerremoto,
+    estadoGestionActual,
+    estadoSiniestroActual,
+    cierresDelDia,
+    clasificacionPerdidas,
+  } = boletin;
   const L = labels;
 
   const cardsTerremoto = (gestionTerremoto?.filas || [])
@@ -110,50 +141,18 @@ export function construirHtmlBoletinDiarioAlfa(boletin, labels = {}) {
           ? `<ul style="margin:6px 0 0;padding:6px 0 0;border-top:1px dashed #E6E6E6;list-style:none;font-size:10px;color:#6B6B6B">${f.desglose
               .map(
                 (d) =>
-                  `<li style="display:flex;justify-content:space-between;gap:8px"><span>${esc(d.label)}</span><strong>${esc(d.cantidad)}</strong></li>`
+                  `<li style="display:flex;justify-content:space-between;gap:8px"><span>${esc(d.label)}</span><strong style="color:#DC2626">${esc(d.cantidad)}</strong></li>`
               )
               .join('')}</ul>`
           : '';
       return `
       <div class="card">
         <div class="n">${esc(f.cantidad)}</div>
-        <div class="t">${esc(f.label || f.labelCorto || '')}</div>
         <div class="d">${esc(f.descripcion)}</div>
         ${desglose}
       </div>`;
     })
     .join('');
-
-  const filasComp = (comparativo?.filas || [])
-    .map(
-      (f) => `
-      <tr>
-        <td class="left">${esc(f.label)}</td>
-        <td class="num">${esc(f.ayer)} <span style="color:#9CA3AF">(${esc(f.pctAyer)}%)</span></td>
-        <td class="var">${esc(fmtVar(f.variacion))}</td>
-        <td class="hoy">${esc(f.hoy)} <span style="color:#DC2626;font-weight:500">(${esc(f.pctHoy)}%)</span></td>
-      </tr>`
-    )
-    .join('');
-
-  const cardsDisc = (discriminada?.cards || [])
-    .map(
-      (c) => `
-      <div class="card">
-        <div class="n accent">${esc(c.cantidad)}</div>
-        <div class="t">${esc(c.label)}</div>
-        <div class="d">${esc(c.descripcion)}</div>
-      </div>`
-    )
-    .join('');
-
-  const crecimiento =
-    comparativo?.pctIncrementoBase != null
-      ? (L.baseGrowth || 'Incremento del {{pct}}% en la base total').replace(
-          '{{pct}}',
-          String(comparativo.pctIncrementoBase)
-        )
-      : '—';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -182,79 +181,106 @@ export function construirHtmlBoletinDiarioAlfa(boletin, labels = {}) {
     <div class="grid-4">${cardsTerremoto}</div>
   </section>
 
-  <!-- 2. Comparativo diario -->
-  <section class="section page-break">
-    <h2>${esc(L.comparativoTitle || 'Comparativo diario')}</h2>
-    <p class="sub">${esc(L.comparativoSubtitle || '')}</p>
-    <p class="sub" style="margin-top:-8px">${esc(L.cutLabel || '')}</p>
+  <!-- 2/3. Mismo formato del comparativo · ejes gestión / siniestro -->
+  <section class="section">
+    <h2>${esc(L.gestionActualTitle || '2. Estado de gestión actual')}</h2>
     <table>
       <thead>
         <tr>
-          <th class="left">${esc(L.estado || 'Estado')}</th>
-          <th>${esc(L.yesterday || 'Ayer')}<div style="font-weight:400;font-size:10px;color:#6B6B6B">${esc(boletin.etiquetaAyer)}</div></th>
-          <th class="var">${esc(L.variation || 'Variación')}</th>
-          <th class="hoy">${esc(L.today || 'Hoy')}<div style="font-weight:400;font-size:10px;color:#FEE2E2">${esc(boletin.etiquetaHoy)}</div></th>
+          <th class="left">${esc(L.gestionActualEstado || 'Estado de gestión')}</th>
+          <th>${esc(L.diaAnterior || 'Última actualización')}<div style="font-weight:400;font-size:10px;color:#6B6B6B">${esc(boletin.etiquetaAyer)}</div></th>
+          <th class="var">${esc(L.gestionActualAvance || 'Avance')}</th>
+          <th class="hoy">${esc(L.hoyLista || 'Hoy')}<div style="font-weight:400;font-size:10px;color:#FEE2E2">${esc(boletin.etiquetaHoy)}</div></th>
         </tr>
       </thead>
       <tbody>
-        ${filasComp}
+        ${(() => {
+          const t = filasTablaComparativoHtml(estadoGestionActual?.filas);
+          return `${t.body}
         <tr class="total">
           <td class="left">TOTAL</td>
-          <td class="num">${esc(comparativo?.totalAyer ?? 0)}</td>
-          <td class="var">${esc(fmtVar(comparativo?.variacionTotal))}</td>
-          <td class="hoy">${esc(comparativo?.totalHoy ?? 0)}</td>
-        </tr>
+          <td class="num">${esc(t.totalAyer)}</td>
+          <td class="var">${esc(fmtVar(t.variacionTotal))}</td>
+          <td class="hoy">${esc(t.totalHoy)}</td>
+        </tr>`;
+        })()}
       </tbody>
     </table>
-
-    <div class="grid-5">
-      <div class="card kpi">
-        <div class="n" style="color:#1E1E1E">${esc(comparativo?.gestionAyer)} / ${esc(comparativo?.totalAyer)}</div>
-        <div class="l">${esc(L.effectiveYesterday || 'Gestión efectiva (ayer)')}</div>
-        <div class="h">(${esc(comparativo?.pctGestionAyer)}%)</div>
-      </div>
-      <div class="card kpi" style="background:#FEF2F2;border-color:#FECACA">
-        <div class="n">${esc(comparativo?.gestionHoy)} / ${esc(comparativo?.totalHoy)}</div>
-        <div class="l">${esc(L.effectiveToday || 'Gestión efectiva (hoy)')}</div>
-        <div class="h">(${esc(comparativo?.pctGestionHoy)}%)</div>
-      </div>
-      <div class="card kpi">
-        <div class="n">+${esc(comparativo?.nuevasAsignaciones ?? 0)}</div>
-        <div class="l">${esc(L.newAssignments || 'Nuevas asignaciones')}</div>
-        <div class="h">${esc(crecimiento)}</div>
-      </div>
-      <div class="card kpi">
-        <div class="n">${esc(fmtVar(comparativo?.incrementoGestion))}</div>
-        <div class="l">${esc(L.netManaged || 'Incremento neto gestión')}</div>
-        <div class="h">${esc(comparativo?.gestionAyer)} → ${esc(comparativo?.gestionHoy)}</div>
-      </div>
-      <div class="card kpi">
-        <div class="n">${esc(comparativo?.retrocesos ?? 0)}</div>
-        <div class="l">${esc(L.regressions || 'Retrocesos')}</div>
-        <div class="h">${esc(
-          comparativo?.retrocesos === 0
-            ? L.noRegressions || 'Sin retrocesos'
-            : L.hasRegressions || 'Con retrocesos'
-        )}</div>
-      </div>
-    </div>
-
-    <div class="banner">${esc(L.summaryBanner || '')}</div>
-    <p class="note">${esc(L.summaryText || '')}</p>
   </section>
 
-  <!-- 3. Gestión discriminada -->
-  <section class="section page-break">
-    <div class="center">
-      <p class="sub" style="text-transform:uppercase;letter-spacing:.06em;font-size:10px;font-weight:700;font-style:normal">
-        ${esc(L.discEyebrow || '')}
-      </p>
-      <div class="disc-title">${esc(L.discTitle || 'Total gestión discriminada')}: ${esc(discriminada?.total ?? 0)}</div>
-      <p class="sub" style="font-style:italic">${esc(L.discSubtitle || '')}</p>
-    </div>
-    <div class="grid-3">${cardsDisc}</div>
-    <p class="footer">${esc(L.discSource || '')}</p>
+  <section class="section">
+    <h2>${esc(L.siniestroActualTitle || '3. Estado del siniestro')}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th class="left">${esc(L.siniestroActualEstado || 'Estado del siniestro')}</th>
+          <th>${esc(L.diaAnterior || 'Última actualización')}<div style="font-weight:400;font-size:10px;color:#6B6B6B">${esc(boletin.etiquetaAyer)}</div></th>
+          <th class="var">${esc(L.siniestroActualMovimiento || 'Movimiento')}</th>
+          <th class="hoy">${esc(L.hoyLista || 'Hoy')}<div style="font-weight:400;font-size:10px;color:#FEE2E2">${esc(boletin.etiquetaHoy)}</div></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(() => {
+          const t = filasTablaComparativoHtml(estadoSiniestroActual?.filas);
+          return `${t.body}
+        <tr class="total">
+          <td class="left">TOTAL</td>
+          <td class="num">${esc(t.totalAyer)}</td>
+          <td class="var">${esc(fmtVar(t.variacionTotal))}</td>
+          <td class="hoy">${esc(t.totalHoy)}</td>
+        </tr>`;
+        })()}
+      </tbody>
+    </table>
   </section>
+
+  <section class="section">
+    <h2>${esc(L.cierresTitle || '4. Cierres del día')}</h2>
+    <p class="sub">${esc(L.cierresSub || '')} · ${esc(boletin.etiquetaHoy || '')}</p>
+    <table>
+      <thead>
+        <tr>
+          <th class="left">${esc(L.cierresResultado || 'Resultado')}</th>
+          <th class="hoy">${esc(L.cierresCantidad || 'Cantidad')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(cierresDelDia?.filas || [])
+          .map(
+            (f) => `
+        <tr>
+          <td class="left">${esc(f.label)}</td>
+          <td class="hoy">${esc(f.cantidad)}</td>
+        </tr>`
+          )
+          .join('')}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>${esc(L.perdidasTitle || '5. Clasificación de pérdidas')}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th class="left">${esc(L.perdidasTipo || 'Tipo de pérdida')}</th>
+          <th class="hoy">${esc(L.perdidasCantidad || 'Cantidad')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(clasificacionPerdidas?.filas || [])
+          .map(
+            (f) => `
+        <tr>
+          <td class="left">${esc(f.label)}</td>
+          <td class="hoy">${esc(f.cantidad)}</td>
+        </tr>`
+          )
+          .join('')}
+      </tbody>
+    </table>
+  </section>
+
 </body>
 </html>`;
 }

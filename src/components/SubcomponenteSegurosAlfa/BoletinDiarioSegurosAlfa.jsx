@@ -5,20 +5,26 @@ import {
   FaCalendarAlt,
   FaChartLine,
   FaCheckCircle,
+  FaCheckSquare,
   FaChevronLeft,
   FaChevronRight,
+  FaCircle,
   FaFileAlt,
-  FaFolderOpen,
   FaHandPaper,
   FaHome,
   FaPhoneAlt,
+  FaPhoneSlash,
   FaPrint,
   FaBan,
   FaSearch,
-  FaSearchPlus,
   FaWallet,
-  FaBuilding,
   FaArrowUp,
+  FaThumbtack,
+  FaHourglassHalf,
+  FaChartBar,
+  FaMoneyBillWave,
+  FaExclamationTriangle,
+  FaPen,
 } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
 import { fetchAllCasosAlfa } from '../../services/segurosAlfaService.js';
@@ -48,15 +54,34 @@ const ICONS_TERREMOTO = {
   desistimientos: FaHandPaper,
 };
 
-const ICONS_DISCRIMINADA = {
-  contactadosSinExito: FaPhoneAlt,
-  pendienteInformacion: FaFolderOpen,
-  enLiquidacion: FaFileAlt,
-  solicitanInspeccion: FaSearchPlus,
-  accesoRestringido: FaBuilding,
-  pendienteInforme: FaFileAlt,
-  desistimientoTramite: FaFileAlt,
-  perdidaTotal: FaHome,
+const ICONS_GESTION_ACTUAL = {
+  enGestion: FaThumbtack,
+  contactadoProgramado: FaPhoneAlt,
+  inspeccionado: FaSearch,
+  liquidado: FaCalendarAlt,
+  sinRespuesta: FaPhoneSlash,
+};
+
+const ICONS_SINIESTRO_ACTUAL = {
+  pendientes: FaHourglassHalf,
+  pendienteAceptacion: FaChartBar,
+  procesoPago: FaMoneyBillWave,
+  cerrados: FaCheckCircle,
+  objetados: FaExclamationTriangle,
+  desistidos: FaBan,
+};
+
+const ICONS_CIERRES_DIA = {
+  cerradosTotales: FaCheckSquare,
+  enviadosPago: FaPen,
+  objetados: FaExclamationTriangle,
+  desistidos: FaBan,
+  perdidasTotales: FaCircle,
+};
+
+const ICONS_CLASIFICACION_PERDIDAS = {
+  parcial: FaCircle,
+  total: FaCircle,
 };
 
 function VariacionCell({ valor, maloSiSube = false }) {
@@ -80,7 +105,7 @@ function VariacionCell({ valor, maloSiSube = false }) {
   );
 }
 
-function MetricCardTerremoto({ icon: Icon, cantidad, label, descripcion, desglose = [] }) {
+function MetricCardTerremoto({ icon: Icon, cantidad, descripcion, desglose = [] }) {
   return (
     <article className="flex flex-col rounded-xl border border-fenix-borde bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
       <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-fenix-primario dark:bg-red-950/40 dark:text-red-300">
@@ -89,9 +114,6 @@ function MetricCardTerremoto({ icon: Icon, cantidad, label, descripcion, desglos
       <div className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
         {cantidad}
       </div>
-      {label ? (
-        <h3 className="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100">{label}</h3>
-      ) : null}
       <div className="mt-2 border-t border-dashed border-fenix-borde pt-2 text-sm leading-snug text-gray-600 dark:border-gray-700 dark:text-gray-300">
         {descripcion}
       </div>
@@ -100,7 +122,7 @@ function MetricCardTerremoto({ icon: Icon, cantidad, label, descripcion, desglos
           {desglose.map((d) => (
             <li key={d.label} className="flex justify-between gap-2 tabular-nums">
               <span className="truncate">{d.label}</span>
-              <span className="font-semibold text-gray-700 dark:text-gray-200">{d.cantidad}</span>
+              <span className="font-semibold text-fenix-primario dark:text-red-300">{d.cantidad}</span>
             </li>
           ))}
         </ul>
@@ -109,17 +131,151 @@ function MetricCardTerremoto({ icon: Icon, cantidad, label, descripcion, desglos
   );
 }
 
-function MetricCardDiscriminada({ icon: Icon, cantidad, label, descripcion }) {
+function TablaComparativoEstados({
+  titulo,
+  colEstado,
+  colAyer,
+  colHoy,
+  colVariacion,
+  etiquetaAyer,
+  etiquetaHoy,
+  filas = [],
+  icons = {},
+  maloSiSubeIds = [],
+}) {
+  const totalAyer = filas.reduce((a, f) => a + (Number(f.ayer) || 0), 0);
+  const totalHoy = filas.reduce((a, f) => a + (Number(f.hoy) || 0), 0);
+  const variacionTotal = totalHoy - totalAyer;
+
   return (
-    <article className="rounded-xl border border-fenix-borde bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-red-100 text-fenix-primario dark:border-red-900/40 dark:text-red-300">
-        <Icon className="text-sm" />
+    <section className="rounded-2xl border border-fenix-borde bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-950 print:break-inside-avoid">
+      <h2 className="font-heading text-xl font-bold tracking-wide text-gray-900 dark:text-white">
+        {titulo}
+      </h2>
+      <div className="mt-4 overflow-x-auto">
+        <table className="min-w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                {colEstado}
+              </th>
+              <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-center font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                {colAyer}
+                {etiquetaAyer ? (
+                  <div className="text-[11px] font-normal text-gray-500">{etiquetaAyer}</div>
+                ) : null}
+              </th>
+              <th className="border border-red-100 bg-red-50 px-3 py-2 text-center font-semibold text-fenix-primario dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                {colVariacion}
+              </th>
+              <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white dark:border-red-700 dark:bg-red-700">
+                {colHoy}
+                {etiquetaHoy ? (
+                  <div className="text-[11px] font-normal text-red-100">{etiquetaHoy}</div>
+                ) : null}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => {
+              const Icon = icons[fila.id] || FaFileAlt;
+              const pctAyer = totalAyer ? Math.round(((Number(fila.ayer) || 0) / totalAyer) * 1000) / 10 : 0;
+              const pctHoy = totalHoy ? Math.round(((Number(fila.hoy) || 0) / totalHoy) * 1000) / 10 : 0;
+              return (
+                <tr key={fila.id}>
+                  <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
+                    <span className="inline-flex items-center gap-2">
+                      <Icon className="text-fenix-primario" />
+                      {fila.label}
+                    </span>
+                  </td>
+                  <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
+                    {fila.ayer}{' '}
+                    <span className="text-[11px] text-gray-400">({pctAyer}%)</span>
+                  </td>
+                  <td className="border border-red-50 bg-red-50/40 px-3 py-2 text-center dark:border-red-950 dark:bg-red-950/20">
+                    <VariacionCell
+                      valor={fila.avance}
+                      maloSiSube={maloSiSubeIds.includes(fila.id)}
+                    />
+                  </td>
+                  <td className="border border-red-100 bg-red-50/70 px-3 py-2 text-center tabular-nums font-semibold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
+                    {fila.hoy}{' '}
+                    <span className="text-[11px] font-normal text-fenix-primario">({pctHoy}%)</span>
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="bg-gray-50 font-bold dark:bg-gray-900">
+              <td className="border border-gray-200 px-3 py-2 dark:border-gray-700">TOTAL</td>
+              <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
+                {totalAyer}
+              </td>
+              <td className="border border-red-50 px-3 py-2 text-center dark:border-red-950">
+                <VariacionCell valor={variacionTotal} />
+              </td>
+              <td className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center tabular-nums text-white dark:border-red-700 dark:bg-red-700">
+                {totalHoy}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div className="text-3xl font-bold text-fenix-primario dark:text-red-300">{cantidad}</div>
-      <h3 className="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100">{label}</h3>
-      <div className="my-2 border-t border-dashed border-gray-200 dark:border-gray-700" />
-      <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">{descripcion}</p>
-    </article>
+    </section>
+  );
+}
+
+function TablaResultadoCantidad({
+  titulo,
+  subtitulo,
+  colResultado,
+  colCantidad,
+  filas = [],
+  icons = {},
+  iconClassById = {},
+}) {
+  return (
+    <section className="rounded-2xl border border-fenix-borde bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-950 print:break-inside-avoid">
+      <h2 className="font-heading text-xl font-bold tracking-wide text-gray-900 dark:text-white">
+        {titulo}
+      </h2>
+      {subtitulo ? (
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitulo}</p>
+      ) : null}
+      <div className="mt-4 overflow-x-auto">
+        <table className="min-w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                {colResultado}
+              </th>
+              <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white">
+                {colCantidad}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => {
+              const Icon = icons[fila.id] || FaFileAlt;
+              const iconClass = iconClassById[fila.id] || 'text-fenix-primario';
+              return (
+                <tr key={fila.id}>
+                  <td className="border border-gray-200 px-3 py-2.5 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
+                    <span className="inline-flex items-center gap-2">
+                      <Icon className={iconClass} />
+                      {fila.label}
+                    </span>
+                  </td>
+                  <td className="border border-red-100 bg-red-50/50 px-3 py-2.5 text-center tabular-nums text-lg font-bold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
+                    {fila.cantidad}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -168,7 +324,13 @@ export default function BoletinDiarioSegurosAlfa() {
     [casos, fechaCorte, offsetDias]
   );
 
-  const { comparativo, gestionTerremoto, discriminada } = boletin;
+  const {
+    gestionTerremoto,
+    estadoGestionActual,
+    estadoSiniestroActual,
+    cierresDelDia,
+    clasificacionPerdidas,
+  } = boletin;
 
   const handleImprimirPdf = () => {
     imprimirBoletinDiarioAlfa(boletin, {
@@ -179,43 +341,21 @@ export default function BoletinDiarioSegurosAlfa() {
       terremotoSubtitle: t('segurosAlfa.boletinDiario.terremoto.subtitle'),
       totalGeneral: t('segurosAlfa.boletinDiario.terremoto.total'),
       cutOff: t('segurosAlfa.boletinDiario.cutOff'),
-      comparativoTitle: t('segurosAlfa.boletinDiario.comparativo.title'),
-      comparativoSubtitle: t('segurosAlfa.boletinDiario.comparativo.subtitle'),
-      cutLabel: t('segurosAlfa.boletinDiario.comparativo.cutLabel', {
-        ayer: boletin.etiquetaAyer,
-        hoy: boletin.etiquetaHoy,
-      }),
-      estado: t('segurosAlfa.boletinDiario.comparativo.estado'),
-      yesterday: t('segurosAlfa.boletinDiario.comparativo.yesterday'),
-      today: t('segurosAlfa.boletinDiario.comparativo.today'),
-      variation: t('segurosAlfa.boletinDiario.comparativo.variation'),
-      effectiveYesterday: t('segurosAlfa.boletinDiario.comparativo.effectiveYesterday'),
-      effectiveToday: t('segurosAlfa.boletinDiario.comparativo.effectiveToday'),
-      newAssignments: t('segurosAlfa.boletinDiario.comparativo.newAssignments'),
-      baseGrowth: t('segurosAlfa.boletinDiario.comparativo.baseGrowth', {
-        pct: comparativo.pctIncrementoBase ?? 0,
-      }),
-      netManaged: t('segurosAlfa.boletinDiario.comparativo.netManaged'),
-      regressions: t('segurosAlfa.boletinDiario.comparativo.regressions'),
-      noRegressions: t('segurosAlfa.boletinDiario.comparativo.noRegressions'),
-      hasRegressions: t('segurosAlfa.boletinDiario.comparativo.hasRegressions'),
-      summaryBanner: t('segurosAlfa.boletinDiario.comparativo.summaryBanner', {
-        desde: comparativo.gestionAyer,
-        hasta: comparativo.gestionHoy,
-        nuevas: comparativo.nuevasAsignaciones,
-      }),
-      summaryText: t('segurosAlfa.boletinDiario.comparativo.summaryText', {
-        pctAyer: comparativo.pctGestionAyer,
-        pctHoy: comparativo.pctGestionHoy,
-        neto: comparativo.incrementoGestion,
-      }),
-      discEyebrow: t('segurosAlfa.boletinDiario.discriminada.eyebrow'),
-      discTitle: t('segurosAlfa.boletinDiario.discriminada.title'),
-      discSubtitle: t('segurosAlfa.boletinDiario.discriminada.subtitle'),
-      discSource: t('segurosAlfa.boletinDiario.discriminada.source', {
-        hoy: boletin.etiquetaHoyCorta,
-        ayer: boletin.etiquetaAyerCorta,
-      }),
+      gestionActualTitle: '2. Estado de gestión actual',
+      gestionActualEstado: 'Estado de gestión',
+      gestionActualAvance: 'Avance',
+      siniestroActualTitle: '3. Estado del siniestro',
+      siniestroActualEstado: 'Estado del siniestro',
+      siniestroActualMovimiento: 'Movimiento',
+      diaAnterior: 'Última actualización',
+      hoyLista: 'Hoy',
+      cierresTitle: t('segurosAlfa.boletinDiario.unificado.s4'),
+      cierresSub: t('segurosAlfa.boletinDiario.unificado.s4Sub'),
+      cierresResultado: t('segurosAlfa.boletinDiario.unificado.resultado'),
+      cierresCantidad: t('segurosAlfa.boletinDiario.unificado.cantidad'),
+      perdidasTitle: t('segurosAlfa.boletinDiario.unificado.s5'),
+      perdidasTipo: t('segurosAlfa.boletinDiario.unificado.tipoPerdida'),
+      perdidasCantidad: t('segurosAlfa.boletinDiario.unificado.cantidad'),
     });
   };
 
@@ -282,7 +422,7 @@ export default function BoletinDiarioSegurosAlfa() {
           </div>
         )}
 
-        {/* —— GESTIÓN TERREMOTO —— */}
+        {/* —— GESTIÓN TERREMOTO (8 gráficas lineamiento) —— */}
         <section className="rounded-2xl border border-fenix-borde bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-950 print:break-inside-avoid">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -303,7 +443,7 @@ export default function BoletinDiarioSegurosAlfa() {
               </span>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {gestionTerremoto.filas.map((fila) => {
               const Icon = ICONS_TERREMOTO[fila.id] || FaFileAlt;
               return (
@@ -311,7 +451,6 @@ export default function BoletinDiarioSegurosAlfa() {
                   key={fila.id}
                   icon={Icon}
                   cantidad={fila.cantidad}
-                  label={fila.label}
                   descripcion={fila.descripcion}
                   desglose={fila.desglose}
                 />
@@ -320,215 +459,59 @@ export default function BoletinDiarioSegurosAlfa() {
           </div>
         </section>
 
-        {/* —— COMPARATIVO DIARIO —— */}
-        <section className="rounded-2xl border border-fenix-borde bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-950 print:break-before-page">
-          <div className="mb-4">
-            <h2 className="font-heading text-xl font-bold tracking-wide text-gray-900 dark:text-white">
-              {t('segurosAlfa.boletinDiario.comparativo.title')}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('segurosAlfa.boletinDiario.comparativo.subtitle')}
-            </p>
-            <p className="mt-1 text-xs text-gray-400">
-              {t('segurosAlfa.boletinDiario.comparativo.cutLabel', {
-                ayer: boletin.etiquetaAyer,
-                hoy: boletin.etiquetaHoy,
-              })}
-            </p>
-          </div>
+        {/* —— Mismo formato del comparativo, ejes exactos AI / AJ —— */}
+        <TablaComparativoEstados
+          titulo="2. Estado de gestión actual"
+          colEstado="Estado de gestión"
+          colAyer="Última actualización"
+          colHoy="Hoy"
+          colVariacion="Avance"
+          etiquetaAyer={boletin.referenciaExactaDisponible ? boletin.etiquetaAyer : null}
+          etiquetaHoy={boletin.etiquetaHoy}
+          filas={estadoGestionActual?.filas || []}
+          icons={ICONS_GESTION_ACTUAL}
+          maloSiSubeIds={['enGestion', 'sinRespuesta']}
+        />
 
-          {!comparativo.tieneAyer && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-              {t('segurosAlfa.boletinDiario.comparativo.noYesterday', {
-                fecha: boletin.etiquetaAyerCorta,
-              })}
-            </div>
-          )}
-          {comparativo.tieneAyer && comparativo.fuenteAyer === 'reconstruido' && (
-            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
-              {t('segurosAlfa.boletinDiario.comparativo.reconstructedNote', {
-                fecha: boletin.etiquetaAyerCorta,
-              })}
-            </div>
-          )}
+        <TablaComparativoEstados
+          titulo="3. Estado del siniestro"
+          colEstado="Estado del siniestro"
+          colAyer="Última actualización"
+          colHoy="Hoy"
+          colVariacion="Movimiento"
+          etiquetaAyer={boletin.referenciaExactaDisponible ? boletin.etiquetaAyer : null}
+          etiquetaHoy={boletin.etiquetaHoy}
+          filas={estadoSiniestroActual?.filas || []}
+          icons={ICONS_SINIESTRO_ACTUAL}
+        />
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                    {t('segurosAlfa.boletinDiario.comparativo.estado')}
-                  </th>
-                  <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-center font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
-                    {t('segurosAlfa.boletinDiario.comparativo.yesterday')}
-                    <div className="text-[11px] font-normal text-gray-500">{boletin.etiquetaAyer}</div>
-                  </th>
-                  <th className="border border-red-100 bg-red-50 px-3 py-2 text-center font-semibold text-fenix-primario dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
-                    {t('segurosAlfa.boletinDiario.comparativo.variation')}
-                  </th>
-                  <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white dark:border-red-700 dark:bg-red-700">
-                    {t('segurosAlfa.boletinDiario.comparativo.today')}
-                    <div className="text-[11px] font-normal text-red-100">{boletin.etiquetaHoy}</div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparativo.filas.map((fila) => (
-                  <tr key={fila.id}>
-                    <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
-                      {fila.label}
-                    </td>
-                    <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
-                      {fila.ayer}
-                      <span className="ml-1 text-xs text-gray-400">({fila.pctAyer}%)</span>
-                    </td>
-                    <td className="border border-red-50 bg-red-50/40 px-3 py-2 text-center dark:border-red-950 dark:bg-red-950/20">
-                      <VariacionCell
-                        valor={fila.variacion}
-                        maloSiSube={fila.id === 'enGestion' || fila.id === 'sinRespuesta' || fila.id === 'verificacion'}
-                      />
-                    </td>
-                    <td className="border border-red-100 bg-red-50/70 px-3 py-2 text-center tabular-nums font-semibold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
-                      {fila.hoy}
-                      <span className="ml-1 text-xs font-normal text-fenix-primario/80 dark:text-red-300/80">
-                        ({fila.pctHoy}%)
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                <tr className="font-bold">
-                  <td className="border border-gray-300 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
-                    TOTAL
-                  </td>
-                  <td className="border border-gray-300 bg-gray-50 px-3 py-2 text-center dark:border-gray-600 dark:bg-gray-800">
-                    {comparativo.totalAyer}
-                  </td>
-                  <td className="border border-red-200 bg-red-50 px-3 py-2 text-center text-fenix-primario dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-                    {comparativo.variacionTotal >= 0
-                      ? `+${comparativo.variacionTotal}`
-                      : comparativo.variacionTotal}
-                  </td>
-                  <td className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center text-white dark:border-red-600 dark:bg-red-700">
-                    {comparativo.totalHoy}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <TablaResultadoCantidad
+          titulo={t('segurosAlfa.boletinDiario.unificado.s4')}
+          subtitulo={`${t('segurosAlfa.boletinDiario.unificado.s4Sub')} · ${boletin.etiquetaHoy}`}
+          colResultado={t('segurosAlfa.boletinDiario.unificado.resultado')}
+          colCantidad={t('segurosAlfa.boletinDiario.unificado.cantidad')}
+          filas={cierresDelDia?.filas || []}
+          icons={ICONS_CIERRES_DIA}
+          iconClassById={{
+            cerradosTotales: 'text-emerald-600',
+            enviadosPago: 'text-fenix-primario',
+            objetados: 'text-amber-500',
+            desistidos: 'text-fenix-error',
+            perdidasTotales: 'text-fenix-error',
+          }}
+        />
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                {t('segurosAlfa.boletinDiario.comparativo.effectiveYesterday')}
-              </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {comparativo.gestionAyer} / {comparativo.totalAyer}
-              </p>
-              <p className="text-sm text-gray-500">({comparativo.pctGestionAyer}%)</p>
-            </div>
-            <div className="rounded-xl border border-red-100 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/40">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-fenix-primario dark:text-red-300">
-                {t('segurosAlfa.boletinDiario.comparativo.effectiveToday')}
-              </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {comparativo.gestionHoy} / {comparativo.totalHoy}
-              </p>
-              <p className="text-sm text-fenix-primario/80 dark:text-red-300/80">
-                ({comparativo.pctGestionHoy}%)
-              </p>
-            </div>
-            <div className="rounded-xl border border-fenix-borde p-4 dark:border-gray-700">
-              <p className="text-2xl font-bold text-fenix-primario dark:text-red-300">
-                +{comparativo.nuevasAsignaciones}
-              </p>
-              <p className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
-                {t('segurosAlfa.boletinDiario.comparativo.newAssignments')}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {comparativo.pctIncrementoBase != null
-                  ? t('segurosAlfa.boletinDiario.comparativo.baseGrowth', {
-                      pct: comparativo.pctIncrementoBase,
-                    })
-                  : '—'}
-              </p>
-            </div>
-            <div className="rounded-xl border border-fenix-borde p-4 dark:border-gray-700">
-              <p className="text-2xl font-bold text-fenix-primario dark:text-red-300">
-                {comparativo.incrementoGestion >= 0 ? '+' : ''}
-                {comparativo.incrementoGestion}
-              </p>
-              <p className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
-                {t('segurosAlfa.boletinDiario.comparativo.netManaged')}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {comparativo.gestionAyer} → {comparativo.gestionHoy}
-              </p>
-            </div>
-            <div className="rounded-xl border border-fenix-borde p-4 dark:border-gray-700">
-              <p className="text-2xl font-bold text-fenix-primario dark:text-red-300">
-                {comparativo.retrocesos}
-              </p>
-              <p className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">
-                {t('segurosAlfa.boletinDiario.comparativo.regressions')}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {comparativo.retrocesos === 0
-                  ? t('segurosAlfa.boletinDiario.comparativo.noRegressions')
-                  : t('segurosAlfa.boletinDiario.comparativo.hasRegressions')}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-xl bg-fenix-primario px-4 py-3 text-sm font-semibold text-white dark:bg-red-800">
-            {t('segurosAlfa.boletinDiario.comparativo.summaryBanner', {
-              desde: comparativo.gestionAyer,
-              hasta: comparativo.gestionHoy,
-              nuevas: comparativo.nuevasAsignaciones,
-            })}
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-            {t('segurosAlfa.boletinDiario.comparativo.summaryText', {
-              pctAyer: comparativo.pctGestionAyer,
-              pctHoy: comparativo.pctGestionHoy,
-              neto: comparativo.incrementoGestion,
-            })}
-          </p>
-        </section>
-
-        {/* —— GESTIÓN DISCRIMINADA —— */}
-        <section className="rounded-2xl border border-fenix-borde bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-950 print:break-before-page">
-          <div className="mb-2 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              {t('segurosAlfa.boletinDiario.discriminada.eyebrow')}
-            </p>
-            <div className="mx-auto mt-2 inline-block rounded-xl bg-fenix-primario px-6 py-3 text-lg font-bold text-white dark:bg-red-700">
-              {t('segurosAlfa.boletinDiario.discriminada.title')}: {discriminada.total}
-            </div>
-            <p className="mt-2 text-sm italic text-gray-500 dark:text-gray-400">
-              {t('segurosAlfa.boletinDiario.discriminada.subtitle')}
-            </p>
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {discriminada.cards.map((card) => {
-              const Icon = ICONS_DISCRIMINADA[card.id] || FaFileAlt;
-              return (
-                <MetricCardDiscriminada
-                  key={card.id}
-                  icon={Icon}
-                  cantidad={card.cantidad}
-                  label={card.label}
-                  descripcion={card.descripcion}
-                />
-              );
-            })}
-          </div>
-          <p className="mt-5 text-center text-xs text-gray-400">
-            {t('segurosAlfa.boletinDiario.discriminada.source', {
-              hoy: boletin.etiquetaHoyCorta,
-              ayer: boletin.etiquetaAyerCorta,
-            })}
-          </p>
-        </section>
+        <TablaResultadoCantidad
+          titulo={t('segurosAlfa.boletinDiario.unificado.s5')}
+          colResultado={t('segurosAlfa.boletinDiario.unificado.tipoPerdida')}
+          colCantidad={t('segurosAlfa.boletinDiario.unificado.cantidad')}
+          filas={clasificacionPerdidas?.filas || []}
+          icons={ICONS_CLASIFICACION_PERDIDAS}
+          iconClassById={{
+            parcial: 'text-amber-400',
+            total: 'text-fenix-error',
+          }}
+        />
 
         <p className="print:hidden text-center text-xs text-gray-400">
           Corte {isoCorte} · {isoDateBogota(new Date()) === isoCorte ? 'hoy' : 'histórico'} ·
