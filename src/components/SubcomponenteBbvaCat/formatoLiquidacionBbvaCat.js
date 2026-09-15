@@ -186,16 +186,16 @@ export function resolverDeducibleFormatoBbvaCat(liquidador = {}) {
   if (saved && typeof saved === 'object') {
     extras.dolares = saved.dolares ?? 0;
     extras.pesos = saved.pesos ?? 0;
+    /** 0 es válido (sin deducible SMMLV/%); solo vacío/null cae al default de póliza. */
     if (saved.smmlv !== '' && saved.smmlv != null) {
-      const smmlvSaved = parsearCantidadSmmlvBbva(saved.smmlv);
-      if (smmlvSaved > 0) extras.smmlv = smmlvSaved;
+      extras.smmlv = parsearCantidadSmmlvBbva(saved.smmlv);
     }
     if (saved.porcentaje !== '' && saved.porcentaje != null) {
       const pctSaved = parsearPorcentajeDeducibleBbva(saved.porcentaje);
       const oficial = parsearPorcentajeDeducibleBbva(base.porcentaje);
       const esResidualCinco =
         Math.abs(pctSaved - 0.05) < 1e-6 && Math.abs(oficial - 0.02) < 1e-6;
-      if (pctSaved > 0 && !esResidualCinco) extras.porcentaje = pctSaved;
+      if (!esResidualCinco) extras.porcentaje = pctSaved;
     }
   }
   const cfg =
@@ -211,8 +211,8 @@ export function resolverDeducibleFormatoBbvaCat(liquidador = {}) {
     ...extras,
     tipo,
     basePct: base.basePct,
-    porcentaje: extras.porcentaje ?? base.porcentaje,
-    smmlv: extras.smmlv ?? base.smmlv,
+    porcentaje: extras.porcentaje != null ? extras.porcentaje : base.porcentaje,
+    smmlv: extras.smmlv != null ? extras.smmlv : base.smmlv,
   };
 }
 
