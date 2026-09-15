@@ -264,7 +264,7 @@
     "allPeople": "Entire team",
     "pickSlot": "Adjuster / inspector time slot",
     "assignPeopleFirst": "Assign an adjuster or inspector to see and lock their availability.",
-    "slotHint": "A simple visit blocks 1 h 40 min (20 min before, 1 h inspection, 20 min after). A full day occupies 08:00–17:00.",
+    "slotHint": "A simple visit blocks 1 h 40 min (20 min before, 1 h inspection, 20 min after). A full day occupies 08:00–17:00. The area lead (e.g. Bernardo in Sura) does not block slots; only the field inspector does.",
     "selectedRange": "Booked: {{inicio}} – {{fin}}",
     "slotTaken": "{{inicio}} – {{fin}} · {{quien}} · {{caso}} ({{modulo}})",
     "blocked": "Busy",

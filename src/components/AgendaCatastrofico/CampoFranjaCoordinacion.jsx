@@ -113,7 +113,7 @@ export default function CampoFranjaCoordinacion({
           <p className="mb-2 text-xs text-gray-500">
             {t('agendaCatastrofico.slotHint', {
               defaultValue:
-                'Una visita sencilla bloquea 1 h 40 min (20 min antes, 1 h de inspección y 20 min después). Día completo ocupa de 08:00 a 17:00.',
+                'Una visita sencilla bloquea 1 h 40 min (20 min antes, 1 h de inspección y 20 min después). Día completo ocupa de 08:00 a 17:00. El líder de área (p. ej. Bernardo en Sura) no bloquea horarios; solo el inspector de campo.',
             })}
           </p>
           {horaInicio && horaFin && (

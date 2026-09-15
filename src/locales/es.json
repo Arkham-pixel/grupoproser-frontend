@@ -264,7 +264,7 @@
     "allPeople": "Todo el equipo",
     "pickSlot": "Franja horaria del ajustador / inspector",
     "assignPeopleFirst": "Asigne ajustador o inspector para ver y bloquear su disponibilidad.",
-    "slotHint": "Una visita sencilla bloquea 1 h 40 min (20 min antes, 1 h de inspección y 20 min después). Día completo ocupa de 08:00 a 17:00.",
+    "slotHint": "Una visita sencilla bloquea 1 h 40 min (20 min antes, 1 h de inspección y 20 min después). Día completo ocupa de 08:00 a 17:00. El líder de área (p. ej. Bernardo en Sura) no bloquea horarios; solo el inspector de campo.",
     "selectedRange": "Asignado: {{inicio}} – {{fin}}",
     "slotTaken": "{{inicio}} – {{fin}} · {{quien}} · {{caso}} ({{modulo}})",
     "blocked": "Ocupado",
