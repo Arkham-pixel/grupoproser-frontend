@@ -15,9 +15,18 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
   getCasoAlfaById,
+  guardarInformeUnicoEnCasoAlfa,
   guardarLiquidadorEnCasoAlfa,
 } from '../../services/segurosAlfaService.js';
-import { calcularLiquidacionAlfa } from './liquidadorAlfaHelpers.js';
+import { calcularLiquidacionAlfa, defaultInformeUnicoAlfa } from './liquidadorAlfaHelpers.js';
+import {
+  archivarBlobEnCasoAlfa,
+  MIME_ARCHIVO_ALFA,
+} from './archivarDocumentoAlfa.js';
+import {
+  extraerConsecutivoAlfaDeNombre,
+  parsearInformeCatAlfaExcel,
+} from './parsearInformeCatAlfaExcel.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -108,6 +117,88 @@ export default function LiquidadorSegurosAlfaPage() {
     }
   };
 
+  const handleImportarExcelCat = async (file) => {
+    if (!casoId) {
+      throw new Error(t('segurosAlfa.settlement.savedCaseRequired'));
+    }
+    setGuardando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const parsed = await parsearInformeCatAlfaExcel(file, {
+        caso: casoAlfa || {},
+        liquidadorActual: liquidadorState,
+      });
+      const nextLiq = { ...parsed.liquidador, excelCatOrigen: 'manual' };
+      const totales = calcularLiquidacionAlfa(nextLiq);
+      const informeBase =
+        (casoAlfa?.informeUnico && typeof casoAlfa.informeUnico === 'object'
+          ? casoAlfa.informeUnico
+          : null) || defaultInformeUnicoAlfa(casoAlfa || {});
+      const nextInforme = {
+        ...informeBase,
+        analisisGeneral: {
+          ...(informeBase.analisisGeneral || {}),
+          ...(parsed.analisisGeneral || {}),
+        },
+        ajustadorNombre:
+          nextLiq.encabezado?.ajustador || informeBase.ajustadorNombre || '',
+      };
+
+      setLiquidadorState(nextLiq);
+      setTotalesState(totales);
+
+      const actualizadoLiq = await guardarLiquidadorEnCasoAlfa({
+        casoId,
+        liquidador: nextLiq,
+        totales,
+        casoBase: { ...(casoAlfa || {}), informeUnico: nextInforme },
+      });
+      const actualizadoInf = await guardarInformeUnicoEnCasoAlfa({
+        casoId,
+        informeUnico: nextInforme,
+        casoBase: actualizadoLiq || casoAlfa || {},
+      });
+
+      let archivo = null;
+      try {
+        archivo = await archivarBlobEnCasoAlfa({
+          casoId,
+          blob: file,
+          nombre: file.name || 'Informe_CAT_Seguros_Alfa.xlsx',
+          mime: MIME_ARCHIVO_ALFA.xlsx,
+          etiqueta: 'LIQUIDACION',
+        });
+      } catch (errArchivo) {
+        console.error(errArchivo);
+      }
+
+      const casoFinal = actualizadoInf || actualizadoLiq;
+      if (casoFinal) setCasoAlfa(casoFinal);
+
+      const consecArchivo =
+        parsed.consecutivoArchivo || extraerConsecutivoAlfaDeNombre(file.name);
+      const consecCaso = String(casoAlfa?.consecutivo || '').trim();
+      const avisoConsec =
+        consecArchivo && consecCaso && consecArchivo !== consecCaso.toUpperCase()
+          ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
+          : '';
+      const msg = [
+        `Excel importado a ARNALD: liquidador (${parsed.nItems} ítem(s)) e informe.`,
+        archivo ? ' Archivo en archivero.' : '',
+        avisoConsec,
+      ].join('');
+      setMensaje(msg);
+      return { nItems: parsed.nItems, archivo, mensaje: msg };
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'No se pudo importar el Excel CAT.');
+      throw err;
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   return (
     <div className={`${root} ${expressScope}`}>
       <div className={expressPageWrap}>
@@ -153,6 +244,7 @@ export default function LiquidadorSegurosAlfaPage() {
                 casoAlfa={casoAlfa}
                 onEstadoChange={handleEstadoChange}
                 onGuardarEnCaso={casoId ? handleGuardarEnCaso : undefined}
+                onImportarExcelCat={casoId ? handleImportarExcelCat : undefined}
                 onCasoChange={setCasoAlfa}
                 guardandoCaso={guardando}
               />

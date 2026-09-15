@@ -26,7 +26,6 @@ import {
   archivarBlobEnCasoAlfa,
   MIME_ARCHIVO_ALFA,
 } from './archivarDocumentoAlfa.js';
-import { esUsuarioAlfaExcelActualizar } from './ModalImportarExcelAlfa.jsx';
 import {
   extraerConsecutivoAlfaDeNombre,
   parsearInformeCatAlfaExcel,
@@ -39,6 +38,7 @@ export default function InformeUnicoSegurosAlfa({
   onEstadoChange,
   onLiquidadorChange,
   onGuardarEnCaso,
+  onImportarExcelCat,
   onCasoChange,
   onArchivoArchivado,
   guardandoCaso = false,
@@ -58,7 +58,9 @@ export default function InformeUnicoSegurosAlfa({
   const [descargando, setDescargando] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
   const fileExcelCatRef = useRef(null);
-  const puedeSubirExcelTalCual = esUsuarioAlfaExcelActualizar();
+  const puedeImportarExcel = Boolean(
+    onImportarExcelCat || (onGuardarEnCaso && casoAlfa?._id)
+  );
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
   const capturaMapaInicial = useMemo(() => {
@@ -221,19 +223,26 @@ export default function InformeUnicoSegurosAlfa({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!puedeSubirExcelTalCual) {
-      setError('Solo el usuario autorizado puede subir el Excel CAT tal cual.');
-      return;
-    }
     const casoId = casoAlfa?._id;
     if (!casoId) {
-      setError('Guarde el caso antes de copiar al archivero.');
+      setError('Guarde el caso antes de importar el Excel.');
       return;
     }
     setDescargando(true);
     setError('');
     setMensaje('');
     try {
+      if (typeof onImportarExcelCat === 'function') {
+        const result = await onImportarExcelCat(file);
+        if (result?.mensaje) setMensaje(result.mensaje);
+        else {
+          setMensaje(
+            `Excel importado a ARNALD: liquidador (${result?.nItems ?? '?'} ítem(s)) e informe.`
+          );
+        }
+        return;
+      }
+
       const parsed = await parsearInformeCatAlfaExcel(file, {
         caso: casoAlfa || {},
         liquidadorActual: liquidador,
@@ -260,6 +269,16 @@ export default function InformeUnicoSegurosAlfa({
       });
       appendArchivosAlCaso([creado]);
       if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
+      if (onGuardarEnCaso) {
+        await onGuardarEnCaso({
+          ...informe,
+          analisisGeneral: {
+            ...(informe.analisisGeneral || {}),
+            ...(parsed.analisisGeneral || {}),
+          },
+          ajustadorNombre: nextLiq.encabezado?.ajustador || informe.ajustadorNombre,
+        });
+      }
       const consecArchivo = parsed.consecutivoArchivo || extraerConsecutivoAlfaDeNombre(file.name);
       const consecCaso = String(casoAlfa?.consecutivo || '').trim();
       const avisoConsec =
@@ -269,8 +288,8 @@ export default function InformeUnicoSegurosAlfa({
       setMensaje(
         `${
           creado?.replaced
-            ? 'Excel CAT tal cual actualizado en el archivero.'
-            : 'Excel CAT tal cual guardado en el archivero.'
+            ? 'Excel CAT actualizado en el archivero.'
+            : 'Excel CAT guardado en el archivero.'
         } ${parsed.nItems} ítem(s) cargados.${avisoConsec}`
       );
     } catch (err) {
@@ -408,7 +427,7 @@ export default function InformeUnicoSegurosAlfa({
         >
           <FaFileExcel /> Excel CAT
         </button>
-        {puedeSubirExcelTalCual && (
+        {puedeImportarExcel && (
           <>
             <input
               ref={fileExcelCatRef}
@@ -422,10 +441,10 @@ export default function InformeUnicoSegurosAlfa({
               className={expressBtnSuccess}
               disabled={descargando || guardandoCaso}
               onClick={() => fileExcelCatRef.current?.click()}
-              title="Sube el Informe CAT .xlsx tal cual al archivero, sin regenerarlo. Solo tu usuario."
+              title="Lee el Excel CAT del externo (hojas LIQUIDADOR + ANALISIS GENERAL) y lo pega en ARNALD."
             >
               <FaUpload />
-              {descargando ? 'Subiendo…' : 'Subir Excel CAT'}
+              {descargando ? 'Subiendo…' : 'Subir Excel liquidador e informe'}
             </button>
           </>
         )}

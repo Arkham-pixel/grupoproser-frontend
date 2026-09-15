@@ -38,7 +38,6 @@ import {
   archivarBlobEnCasoAlfa,
   MIME_ARCHIVO_ALFA,
 } from './archivarDocumentoAlfa.js';
-import { esUsuarioAlfaExcelActualizar } from './ModalImportarExcelAlfa.jsx';
 import {
   extraerConsecutivoAlfaDeNombre,
   parsearInformeCatAlfaExcel,
@@ -61,6 +60,7 @@ import {
 export default function LiquidadorSegurosAlfa({
   casoAlfa = null,
   onGuardarEnCaso,
+  onImportarExcelCat,
   guardandoCaso = false,
   onEstadoChange,
   onCasoChange,
@@ -79,8 +79,8 @@ export default function LiquidadorSegurosAlfa({
   const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
   const fileExcelCatRef = useRef(null);
-  const puedeSubirExcelTalCual = esUsuarioAlfaExcelActualizar();
   const casoId = casoAlfa?._id ? String(casoAlfa._id) : '';
+  const puedeImportarExcel = Boolean(onImportarExcelCat || (onGuardarEnCaso && casoId));
 
   useEffect(() => {
     const desdeCaso = mapCasoAlfaALiquidador(casoAlfa || {});
@@ -616,19 +616,15 @@ export default function LiquidadorSegurosAlfa({
     }
   };
 
-  /** Sube el .xlsx tal cual al archivero (sin regenerar) y carga ítems en el liquidador. */
+  /** Sube Excel CAT del externo → liquidador + informe en ARNALD. */
   const handleSubirExcelCatTalCual = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!puedeSubirExcelTalCual) {
-      setError('Solo el usuario autorizado puede subir el Excel CAT tal cual.');
-      return;
-    }
     if (!casoId) {
       setError(
         t('segurosAlfa.settlement.archiveNeedsCase', {
-          defaultValue: 'Guarde el caso antes de copiar al archivero.',
+          defaultValue: 'Guarde el caso antes de importar el Excel.',
         })
       );
       return;
@@ -637,6 +633,18 @@ export default function LiquidadorSegurosAlfa({
     setMensaje('');
     setExportando('subirExcel');
     try {
+      if (typeof onImportarExcelCat === 'function') {
+        const result = await onImportarExcelCat(file);
+        if (result?.mensaje) setMensaje(result.mensaje);
+        else {
+          setMensaje(
+            `Excel importado a ARNALD: liquidador (${result?.nItems ?? '?'} ítem(s)) e informe.`
+          );
+        }
+        return;
+      }
+
+      // Fallback local (página liquidador sin workspace)
       const parsed = await parsearInformeCatAlfaExcel(file, {
         caso: { ...(casoAlfa || {}), ...casoLocal },
         liquidadorActual: liquidador,
@@ -676,7 +684,7 @@ export default function LiquidadorSegurosAlfa({
           ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
           : '';
       setMensaje(
-        `${mensajeArchivado(creado)} Se cargaron ${parsed.nItems} ítem(s) del Excel tal cual.${avisoConsec}`
+        `${mensajeArchivado(creado)} Se cargaron ${parsed.nItems} ítem(s) del Excel.${avisoConsec}`
       );
     } catch (err) {
       console.error(err);
@@ -699,7 +707,7 @@ export default function LiquidadorSegurosAlfa({
           >
             <FaFileExcel /> Excel CAT
           </button>
-          {puedeSubirExcelTalCual && (
+          {puedeImportarExcel && (
             <>
               <input
                 ref={fileExcelCatRef}
@@ -713,10 +721,12 @@ export default function LiquidadorSegurosAlfa({
                 className={expressBtnSuccess}
                 disabled={!!exportando || guardandoCaso}
                 onClick={() => fileExcelCatRef.current?.click()}
-                title="Sube el Informe CAT .xlsx tal cual al archivero, sin regenerarlo. Solo tu usuario."
+                title="Lee el Excel CAT del externo (hojas LIQUIDADOR + ANALISIS GENERAL) y lo pega en ARNALD."
               >
                 <FaUpload />
-                {exportando === 'subirExcel' ? 'Subiendo…' : 'Subir Excel CAT'}
+                {exportando === 'subirExcel'
+                  ? 'Subiendo…'
+                  : 'Subir Excel liquidador e informe'}
               </button>
             </>
           )}

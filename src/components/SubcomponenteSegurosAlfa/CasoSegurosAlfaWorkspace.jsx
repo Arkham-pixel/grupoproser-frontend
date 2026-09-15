@@ -20,7 +20,11 @@ import {
   guardarLiquidadorEnCasoAlfa,
   setSharePointEnabledAlfa,
 } from '../../services/segurosAlfaService.js';
-import { calcularLiquidacionAlfa, mapCasoAlfaALiquidador } from './liquidadorAlfaHelpers.js';
+import {
+  calcularLiquidacionAlfa,
+  defaultInformeUnicoAlfa,
+  mapCasoAlfaALiquidador,
+} from './liquidadorAlfaHelpers.js';
 import {
   preferirLiquidadorMasRico,
   scoreContenidoLiquidadorNsr,
@@ -34,6 +38,10 @@ import {
   archivarBlobEnCasoAlfa,
   MIME_ARCHIVO_ALFA,
 } from './archivarDocumentoAlfa.js';
+import {
+  extraerConsecutivoAlfaDeNombre,
+  parsearInformeCatAlfaExcel,
+} from './parsearInformeCatAlfaExcel.js';
 import useAlfaCasoAutosave from '../../hooks/useAlfaCasoAutosave.js';
 import useAlfaSharePointSyncStatus from '../../hooks/useAlfaSharePointSyncStatus.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
@@ -508,6 +516,128 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     }
   };
 
+  /**
+   * Excel CAT del externo → liquidador + informe en ARNALD (Mongo) + archivero.
+   * Misma idea que “Subir Excel liquidador” en FDM / control de horas Complex.
+   */
+  const handleImportarExcelLiquidadorInforme = async (file) => {
+    if (!casoId) {
+      throw new Error(t('segurosAlfa.settlement.savedCaseRequired'));
+    }
+    if (!file) throw new Error('Seleccione el Excel CAT (liquidador + informe).');
+
+    setGuardando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const parsed = await parsearInformeCatAlfaExcel(file, {
+        caso: casoAlfa || {},
+        liquidadorActual: liquidadorState,
+      });
+      const nextLiq = { ...parsed.liquidador, excelCatOrigen: 'manual' };
+      const totales = calcularLiquidacionAlfa(nextLiq);
+      const informeBase =
+        informeState ||
+        (casoAlfa?.informeUnico && typeof casoAlfa.informeUnico === 'object'
+          ? casoAlfa.informeUnico
+          : null) ||
+        defaultInformeUnicoAlfa(casoAlfa || {});
+      const nextInforme = {
+        ...informeBase,
+        analisisGeneral: {
+          ...(informeBase.analisisGeneral || {}),
+          ...(parsed.analisisGeneral || {}),
+        },
+        ajustadorNombre:
+          nextLiq.encabezado?.ajustador || informeBase.ajustadorNombre || '',
+      };
+
+      setLiquidadorState(nextLiq);
+      setTotalesState(totales);
+      setInformeState(nextInforme);
+
+      const actualizadoLiq = await guardarLiquidadorEnCasoAlfa({
+        casoId,
+        liquidador: nextLiq,
+        totales,
+        casoBase: {
+          ...(casoAlfa || {}),
+          informeUnico: nextInforme,
+        },
+      });
+
+      const actualizadoInf = await guardarInformeUnicoEnCasoAlfa({
+        casoId,
+        informeUnico: nextInforme,
+        casoBase: actualizadoLiq || casoAlfa || {},
+      });
+
+      let archivo = null;
+      try {
+        archivo = await archivarBlobEnCasoAlfa({
+          casoId,
+          blob: file,
+          nombre: file.name || 'Informe_CAT_Seguros_Alfa.xlsx',
+          mime: MIME_ARCHIVO_ALFA.xlsx,
+          etiqueta: 'LIQUIDACION',
+        });
+        if (archivo) appendArchivoAlCaso(archivo);
+      } catch (errArchivo) {
+        console.error('Archivero tras import Excel CAT:', errArchivo);
+      }
+
+      const verificado = await getCasoAlfaById(casoId).catch(() => null);
+      const casoFinal = verificado || actualizadoInf || actualizadoLiq;
+      if (casoFinal) {
+        setCasoAlfa(casoFinal);
+        if (casoFinal.liquidador) {
+          const liqOk = mapCasoAlfaALiquidador(casoFinal);
+          setLiquidadorState(liqOk);
+          setTotalesState(calcularLiquidacionAlfa(liqOk));
+        }
+        if (casoFinal.informeUnico) setInformeState(casoFinal.informeUnico);
+      }
+
+      try {
+        const draftKey = `alfa-ws:${casoId}`;
+        borrarBorradorLocal(draftKey);
+        await eliminarBorradorArnald(draftKey);
+      } catch {
+        /* ok */
+      }
+
+      const consecArchivo =
+        parsed.consecutivoArchivo || extraerConsecutivoAlfaDeNombre(file.name);
+      const consecCaso = String(casoAlfa?.consecutivo || '').trim();
+      const avisoConsec =
+        consecArchivo && consecCaso && consecArchivo !== consecCaso.toUpperCase()
+          ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
+          : '';
+
+      const msg = [
+        `Excel importado a ARNALD: liquidador (${parsed.nItems} ítem(s)) e informe.`,
+        archivo ? ' Archivo en archivero.' : '',
+        avisoConsec,
+      ].join('');
+      setMensaje(msg);
+      setAutosaveUiStatus({
+        state: 'synced',
+        pendingCount: 0,
+        message: 'Sincronizado',
+      });
+      setRestoreNonce((n) => n + 1);
+      return { nItems: parsed.nItems, archivo, mensaje: msg };
+    } catch (err) {
+      console.error(err);
+      const msg = err.message || 'No se pudo importar el Excel CAT a ARNALD.';
+      setError(msg);
+      setAutosaveUiStatus({ state: 'error', message: msg });
+      throw err;
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const handleGuardarInforme = async (informeArg) => {
     if (!casoId) {
       setError(t('segurosAlfa.reportUnique.savedCaseRequired'));
@@ -726,6 +856,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
+                onImportarExcelCat={casoId ? handleImportarExcelLiquidadorInforme : undefined}
                 onCasoChange={setCasoAlfa}
                 onArchivoArchivado={boostPolling}
                 guardandoCaso={guardando}
@@ -740,6 +871,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onImportarExcelCat={casoId ? handleImportarExcelLiquidadorInforme : undefined}
                 onCasoChange={setCasoAlfa}
                 onArchivoArchivado={boostPolling}
                 guardandoCaso={guardando}

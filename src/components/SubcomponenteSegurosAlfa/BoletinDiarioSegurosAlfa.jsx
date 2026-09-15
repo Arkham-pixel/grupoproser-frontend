@@ -2,6 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   FaCalendarAlt,
   FaChartLine,
   FaCheckCircle,
@@ -40,6 +53,18 @@ import {
   expressPageWrap,
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+
+const COLOR_HOY = '#DC2626';
+const COLOR_AYER = '#9CA3AF';
+const PALETA_FENIX = ['#DC2626', '#F59E0B', '#EF4444', '#B91C1C', '#F87171', '#78716C', '#A8A29E', '#57534E'];
+const COLOR_PARCIAL = '#F59E0B';
+const COLOR_TOTAL = '#DC2626';
+
+const tooltipEstilo = {
+  borderRadius: 10,
+  border: '1px solid #E6E6E6',
+  fontSize: 12,
+};
 
 const ICONS_TERREMOTO = {
   enGestion: FaPhoneAlt,
@@ -131,6 +156,119 @@ function MetricCardTerremoto({ icon: Icon, cantidad, descripcion, desglose = [] 
   );
 }
 
+function GraficaBarrasComparativo({ filas = [], labelAyer = 'Últ. act.', labelHoy = 'Hoy' }) {
+  const data = useMemo(
+    () =>
+      (filas || []).map((f) => ({
+        name: f.labelCorto || f.label,
+        ayer: Number(f.ayer) || 0,
+        hoy: Number(f.hoy) || 0,
+      })),
+    [filas]
+  );
+
+  if (!data.length) return null;
+
+  return (
+    <div className="mt-4 h-56 w-full min-w-0 print:hidden">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 10 }}
+            interval={0}
+            angle={-28}
+            textAnchor="end"
+            height={56}
+          />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={36} />
+          <Tooltip contentStyle={tooltipEstilo} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar dataKey="ayer" name={labelAyer} fill={COLOR_AYER} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="hoy" name={labelHoy} fill={COLOR_HOY} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function GraficaBarrasSimple({ filas = [], valorKey = 'cantidad', colors = PALETA_FENIX }) {
+  const data = useMemo(
+    () =>
+      (filas || []).map((f) => ({
+        name: f.labelCorto || f.label,
+        valor: Number(f[valorKey]) || 0,
+      })),
+    [filas, valorKey]
+  );
+
+  if (!data.length) return null;
+
+  return (
+    <div className="mt-4 h-52 w-full min-w-0 print:hidden">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.25} horizontal={false} />
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+          <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
+          <Tooltip contentStyle={tooltipEstilo} />
+          <Bar dataKey="valor" name="Cantidad" radius={[0, 6, 6, 0]}>
+            {data.map((_, i) => (
+              <Cell key={data[i].name} fill={colors[i % colors.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function GraficaDonutPerdidas({ filas = [] }) {
+  const data = useMemo(
+    () =>
+      (filas || [])
+        .map((f) => ({
+          name: f.label,
+          value: Number(f.cantidad) || 0,
+          fill: f.id === 'total' ? COLOR_TOTAL : COLOR_PARCIAL,
+        }))
+        .filter((d) => d.value > 0),
+    [filas]
+  );
+
+  const total = data.reduce((a, d) => a + d.value, 0);
+
+  return (
+    <div className="mt-4 flex h-52 w-full min-w-0 flex-col items-center justify-center print:hidden">
+      {total === 0 ? (
+        <p className="text-sm text-gray-400">Sin pérdidas clasificadas</p>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={48}
+              outerRadius={72}
+              paddingAngle={2}
+            >
+              {data.map((d) => (
+                <Cell key={d.name} fill={d.fill} />
+              ))}
+            </Pie>
+            <Tooltip contentStyle={tooltipEstilo} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+          </PieChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
 function TablaComparativoEstados({
   titulo,
   colEstado,
@@ -152,74 +290,86 @@ function TablaComparativoEstados({
       <h2 className="font-heading text-xl font-bold tracking-wide text-gray-900 dark:text-white">
         {titulo}
       </h2>
-      <div className="mt-4 overflow-x-auto">
-        <table className="min-w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                {colEstado}
-              </th>
-              <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-center font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
-                {colAyer}
-                {etiquetaAyer ? (
-                  <div className="text-[11px] font-normal text-gray-500">{etiquetaAyer}</div>
-                ) : null}
-              </th>
-              <th className="border border-red-100 bg-red-50 px-3 py-2 text-center font-semibold text-fenix-primario dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
-                {colVariacion}
-              </th>
-              <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white dark:border-red-700 dark:bg-red-700">
-                {colHoy}
-                {etiquetaHoy ? (
-                  <div className="text-[11px] font-normal text-red-100">{etiquetaHoy}</div>
-                ) : null}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((fila) => {
-              const Icon = icons[fila.id] || FaFileAlt;
-              const pctAyer = totalAyer ? Math.round(((Number(fila.ayer) || 0) / totalAyer) * 1000) / 10 : 0;
-              const pctHoy = totalHoy ? Math.round(((Number(fila.hoy) || 0) / totalHoy) * 1000) / 10 : 0;
-              return (
-                <tr key={fila.id}>
-                  <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
-                    <span className="inline-flex items-center gap-2">
-                      <Icon className="text-fenix-primario" />
-                      {fila.label}
-                    </span>
-                  </td>
-                  <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
-                    {fila.ayer}{' '}
-                    <span className="text-[11px] text-gray-400">({pctAyer}%)</span>
-                  </td>
-                  <td className="border border-red-50 bg-red-50/40 px-3 py-2 text-center dark:border-red-950 dark:bg-red-950/20">
-                    <VariacionCell
-                      valor={fila.avance}
-                      maloSiSube={maloSiSubeIds.includes(fila.id)}
-                    />
-                  </td>
-                  <td className="border border-red-100 bg-red-50/70 px-3 py-2 text-center tabular-nums font-semibold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
-                    {fila.hoy}{' '}
-                    <span className="text-[11px] font-normal text-fenix-primario">({pctHoy}%)</span>
-                  </td>
-                </tr>
-              );
-            })}
-            <tr className="bg-gray-50 font-bold dark:bg-gray-900">
-              <td className="border border-gray-200 px-3 py-2 dark:border-gray-700">TOTAL</td>
-              <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
-                {totalAyer}
-              </td>
-              <td className="border border-red-50 px-3 py-2 text-center dark:border-red-950">
-                <VariacionCell valor={variacionTotal} />
-              </td>
-              <td className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center tabular-nums text-white dark:border-red-700 dark:bg-red-700">
-                {totalHoy}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div className="mt-4 grid gap-4 lg:grid-cols-5">
+        <div className="overflow-x-auto lg:col-span-3">
+          <table className="min-w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  {colEstado}
+                </th>
+                <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-center font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                  {colAyer}
+                  {etiquetaAyer ? (
+                    <div className="text-[11px] font-normal text-gray-500">{etiquetaAyer}</div>
+                  ) : null}
+                </th>
+                <th className="border border-red-100 bg-red-50 px-3 py-2 text-center font-semibold text-fenix-primario dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                  {colVariacion}
+                </th>
+                <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white dark:border-red-700 dark:bg-red-700">
+                  {colHoy}
+                  {etiquetaHoy ? (
+                    <div className="text-[11px] font-normal text-red-100">{etiquetaHoy}</div>
+                  ) : null}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila) => {
+                const Icon = icons[fila.id] || FaFileAlt;
+                const pctAyer = totalAyer
+                  ? Math.round(((Number(fila.ayer) || 0) / totalAyer) * 1000) / 10
+                  : 0;
+                const pctHoy = totalHoy
+                  ? Math.round(((Number(fila.hoy) || 0) / totalHoy) * 1000) / 10
+                  : 0;
+                return (
+                  <tr key={fila.id}>
+                    <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
+                      <span className="inline-flex items-center gap-2">
+                        <Icon className="text-fenix-primario" />
+                        {fila.label}
+                      </span>
+                    </td>
+                    <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
+                      {fila.ayer}{' '}
+                      <span className="text-[11px] text-gray-400">({pctAyer}%)</span>
+                    </td>
+                    <td className="border border-red-50 bg-red-50/40 px-3 py-2 text-center dark:border-red-950 dark:bg-red-950/20">
+                      <VariacionCell
+                        valor={fila.avance}
+                        maloSiSube={maloSiSubeIds.includes(fila.id)}
+                      />
+                    </td>
+                    <td className="border border-red-100 bg-red-50/70 px-3 py-2 text-center tabular-nums font-semibold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
+                      {fila.hoy}{' '}
+                      <span className="text-[11px] font-normal text-fenix-primario">({pctHoy}%)</span>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-gray-50 font-bold dark:bg-gray-900">
+                <td className="border border-gray-200 px-3 py-2 dark:border-gray-700">TOTAL</td>
+                <td className="border border-gray-200 px-3 py-2 text-center tabular-nums dark:border-gray-700">
+                  {totalAyer}
+                </td>
+                <td className="border border-red-50 px-3 py-2 text-center dark:border-red-950">
+                  <VariacionCell valor={variacionTotal} />
+                </td>
+                <td className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center tabular-nums text-white dark:border-red-700 dark:bg-red-700">
+                  {totalHoy}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="rounded-xl border border-red-50 bg-red-50/30 p-3 dark:border-red-950 dark:bg-red-950/20 lg:col-span-2">
+          <p className="mb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-fenix-primario">
+            Comparativo visual
+          </p>
+          <GraficaBarrasComparativo filas={filas} labelAyer={colAyer} labelHoy={colHoy} />
+        </div>
       </div>
     </section>
   );
@@ -233,6 +383,7 @@ function TablaResultadoCantidad({
   filas = [],
   icons = {},
   iconClassById = {},
+  chart = 'bars',
 }) {
   return (
     <section className="rounded-2xl border border-fenix-borde bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-950 print:break-inside-avoid">
@@ -242,38 +393,50 @@ function TablaResultadoCantidad({
       {subtitulo ? (
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitulo}</p>
       ) : null}
-      <div className="mt-4 overflow-x-auto">
-        <table className="min-w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
-                {colResultado}
-              </th>
-              <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white">
-                {colCantidad}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((fila) => {
-              const Icon = icons[fila.id] || FaFileAlt;
-              const iconClass = iconClassById[fila.id] || 'text-fenix-primario';
-              return (
-                <tr key={fila.id}>
-                  <td className="border border-gray-200 px-3 py-2.5 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
-                    <span className="inline-flex items-center gap-2">
-                      <Icon className={iconClass} />
-                      {fila.label}
-                    </span>
-                  </td>
-                  <td className="border border-red-100 bg-red-50/50 px-3 py-2.5 text-center tabular-nums text-lg font-bold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
-                    {fila.cantidad}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="mt-4 grid gap-4 lg:grid-cols-5">
+        <div className="overflow-x-auto lg:col-span-3">
+          <table className="min-w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-gray-200 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                  {colResultado}
+                </th>
+                <th className="border border-fenix-primario bg-fenix-primario px-3 py-2 text-center font-semibold text-white">
+                  {colCantidad}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila) => {
+                const Icon = icons[fila.id] || FaFileAlt;
+                const iconClass = iconClassById[fila.id] || 'text-fenix-primario';
+                return (
+                  <tr key={fila.id}>
+                    <td className="border border-gray-200 px-3 py-2.5 font-medium text-gray-800 dark:border-gray-700 dark:text-gray-100">
+                      <span className="inline-flex items-center gap-2">
+                        <Icon className={iconClass} />
+                        {fila.label}
+                      </span>
+                    </td>
+                    <td className="border border-red-100 bg-red-50/50 px-3 py-2.5 text-center tabular-nums text-lg font-bold text-gray-900 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100">
+                      {fila.cantidad}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="rounded-xl border border-red-50 bg-red-50/30 p-3 dark:border-red-950 dark:bg-red-950/20 lg:col-span-2">
+          <p className="mb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-fenix-primario">
+            Vista gráfica
+          </p>
+          {chart === 'donut' ? (
+            <GraficaDonutPerdidas filas={filas} />
+          ) : (
+            <GraficaBarrasSimple filas={filas} />
+          )}
+        </div>
       </div>
     </section>
   );
@@ -457,6 +620,18 @@ export default function BoletinDiarioSegurosAlfa() {
               );
             })}
           </div>
+          <div className="mt-4 rounded-xl border border-red-50 bg-red-50/30 p-3 dark:border-red-950 dark:bg-red-950/20 print:hidden">
+            <p className="mb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-fenix-primario">
+              Distribución visual · clasificación actual
+            </p>
+            <GraficaBarrasSimple
+              filas={(gestionTerremoto.filas || []).map((f) => ({
+                ...f,
+                label: f.labelCorto || f.label,
+                cantidad: f.cantidad,
+              }))}
+            />
+          </div>
         </section>
 
         {/* —— Mismo formato del comparativo, ejes exactos AI / AJ —— */}
@@ -511,6 +686,7 @@ export default function BoletinDiarioSegurosAlfa() {
             parcial: 'text-amber-400',
             total: 'text-fenix-error',
           }}
+          chart="donut"
         />
 
         <p className="print:hidden text-center text-xs text-gray-400">
