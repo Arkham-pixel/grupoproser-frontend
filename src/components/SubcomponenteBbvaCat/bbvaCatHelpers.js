@@ -828,7 +828,7 @@ export const FORM_VACIO_BBVA_CAT = {
   canalRadicacion: '',
   ciudad: '',
   departamento: '',
-  fechaSiniestro: '',
+  fechaSiniestro: '2026-08-10',
   fechaInicioPoliza: '',
   fechaFinPoliza: '',
   valorAseguradoInmueble: '',

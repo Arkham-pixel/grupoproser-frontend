@@ -260,18 +260,22 @@ export function liquidacionCatastroficoDefaultBbvaCat(caso = {}, tipoLiquidador 
 export function encabezadoDesdecasoBbvaCat(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   return {
-    tomador: c.tomador || '',
+    tomador: c.tomador || c.asegurado || '',
     asegurado: c.asegurado || c.informacionContacto || '',
     poliza: c.numeroPoliza || '',
     tipoPoliza: c.tipoPoliza || '',
     credito: c.numeroCredito || '',
-    siniestro: c.siniestro || '',
+    siniestro: c.siniestro || c.zc || '',
     consecutivo: c.consecutivo || '',
     identificacion: c.identificacion || '',
     tipoIdentificacion: c.tipoIdentificacion || '',
     causa: c.causa || '',
-    fechaSiniestro: fechaInput(c.fechaSiniestro),
-    direccion: c.direccionPredio || '',
+    fechaSiniestro: fechaInput(c.fechaSiniestro) || '2026-08-10',
+    /** CAT: direccionPredio; listado histórico: observaciones */
+    direccion: c.direccionPredio || c.observaciones || '',
+    correo: c.correo || c.correoAsegurado || '',
+    celular: c.celular || c.telefonoAsegurado || '',
+    telefono: c.celular || c.telefonoAsegurado || '',
     ciudad: c.ciudad || '',
     departamento: c.departamento || '',
     cobertura: c.cobertura || '',
@@ -290,15 +294,15 @@ export function encabezadoDesdecasoBbvaCat(caso = {}) {
 /** Prefill portada NSR desde caso BBVA CAT */
 export function prefillNsrDesdecasoBbvaCat(caso = {}, encabezado = {}) {
   return {
-    fechaInspeccion: fechaInput(caso.fechaInspeccion),
+    fechaInspeccion: fechaInput(caso.fechaVisita || caso.fechaInspeccion),
     asegurado: encabezado.asegurado || caso.asegurado || caso.informacionContacto || '',
     poliza: encabezado.poliza || caso.numeroPoliza || '',
     municipio: encabezado.ciudad || caso.ciudad || '',
     ciudad: encabezado.ciudad || caso.ciudad || '',
-    direccion: encabezado.direccion || caso.direccionPredio || '',
-    direccionRiesgo: encabezado.direccion || caso.direccionPredio || '',
-    fechaSiniestro: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
-    fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
+    direccion: encabezado.direccion || caso.direccionPredio || caso.observaciones || '',
+    direccionRiesgo: encabezado.direccion || caso.direccionPredio || caso.observaciones || '',
+    fechaSiniestro: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro) || '2026-08-10',
+    fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro) || '2026-08-10',
     inspector: caso.ajustador || '',
     tipoEvento: encabezado.evento || caso.cobertura || 'TERREMOTO',
     ...camposValorAseguradoParaNsr(caso, encabezado),
@@ -318,7 +322,7 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
     identificacion: '',
     tipoIdentificacion: '',
     causa: '',
-    fechaSiniestro: '',
+    fechaSiniestro: '2026-08-10',
     direccion: '',
     ciudad: '',
     departamento: '',
@@ -448,7 +452,16 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
       : `Aplica el mayor de SMMLV / % / USD / pesos (${tipos.tipoAplicadoLabel || 'SMMLV'})`,
     subtotalContenidos: resumen.totalContenidos,
     subtotalEdificios: usaCotiz ? cotiz.subTotal : excel.subTotal,
-    diferencia: 0,
+    diferencia: Math.max(
+      0,
+      Math.round(
+        ((parsearNumero(liquidador.valorReclamadoCaso) ||
+          (montoCotiz > 0 ? montoCotiz : excel.sumaIndemnizable) ||
+          0) -
+          totalIndemnizar) *
+          100
+      ) / 100
+    ),
     usaSMMLV: tipos.tipoAplicado === 'smmlv',
     totalOtrosAmparos,
     otrosAmparos: diagrama.otrosAmparos || [],
@@ -470,7 +483,8 @@ export function itemsPlanosBbvaCat(liquidador = {}) {
       cantidad: it.cantidad,
       valorUnitario: it.valorUnitario,
     }));
-  const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+  const cotiz = calcularLiquidacionCotizacionPdfBbvaCat(liquidador);
+  const monto = cotiz.monto || montoCotizacionPdf(liquidador.cotizacionPdf);
   if (!(monto > 0)) return nsr;
   const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
   return [
@@ -480,10 +494,35 @@ export function itemsPlanosBbvaCat(liquidador = {}) {
         ? `Cotización del asegurado (${nombre})`
         : 'Cotización del asegurado (PDF)',
       valorReclamado: monto,
-      valorIndemnizable: '',
+      valorIndemnizable: cotiz.valorAIndemnizar ?? '',
     },
     ...nsr,
   ];
+}
+
+/** True si el liquidador NSR-10 / detalle BBVA tiene ítems reales (no solo PDF). */
+export function liquidadorNsrFormatoDiligenciadoBbvaCat(liquidador = {}, totales = {}) {
+  const detalle = Array.isArray(totales?.formatoExcel?.detalle)
+    ? totales.formatoExcel.detalle
+    : Array.isArray(liquidador?.detalleLiquidacionCat)
+      ? liquidador.detalleLiquidacionCat
+      : [];
+  if (detalle.some((it) => String(it?.descripcion || '').trim())) return true;
+  const pres = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
+  if (
+    Array.isArray(pres) &&
+    pres.some((it) => String(it?.actividad || it?.componente || '').trim())
+  ) {
+    return true;
+  }
+  const cont = liquidador?.evaluacionSismicaNSR10?.contenidos?.items;
+  if (
+    Array.isArray(cont) &&
+    cont.some((it) => String(it?.articulo || it?.categoria || '').trim())
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function mapcasoBbvaCatALiquidador(caso = {}) {

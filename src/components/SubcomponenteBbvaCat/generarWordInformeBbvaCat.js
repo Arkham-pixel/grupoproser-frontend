@@ -27,6 +27,7 @@ import {
   itemsPlanosBbvaCat,
   mapcasoBbvaCatALiquidador,
   parsearNumero,
+  liquidadorNsrFormatoDiligenciadoBbvaCat,
 } from './liquidadorBbvaCatHelpers.js';
 import { urlDescargaArchivoBbvaCat } from '../../services/bbvaCatService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
@@ -103,6 +104,31 @@ const fmtFechaCorta = (value) => {
   } catch {
     return String(value);
   }
+};
+
+/** Evento CAT terremoto 10-ago-2026: fecha de siniestro/ocurrencia por defecto. */
+const FECHA_SINIESTRO_BBVA_CAT_DEFAULT = '2026-08-10';
+
+const fechaSiniestroBbvaCat = (caso = {}, enc = {}) =>
+  caso.fechaSiniestro || enc.fechaSiniestro || FECHA_SINIESTRO_BBVA_CAT_DEFAULT;
+
+/** En gestionar la inspección operativa es fechaVisita (Calendly); fechaInspeccion como respaldo. */
+const fechaInspeccionCasoBbva = (caso = {}) =>
+  caso.fechaVisita || caso.fechaInspeccion || null;
+
+const valorGlobalDesdeLiquidador = (enc = {}, caso = {}, totales = {}) => {
+  const excelVg = totales?.formatoExcel?.valorGlobal;
+  const n = (v) => {
+    const x = Number(v);
+    return Number.isFinite(x) && x > 0 ? x : 0;
+  };
+  return (
+    n(enc.valorGlobal) ||
+    n(enc.valorAseguradoInmueble) ||
+    n(excelVg) ||
+    n(caso.valorAseguradoInmueble) ||
+    0
+  );
 };
 
 const fmtFecha = (value) => {
@@ -551,38 +577,44 @@ const campoFila = (label, value, opts = {}) =>
     ],
   });
 
+/** Contacto / predio: CAT usa correo|celular|direccionPredio; listado usa *Asegurado|observaciones. */
+const correoCasoBbva = (caso = {}, enc = {}) =>
+  txt(caso.correo || caso.correoAsegurado || enc.correo || enc.correoAsegurado);
+const celularCasoBbva = (caso = {}, enc = {}) =>
+  txt(
+    caso.celular ||
+      caso.telefonoAsegurado ||
+      enc.celular ||
+      enc.telefono ||
+      enc.telefonoAsegurado
+  );
+const direccionCasoBbva = (caso = {}, enc = {}) =>
+  txt(caso.direccionPredio || enc.direccion || caso.observaciones);
+
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
 function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {} } = {}) {
-  const vigencia =
-    caso.fechaInicioPoliza || caso.fechaFinPoliza
-      ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
-      : '—';
-
   const filas = [
     ['REPORTE No', 'Único — BBVA CAT'],
     ['CONSECUTIVO', txt(caso.consecutivo)],
-    ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
-    ['TOMADOR', txt(caso.tomador || enc.tomador)],
-    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
-    ['CORREO ELECTRÓNICO', txt(caso.correo)],
-    ['CELULAR', txt(caso.celular)],
+    ['SINIESTRO No', txt(caso.siniestro || enc.siniestro || caso.zc || enc.zc)],
+    ['TOMADOR', txt(caso.tomador || enc.tomador || caso.asegurado || enc.asegurado)],
+    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.asegurado || caso.informacionContacto)],
+    ['CELULAR', celularCasoBbva(caso, enc)],
     ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
     ['TIPO IDENTIFICACIÓN', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)],
     ['N° PÓLIZA', txt(caso.numeroPoliza || enc.poliza)],
     ['TIPO PÓLIZA', txt(caso.tipoPoliza || enc.tipoPoliza)],
     ['CAUSA', txt(caso.causa || enc.causa)],
-    ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
-    ['VIGENCIA', vigencia],
-    ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
-    ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
+    ['VALOR GLOBAL', money(valorGlobalDesdeLiquidador(enc, caso, totales))],
+    ['DIRECCIÓN RIESGO ASEGURADO', direccionCasoBbva(caso, enc)],
     [
       'CIUDAD / DEPARTAMENTO',
       `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`,
     ],
-    ['FECHA DE OCURRENCIA', fmtFechaCorta(caso.fechaSiniestro || enc.fechaSiniestro)],
-    ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
+    ['FECHA DE OCURRENCIA', fmtFechaCorta(fechaSiniestroBbvaCat(caso, enc))],
+    ['FECHA DE INSPECCIÓN', fmtFechaCorta(fechaInspeccionCasoBbva(caso))],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
-    ['AJUSTADOR', txt(info.ajustadorNombre)],
+    ['AJUSTADOR', txt(info.ajustadorNombre || caso.ajustador || enc.ajustador)],
     ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
   ];
 
@@ -1081,17 +1113,31 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
     cotizacionesIncluidas += 1;
     const natW = Number(archivo.width) || 0;
     const natH = Number(archivo.height) || 0;
-    let width = 500;
-    let height = 680;
+    /** Portrait: evitar imagen a página completa que deja el pie solo en hoja en blanco. */
+    const maxW = 420;
+    const maxH = 520;
+    let width = maxW;
+    let height = maxH;
     if (natW > 0 && natH > 0) {
-      const scale = Math.min(500 / natW, 680 / natH, 1);
-      width = Math.max(120, Math.round(natW * scale));
-      height = Math.max(160, Math.round(natH * scale));
+      const scale = Math.min(maxW / natW, maxH / natH, 1);
+      width = Math.max(100, Math.round(natW * scale));
+      height = Math.max(120, Math.round(natH * scale));
     }
+    const pie =
+      archivo.descripcion ||
+      archivo.nombreOriginal ||
+      archivo.nombre ||
+      `Cotización · página ${cotizacionesIncluidas}`;
     cotizacionParrafos.push(
+      p(pie, {
+        alignment: AlignmentType.CENTER,
+        size: SIZE_12,
+        before: 80,
+        after: 40,
+      }),
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 40 },
+        spacing: { before: 0, after: 120 },
         children: [
           new ImageRun({
             data: img.bytes,
@@ -1099,24 +1145,18 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
             type: img.type,
           }),
         ],
-      }),
-      p(
-        archivo.descripcion ||
-          archivo.nombreOriginal ||
-          archivo.nombre ||
-          `Cotización · página ${cotizacionesIncluidas}`,
-        {
-          alignment: AlignmentType.CENTER,
-          size: SIZE_12,
-          after: 120,
-        }
-      )
+      })
     );
   }
   const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
   const cotizLiq = totales.liquidacionCotizacion || {};
+  const tieneCotizacionPdf =
+    Boolean(cotizLiq.activo) ||
+    Number(totales.cotizacionMonto) > 0 ||
+    cotizacionParrafos.length > 0;
+  const tieneLiquidadorNsr = liquidadorNsrFormatoDiligenciadoBbvaCat(liq, totales);
   const filasLiqPdf = [];
-  if (cotizLiq.activo || Number(totales.cotizacionMonto) > 0) {
+  if (tieneCotizacionPdf) {
     filasLiqPdf.push(
       campoFila('Monto cotización PDF', money(cotizLiq.monto || totales.cotizacionMonto), {
         labelW: 5000,
@@ -1137,26 +1177,27 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
       );
     }
     filasLiqPdf.push(
-      campoFila('Deducible de la cotización (independiente)', money(cotizLiq.deducibleAplicable), {
+      campoFila('Deducible', money(cotizLiq.deducibleAplicable), {
         labelW: 5000,
         valueW: 5000,
       }),
-      campoFila('Valor a indemnizar (cotización)', money(cotizLiq.valorAIndemnizar), {
+      campoFila('Valor a indemnizar', money(cotizLiq.valorAIndemnizar), {
         labelW: 5000,
         valueW: 5000,
         boldValue: true,
       })
     );
   }
+  /** Cotización aparte solo si también hay liquidador NSR/formato (si no, va en la §4). */
   const seccionCotizacion =
-    cotizacionParrafos.length || Number(totales.cotizacionMonto) > 0
+    tieneCotizacionPdf && tieneLiquidadorNsr
       ? [
-          heading('Cotización de reparación'),
+          heading('Cotización de reparación (soporte PDF)'),
           p(
             cotizacionesIncluidas
               ? `Soporte de la cotización presentada por el asegurado (${cotizacionesIncluidas} página(s)).${
                   Number(totales.cotizacionMonto) > 0 ? ` Monto indicado: ${montoCotizTxt}.` : ''
-                } El deducible y el AIU de esta cotización son independientes del formato Excel.`
+                } Liquidación del PDF independiente del formato BBVA / NSR-10.`
               : `Cotización presentada por el asegurado.${
                   Number(totales.cotizacionMonto) > 0 ? ` Monto indicado: ${montoCotizTxt}.` : ''
                 }`,
@@ -1206,8 +1247,42 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
     }),
   ];
 
+  const cotizResumen = totales.liquidacionCotizacion || {};
+  const deducibleMostrar =
+    Number(totales.deducibleAplicado) ||
+    Number(cotizResumen.deducibleAplicable) ||
+    Number(totales.formatoExcel?.deducibleAplicable) ||
+    0;
+  const textoDeducible =
+    totales.deducibleTexto ||
+    cotizResumen.deducibleTexto ||
+    'Deducible aplicado (mayor entre SMMLV / % / USD / pesos)';
+  const totalReclamadoMostrar =
+    Number(totales.totalReclamado) ||
+    Number(cotizResumen.monto) ||
+    Number(totales.cotizacionMonto) ||
+    0;
+  const totalIndemnizarMostrar =
+    Number(totales.totalIndemnizable) ||
+    Number(cotizResumen.valorAIndemnizar) ||
+    0;
+  const diferenciaMostrar = Math.max(
+    0,
+    Math.round((totalReclamadoMostrar - totalIndemnizarMostrar) * 100) / 100
+  );
+
   if (items.length) {
     items.forEach((it, idx) => {
+      const esCotiz = String(it.id || '') === 'cotizacion-pdf';
+      const reclFila = esCotiz
+        ? Number(it.valorReclamado) > 0
+          ? it.valorReclamado
+          : totalReclamadoMostrar
+        : it.valorReclamado;
+      /** Con fila de deducible aparte: en cotización el “indemnizable” de la fila es el monto base. */
+      const indemFila = esCotiz
+        ? reclFila
+        : it.valorIndemnizable;
       filasCuadro.push(
         new TableRow({
           children: [
@@ -1217,12 +1292,12 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
               cuadro: true,
             }),
             cell(it.concepto || '—', { width: 4000, cuadro: true }),
-            cell(money(it.valorReclamado), {
+            cell(money(reclFila), {
               width: 2200,
               alignment: AlignmentType.RIGHT,
               cuadro: true,
             }),
-            cell(money(it.valorIndemnizable), {
+            cell(money(indemFila), {
               width: 2200,
               alignment: AlignmentType.RIGHT,
               cuadro: true,
@@ -1244,18 +1319,35 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
     );
   }
 
+  if (deducibleMostrar > 0) {
+    filasCuadro.push(
+      new TableRow({
+        children: [
+          cell('', { width: 600, cuadro: true }),
+          cell(`(−) Deducible — ${textoDeducible}`, { width: 4000, cuadro: true }),
+          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
+          cell(money(deducibleMostrar), {
+            width: 2200,
+            alignment: AlignmentType.RIGHT,
+            cuadro: true,
+          }),
+        ],
+      })
+    );
+  }
+
   filasCuadro.push(
     new TableRow({
       children: [
         cell('', { width: 600, cuadro: true }),
         cell('TOTALES', { bold: true, width: 4000, cuadro: true }),
-        cell(money(totales.totalReclamado), {
+        cell(money(totalReclamadoMostrar), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
         }),
-        cell(money(totales.totalIndemnizable), {
+        cell(money(totalIndemnizarMostrar), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
@@ -1264,6 +1356,25 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
       ],
     })
   );
+
+  const explicacionDeducibleParrafos =
+    deducibleMostrar > 0
+      ? [
+          p(
+            `Cálculo: reclamado ${money(totalReclamadoMostrar)} − deducible ${money(deducibleMostrar)} = valor a indemnizar ${money(totalIndemnizarMostrar)}.`,
+            { before: 80, after: 40, size: SIZE_12 }
+          ),
+          p(`Diferencia reclamado − indemnizable: ${money(diferenciaMostrar)}`, {
+            before: 0,
+            size: SIZE_12,
+          }),
+        ]
+      : [
+          p(`Diferencia reclamado − indemnizable: ${money(diferenciaMostrar)}`, {
+            before: 100,
+            size: SIZE_12,
+          }),
+        ];
 
   const infoEventoParrafos = String(info.infoEvento || '')
     .split(/\n+/)
@@ -1306,26 +1417,21 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
   const header = await crearEncabezadoBbvaCat({ caso, informe: info });
 
   const polizaRows = [
-    campoFila('Tomador', txt(caso.tomador || enc.tomador)),
+    campoFila('Tomador', txt(caso.tomador || enc.tomador || caso.asegurado || enc.asegurado)),
     campoFila('Identificación', txt(caso.identificacion || enc.identificacion)),
     campoFila('Tipo de identificación', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)),
     campoFila('N° póliza', txt(caso.numeroPoliza || enc.poliza)),
     campoFila('Tipo de póliza', txt(caso.tipoPoliza || enc.tipoPoliza)),
     campoFila('Causa', txt(caso.causa || enc.causa)),
-    campoFila('N° crédito', txt(caso.numeroCredito || enc.credito)),
-    campoFila('Cobertura / evento', txt(caso.cobertura || enc.cobertura || enc.evento)),
-    campoFila('Estado pago primas', txt(caso.estadoPagoPrimas)),
-    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza)),
-    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza)),
-    campoFila('Valor asegurado inmueble', money(caso.valorAseguradoInmueble)),
-    campoFila('Valor asegurado contenidos', money(caso.valorAseguradoContenidos)),
-    campoFila('Dirección predio', txt(caso.direccionPredio || enc.direccion)),
+    campoFila('Valor global', money(valorGlobalDesdeLiquidador(enc, caso, totales))),
+    campoFila('Dirección predio', direccionCasoBbva(caso, enc)),
+    campoFila('Celular', celularCasoBbva(caso, enc)),
     campoFila(
       'Ciudad / Departamento',
       `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`
     ),
-    campoFila('Fecha siniestro', fmtFecha(caso.fechaSiniestro || enc.fechaSiniestro)),
-    campoFila('Fecha inspección', fmtFecha(caso.fechaInspeccion)),
+    campoFila('Fecha siniestro', fmtFechaCorta(fechaSiniestroBbvaCat(caso, enc))),
+    campoFila('Fecha inspección', fmtFechaCorta(fechaInspeccionCasoBbva(caso))),
   ];
 
   const excelTot = totales.formatoExcel || {};
@@ -1454,9 +1560,19 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
   }
 
   const resumenNsrFilas = [
-    ['SUBTOTAL (COSTO DIRECTO)', money(totales.subtotal)],
-    [`AIU (${aiuPct}%)`, money(totales.aiu)],
-    ['TOTAL ESTIMADO', money(totales.totalDanios)],
+    ['SUBTOTAL (COSTO DIRECTO)', money(totales.presupuesto?.subtotal ?? totales.presupuesto?.subTotal ?? 0)],
+    [
+      `AIU (${Math.round((totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100)}%)`,
+      money(totales.presupuesto?.aiu ?? 0),
+    ],
+    [
+      'TOTAL ESTIMADO',
+      money(
+        totales.presupuesto?.total ??
+          totales.totalPresupuesto ??
+          0
+      ),
+    ],
   ];
   resumenNsrFilas.forEach(([lab, val]) => {
     filasNsr.push(
@@ -1561,57 +1677,119 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
           }),
         ],
       },
-      {
-        properties: { page: pageLandscape },
-        headers: { default: header },
-        children: [
-          heading('4. Liquidación de indemnización (formato BBVA)'),
-          p(
-            'Formato oficial LIQUIDACIÓN DE INDEMNIZACION (deudores / leasing): ramos, cuatro tipos de deducible (SMMLV, porcentaje, dólares y pesos; se aplica el mayor) y detalle de bienes.',
-            { after: 120 }
-          ),
-          construirTablaFormatoExcelBbva({ liquidador: liq, totales }),
-          ...letrerosLiquidacion,
-          p('Presupuesto NSR-10 (apoyo técnico)', {
-            bold: true,
-            before: 180,
-            after: 80,
-            size: SIZE_12,
-          }),
-          tablaLiquidadorCompleto,
-          p('Contenidos del inmueble (bienes muebles)', {
-            bold: true,
-            before: 180,
-            after: 80,
-            size: SIZE_12,
-          }),
-          p(
-            contenidosNsr.tipoInmueble
-              ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
-              : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
-            { after: 100 }
-          ),
-          tablaContenidos,
-          p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-          new Table({
-            width: { size: 10000, type: WidthType.DXA },
-            columnWidths: [5000, 5000],
-            borders: bordersCuadro,
-            rows: liquidacionResumen,
-          }),
-          ...(liq.observaciones
-            ? [
-                p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
-                p(liq.observaciones, { after: 80 }),
-              ]
-            : []),
-        ],
-      },
+      ...(tieneLiquidadorNsr
+        ? [
+            {
+              properties: { page: pageLandscape },
+              headers: { default: header },
+              children: [
+                heading('4. Liquidación de indemnización (formato BBVA)'),
+                p(
+                  'Formato oficial LIQUIDACIÓN DE INDEMNIZACION (deudores / leasing): ramos, cuatro tipos de deducible (SMMLV, porcentaje, dólares y pesos; se aplica el mayor) y detalle de bienes.',
+                  { after: 120 }
+                ),
+                construirTablaFormatoExcelBbva({ liquidador: liq, totales }),
+                ...letrerosLiquidacion,
+                p('Presupuesto NSR-10 (apoyo técnico)', {
+                  bold: true,
+                  before: 180,
+                  after: 80,
+                  size: SIZE_12,
+                }),
+                tablaLiquidadorCompleto,
+                p('Contenidos del inmueble (bienes muebles)', {
+                  bold: true,
+                  before: 180,
+                  after: 80,
+                  size: SIZE_12,
+                }),
+                p(
+                  contenidosNsr.tipoInmueble
+                    ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
+                    : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
+                  { after: 100 }
+                ),
+                tablaContenidos,
+                p('Resumen de liquidación', {
+                  bold: true,
+                  before: 180,
+                  after: 80,
+                  size: SIZE_12,
+                }),
+                new Table({
+                  width: { size: 10000, type: WidthType.DXA },
+                  columnWidths: [5000, 5000],
+                  borders: bordersCuadro,
+                  rows: liquidacionResumen,
+                }),
+                ...(liq.observaciones
+                  ? [
+                      p('Observaciones del liquidador:', {
+                        bold: true,
+                        before: 120,
+                        after: 40,
+                      }),
+                      p(liq.observaciones, { after: 80 }),
+                    ]
+                  : []),
+              ],
+            },
+          ]
+        : []),
       {
         properties: { page: pagePortrait },
         headers: { default: header },
         children: [
-          ...seccionCotizacion,
+          ...(tieneLiquidadorNsr
+            ? seccionCotizacion
+            : tieneCotizacionPdf
+              ? [
+                  heading('4. Liquidación de indemnización (cotización PDF)'),
+                  p(
+                    'Se liquida con la cotización del asegurado (PDF). El formato BBVA / presupuesto NSR-10 no se incluye porque aún no está diligenciado.',
+                    { after: 120 }
+                  ),
+                  ...(filasLiqPdf.length
+                    ? [
+                        new Table({
+                          width: { size: 10000, type: WidthType.DXA },
+                          columnWidths: [5000, 5000],
+                          borders: bordersCuadro,
+                          rows: filasLiqPdf,
+                        }),
+                      ]
+                    : []),
+                  ...letrerosLiquidacion,
+                  ...(cotizacionParrafos.length
+                    ? [
+                        p('Soporte PDF de la cotización', {
+                          bold: true,
+                          before: 180,
+                          after: 80,
+                          size: SIZE_12,
+                        }),
+                        ...cotizacionParrafos,
+                      ]
+                    : []),
+                  ...(liq.observaciones
+                    ? [
+                        p('Observaciones del liquidador:', {
+                          bold: true,
+                          before: 120,
+                          after: 40,
+                        }),
+                        p(liq.observaciones, { after: 80 }),
+                      ]
+                    : []),
+                ]
+              : [
+                  heading('4. Liquidación de indemnización'),
+                  p(
+                    'Pendiente liquidación: cargue la cotización PDF o diligencie el liquidador NSR-10 / formato BBVA.',
+                    { after: 120 }
+                  ),
+                  ...letrerosLiquidacion,
+                ]),
           heading('5. Relación de valores reclamados vs. valores indemnizables'),
           new Table({
             width: { size: 9000, type: WidthType.DXA },
@@ -1619,10 +1797,7 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
             borders: bordersCuadro,
             rows: filasCuadro,
           }),
-          p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
-            before: 100,
-            size: SIZE_12,
-          }),
+          ...explicacionDeducibleParrafos,
 
           heading('6. Inspección fotográfica'),
           p(
