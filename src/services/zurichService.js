@@ -307,6 +307,20 @@ const CAMPOS_CAT_NO_PISAR = [
   'afectacion',
   'gradoAfectacion',
   'checklistCatCompleto',
+  'control_horas',
+  'historialDocs',
+  'envios_facturacion',
+  'ultimo_envio_facturacion',
+  'fcha_control_horas',
+  'fecha_control_horas',
+  'fcha_envio_control_horas',
+  'fecha_envio_control_horas',
+  'fcha_recibido_control_horas',
+  'fecha_recibido_control_horas',
+  'vlorServcios',
+  'valor_servicio',
+  'vlorGastos',
+  'valor_gastos',
 ];
 
 const omitirCampos = (obj, claves) => {
@@ -390,9 +404,13 @@ export const guardarInformeUnicoEnCasoZurich = async ({
 }) => {
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el informe.');
   const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
-  const desglose = desgloseReservaPreliminarZurich(sanitizado);
+  const extrasReserva = {
+    caso: casoBase,
+    liquidador: casoBase.liquidador,
+  };
+  const desglose = desgloseReservaPreliminarZurich(sanitizado, extrasReserva);
   const reservaPerito =
-    desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado);
+    desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado, extrasReserva);
   if (desglose.perdida > 0 || reservaPerito > 0) {
     sanitizado.reservaSugerida = String(reservaPerito);
   }
@@ -411,4 +429,78 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   delete payload.archivos;
 
   return actualizarCasoZurich(casoId, payload);
+};
+
+const bandejaAuthHeaders = () => {
+  const headers = { 'Content-Type': 'application/json', ...authHeaders() };
+  const login = typeof localStorage !== 'undefined' ? localStorage.getItem('login') : '';
+  if (login) headers['X-Usuario-Login'] = login;
+  return { headers, login };
+};
+
+export const obtenerBandejaFacturacionZurich = async (params = {}) => {
+  const qs = new URLSearchParams();
+  const login = params.login ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('login') : '') ?? '';
+  const nombre = params.nombre ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') : '') ?? '';
+  if (login) qs.set('login', login);
+  if (nombre) qs.set('nombre', nombre);
+  if (params.gerente) qs.set('gerente', params.gerente);
+  if (params.tipo) qs.set('tipo', params.tipo);
+  if (params.desde) qs.set('desde', params.desde);
+  if (params.hasta) qs.set('hasta', params.hasta);
+  if (params.q) qs.set('q', params.q);
+  if (params.verTodos) qs.set('verTodos', '1');
+
+  const response = await fetch(`${ZURICH_API_URL}/bandeja-facturacion?${qs.toString()}`, {
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al cargar la bandeja de facturación Zurich');
+  }
+  return data;
+};
+
+async function leerRespuestaBandejaZurich(response, accionPorDefecto) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || accionPorDefecto);
+  }
+  return data;
+}
+
+export const corregirEnvioBandejaFacturacionZurich = async (payload) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const body = JSON.stringify({ ...payload, login });
+  let response = await fetch(`${ZURICH_API_URL}/bandeja-facturacion/envio`, {
+    method: 'PATCH',
+    headers,
+    body,
+  });
+  if (response.status === 404) {
+    response = await fetch(`${ZURICH_API_URL}/bandeja-facturacion/envio/corregir`, {
+      method: 'POST',
+      headers,
+      body,
+    });
+  }
+  return leerRespuestaBandejaZurich(response, 'No se pudo corregir el destinatario');
+};
+
+export const eliminarEnvioBandejaFacturacionZurich = async (payload) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const body = JSON.stringify({ ...payload, login });
+  let response = await fetch(`${ZURICH_API_URL}/bandeja-facturacion/envio`, {
+    method: 'DELETE',
+    headers,
+    body,
+  });
+  if (response.status === 404) {
+    response = await fetch(`${ZURICH_API_URL}/bandeja-facturacion/envio/eliminar`, {
+      method: 'POST',
+      headers,
+      body,
+    });
+  }
+  return leerRespuestaBandejaZurich(response, 'No se pudo quitar el registro');
 };

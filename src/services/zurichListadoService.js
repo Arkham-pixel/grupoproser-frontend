@@ -185,6 +185,10 @@ const omitirMeta = (casoBase = {}) => {
   delete payload.createdAt;
   delete payload.updatedAt;
   delete payload.archivos;
+  delete payload.control_horas;
+  delete payload.historialDocs;
+  delete payload.envios_facturacion;
+  delete payload.ultimo_envio_facturacion;
   return payload;
 };
 
@@ -218,9 +222,13 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
   const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
-  const desglose = desgloseReservaPreliminarZurich(sanitizado);
+  const extrasReserva = {
+    caso: casoBase,
+    liquidador: casoBase.liquidador,
+  };
+  const desglose = desgloseReservaPreliminarZurich(sanitizado, extrasReserva);
   const reservaPerito =
-    desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado);
+    desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado, extrasReserva);
   if (desglose.perdida > 0 || reservaPerito > 0) {
     sanitizado.reservaSugerida = String(reservaPerito);
   }

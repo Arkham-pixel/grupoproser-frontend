@@ -20,8 +20,10 @@ import {
   calcularLiquidacionPrevisora,
   formDataNsrDesdeLiquidadorPrevisora,
   formatearMonto,
+  itemsPlanosPrevisora,
   mapcasoPrevisoraALiquidador,
 } from './liquidadorPrevisoraHelpers.js';
+import { contarItemsPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { descargarFiniquitoPrevisoraWord } from './generarFiniquitoPrevisoraWord.js';
 import { descargarLiquidadorPrevisoraExcel } from './generarLiquidadorPrevisoraExcel.js';
 import { descargarLiquidadorPrevisoraPdf } from './generarLiquidadorPrevisoraPdf.js';
@@ -73,6 +75,9 @@ export default function LiquidadorPrevisora({
     (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
   );
+  const nItemsNsr = contarItemsPresupuestoNsr(liquidador);
+  const itemsNsr = useMemo(() => itemsPlanosPrevisora(liquidador), [liquidador]);
+  const mostrarPresupuestoSinPdf = nItemsNsr > 0 && !tieneCotizacionPdf;
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
@@ -293,11 +298,46 @@ export default function LiquidadorPrevisora({
             }
           />
         </div>
+        {mostrarPresupuestoSinPdf ? (
+          <div className="mt-4 overflow-hidden rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30">
+            <p className="px-4 py-2 text-sm text-amber-950 dark:text-amber-100">
+              {t('previsora.settlement.nsrFilledNoQuote', {
+                count: nItemsNsr,
+                amount: formatearMonto(totales.totalDanios),
+              })}
+            </p>
+            <div className="max-h-64 overflow-auto bg-white dark:bg-gray-950">
+              <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="px-3 py-2">#</th>
+                    <th className="px-3 py-2">{t('previsora.settlement.nsrItemsPreview')}</th>
+                    <th className="px-3 py-2">Cant.</th>
+                    <th className="px-3 py-2">V. unitario</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {itemsNsr.map((it, idx) => (
+                    <tr key={it.id || idx}>
+                      <td className="px-3 py-1.5">{idx + 1}</td>
+                      <td className="px-3 py-1.5">{it.concepto || '—'}</td>
+                      <td className="px-3 py-1.5">{it.cantidad ?? '—'}</td>
+                      <td className="px-3 py-1.5">
+                        $ {formatearMonto(it.valorUnitario ?? it.valorIndemnizable)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
         <div className="mt-4">
           <CotizacionPdfLiquidacion
             i18nPrefix="previsora.settlement"
             value={liquidador.cotizacionPdf}
             onChange={handleCotizacionChange}
+            compactEmpty={mostrarPresupuestoSinPdf}
             casoId={casoPrevisora?._id}
             api={api}
             archivosCaso={casoPrevisora?.archivos || []}
@@ -383,7 +423,7 @@ export default function LiquidadorPrevisora({
           <ChecklistEvaluacionSismicaNSR10
             formData={formDataNsr}
             onInputChange={handleNsrChange}
-            modoLiquidador={embeberEnInforme}
+            modoLiquidador
             recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
             ocultarPresupuestoEscrito={tieneCotizacionPdf}
             totalPresupuestoOverride={

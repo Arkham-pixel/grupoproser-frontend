@@ -46,6 +46,7 @@ import {
   OPCIONES_SI_NO_ZURICH,
   TIPOS_NEGOCIO_HOMOLOGADO_ZURICH,
   construirFormDesdecasoZurich,
+  camposFacturacionZurichDesdeForm,
   campoFechaPorEstadoZurich,
   diasEnEstadoZurich,
   fechaParaInput,
@@ -57,6 +58,9 @@ import {
   ultimaGestionZurich,
 } from './zurichHelpers.js';
 import CampoTomadorZurich from './CampoTomadorZurich.jsx';
+import FacturacionZurichPanel from './FacturacionZurichPanel.jsx';
+import { controlHorasTieneDatos } from '../SubcomponenteCompex/controlHoras/controlHorasUtils.js';
+import { ComplexFormTabs } from '../SubcomponenteCompex/FacturacionHelpers.jsx';
 import ModalImportarExcelZurich, {
   esAdminOSoporteZurich,
 } from './ModalImportarExcelZurich.jsx';
@@ -117,6 +121,8 @@ const FormularioZurich = ({
     ...FORM_VACIO_ZURICH,
     estado: 'CASO NUEVO',
     fechaCasoNuevo: fechaParaInput(new Date()),
+    control_horas: null,
+    historialDocs: [],
   });
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdecasoZurich(initialData) : formNuevoZurich()
@@ -133,6 +139,16 @@ const FormularioZurich = ({
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
+  const [tabActiva, setTabActiva] = useState('datosGenerales');
+  const formTabs = useMemo(() => {
+    const tabs = [
+      { id: 'datosGenerales', label: t('zurich.tabs.datosGenerales') },
+    ];
+    if (!esClienteZurich && !soloInspector) {
+      tabs.push({ id: 'facturacion', label: t('zurich.tabs.facturacion') });
+    }
+    return tabs;
+  }, [t, esClienteZurich, soloInspector]);
   const formKey = esEdicion
     ? `zurich:${origen}:${initialData._id}`
     : `zurich:${origen}:nuevo`;
@@ -358,7 +374,11 @@ const FormularioZurich = ({
         motivoObjecion: form.motivoObjecion ?? '',
         responsableAporteDocumento: form.responsableAporteDocumento ?? '',
         estado: homologarEstadoZurich(form.estado),
+        ...camposFacturacionZurichDesdeForm(form),
       };
+      if (!controlHorasTieneDatos(payload.control_horas)) {
+        delete payload.control_horas;
+      }
       if (!String(payload.identificacion || '').trim()) {
         if (payload.zc) payload.identificacion = String(payload.zc).trim();
         else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
@@ -388,6 +408,10 @@ const FormularioZurich = ({
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     payload.observacionReserva =
       form.observacionReserva != null ? String(form.observacionReserva) : '';
+    Object.assign(payload, camposFacturacionZurichDesdeForm(form));
+    if (!controlHorasTieneDatos(payload.control_horas)) {
+      delete payload.control_horas;
+    }
     delete payload.createdAt;
     delete payload.updatedAt;
     delete payload.__v;
@@ -510,6 +534,10 @@ const FormularioZurich = ({
         </div>
       )}
 
+      <ComplexFormTabs tabs={formTabs} activeId={tabActiva} onChange={setTabActiva} />
+
+      {tabActiva === 'datosGenerales' && (
+      <>
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.sections.listadoCliente')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
@@ -1169,6 +1197,17 @@ const FormularioZurich = ({
       </>
       )}
       </fieldset>
+      </>
+      )}
+
+      {tabActiva === 'facturacion' && !esClienteZurich && !soloInspector && (
+        <FacturacionZurichPanel
+          form={form}
+          setForm={setForm}
+          initialData={initialData}
+          origen={origen}
+        />
+      )}
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         {embed && mostrarVolverInforme && (onVolverInforme || onClose) && (

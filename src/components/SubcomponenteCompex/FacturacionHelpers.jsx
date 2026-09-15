@@ -53,7 +53,19 @@ function FormActionWithHint({ hint, hoverClassName = '', className = '', childre
   );
 }
 
-export function SeccionAcordeon({ abierto, onToggle, icon, titulo, subtitulo, children }) {
+export function SeccionAcordeon({
+  abierto,
+  onToggle,
+  icon,
+  titulo,
+  subtitulo,
+  children,
+  sinCabecera = false,
+}) {
+  if (sinCabecera) {
+    if (!abierto) return null;
+    return <div className="space-y-4">{children}</div>;
+  }
   return (
     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition hover:border-fenix-primario/25 dark:border-gray-800 dark:bg-[#1A1A1A]">
       <button

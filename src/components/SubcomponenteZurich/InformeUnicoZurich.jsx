@@ -39,10 +39,13 @@ import {
   patchValorAseguradoZurich,
   resolverAiuPctZurich,
   normalizarTipoInformeZurich,
+  configDeducibleReservaZurich,
   desgloseReservaPreliminarZurich,
   formatearPorcentajeLibreZurich,
+  patchDeducibleReservaZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
+  valorAseguradoPresupuestoZurich,
 } from './liquidadorZurichHelpers.js';
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
 import { formatMiles, resolverDepartamentoZurich } from './zurichHelpers.js';
@@ -319,11 +322,33 @@ export default function InformeUnicoZurich({
     () => totalPresupuestoPreliminarZurich(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
   );
-  const desgloseReserva = useMemo(
-    () => desgloseReservaPreliminarZurich(informe),
-    [informe.filasPresupuestoPreliminar, informe.porcentajeDeducibleReserva]
+  const extrasReserva = useMemo(
+    () => ({
+      caso: casoZurich,
+      liquidador,
+      valorAsegurado:
+        valorAseguradoPresupuestoZurich(liquidador) || casoZurich?.valorAseguradoInmueble,
+    }),
+    [
+      casoZurich,
+      liquidador,
+      liquidador.liquidacionCatastrofico?.valorAsegurado,
+      liquidador.encabezado?.valorAseguradoInmueble,
+    ]
   );
-  const reservaMostrada = useMemo(() => reservaSugeridaZurich(informe), [informe]);
+  const desgloseReserva = useMemo(
+    () => desgloseReservaPreliminarZurich(informe, extrasReserva),
+    [
+      informe.filasPresupuestoPreliminar,
+      informe.porcentajeDeducibleReserva,
+      informe.deducibleConfigReserva,
+      extrasReserva,
+    ]
+  );
+  const reservaMostrada = useMemo(
+    () => reservaSugeridaZurich(informe, extrasReserva),
+    [informe, extrasReserva]
+  );
   useEffect(() => {
     if (!esPreliminar || desgloseReserva.perdida <= 0) return;
     if (String(informe.reservaSugerida || '') === String(desgloseReserva.reserva)) return;
@@ -431,15 +456,15 @@ export default function InformeUnicoZurich({
 
   const conReservaDesdePresupuesto = (prev, filasPpto) => {
     const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
-    const desglose = desgloseReservaPreliminarZurich(next);
+    const desglose = desgloseReservaPreliminarZurich(next, extrasReserva);
     if (desglose.perdida > 0) next.reservaSugerida = String(desglose.reserva);
     return next;
   };
 
-  const setPorcentajeDeducibleReserva = (valor) => {
+  const setDeducibleReserva = (patch) => {
     setInforme((prev) => {
-      const next = { ...prev, porcentajeDeducibleReserva: valor };
-      const desglose = desgloseReservaPreliminarZurich(next);
+      const next = patchDeducibleReservaZurich(prev, patch);
+      const desglose = desgloseReservaPreliminarZurich(next, extrasReserva);
       if (desglose.perdida > 0) next.reservaSugerida = String(desglose.reserva);
       return next;
     });
@@ -891,39 +916,78 @@ export default function InformeUnicoZurich({
           addLabel={t('zurich.reportUnique.addBudgetRow')}
           emptyLabel={t('zurich.reportUnique.emptyBudgetRows')}
         />
-        <div className="mt-3 max-w-xl overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('zurich.reportUnique.lossValue')}</span>
-            <span className="font-mono tabular-nums">$ {formatearMonto(totalPreliminar)}</span>
+        <div className="mt-3 max-w-xl space-y-3">
+          <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>{t('zurich.reportUnique.lossValue')}</span>
+              <span className="font-mono tabular-nums">$ {formatearMonto(totalPreliminar)}</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('zurich.reportUnique.deductiblePct')}</span>
-            <label className="flex items-center gap-1">
-              <InputFenix
-                type="number"
-                min="0"
-                step="any"
-                className="w-24 text-right font-mono"
-                value={informe.porcentajeDeducibleReserva ?? ''}
-                onChange={(e) => setPorcentajeDeducibleReserva(e.target.value)}
-                placeholder="3"
-              />
-              <span>%</span>
-            </label>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>
-              {t('zurich.reportUnique.deductibleAmount', {
-                pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
-              })}
-            </span>
-            <span className="font-mono tabular-nums">
-              − $ {formatearMonto(desgloseReserva.deducible)}
-            </span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('zurich.reportUnique.totalPreliminaryReserve')}</span>
-            <span className="font-mono tabular-nums">$ {formatearMonto(desgloseReserva.reserva)}</span>
+          <EditorDeducibleZurich
+            cfg={configDeducibleReservaZurich(informe)}
+            valorAsegurado={
+              extrasReserva.valorAsegurado || casoZurich?.valorAseguradoInmueble || ''
+            }
+            titulo={t('zurich.reportUnique.deductibleReserveTitle')}
+            hint={t('zurich.reportUnique.deductibleReserveHint')}
+            onDeducibleChange={setDeducibleReserva}
+            onValorAseguradoChange={(valor) =>
+              setLiquidador((prev) => patchValorAseguradoZurich(prev, valor))
+            }
+          />
+          <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>
+                {t('zurich.reportUnique.deductibleOnInsured', {
+                  pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
+                })}
+              </span>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(desgloseReserva.montoPctVa)}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>
+                {t('zurich.reportUnique.deductibleOnLoss', {
+                  pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
+                })}
+              </span>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(desgloseReserva.montoPctPerdida)}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>
+                {t('zurich.reportUnique.deductibleMinimoAmount', {
+                  cant: desgloseReserva.cantidadMinimo || 0,
+                  tipo: desgloseReserva.tipoMinimo,
+                })}
+              </span>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(desgloseReserva.montoMinimo)}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm font-semibold dark:border-gray-700">
+              <span>
+                {t('zurich.reportUnique.deductibleAppliedReserve', {
+                  tipo:
+                    desgloseReserva.tipoGanador === 'valor_asegurado'
+                      ? t('zurich.reportUnique.deductibleWinnerInsured')
+                      : desgloseReserva.tipoGanador === 'perdida'
+                        ? t('zurich.reportUnique.deductibleWinnerLoss')
+                        : desgloseReserva.tipoMinimo,
+                })}
+              </span>
+              <span className="font-mono tabular-nums">
+                − $ {formatearMonto(desgloseReserva.deducible)}
+              </span>
+            </div>
+            <div className="flex justify-between px-4 py-2 text-sm font-bold">
+              <span>{t('zurich.reportUnique.totalPreliminaryReserve')}</span>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(desgloseReserva.reserva)}
+              </span>
+            </div>
           </div>
         </div>
         <p className="mt-2 max-w-xl font-body text-xs text-gray-500">

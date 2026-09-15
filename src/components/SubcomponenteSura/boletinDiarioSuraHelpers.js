@@ -149,7 +149,14 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     .filter(Boolean)
     .join(' ');
 
-  if (estado === 'ANULADO' || (textoLibre && /desist/.test(normTexto(textoLibre)))) return 'desistimientos';
+  if (
+    estado === 'ANULADO' ||
+    estado === 'DESISTIDO' ||
+    (textoLibre && /desist/.test(normTexto(textoLibre)))
+  ) {
+    return 'desistimientos';
+  }
+  if (estado === 'OBJETADO') return 'objetados';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
   if (estado === 'CERRADO') return 'pendientesPagoAlfa';
   if (estado === 'INFORME ÚNICO O FINAL') return 'liquidados';

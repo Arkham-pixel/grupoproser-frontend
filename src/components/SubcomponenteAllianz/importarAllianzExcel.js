@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import {
   homologarCiudadAllianz,
   homologarEstadoAllianz,
+  homologarTipoPolizaAllianz,
   resolverUbicacionAllianz,
   normalizarGradoAfectacionAllianz,
   normalizarSiNoAllianz,
@@ -108,10 +109,28 @@ const HEADER_MAP = {
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
   ESTADO: 'estado',
   'ESTADO FINAL': 'estado',
+  'FECHA CASO NUEVO': 'fechaCasoNuevo',
+  'FECHA PRIMER CONTACTO': 'fechaPrimerContacto',
+  'FECHA INSPECCION COORDINADA': 'fechaCoordinandoInspeccion',
+  'FECHA COORDINANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA INSPECCION REALIZADA': 'fechaInspeccionRealizada',
+  'FECHA ANALISIS DE CASO': 'fechaAnalisisCaso',
+  'FECHA ANALISIS DEL CASO': 'fechaAnalisisCaso',
+  'FECHA PENDIENTE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'FECHA SOLICITUD DOCUMENTO': 'fechaSolicitudDocumento',
+  'FECHA RECEPCION DOCUMENTO': 'fechaRecepcionDocumento',
+  'FECHA OBJECION': 'fechaObjecion',
+  'FECHA PENDIENTE APROBACION ANALISTA': 'fechaAutorizacionAnalista',
+  'FECHA AUTORIZACION ANALISTA': 'fechaAutorizacionAnalista',
+  'FECHA PRESENTACION DE CIFRAS': 'fechaPresentacionCifras',
+  'FECHA CASO PARA PAGO': 'fechaCasoParaPago',
+  'FECHA DESISTIDO': 'fechaDesistido',
   'FECHA OBJETADO': 'fechaObjetado',
   'FECHA PAGADO': 'fechaCasoPagado',
   'FECHA CASO PAGADO': 'fechaCasoPagado',
   'FECHA ANULADO': 'fechaAnulado',
+  'FECHA ANULADO/CANCELADO': 'fechaAnulado',
+  'FECHA ANULADO CANCELADO': 'fechaAnulado',
   'SEVERIDAD CAT': 'severidadCat',
   SEVERIDAD: 'severidadCat',
   'NIVEL SEVERIDAD': 'severidadCat',
@@ -225,15 +244,19 @@ const CAMPOS_FECHA = new Set([
   'fechaAsignacion',
   'fechaVisita',
   'fechaCasoNuevo',
+  'fechaPrimerContacto',
   'fechaCoordinandoInspeccion',
+  'fechaInspeccionRealizada',
   'fechaAnalisisCaso',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
   'fechaObjetado',
   'fechaAutorizacionAnalista',
+  'fechaPresentacionCifras',
   'fechaCasoParaPago',
   'fechaCasoPagado',
+  'fechaDesistido',
   'fechaAnulado',
 ]);
 
@@ -251,18 +274,9 @@ const HEADERS_QUE_NO_SON_DATOS = new Set([
 ]);
 
 const homologarTipoPolizaExcel = (valor) => {
-  const t = normHeader(valor);
-  if (!t) return { tipoPoliza: null, tipoPolizaOtro: null };
-  if (t === 'HOGAR' || t === 'HOMEOWNERS') return { tipoPoliza: 'HOGAR', tipoPolizaOtro: null };
-  if (t === 'INCENDIO' || t === 'PROPERTY') return { tipoPoliza: 'INCENDIO', tipoPolizaOtro: null };
-  if (t === 'TERREMOTO') return { tipoPoliza: 'TERREMOTO', tipoPolizaOtro: null };
-  if (t === 'TODO RIESGO' || t === 'TODO RIESGO DAÑOS' || t === 'TRD') {
-    return { tipoPoliza: 'TODO RIESGO', tipoPolizaOtro: null };
-  }
-  if (t === 'PYME') return { tipoPoliza: 'PYME', tipoPolizaOtro: null };
-  if (t === 'INDUSTRIAL') return { tipoPoliza: 'INDUSTRIAL', tipoPolizaOtro: null };
-  if (t === 'OTRO' || t === 'OTROS') return { tipoPoliza: 'OTRO', tipoPolizaOtro: null };
-  return { tipoPoliza: 'OTRO', tipoPolizaOtro: String(valor).trim() };
+  const tipoPoliza = homologarTipoPolizaAllianz(valor);
+  if (!tipoPoliza) return { tipoPoliza: null, tipoPolizaOtro: null };
+  return { tipoPoliza, tipoPolizaOtro: null };
 };
 
 const filaPareceEncabezado = (caso) => {
@@ -531,10 +545,22 @@ const HEADER_MAP_LISTADO = {
   INSPECTOR: 'inspector',
   AJUSTADOR: 'ajustador',
   ESTADO: 'estado',
+  'FECHA CASO NUEVO': 'fechaCasoNuevo',
+  'FECHA PRIMER CONTACTO': 'fechaPrimerContacto',
+  'FECHA INSPECCION COORDINADA': 'fechaCoordinandoInspeccion',
+  'FECHA COORDINANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA INSPECCION REALIZADA': 'fechaInspeccionRealizada',
+  'FECHA ANALISIS DE CASO': 'fechaAnalisisCaso',
+  'FECHA PENDIENTE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'FECHA PENDIENTE APROBACION ANALISTA': 'fechaAutorizacionAnalista',
+  'FECHA PRESENTACION DE CIFRAS': 'fechaPresentacionCifras',
+  'FECHA CASO PARA PAGO': 'fechaCasoParaPago',
+  'FECHA DESISTIDO': 'fechaDesistido',
   'FECHA OBJETADO': 'fechaObjetado',
   'FECHA PAGADO': 'fechaCasoPagado',
   'FECHA CASO PAGADO': 'fechaCasoPagado',
   'FECHA ANULADO': 'fechaAnulado',
+  'FECHA ANULADO/CANCELADO': 'fechaAnulado',
   OBSERVACIONES: 'observaciones',
   OBSERVACION: 'observaciones',
   NOTAS: 'observaciones',
@@ -652,6 +678,7 @@ const parsearHojaListadoCliente = (sheet) => {
     }
     if (!caso.estado || caso.estado === '0') caso.estado = 'CASO NUEVO';
     caso.estado = homologarEstadoAllianz(caso.estado);
+    if (caso.tipoPoliza) caso.tipoPoliza = homologarTipoPolizaAllianz(caso.tipoPoliza);
     if (caso.ciudad) {
       const ub = resolverUbicacionAllianz(caso.ciudad, caso.departamento);
       caso.ciudad = ub.ciudad || homologarCiudadAllianz(caso.ciudad) || caso.ciudad;

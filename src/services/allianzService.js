@@ -1,6 +1,6 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
-import { homologarCiudadAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
+import { homologarCiudadAllianz, homologarEstadoAllianz, homologarTipoPolizaAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
 
 const ALLIANZ_API_URL = `${BASE_URL}/api/allianz`;
 
@@ -51,10 +51,10 @@ export const normalizeAllianzItem = (item = {}) => {
   observaciones: item.observaciones ?? '',
   tomador: item.tomador ?? '',
   numeroPoliza: item.numeroPoliza ?? '',
-  tipoPoliza: item.tipoPoliza ?? '',
+  tipoPoliza: homologarTipoPolizaAllianz(item.tipoPoliza ?? '', item.tipoPolizaOtro ?? ''),
   tipoPolizaOtro: item.tipoPolizaOtro ?? '',
   causa: item.causa ?? '',
-  estado: item.estado ?? '',
+  estado: homologarEstadoAllianz(item.estado ?? ''),
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
   nArchivos,
   tieneInforme,

@@ -149,13 +149,14 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     .filter(Boolean)
     .join(' ');
 
-  if (estado === 'ANULADO' || (textoLibre && /desist/.test(normTexto(textoLibre)))) return 'desistimientos';
+  if (estado === 'ANULADO/CANCELADO' || estado === 'DESISTIDO' || (textoLibre && /desist/.test(normTexto(textoLibre)))) return 'desistimientos';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
-  if (estado === 'OBJECIÓN' || estado === 'OBJETADO') return 'objetados';
-  if (estado === 'CASO PARA PAGO' || estado === 'PAGADO') return 'pendientesPagoAlfa';
-  if (estado === 'AUTORIZACIÓN ANALISTA') return 'liquidados';
-  if (estado === 'ANÁLISIS DEL CASO' || estado === 'PENDIENTE DE DOCUMENTO') return 'enLiquidacion';
-  if (estado === 'COORDINANDO INSPECCIÓN') return 'enInspeccion';
+  if (estado === 'OBJECIÓN') return 'objetados';
+  if (estado === 'CASO PARA PAGO') return 'pendientesPagoAlfa';
+  if (estado === 'PENDIENTE APROBACIÓN ANALISTA' || estado === 'PRESENTACIÓN DE CIFRAS') return 'liquidados';
+  if (estado === 'ANÁLISIS DE CASO' || estado === 'PENDIENTE DOCUMENTOS') return 'enLiquidacion';
+  if (estado === 'INSPECCIÓN COORDINADA' || estado === 'INSPECCIÓN REALIZADA') return 'enInspeccion';
+  if (estado === 'PRIMER CONTACTO') return 'verificacion';
   return 'verificacion';
 }
 
@@ -229,7 +230,7 @@ export function clasificarGestionDiscriminada(caso = {}) {
   ) {
     return 'accesoRestringido';
   }
-  if (texto.includes('desist') || estado === 'ANULADO' || estado === 'DESISTIDO') {
+  if (texto.includes('desist') || estado === 'ANULADO/CANCELADO' || estado === 'DESISTIDO') {
     return 'desistimientoTramite';
   }
   if (
@@ -269,10 +270,10 @@ export function clasificarGestionDiscriminada(caso = {}) {
     return 'contactadosSinExito';
   }
 
-  if (estado === 'ANULADO') return 'desistimientoTramite';
-  if (estado === 'ANÁLISIS DEL CASO' || estado === 'AUTORIZACIÓN ANALISTA') return 'enLiquidacion';
-  if (estado === 'PENDIENTE DE DOCUMENTO' || estado === 'OBJECIÓN' || estado === 'OBJETADO') return 'pendienteInformacion';
-  if (estado === 'COORDINANDO INSPECCIÓN') return 'solicitanInspeccion';
+  if (estado === 'ANULADO/CANCELADO' || estado === 'DESISTIDO') return 'desistimientoTramite';
+  if (estado === 'ANÁLISIS DE CASO' || estado === 'PENDIENTE APROBACIÓN ANALISTA' || estado === 'PRESENTACIÓN DE CIFRAS') return 'enLiquidacion';
+  if (estado === 'PENDIENTE DOCUMENTOS' || estado === 'OBJECIÓN') return 'pendienteInformacion';
+  if (estado === 'INSPECCIÓN COORDINADA' || estado === 'INSPECCIÓN REALIZADA') return 'solicitanInspeccion';
   if (texto) return 'contactadosSinExito';
   return null;
 }

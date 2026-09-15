@@ -1,4 +1,5 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
+import { resolverControlHorasDesdeEnvios } from '../SubcomponenteCompex/controlHoras/controlHorasUtils.js';
 
 export const ZURICH_REPORTE_PAGE_SIZE = 25;
 
@@ -980,6 +981,23 @@ export const FORM_VACIO_ZURICH = {
   accesoPredio: '',
   observacionesCat: '',
   evidenciaCat: { ...EVIDENCIA_CAT_VACIA },
+  fecha_control_horas: '',
+  fecha_envio_control_horas: '',
+  fecha_recibido_control_horas: '',
+  fecha_seguimiento_envio_control_horas: '',
+  observacion_seguimiento_envio_control_horas: '',
+  adjunto_control_horas: '',
+  adjunto_evidencia: '',
+  adjunto_seguimiento_envio_control_horas: '',
+  adjunto_factura: '',
+  numero_factura: '',
+  valor_servicio: '',
+  valor_gastos: '',
+  fecha_ultima_revision: '',
+  fecha_factura: '',
+  observacion_compromisos: '',
+  gerente_control_horas: '',
+  gerente_gerencia: '',
 };
 
 export const TIPOS_NEGOCIO_HOMOLOGADO_ZURICH = [
@@ -1023,6 +1041,12 @@ export const CAMPOS_FECHA_Zurich = [
   'fechaAsignacion',
   'fechaVisita',
   ...CAMPOS_FECHA_ACCION_ZURICH,
+  'fecha_control_horas',
+  'fecha_envio_control_horas',
+  'fecha_recibido_control_horas',
+  'fecha_seguimiento_envio_control_horas',
+  'fecha_factura',
+  'fecha_ultima_revision',
 ];
 
 export const CAMPOS_NUMERICOS_ZURICH = [
@@ -1055,7 +1079,13 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
     ...FORM_VACIO_ZURICH,
     ...Object.fromEntries(
       Object.keys(FORM_VACIO_ZURICH)
-        .filter((clave) => clave !== 'evidenciaCat' && clave !== 'severidadCatNiveles')
+        .filter(
+          (clave) =>
+            clave !== 'evidenciaCat' &&
+            clave !== 'severidadCatNiveles' &&
+            clave !== 'control_horas' &&
+            clave !== 'historialDocs'
+        )
         .map((clave) => {
           const valor = caso[clave];
           if (valor === null || valor === undefined) return [clave, ''];
@@ -1130,7 +1160,88 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
       caso.fechaAceptacionCliente || caso.fechaAceptacionLiquidacion || ''
     );
   }
+  base.fecha_control_horas = fechaParaInput(
+    caso.fecha_control_horas || caso.fcha_control_horas || ''
+  );
+  base.fecha_envio_control_horas = fechaParaInput(
+    caso.fecha_envio_control_horas || caso.fcha_envio_control_horas || ''
+  );
+  base.fecha_recibido_control_horas = fechaParaInput(
+    caso.fecha_recibido_control_horas || caso.fcha_recibido_control_horas || ''
+  );
+  base.fecha_seguimiento_envio_control_horas = fechaParaInput(
+    caso.fecha_seguimiento_envio_control_horas || caso.fcha_seguimiento_envio_control_horas || ''
+  );
+  base.fecha_factura = fechaParaInput(caso.fecha_factura || '');
+  base.fecha_ultima_revision = fechaParaInput(caso.fecha_ultima_revision || caso.fchaUltRevi || '');
+  base.observacion_seguimiento_envio_control_horas =
+    caso.observacion_seguimiento_envio_control_horas ||
+    caso.obse_seguimiento_envio_control_horas ||
+    '';
+  base.adjunto_seguimiento_envio_control_horas =
+    caso.adjunto_seguimiento_envio_control_horas ||
+    caso.anxo_seguimiento_envio_control_horas ||
+    '';
+  base.valor_servicio = caso.valor_servicio ?? caso.vlorServcios ?? '';
+  base.valor_gastos = caso.valor_gastos ?? caso.vlorGastos ?? '';
+  base.control_horas = resolverControlHorasDesdeEnvios(caso);
+  base.historialDocs = Array.isArray(caso.historialDocs) ? caso.historialDocs : [];
   base.createdAt = caso.createdAt || '';
   base.updatedAt = caso.updatedAt || '';
   return base;
 };
+
+export const ZURICH_RAZON_SOCIAL_CONTROL_HORAS = 'ZURICH COLOMBIA SEGUROS S.A.';
+
+export const CAMPOS_FACTURACION_ZURICH_NO_PISAR = [
+  'control_horas',
+  'historialDocs',
+  'envios_facturacion',
+  'ultimo_envio_facturacion',
+  'fcha_control_horas',
+  'fecha_control_horas',
+  'fcha_envio_control_horas',
+  'fecha_envio_control_horas',
+  'fcha_recibido_control_horas',
+  'fecha_recibido_control_horas',
+  'fcha_seguimiento_envio_control_horas',
+  'fecha_seguimiento_envio_control_horas',
+  'obse_seguimiento_envio_control_horas',
+  'observacion_seguimiento_envio_control_horas',
+  'anxo_seguimiento_envio_control_horas',
+  'adjunto_control_horas',
+  'adjunto_evidencia',
+  'adjunto_seguimiento_envio_control_horas',
+  'adjunto_factura',
+  'numero_factura',
+  'fecha_factura',
+  'fchaUltRevi',
+  'fecha_ultima_revision',
+  'observacion_compromisos',
+  'vlorServcios',
+  'valor_servicio',
+  'vlorGastos',
+  'valor_gastos',
+];
+
+export const camposFacturacionZurichDesdeForm = (form = {}) => ({
+  control_horas: form.control_horas || null,
+  fecha_control_horas: form.fecha_control_horas || null,
+  fecha_envio_control_horas: form.fecha_envio_control_horas || null,
+  fecha_recibido_control_horas: form.fecha_recibido_control_horas || null,
+  fecha_seguimiento_envio_control_horas: form.fecha_seguimiento_envio_control_horas || null,
+  observacion_seguimiento_envio_control_horas:
+    form.observacion_seguimiento_envio_control_horas || '',
+  adjunto_control_horas: form.adjunto_control_horas || '',
+  adjunto_evidencia: form.adjunto_evidencia || '',
+  adjunto_seguimiento_envio_control_horas: form.adjunto_seguimiento_envio_control_horas || '',
+  adjunto_factura: form.adjunto_factura || '',
+  historialDocs: Array.isArray(form.historialDocs) ? form.historialDocs : [],
+  numero_factura: form.numero_factura || '',
+  valor_servicio: form.valor_servicio === '' ? null : form.valor_servicio,
+  valor_gastos: form.valor_gastos === '' ? null : form.valor_gastos,
+  fecha_factura: form.fecha_factura || null,
+  fecha_ultima_revision: form.fecha_ultima_revision || null,
+  observacion_compromisos: form.observacion_compromisos || '',
+});
+

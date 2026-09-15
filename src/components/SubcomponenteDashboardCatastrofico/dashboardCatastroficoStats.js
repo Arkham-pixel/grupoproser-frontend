@@ -73,8 +73,11 @@ export function esLiquidadoEstado(estado) {
     e === 'CERRADO' ||
     e === 'CASO CERRADO' ||
     e === 'ANULADO' ||
+    e === 'ANULADO/CANCELADO' ||
+    e === 'CANCELADO' ||
     e === 'DESISTIMIENTO' ||
-    e === 'DESISTIDO'
+    e === 'DESISTIDO' ||
+    e === 'OBJETADO'
   );
 }
 
@@ -90,6 +93,8 @@ export function esActivo(estado) {
     e !== 'CERRADO' &&
     e !== 'CASO CERRADO' &&
     e !== 'ANULADO' &&
+    e !== 'ANULADO/CANCELADO' &&
+    e !== 'CANCELADO' &&
     e !== 'FINALIZADO' &&
     e !== 'OBJETADO' &&
     e !== 'DESISTIDO' &&

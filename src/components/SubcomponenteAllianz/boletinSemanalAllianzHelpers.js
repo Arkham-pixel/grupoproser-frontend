@@ -2,6 +2,8 @@
  * Helpers del boletín semanal Allianz (semana lun–dom, America/Bogota).
  */
 
+import { homologarEstadoAllianz } from './allianzHelpers.js';
+
 const TZ = 'America/Bogota';
 
 export const DIAS_ANS_INSPECCION = 15;
@@ -130,7 +132,7 @@ export function calcularBoletinSemanalAllianz(casos = [], alertasPayload = null,
   let ansLiquidacionTotal = 0;
 
   for (const c of lista) {
-    const est = String(c.estado || 'CASO NUEVO');
+    const est = homologarEstadoAllianz(c.estado || 'CASO NUEVO');
     porEstado[est] = (porEstado[est] || 0) + 1;
 
     const created = parseFechaCaso(c.createdAt);

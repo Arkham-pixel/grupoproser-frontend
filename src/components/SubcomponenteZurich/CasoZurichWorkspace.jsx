@@ -210,6 +210,11 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
       liquidador: fresco?.liquidador || prevCaso?.liquidador,
       informeUnico: fresco?.informeUnico || prevCaso?.informeUnico,
       archivos: Array.isArray(fresco?.archivos) ? fresco.archivos : prevCaso?.archivos,
+      control_horas: fresco?.control_horas || prevCaso?.control_horas,
+      historialDocs:
+        Array.isArray(fresco?.historialDocs) && fresco.historialDocs.length
+          ? fresco.historialDocs
+          : prevCaso?.historialDocs,
     };
     setCasoZurich(merged);
     setLiquidadorState((prev) => {

@@ -73,6 +73,7 @@ export const CONFIG_SOLO_ZURICH = {
   prefijosRuta: ['/inicio', '/zurich', '/agenda-catastrofico'],
   rutasExcluidas: [
     '/zurich/carga',
+    '/zurich/bandeja-facturacion',
     '/zurich/caso',
     '/zurich/dashboard',
     '/zurich/reporte',

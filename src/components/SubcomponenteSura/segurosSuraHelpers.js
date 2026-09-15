@@ -12,9 +12,14 @@ export const ESTADOS_SURA = [
   'INFORME PRELIMINAR Y/O ACTUALIZACIÓN',
   'INFORME ÚNICO O FINAL',
   'ANULADO',
+  'DESISTIDO',
+  'OBJETADO',
 ];
 
-export const ESTADOS_SURA_CERRADOS = ['ANULADO', 'CERRADO'];
+export const ESTADOS_SURA_CERRADOS = ['ANULADO', 'CERRADO', 'DESISTIDO', 'OBJETADO'];
+
+/** Etiqueta para textos de estado que no encajan en el catálogo. */
+export const ESTADO_SURA_OTROS = 'OTROS';
 
 const MAPA_ESTADO_SURA_LEGADO = {
   PENDIENTE: 'CASO NUEVO',
@@ -25,6 +30,9 @@ const MAPA_ESTADO_SURA_LEGADO = {
   LIQUIDADO: 'INFORME ÚNICO O FINAL',
   'ENVIADO ASEGURADORA': 'INFORME ÚNICO O FINAL',
   CERRADO: 'INFORME ÚNICO O FINAL',
+  DESISTIMIENTO: 'DESISTIDO',
+  OBJECIÓN: 'OBJETADO',
+  OBJECION: 'OBJETADO',
 };
 
 function normEstadoClave(valor) {
@@ -36,15 +44,87 @@ function normEstadoClave(valor) {
     .replace(/\s+/g, ' ');
 }
 
-/** Convierte estados viejos al catálogo actual sin perder el dato. */
+/**
+ * Une variantes libres (Excel, notas) al catálogo oficial.
+ * Ej.: "CASO NUEVO 7sept", "Se recomendó objeción…", "Dado de baja por…".
+ */
+function clasificarEstadoSuraPorTexto(clave) {
+  if (!clave) return 'CASO NUEVO';
+
+  // Prefijo exacto de un estado oficial (p. ej. "CASO NUEVO 7SEPT…").
+  const porPrefijo = ESTADOS_SURA.find((e) => {
+    const n = normEstadoClave(e);
+    return clave === n || clave.startsWith(`${n} `) || clave.startsWith(`${n}/`);
+  });
+  if (porPrefijo) return porPrefijo;
+
+  if (
+    clave.includes('OBJET') ||
+    (clave.includes('RECOMEND') && clave.includes('OBJE')) ||
+    clave.startsWith('SE RECOMEND')
+  ) {
+    return 'OBJETADO';
+  }
+  if (
+    clave.includes('DESIST') ||
+    clave.includes('DADO DE BAJA') ||
+    clave.includes('DAR DE BAJA') ||
+    clave.includes('BAJA POR')
+  ) {
+    return 'DESISTIDO';
+  }
+  if (clave.includes('ANULAD')) return 'ANULADO';
+  if (
+    clave.includes('INFORME UNICO') ||
+    clave.includes('INFORME FINAL') ||
+    clave.includes('UNICO O FINAL') ||
+    clave === 'LIQUIDADO' ||
+    clave.includes('ENVIADO ASEGURADORA')
+  ) {
+    return 'INFORME ÚNICO O FINAL';
+  }
+  if (
+    clave.includes('PRELIMINAR') ||
+    clave.includes('ACTUALIZACION') ||
+    (clave.includes('INFORME') && clave.includes('ACTUALIZ'))
+  ) {
+    return 'INFORME PRELIMINAR Y/O ACTUALIZACIÓN';
+  }
+  if (
+    clave.includes('INFORME DEL INSPECTOR') ||
+    clave.includes('INFORME INSPECTOR') ||
+    clave === 'DOCUMENTACION' ||
+    clave.startsWith('DOCUMENTACION')
+  ) {
+    return 'INFORME DEL INSPECTOR';
+  }
+  if (clave.includes('INSPECCIONADO') || clave === 'INSPECCION') {
+    return 'INSPECCIONADO';
+  }
+  if (
+    clave.includes('ASIGNADO') ||
+    clave.includes('PARA ASIGNAR') ||
+    clave.includes('EN INSPECCION')
+  ) {
+    return 'ASIGNADO (PARA ASIGNAR INSPECTOR)';
+  }
+  if (clave.includes('CASO NUEVO') || clave === 'NUEVO' || clave === 'PENDIENTE') {
+    return 'CASO NUEVO';
+  }
+  return ESTADO_SURA_OTROS;
+}
+
+/** Convierte estados viejos / textos libres al catálogo actual. */
 export function normalizarEstadoSura(valor) {
   const raw = String(valor ?? '').trim();
   if (!raw) return 'CASO NUEVO';
-  if (ESTADOS_SURA.includes(raw)) return raw;
-  const mapeado = MAPA_ESTADO_SURA_LEGADO[raw] || MAPA_ESTADO_SURA_LEGADO[normEstadoClave(raw)];
+  if (ESTADOS_SURA.includes(raw) || raw === ESTADO_SURA_OTROS) return raw;
+  const clave = normEstadoClave(raw);
+  const mapeado = MAPA_ESTADO_SURA_LEGADO[raw] || MAPA_ESTADO_SURA_LEGADO[clave];
   if (mapeado) return mapeado;
-  const hit = ESTADOS_SURA.find((e) => normEstadoClave(e) === normEstadoClave(raw));
-  return hit || raw;
+  const hit = ESTADOS_SURA.find((e) => normEstadoClave(e) === clave);
+  if (hit) return hit;
+  return clasificarEstadoSuraPorTexto(clave);
 }
 
 export function esEstadoSuraCerrado(valor) {
@@ -68,7 +148,7 @@ function tipoInformeSuraClave(valor) {
 export function estadoSuraPorTipoInforme(tipoInforme, estadoActual) {
   const tipo = tipoInformeSuraClave(tipoInforme);
   const actual = normalizarEstadoSura(estadoActual);
-  if (actual === 'ANULADO') return actual;
+  if (actual === 'ANULADO' || actual === 'DESISTIDO' || actual === 'OBJETADO') return actual;
   if (tipo !== 'unico' && tipo !== 'final') return actual;
   return ESTADO_SURA_INFORME_UNICO;
 }

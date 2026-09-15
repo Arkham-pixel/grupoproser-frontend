@@ -41,6 +41,7 @@ import {
   FORM_VACIO_ALLIANZ,
   MODALIDADES_ALLIANZ,
   homologarEstadoAllianz,
+  homologarTipoPolizaAllianz,
   resolverUbicacionAllianz,
   fechaParaInput,
   diasEnEstadoAllianz,
@@ -278,7 +279,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         identificacion: form.identificacion,
         tipoIdentificacion: form.tipoIdentificacion,
         numeroPoliza: form.numeroPoliza,
-        tipoPoliza: form.tipoPoliza,
+        tipoPoliza: homologarTipoPolizaAllianz(form.tipoPoliza, form.tipoPolizaOtro),
         tipoPolizaOtro: esTipoPolizaOtroAllianz(form.tipoPoliza) ? form.tipoPolizaOtro : '',
         causa: form.causa,
         asegurado: form.asegurado,
@@ -314,17 +315,21 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         fechaVisita: form.fechaVisita,
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
+        fechaPrimerContacto: form.fechaPrimerContacto,
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
         horaInicioCoordinacion: form.horaInicioCoordinacion,
         horaFinCoordinacion: form.horaFinCoordinacion,
+        fechaInspeccionRealizada: form.fechaInspeccionRealizada,
         fechaAnalisisCaso: form.fechaAnalisisCaso,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
         fechaObjecion: form.fechaObjecion,
         fechaObjetado: form.fechaObjetado,
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
+        fechaPresentacionCifras: form.fechaPresentacionCifras,
         fechaCasoParaPago: form.fechaCasoParaPago,
         fechaCasoPagado: form.fechaCasoPagado,
+        fechaDesistido: form.fechaDesistido,
         fechaAnulado: form.fechaAnulado,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
@@ -339,6 +344,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
     }
     const payload = { ...form };
     payload.estado = homologarEstadoAllianz(payload.estado);
+    payload.tipoPoliza = homologarTipoPolizaAllianz(payload.tipoPoliza, payload.tipoPolizaOtro);
     if (!esTipoPolizaOtroAllianz(payload.tipoPoliza)) payload.tipoPolizaOtro = '';
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
@@ -681,6 +687,13 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('allianz.fields.fechaCasoNuevo')}>
             <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
           </Campo>
+          <Campo label={t('allianz.fields.fechaPrimerContacto')}>
+            <InputFenix
+              type="date"
+              value={form.fechaPrimerContacto}
+              onChange={setCampo('fechaPrimerContacto')}
+            />
+          </Campo>
           <CampoFranjaCoordinacion
             labelFecha={t('allianz.fields.fechaCoordinandoInspeccion')}
             fecha={form.fechaCoordinandoInspeccion}
@@ -694,6 +707,13 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
             casoId={initialData?._id}
             disabled={attrsCampoCaso(rolUsuario, 'fechaCoordinandoInspeccion', ctxPermiso).disabled}
           />
+          <Campo label={t('allianz.fields.fechaInspeccionRealizada')}>
+            <InputFenix
+              type="date"
+              value={form.fechaInspeccionRealizada}
+              onChange={setCampo('fechaInspeccionRealizada')}
+            />
+          </Campo>
           <Campo label={t('allianz.fields.fechaAnalisisCaso')}>
             <InputFenix
               type="date"
@@ -718,14 +738,18 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('allianz.fields.fechaObjecion')}>
             <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
           </Campo>
-          <Campo label={t('allianz.fields.fechaObjetado')}>
-            <InputFenix type="date" value={form.fechaObjetado} onChange={setCampo('fechaObjetado')} />
-          </Campo>
           <Campo label={t('allianz.fields.fechaAutorizacionAnalista')}>
             <InputFenix
               type="date"
               value={form.fechaAutorizacionAnalista}
               onChange={setCampo('fechaAutorizacionAnalista')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaPresentacionCifras')}>
+            <InputFenix
+              type="date"
+              value={form.fechaPresentacionCifras}
+              onChange={setCampo('fechaPresentacionCifras')}
             />
           </Campo>
           <Campo label={t('allianz.fields.fechaCasoParaPago')}>
@@ -735,12 +759,8 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               onChange={setCampo('fechaCasoParaPago')}
             />
           </Campo>
-          <Campo label={t('allianz.fields.fechaCasoPagado')}>
-            <InputFenix
-              type="date"
-              value={form.fechaCasoPagado}
-              onChange={setCampo('fechaCasoPagado')}
-            />
+          <Campo label={t('allianz.fields.fechaDesistido')}>
+            <InputFenix type="date" value={form.fechaDesistido} onChange={setCampo('fechaDesistido')} />
           </Campo>
           <Campo label={t('allianz.fields.fechaAnulado')}>
             <InputFenix type="date" value={form.fechaAnulado} onChange={setCampo('fechaAnulado')} />

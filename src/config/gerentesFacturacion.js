@@ -44,7 +44,34 @@ export function puedeAdministrarBandejaFacturacion(login) {
 
 export function nombreGerente(clave) {
   const op = GERENTES_FACTURACION_OPCIONES.find((g) => g.clave === clave);
-  return op?.nombre || clave || '—';
+  if (op) return op.nombre;
+  if (String(clave || '').toLowerCase() === 'ladys') return 'Ladys Andrea Escalante';
+  return clave || '—';
+}
+
+export const LOGIN_LIDER_ZURICH_FACTURACION = '1041899782';
+
+function haystackNombre(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\s*\([^)]*\)/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+export function esLiderZurichFacturacion(login, nombre) {
+  if (String(login || '').trim() === LOGIN_LIDER_ZURICH_FACTURACION) return true;
+  const hay = haystackNombre(nombre);
+  return hay.includes('LADYS') && hay.includes('ESCALANTE');
+}
+
+/** Líder Zurich, jefes de facturación y supervisores. */
+export function puedeVerBandejaFacturacionZurich(login, nombre) {
+  if (esLiderZurichFacturacion(login, nombre)) return true;
+  if (esSupervisorBandeja(login)) return true;
+  const gerente = gerenteDesdeLogin(login);
+  return Boolean(gerente && gerente !== 'test');
 }
 
 export const TIPO_ENVIO_LABELS = {

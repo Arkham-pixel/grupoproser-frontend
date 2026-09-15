@@ -4,37 +4,44 @@ import { homologarCiudadCatastrofico, resolverUbicacionCatastrofico } from '../.
 export const ALLIANZ_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADO_ALLIANZ_DEFAULT = 'CASO NUEVO';
-export const ESTADO_ALLIANZ_INSPECCION = 'COORDINANDO INSPECCIÓN';
-export const ESTADO_ALLIANZ_ANALISIS = 'ANÁLISIS DEL CASO';
-export const ESTADO_ALLIANZ_PENDIENTE_DOCS = 'PENDIENTE DE DOCUMENTO';
+export const ESTADO_ALLIANZ_PRIMER_CONTACTO = 'PRIMER CONTACTO';
+export const ESTADO_ALLIANZ_INSPECCION = 'INSPECCIÓN COORDINADA';
+export const ESTADO_ALLIANZ_INSPECCION_REALIZADA = 'INSPECCIÓN REALIZADA';
+export const ESTADO_ALLIANZ_ANALISIS = 'ANÁLISIS DE CASO';
+export const ESTADO_ALLIANZ_PENDIENTE_DOCS = 'PENDIENTE DOCUMENTOS';
 export const ESTADO_ALLIANZ_OBJECION = 'OBJECIÓN';
-export const ESTADO_ALLIANZ_OBJETADO = 'OBJETADO';
-export const ESTADO_ALLIANZ_AUTORIZACION = 'AUTORIZACIÓN ANALISTA';
+export const ESTADO_ALLIANZ_AUTORIZACION = 'PENDIENTE APROBACIÓN ANALISTA';
+export const ESTADO_ALLIANZ_CIFRAS = 'PRESENTACIÓN DE CIFRAS';
 export const ESTADO_ALLIANZ_PAGO = 'CASO PARA PAGO';
-export const ESTADO_ALLIANZ_PAGADO = 'PAGADO';
-export const ESTADO_ALLIANZ_ANULADO = 'ANULADO';
+export const ESTADO_ALLIANZ_DESISTIDO = 'DESISTIDO';
+export const ESTADO_ALLIANZ_ANULADO = 'ANULADO/CANCELADO';
+/** Alias de cierre histórico; el selector ya no los muestra. */
+export const ESTADO_ALLIANZ_OBJETADO = ESTADO_ALLIANZ_OBJECION;
+export const ESTADO_ALLIANZ_PAGADO = ESTADO_ALLIANZ_PAGO;
 
 export const ESTADOS_ALLIANZ = [
   ESTADO_ALLIANZ_DEFAULT,
+  ESTADO_ALLIANZ_PRIMER_CONTACTO,
   ESTADO_ALLIANZ_INSPECCION,
+  ESTADO_ALLIANZ_INSPECCION_REALIZADA,
   ESTADO_ALLIANZ_ANALISIS,
   ESTADO_ALLIANZ_PENDIENTE_DOCS,
   ESTADO_ALLIANZ_OBJECION,
-  ESTADO_ALLIANZ_OBJETADO,
   ESTADO_ALLIANZ_AUTORIZACION,
+  ESTADO_ALLIANZ_CIFRAS,
   ESTADO_ALLIANZ_PAGO,
-  ESTADO_ALLIANZ_PAGADO,
+  ESTADO_ALLIANZ_DESISTIDO,
   ESTADO_ALLIANZ_ANULADO,
 ];
 
 export const ESTADOS_CIERRE_ALLIANZ = new Set([
-  ESTADO_ALLIANZ_OBJETADO,
-  ESTADO_ALLIANZ_PAGADO,
+  ESTADO_ALLIANZ_DESISTIDO,
   ESTADO_ALLIANZ_ANULADO,
 ]);
 
 export const ESTADOS_TEMPRANOS_ALLIANZ = new Set([
   ESTADO_ALLIANZ_DEFAULT,
+  ESTADO_ALLIANZ_PRIMER_CONTACTO,
   ESTADO_ALLIANZ_INSPECCION,
 ]);
 
@@ -42,50 +49,74 @@ export const MODALIDADES_ALLIANZ = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_ALLIANZ = {
   'CASO NUEVO': 'fechaCasoNuevo',
-  'COORDINANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
-  'ANÁLISIS DEL CASO': 'fechaAnalisisCaso',
-  'PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
+  'PRIMER CONTACTO': 'fechaPrimerContacto',
+  'INSPECCIÓN COORDINADA': 'fechaCoordinandoInspeccion',
+  'INSPECCIÓN REALIZADA': 'fechaInspeccionRealizada',
+  'ANÁLISIS DE CASO': 'fechaAnalisisCaso',
+  'PENDIENTE DOCUMENTOS': 'fechaSolicitudDocumento',
   OBJECIÓN: 'fechaObjecion',
-  OBJETADO: 'fechaObjetado',
-  'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
+  'PENDIENTE APROBACIÓN ANALISTA': 'fechaAutorizacionAnalista',
+  'PRESENTACIÓN DE CIFRAS': 'fechaPresentacionCifras',
   'CASO PARA PAGO': 'fechaCasoParaPago',
-  PAGADO: 'fechaCasoPagado',
-  ANULADO: 'fechaAnulado',
+  DESISTIDO: 'fechaDesistido',
+  'ANULADO/CANCELADO': 'fechaAnulado',
 };
 
 export const CAMPOS_FECHA_ACCION_ALLIANZ = [
   'fechaCasoNuevo',
+  'fechaPrimerContacto',
   'fechaCoordinandoInspeccion',
+  'fechaInspeccionRealizada',
   'fechaAnalisisCaso',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
   'fechaObjetado',
   'fechaAutorizacionAnalista',
+  'fechaPresentacionCifras',
   'fechaCasoParaPago',
   'fechaCasoPagado',
+  'fechaDesistido',
   'fechaAnulado',
 ];
 
 const ESTADOS_ALLIANZ_LEGACY = {
   PENDIENTE: 'CASO NUEVO',
-  'EN INSPECCION': 'COORDINANDO INSPECCIÓN',
-  DOCUMENTACION: 'PENDIENTE DE DOCUMENTO',
+  'EN INSPECCION': 'INSPECCIÓN COORDINADA',
+  'COORDINANDO INSPECCION': 'INSPECCIÓN COORDINADA',
+  'INSPECCION COORDINADA': 'INSPECCIÓN COORDINADA',
+  'CASO INSPECCIONADO': 'INSPECCIÓN REALIZADA',
+  INSPECCIONADO: 'INSPECCIÓN REALIZADA',
+  'INSPECCION REALIZADA': 'INSPECCIÓN REALIZADA',
+  'ANALISIS DEL CASO': 'ANÁLISIS DE CASO',
+  'ANALISIS DE CASO': 'ANÁLISIS DE CASO',
+  DOCUMENTACION: 'PENDIENTE DOCUMENTOS',
+  'PENDIENTE DE DOCUMENTO': 'PENDIENTE DOCUMENTOS',
+  'PENDIENTE DE DOCUMENTOS': 'PENDIENTE DOCUMENTOS',
+  'PENDIENTE DOCUMENTO': 'PENDIENTE DOCUMENTOS',
+  'AUTORIZACION ANALISTA': 'PENDIENTE APROBACIÓN ANALISTA',
+  'PENDIENTE APROBACION ANALISTA': 'PENDIENTE APROBACIÓN ANALISTA',
+  'PRESENTACION DE CIFRAS': 'PRESENTACIÓN DE CIFRAS',
   LIQUIDADO: 'CASO PARA PAGO',
   'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
-  OBJECTED: 'OBJETADO',
-  'CASO OBJETADO': 'OBJETADO',
-  'OBJECION CERRADA': 'OBJETADO',
-  'OBJECION FINAL': 'OBJETADO',
-  PAGO: 'PAGADO',
-  'CASO PAGADO': 'PAGADO',
-  INDEMNIZADO: 'PAGADO',
-  GIRADO: 'PAGADO',
-  'CASE PAID': 'PAGADO',
-  CERRADO: 'PAGADO',
-  'CERRADO MANUAL': 'PAGADO',
-  CANCELADO: 'ANULADO',
-  'SIN COBERTURA': 'ANULADO',
+  OBJECTED: 'OBJECIÓN',
+  OBJETADO: 'OBJECIÓN',
+  'CASO OBJETADO': 'OBJECIÓN',
+  'OBJECION CERRADA': 'OBJECIÓN',
+  'OBJECION FINAL': 'OBJECIÓN',
+  PAGO: 'CASO PARA PAGO',
+  PAGADO: 'CASO PARA PAGO',
+  'CASO PAGADO': 'CASO PARA PAGO',
+  INDEMNIZADO: 'CASO PARA PAGO',
+  GIRADO: 'CASO PARA PAGO',
+  'CASE PAID': 'CASO PARA PAGO',
+  CERRADO: 'CASO PARA PAGO',
+  'CERRADO MANUAL': 'CASO PARA PAGO',
+  DESISTIMIENTO: 'DESISTIDO',
+  ANULADO: 'ANULADO/CANCELADO',
+  CANCELADO: 'ANULADO/CANCELADO',
+  'ANULADO CANCELADO': 'ANULADO/CANCELADO',
+  'SIN COBERTURA': 'ANULADO/CANCELADO',
 };
 
 const claveEstadoAllianz = (valor) =>
@@ -124,8 +155,8 @@ export function casoInspeccionadoAllianz(caso = {}) {
   if (caso.fechaVisita || caso.fechaInspeccion) return true;
   const estado = homologarEstadoAllianz(caso.estado);
   const idx = ESTADOS_ALLIANZ.indexOf(estado);
-  const idxInsp = ESTADOS_ALLIANZ.indexOf(ESTADO_ALLIANZ_INSPECCION);
-  return idx > idxInsp;
+  const idxInsp = ESTADOS_ALLIANZ.indexOf(ESTADO_ALLIANZ_INSPECCION_REALIZADA);
+  return idx >= idxInsp;
 }
 
 export function diasEnEstadoAllianz(caso = {}) {
@@ -172,19 +203,77 @@ export const TIPOS_IDENTIFICACION_ALLIANZ = [
 
 export const TIPOS_POLIZA_ALLIANZ = [
   'HOGAR',
-  'INCENDIO',
-  'TERREMOTO',
-  'TODO RIESGO',
+  'HOGAR DEUDOR',
   'PYME',
-  'INDUSTRIAL',
-  'OTRO',
+  'MULTIRRIESGOS HOGAR',
+  'MULTIRRIESGOS EMPRESARIAL',
+  'NEGOCIO EMPRESARIAL',
 ];
+
+const claveTipoPolizaAllianz = (valor) =>
+  String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const TIPOS_POLIZA_ALLIANZ_LEGACY = {
+  HOMEOWNERS: 'HOGAR',
+  'HOME OWNERS': 'HOGAR',
+  HOME: 'HOGAR',
+  'HOGAR DEUDORES': 'HOGAR DEUDOR',
+  DEUDOR: 'HOGAR DEUDOR',
+  DEUDORES: 'HOGAR DEUDOR',
+  HIPOTECARIO: 'HOGAR DEUDOR',
+  PYMES: 'PYME',
+  'MULTIRRIESGO HOGAR': 'MULTIRRIESGOS HOGAR',
+  'MULTI RIESGOS HOGAR': 'MULTIRRIESGOS HOGAR',
+  'MULTI RIESGO HOGAR': 'MULTIRRIESGOS HOGAR',
+  'MR HOGAR': 'MULTIRRIESGOS HOGAR',
+  'MULTIRRIESGO EMPRESARIAL': 'MULTIRRIESGOS EMPRESARIAL',
+  'MULTI RIESGOS EMPRESARIAL': 'MULTIRRIESGOS EMPRESARIAL',
+  'MULTI RIESGO EMPRESARIAL': 'MULTIRRIESGOS EMPRESARIAL',
+  'MR EMPRESARIAL': 'MULTIRRIESGOS EMPRESARIAL',
+  NEGOCIO: 'NEGOCIO EMPRESARIAL',
+  'NEGOCIOS EMPRESARIALES': 'NEGOCIO EMPRESARIAL',
+};
+
+function resolverTipoPolizaAllianz(valor) {
+  const raw = String(valor || '').trim();
+  if (!raw) return '';
+  if (TIPOS_POLIZA_ALLIANZ.includes(raw)) return raw;
+  const key = claveTipoPolizaAllianz(raw);
+  if (!key) return '';
+  const exacto = TIPOS_POLIZA_ALLIANZ.find((tipo) => claveTipoPolizaAllianz(tipo) === key);
+  if (exacto) return exacto;
+  if (TIPOS_POLIZA_ALLIANZ_LEGACY[key]) return TIPOS_POLIZA_ALLIANZ_LEGACY[key];
+  if (key.includes('HOGAR') && key.includes('DEUDOR')) return 'HOGAR DEUDOR';
+  if (key.includes('MULTIRRIESGO') && key.includes('HOGAR')) return 'MULTIRRIESGOS HOGAR';
+  if (key.includes('MULTI RIESGO') && key.includes('HOGAR')) return 'MULTIRRIESGOS HOGAR';
+  if (key.includes('MULTIRRIESGO') && (key.includes('EMPRESARIAL') || key.includes('EMPRESA'))) {
+    return 'MULTIRRIESGOS EMPRESARIAL';
+  }
+  if (key.includes('MULTI RIESGO') && (key.includes('EMPRESARIAL') || key.includes('EMPRESA'))) {
+    return 'MULTIRRIESGOS EMPRESARIAL';
+  }
+  if (key.includes('NEGOCIO')) return 'NEGOCIO EMPRESARIAL';
+  if (key === 'HOGAR' || key === 'HOMEOWNERS' || key === 'HOME') return 'HOGAR';
+  if (key === 'PYME' || key === 'PYMES' || /\bPYME/.test(key)) return 'PYME';
+  return '';
+}
+
+export function homologarTipoPolizaAllianz(valor, detalle = '') {
+  return resolverTipoPolizaAllianz(valor) || resolverTipoPolizaAllianz(detalle) || String(valor || '').trim();
+}
 
 export const esTipoPolizaOtroAllianz = (valor) =>
   /^OTROS?$/.test(String(valor || '').trim().toUpperCase());
 
 export const etiquetaTipoPolizaAllianz = (caso = {}) => {
-  const tipo = String(caso.tipoPoliza || '').trim();
+  const tipo = homologarTipoPolizaAllianz(caso.tipoPoliza, caso.tipoPolizaOtro);
   const detalle = String(caso.tipoPolizaOtro || '').trim();
   if (esTipoPolizaOtroAllianz(tipo) && detalle) return detalle;
   return tipo;
@@ -628,17 +717,21 @@ export const FORM_VACIO_ALLIANZ = {
   fechaVisita: '',
   modalidadAtencion: '',
   fechaCasoNuevo: '',
+  fechaPrimerContacto: '',
   fechaCoordinandoInspeccion: '',
   horaInicioCoordinacion: '',
   horaFinCoordinacion: '',
+  fechaInspeccionRealizada: '',
   fechaAnalisisCaso: '',
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',
   fechaObjecion: '',
   fechaObjetado: '',
   fechaAutorizacionAnalista: '',
+  fechaPresentacionCifras: '',
   fechaCasoParaPago: '',
   fechaCasoPagado: '',
+  fechaDesistido: '',
   fechaAnulado: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
@@ -812,9 +905,8 @@ export const construirFormDesdecasoAllianz = (caso = {}) => {
     const resto = email ? texto.replace(email[0], ' ').replace(/[|,;]/g, ' ').trim() : texto;
     if (resto.replace(/\D/g, '').length >= 7) base.telefonoAsegurado = resto;
   }
-  if (base.tipoPoliza && !TIPOS_POLIZA_ALLIANZ.includes(base.tipoPoliza)) {
-    if (!base.tipoPolizaOtro) base.tipoPolizaOtro = base.tipoPoliza;
-    base.tipoPoliza = 'OTRO';
+  if (base.tipoPoliza || base.tipoPolizaOtro) {
+    base.tipoPoliza = homologarTipoPolizaAllianz(base.tipoPoliza, base.tipoPolizaOtro);
   }
   base.estado = homologarEstadoAllianz(base.estado);
   const ub = resolverUbicacionAllianz(base.ciudad, base.departamento);

@@ -26,6 +26,9 @@ export default function EditorDeducibleZurich({
   aiuPorcentaje = AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
   valorAsegurado = '',
   mostrarAiu = false,
+  mostrarValorAsegurado = true,
+  titulo,
+  hint,
   onDeducibleChange,
   onAiuChange,
   onValorAseguradoChange,
@@ -53,10 +56,10 @@ export default function EditorDeducibleZurich({
     <div className="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
       <div>
         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-          {t('zurich.settlement.deductibleEditorTitle')}
+          {titulo || t('zurich.settlement.deductibleEditorTitle')}
         </p>
         <p className="mt-0.5 text-xs text-gray-500">
-          {t('zurich.settlement.deductibleEditorHint')}
+          {hint || t('zurich.settlement.deductibleEditorHint')}
         </p>
       </div>
 
@@ -100,6 +103,7 @@ export default function EditorDeducibleZurich({
         </div>
       </div>
 
+      {mostrarValorAsegurado ? (
       <Campo label={t('zurich.settlement.insuredValue')}>
         <InputFenix
           inputMode="numeric"
@@ -111,6 +115,7 @@ export default function EditorDeducibleZurich({
         />
         <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.insuredValueHint')}</p>
       </Campo>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label={t('zurich.settlement.deductiblePercent')}>

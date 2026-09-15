@@ -471,8 +471,14 @@ export default function DashboardCatastrofico({
                     layout="vertical"
                     align="right"
                     verticalAlign="middle"
-                    wrapperStyle={{ fontSize: 11, color: tickColor }}
-                    formatter={(value) => truncar(value, 20)}
+                    wrapperStyle={{
+                      fontSize: 11,
+                      color: tickColor,
+                      maxHeight: 280,
+                      overflowY: 'auto',
+                      paddingLeft: 8,
+                    }}
+                    formatter={(value) => truncar(value, 28)}
                   />
                 </PieChart>
               </ExpressChartPlot>

@@ -57,7 +57,7 @@ import {
   FaCalendarAlt,
   FaUserPlus,
 } from 'react-icons/fa';
-import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
+import { esUsuarioGerenteFacturacion, puedeVerBandejaFacturacionZurich } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
 import { arnaldLogo, arnaldIcon } from '../config/brandAssets.js';
 import { registrarNavegacionArnald } from '../services/arnaldPlataformaService.js';
@@ -422,6 +422,10 @@ export default function Layout() {
     usuarioActual.rol
   );
   const puedeBandejaFacturacion = esUsuarioGerenteFacturacion(usuarioActual.login);
+  const puedeBandejaFacturacionZurich = puedeVerBandejaFacturacionZurich(
+    usuarioActual.login,
+    usuarioActual.nombre
+  );
 
   useEffect(() => {
     if (accesoRestringido) return undefined;
@@ -508,6 +512,7 @@ export default function Layout() {
     '/seguros-alfa/liquidador': t('nav.pageTitles.alfaCase'),
     '/seguros-alfa/informe-unico': t('nav.pageTitles.alfaCase'),
     '/zurich/carga': t('nav.pageTitles.zurichAdd'),
+    '/zurich/bandeja-facturacion': t('nav.pageTitles.zurichBillingTray'),
     '/zurich/listado/reporte': t('nav.pageTitles.zurichListadoReport'),
     '/zurich/listado/mis-casos': t('nav.pageTitles.zurichMyCases'),
     '/zurich/listado/dashboard': t('nav.pageTitles.zurichListadoDashboard'),
@@ -917,6 +922,9 @@ export default function Layout() {
           ]
         : [
             { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
+            ...(puedeBandejaFacturacionZurich
+              ? [{ path: '/zurich/bandeja-facturacion', icon: FaInbox, label: t('nav.zurichBillingTray') }]
+              : []),
             { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
             { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
             { path: '/zurich/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },

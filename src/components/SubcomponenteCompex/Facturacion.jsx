@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   FaClock,
   FaPaperPlane,
@@ -28,6 +28,7 @@ import {
   complexInfoPanel,
   complexBtnPrimary,
   complexBtnSecondary,
+  complexAccordionWrap,
 } from './complexFenixUi';
 import {
   SeccionAcordeon,
@@ -38,7 +39,7 @@ import {
   DropzoneFenix,
   ListaDocumentos,
   BotonEnviar,
-  complexAccordionWrap,
+  ComplexFormTabs,
 } from './FacturacionHelpers';
 import { ComplexAvisoModal } from './ComplexUiBlocks';
 
@@ -65,10 +66,17 @@ export default function Facturacion({
   historialDocs,
   updateHistorialDocs,
   tarifaBloqueada = false,
+  layout = 'acordeon',
+  seccionInicial = 'controlHoras',
 }) {
   const { t } = useTranslation();
   const [enviando, setEnviando] = useState(false);
   const [enviandoGerencia, setEnviandoGerencia] = useState(false);
+  const esMenu = layout === 'tabs';
+  const [tabMenu, setTabMenu] = useState(seccionInicial || 'controlHoras');
+  useEffect(() => {
+    if (seccionInicial) setTabMenu(seccionInicial);
+  }, [seccionInicial]);
   const [controlHorasAbierto, setControlHorasAbierto] = useState(true);
   const [editorControlHorasAbierto, setEditorControlHorasAbierto] = useState(false);
   const [avisoGuardarCaso, setAvisoGuardarCaso] = useState(false);
@@ -333,12 +341,25 @@ export default function Facturacion({
       valor: valor || t('complex.ui.facturacion.ninguno'),
     });
 
+  const tabsMenu = [
+    { id: 'controlHoras', label: t('complex.ui.facturacion.control_de_horas') },
+    { id: 'envio', label: t('complex.ui.facturacion.envio_control_horas') },
+    { id: 'autorizacion', label: t('complex.ui.facturacion.autorizacion') },
+    { id: 'factura', label: t('complex.ui.facturacion.facturacion') },
+  ];
+
   return (
-    <div className={`${complexScope} ${complexPageWrap}`}>
+    <div className={esMenu ? `${complexScope} space-y-4` : `${complexScope} ${complexPageWrap}`}>
+      {!esMenu && (
       <h2 className={complexSectionTitle}>
         <FaFileInvoice className="text-fenix-primario" />{t("complex.ui.facturacion.facturacion")}</h2>
+      )}
+      {esMenu && (
+        <ComplexFormTabs tabs={tabsMenu} activeId={tabMenu} onChange={setTabMenu} />
+      )}
 
       {/* Valores principales */}
+      {(!esMenu || tabMenu === 'factura') && (
       <div className={complexCard}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Campo label={t("complex.ui.facturacion.numero_de_factura")}>
@@ -375,15 +396,17 @@ export default function Facturacion({
           </Campo>
         </div>
       </div>
+      )}
 
-      <div className={complexAccordionWrap}>
+      <div className={esMenu ? 'space-y-4' : complexAccordionWrap}>
         {/* Control de Horas */}
         <SeccionAcordeon
-          abierto={controlHorasAbierto}
+          abierto={esMenu ? tabMenu === 'controlHoras' : controlHorasAbierto}
           onToggle={() => setControlHorasAbierto(!controlHorasAbierto)}
           icon={FaClock}
           titulo={t('complex.ui.facturacion.control_de_horas')}
           subtitulo={t('complex.ui.facturacion.fase1_liquidacion')}
+          sinCabecera={esMenu}
         >
           <div className={complexInfoPanel}>
             <p className="mb-3 font-body text-base text-gray-600 dark:text-gray-400">{t("complex.ui.facturacion.un_control_de_horas_por_caso_puede_crearlo_en_el_sistema")}</p>
@@ -547,11 +570,12 @@ export default function Facturacion({
 
         {/* Envío de Control de Horas */}
         <SeccionAcordeon
-          abierto={envioControlHorasAbierto}
+          abierto={esMenu ? tabMenu === 'envio' : envioControlHorasAbierto}
           onToggle={() => setEnvioControlHorasAbierto(!envioControlHorasAbierto)}
           icon={FaPaperPlane}
           titulo={t('complex.ui.facturacion.envio_control_horas')}
           subtitulo={t('complex.ui.facturacion.fase2_evidencia')}
+          sinCabecera={esMenu}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Campo label={t("complex.ui.facturacion.fecha_de_envio")}>
@@ -636,11 +660,12 @@ export default function Facturacion({
 
         {/* Autorización */}
         <SeccionAcordeon
-          abierto={seguimientoAbierto}
+          abierto={esMenu ? tabMenu === 'autorizacion' : seguimientoAbierto}
           onToggle={() => setSeguimientoAbierto(!seguimientoAbierto)}
           icon={FaCheckCircle}
           titulo={t('complex.ui.facturacion.autorizacion')}
           subtitulo={t('complex.ui.facturacion.fechas_comentarios_docs_autorizacion')}
+          sinCabecera={esMenu}
         >
           <Campo label={t("complex.ui.facturacion.fecha_de_autorizacion")}>
             <InputFenix
@@ -681,11 +706,12 @@ export default function Facturacion({
 
         {/* Facturación (documentos) */}
         <SeccionAcordeon
-          abierto={facturacionAbierto}
+          abierto={esMenu ? tabMenu === 'factura' : facturacionAbierto}
           onToggle={() => setFacturacionAbierto(!facturacionAbierto)}
           icon={FaFileInvoiceDollar}
           titulo={t('complex.ui.facturacion.facturacion')}
           subtitulo={t('complex.ui.facturacion.documentos_y_fechas_facturacion')}
+          sinCabecera={esMenu}
         >
           <Campo label={t("complex.ui.facturacion.fecha_de_factura")}>
             <InputFenix
@@ -715,6 +741,7 @@ export default function Facturacion({
         </SeccionAcordeon>
       </div>
 
+      {(!esMenu || tabMenu === 'factura') && (
       <div className={complexCard}>
         <Campo label={t("complex.ui.facturacion.observaciones_y_compromisos")}>
           <TextareaFenix
@@ -729,6 +756,7 @@ export default function Facturacion({
           <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.facturacion.registra_aqui_acuerdos_compromisos_o_notas_relevantes_pa")}</p>
         </div>
       </div>
+      )}
 
       {setFormData && (
         <ControlHorasEditor

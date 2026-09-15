@@ -87,6 +87,8 @@ export const FILTROS_TORRE_VACIOS = {
   reservaRango: '',
   antiguedadRango: '',
   antiguedadTotalRango: '',
+  ajustador: '',
+  inspector: '',
   documentoCategoria: '',
   ansInspeccion: '',
   ansLiquidacion: '',

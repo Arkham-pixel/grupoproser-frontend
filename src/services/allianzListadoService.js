@@ -1,6 +1,6 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
-import { homologarCiudadAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
+import { homologarCiudadAllianz, homologarEstadoAllianz, homologarTipoPolizaAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
 
 const API_URL = `${BASE_URL}/api/allianz-listado`;
 
@@ -29,7 +29,7 @@ export const normalizeAllianzListadoItem = (item = {}) => {
   identificacion: item.identificacion ?? '',
   tipoIdentificacion: item.tipoIdentificacion ?? '',
   numeroPoliza: item.numeroPoliza ?? '',
-  tipoPoliza: item.tipoPoliza ?? '',
+  tipoPoliza: homologarTipoPolizaAllianz(item.tipoPoliza ?? '', item.tipoPolizaOtro ?? ''),
   tipoPolizaOtro: item.tipoPolizaOtro ?? '',
   causa: item.causa ?? '',
   asegurado: item.asegurado ?? '',
@@ -47,7 +47,7 @@ export const normalizeAllianzListadoItem = (item = {}) => {
   ajustadorLider: item.ajustadorLider ?? '',
   ajustador: item.ajustador ?? '',
   inspector: item.inspector ?? '',
-  estado: item.estado ?? '',
+  estado: homologarEstadoAllianz(item.estado ?? ''),
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
   archivos: Array.isArray(item.archivos) ? item.archivos : [],

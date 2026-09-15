@@ -5,7 +5,7 @@ import {
   primeraFechaNoVaciaZurich,
   resolverDepartamentoZurich,
 } from './zurichHelpers.js';
-import { parsearNumero } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+import { parsearNumero, valorSmdlvDesdeSmmlv } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import { sanitizarInformeUnicoCamposWord } from '../../utils/limpiarTextoInformeWord.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
@@ -811,16 +811,20 @@ function autoAnalisisConceptoZurich(fila, ctx) {
   }
 
   if (conceptoPolizaCoincide(fila, 'reserva')) {
-    const desglose = desgloseReservaPreliminarZurich(info);
+    const desglose = desgloseReservaPreliminarZurich(info, { caso, encabezado: enc, liquidador: liq });
     const reserva = desglose.reserva || parsearNumero(caso.reserva);
     if (!(desglose.perdida > 0) && !(reserva > 0)) return { analisis: '', conclusion: '' };
     if (desglose.perdida > 0) {
       const pctTxt = formatearPorcentajeLibreZurich(desglose.porcentaje);
+      const cant = desglose.cantidadMinimo;
+      const tipo = desglose.tipoMinimo;
       return {
         analisis:
           `Valor de la pérdida (presupuesto preliminar): $ ${formatearMonto(desglose.perdida)}. ` +
-          `Deducible ${pctTxt}% sobre la pérdida: $ ${formatearMonto(desglose.deducible)}. ` +
-          `Reserva sugerida: $ ${formatearMonto(desglose.reserva)}.`,
+          `Deducible ${pctTxt}% sobre valor asegurado: $ ${formatearMonto(desglose.montoPctVa)}. ` +
+          `Deducible ${pctTxt}% sobre la pérdida: $ ${formatearMonto(desglose.montoPctPerdida)}. ` +
+          `Deducible ${cant || 0} ${tipo}: $ ${formatearMonto(desglose.montoMinimo)}. ` +
+          `Se aplica el mayor ($ ${formatearMonto(desglose.deducible)}). Reserva sugerida: $ ${formatearMonto(desglose.reserva)}.`,
         conclusion: `$ ${formatearMonto(desglose.reserva)}`,
       };
     }
@@ -989,19 +993,97 @@ export function formatearPorcentajeLibreZurich(valor) {
 }
 
 /**
- * Reserva preliminar = pérdida − deducible.
- * El deducible es el % libre sobre el valor de la pérdida (presupuesto preliminar).
+ * Reserva preliminar: el mayor entre % sobre valor asegurado, % sobre la pérdida
+ * y el mínimo SMMLV/SMDLV, con tope en la pérdida.
  */
-export function desgloseReservaPreliminarZurich(info = {}) {
-  const perdida = Math.round(totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar));
-  const porcentaje = parsearPorcentajeLibreZurich(info?.porcentajeDeducibleReserva);
-  const deducible = perdida > 0 && porcentaje > 0 ? Math.round((perdida * porcentaje) / 100) : 0;
-  const reserva = Math.max(0, perdida - deducible);
-  return { perdida, porcentaje, deducible, reserva };
+export function configDeducibleReservaZurich(info = {}) {
+  const raw =
+    info.deducibleConfigReserva && typeof info.deducibleConfigReserva === 'object'
+      ? info.deducibleConfigReserva
+      : {};
+  const tipoMinimo = raw.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const porcentaje =
+    raw.porcentaje != null && raw.porcentaje !== ''
+      ? raw.porcentaje
+      : info.porcentajeDeducibleReserva != null && info.porcentajeDeducibleReserva !== ''
+        ? info.porcentajeDeducibleReserva
+        : '';
+  return {
+    porcentaje,
+    tipoMinimo,
+    cantidadSMMLV: raw.cantidadSMMLV ?? '',
+    cantidadSMDLV: raw.cantidadSMDLV ?? '',
+  };
 }
 
-export function reservaSugeridaZurich(info = {}) {
-  const desglose = desgloseReservaPreliminarZurich(info);
+export function patchDeducibleReservaZurich(info = {}, patch = {}) {
+  const cfg = { ...configDeducibleReservaZurich(info), ...patch };
+  if (patch.tipoMinimo === 'SMDLV') cfg.tipoMinimo = 'SMDLV';
+  else if (patch.tipoMinimo) cfg.tipoMinimo = 'SMMLV';
+  return {
+    ...info,
+    deducibleConfigReserva: cfg,
+    porcentajeDeducibleReserva:
+      cfg.porcentaje == null || cfg.porcentaje === '' ? '' : String(cfg.porcentaje),
+  };
+}
+
+export function valorAseguradoReservaZurich(info = {}, extras = {}) {
+  return (
+    parsearNumero(extras.valorAsegurado) ||
+    parsearNumero(info.valorAsegurado) ||
+    valorAseguradoPresupuestoZurich(extras.liquidador || {}) ||
+    parsearNumero(extras.caso?.valorAseguradoInmueble) ||
+    parsearNumero(extras.encabezado?.valorAseguradoInmueble) ||
+    0
+  );
+}
+
+export function desgloseReservaPreliminarZurich(info = {}, extras = {}) {
+  const perdida = Math.round(totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar));
+  const cfg = configDeducibleReservaZurich(info);
+  const porcentaje = parsearPorcentajeLibreZurich(cfg.porcentaje);
+  const valorAsegurado = Math.round(valorAseguradoReservaZurich(info, extras));
+  const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const cantRaw = tipoMinimo === 'SMDLV' ? cfg.cantidadSMDLV : cfg.cantidadSMMLV;
+  const cantidadMinimo = parsearPorcentajeLibreZurich(cantRaw);
+  const valorSMMLV = SMMLV_DEFAULT;
+  const valorSMDLV = valorSmdlvDesdeSmmlv(valorSMMLV);
+  const valorMinimo = tipoMinimo === 'SMDLV' ? valorSMDLV : valorSMMLV;
+  const montoPctVa =
+    valorAsegurado > 0 && porcentaje > 0
+      ? Math.round((valorAsegurado * porcentaje) / 100)
+      : 0;
+  const montoPctPerdida =
+    perdida > 0 && porcentaje > 0 ? Math.round((perdida * porcentaje) / 100) : 0;
+  const montoMinimo =
+    cantidadMinimo > 0 ? Math.round(valorMinimo * cantidadMinimo) : 0;
+  const bruto = Math.max(montoPctVa, montoPctPerdida, montoMinimo);
+  const deducible = perdida > 0 ? Math.min(bruto, perdida) : 0;
+  const reserva = Math.max(0, perdida - deducible);
+  let tipoGanador = '%';
+  if (deducible <= 0) tipoGanador = '%';
+  else if (montoMinimo >= montoPctVa && montoMinimo >= montoPctPerdida) tipoGanador = tipoMinimo;
+  else if (montoPctVa >= montoPctPerdida) tipoGanador = 'valor_asegurado';
+  else tipoGanador = 'perdida';
+  return {
+    perdida,
+    porcentaje,
+    valorAsegurado,
+    tipoMinimo,
+    cantidadMinimo,
+    montoPctVa,
+    montoPctPerdida,
+    montoMinimo,
+    montoPct: montoPctPerdida,
+    deducible,
+    reserva,
+    tipoGanador,
+  };
+}
+
+export function reservaSugeridaZurich(info = {}, extras = {}) {
+  const desglose = desgloseReservaPreliminarZurich(info, extras);
   if (desglose.perdida > 0) return desglose.reserva;
   return parsearNumero(info?.reservaSugerida);
 }
@@ -1507,6 +1589,10 @@ export function sanitizarInformeUnicoZurich(informe = {}) {
     ...(tipo ? { tipoInforme: tipo } : {}),
     porcentajeDeducibleReserva:
       limpio.porcentajeDeducibleReserva == null ? '' : String(limpio.porcentajeDeducibleReserva),
+    deducibleConfigReserva:
+      limpio.deducibleConfigReserva && typeof limpio.deducibleConfigReserva === 'object'
+        ? limpio.deducibleConfigReserva
+        : undefined,
     ...(desglose.perdida > 0 ? { reservaSugerida: String(desglose.reserva) } : {}),
     fotosInspeccion: serializarFotosInspeccionZurich(limpio.fotosInspeccion),
     fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
@@ -1584,6 +1670,12 @@ export function defaultInformeUnicoZurich(caso = {}) {
     analisisCobertura: '',
     reservaSugerida: caso.reserva != null && caso.reserva !== '' ? String(caso.reserva) : '',
     porcentajeDeducibleReserva: '',
+    deducibleConfigReserva: {
+      porcentaje: '',
+      tipoMinimo: 'SMMLV',
+      cantidadSMMLV: '',
+      cantidadSMDLV: '',
+    },
     filasDanios: plantillaFilasDaniosZurich(),
     filasPolizaCobertura: completarFilasPolizaCoberturaZurich(plantillaFilasPolizaZurich(), {
       caso,
@@ -1623,6 +1715,10 @@ export function defaultInformeUnicoZurich(caso = {}) {
       guardado.porcentajeDeducibleReserva != null && guardado.porcentajeDeducibleReserva !== ''
         ? String(guardado.porcentajeDeducibleReserva)
         : base.porcentajeDeducibleReserva,
+    deducibleConfigReserva:
+      guardado.deducibleConfigReserva && typeof guardado.deducibleConfigReserva === 'object'
+        ? guardado.deducibleConfigReserva
+        : base.deducibleConfigReserva,
     filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
     filasPolizaCobertura: completarFilasPolizaCoberturaZurich(
       usarPlantillaSiVacio(guardado.filasPolizaCobertura, base.filasPolizaCobertura),
@@ -1639,6 +1735,10 @@ export function defaultInformeUnicoZurich(caso = {}) {
             guardado.porcentajeDeducibleReserva != null && guardado.porcentajeDeducibleReserva !== ''
               ? String(guardado.porcentajeDeducibleReserva)
               : base.porcentajeDeducibleReserva,
+          deducibleConfigReserva:
+            guardado.deducibleConfigReserva && typeof guardado.deducibleConfigReserva === 'object'
+              ? guardado.deducibleConfigReserva
+              : base.deducibleConfigReserva,
         },
         liquidador: caso.liquidador,
       }
@@ -1650,7 +1750,10 @@ export function defaultInformeUnicoZurich(caso = {}) {
     fotosInspeccion: fotosInformeDesdeCasoZurich(caso, guardado),
     fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
   });
-  const desglose = desgloseReservaPreliminarZurich(limpio);
+  const desglose = desgloseReservaPreliminarZurich(limpio, {
+    caso,
+    liquidador: caso.liquidador,
+  });
   if (desglose.perdida > 0) limpio.reservaSugerida = String(desglose.reserva);
   return limpio;
 }

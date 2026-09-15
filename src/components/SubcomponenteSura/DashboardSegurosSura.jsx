@@ -20,7 +20,7 @@ export default function DashboardSegurosSura() {
       fechaEnRango={fechaEnRango}
       coincideFiltroTexto={coincideFiltroTexto}
       buildOpcionesFiltro={buildOpcionesFiltro}
-      estados={ESTADOS_SURA}
+      estados={[...ESTADOS_SURA, 'OTROS']}
       i18nNs="segurosSura"
       boletinPath="/sura/boletin"
       extras={{ horas: true }}

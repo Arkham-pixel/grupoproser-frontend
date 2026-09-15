@@ -3,9 +3,11 @@ import {
   ESTADOS_ALLIANZ,
   ESTADO_ALLIANZ_DEFAULT,
   ESTADO_ALLIANZ_INSPECCION,
+  ESTADO_ALLIANZ_INSPECCION_REALIZADA,
   ESTADO_ALLIANZ_PENDIENTE_DOCS,
   ESTADO_ALLIANZ_OBJECION,
   ESTADO_ALLIANZ_AUTORIZACION,
+  ESTADO_ALLIANZ_PAGO,
   ESTADOS_TEMPRANOS_ALLIANZ,
   casoAtendidoAllianz,
   casoInspeccionadoAllianz,
@@ -18,6 +20,8 @@ import {
   fechaEnRango,
   homologarCiudadAllianz,
   homologarEstadoAllianz,
+  homologarTipoPolizaAllianz,
+  TIPOS_POLIZA_ALLIANZ,
   normTexto,
   resolverDepartamentoAllianz,
   ultimaGestionAllianz,
@@ -28,24 +32,33 @@ const MS_DIA = 86400000;
 const RANK_ALERTA = { critico: 0, alto: 1, medio: 2 };
 
 export const TRAMOS_ETAPA_ALLIANZ = [
-  { id: 'nuevo-insp', desde: 'fechaCasoNuevo', hasta: 'fechaCoordinandoInspeccion' },
-  { id: 'insp-visita', desde: 'fechaCoordinandoInspeccion', hasta: 'fechaVisita' },
-  { id: 'visita-analisis', desde: 'fechaVisita', hasta: 'fechaAnalisisCaso' },
+  { id: 'nuevo-contacto', desde: 'fechaCasoNuevo', hasta: 'fechaPrimerContacto' },
+  { id: 'contacto-coord', desde: 'fechaPrimerContacto', hasta: 'fechaCoordinandoInspeccion' },
+  { id: 'coord-realizada', desde: 'fechaCoordinandoInspeccion', hasta: 'fechaInspeccionRealizada' },
+  { id: 'realizada-analisis', desde: 'fechaInspeccionRealizada', hasta: 'fechaAnalisisCaso' },
   { id: 'analisis-docs', desde: 'fechaAnalisisCaso', hasta: 'fechaSolicitudDocumento' },
   { id: 'docs-auth', desde: 'fechaSolicitudDocumento', hasta: 'fechaAutorizacionAnalista' },
-  { id: 'auth-pago', desde: 'fechaAutorizacionAnalista', hasta: 'fechaCasoParaPago' },
-  { id: 'pago-cierre', desde: 'fechaCasoParaPago', hasta: 'fechaCasoPagado' },
+  { id: 'auth-cifras', desde: 'fechaAutorizacionAnalista', hasta: 'fechaPresentacionCifras' },
+  { id: 'cifras-pago', desde: 'fechaPresentacionCifras', hasta: 'fechaCasoParaPago' },
 ];
 
 export function fechaAltaListadoAllianz(caso = {}) {
   return parseFecha(caso.fechaCasoNuevo || caso.fechaAsignacion || caso.createdAt);
 }
 
+/** Fecha en que el caso llega a CASO PARA PAGO (evacuación operativa, no cierre). */
+export function fechaPagoListadoAllianz(caso = {}) {
+  return parseFecha(caso.fechaCasoParaPago || caso.fechaCasoPagado);
+}
+
+/** Cierre real: solo DESISTIDO o ANULADO/CANCELADO. */
 export function fechaCierreListadoAllianz(caso = {}) {
+  if (!esEstadoCerradoAllianz(caso.estado)) return null;
   return parseFecha(
-    caso.fechaCasoPagado ||
-      caso.fechaObjetado ||
+    caso.fechaDesistido ||
       caso.fechaAnulado ||
+      caso.fechaCasoPagado ||
+      caso.fechaObjetado ||
       caso.fechaLiquidado ||
       caso.fechaFinalizado
   );
@@ -142,9 +155,11 @@ function clasificarPlazo(dias, limite, proximoPct) {
 }
 
 function fechaFinInspeccionAllianz(caso = {}, estado) {
-  const visita = parseFecha(caso.fechaVisita || caso.fechaInspeccion);
-  if (visita) return visita;
-  if (!ESTADOS_TEMPRANOS_ALLIANZ.has(estado)) {
+  const realizada = parseFecha(
+    caso.fechaInspeccionRealizada || caso.fechaVisita || caso.fechaInspeccion
+  );
+  if (realizada) return realizada;
+  if (estado === ESTADO_ALLIANZ_INSPECCION_REALIZADA || !ESTADOS_TEMPRANOS_ALLIANZ.has(estado)) {
     return parseFecha(caso.fechaAnalisisCaso || caso.fechaCoordinandoInspeccion);
   }
   return null;
@@ -155,11 +170,13 @@ export function clasificarAnsAllianz(caso = {}, config = TORRE_CONFIG_ALLIANZ_DE
   const inicio = fechaAltaListadoAllianz(caso);
   const estado = homologarEstadoAllianz(caso.estado);
   const finInsp = fechaFinInspeccionAllianz(caso, estado);
-  const finLiq = fechaCierreListadoAllianz(caso);
-  const diasInsp = inicio ? diasEntreFechas(inicio, finInsp || hoy) : null;
-  const diasLiq = inicio ? diasEntreFechas(inicio, finLiq || hoy) : null;
+  const finPago = fechaPagoListadoAllianz(caso);
+  const cerrado = esEstadoCerradoAllianz(estado);
   const inspeccionAbierta = !finInsp && ESTADOS_TEMPRANOS_ALLIANZ.has(estado);
-  const liquidacionAbierta = !finLiq && !esEstadoCerradoAllianz(estado);
+  const liquidacionAbierta = !finPago && !cerrado && estado !== ESTADO_ALLIANZ_PAGO;
+  const diasInsp = inicio ? diasEntreFechas(inicio, finInsp || (inspeccionAbierta ? hoy : null)) : null;
+  const finLiqClock = finPago || (cerrado ? fechaCierreListadoAllianz(caso) : null);
+  const diasLiq = inicio ? diasEntreFechas(inicio, finLiqClock || (liquidacionAbierta ? hoy : null)) : null;
 
   return {
     inspeccion: clasificarPlazo(diasInsp, ans.inspeccionDias, ans.proximoPct),
@@ -249,7 +266,7 @@ function coincideRangoReserva(caso, rangoId, config) {
 function coincideBusqueda(caso, texto) {
   const q = String(texto || '').trim().toLowerCase();
   if (!q) return true;
-  const hay = [caso.zc, caso.siniestro, caso.asegurado, caso.ciudad, caso.numeroPoliza]
+  const hay = [caso.zc, caso.siniestro, caso.asegurado, caso.ciudad, caso.numeroPoliza, caso.ajustador, caso.inspector]
     .map((v) => String(v || '').toLowerCase())
     .join(' ');
   return hay.includes(q);
@@ -283,6 +300,16 @@ export function aplicarFiltrosTorreAllianz(
       } else if (!coincideFiltroTexto(item.modalidadAtencion, f.modalidad)) return false;
     }
     if (f.intermediario && !coincideFiltroTexto(item.intermediario, f.intermediario)) return false;
+    if (f.ajustador) {
+      if (normTexto(f.ajustador) === 'SIN AJUSTADOR') {
+        if (String(item.ajustador || '').trim()) return false;
+      } else if (!coincideFiltroTexto(item.ajustador, f.ajustador)) return false;
+    }
+    if (f.inspector) {
+      if (normTexto(f.inspector) === 'SIN INSPECTOR') {
+        if (String(item.inspector || '').trim()) return false;
+      } else if (!coincideFiltroTexto(item.inspector, f.inspector)) return false;
+    }
     if (f.abiertoCerrado === 'abierto' && esEstadoCerradoAllianz(item.estado)) return false;
     if (f.abiertoCerrado === 'cerrado' && !esEstadoCerradoAllianz(item.estado)) return false;
     if (f.conReserva === 'si' && !casoTieneReservaAllianz(item)) return false;
@@ -294,8 +321,13 @@ export function aplicarFiltrosTorreAllianz(
       if (cubeta !== f.antiguedadRango && cubetaHeat !== f.antiguedadRango) return false;
     }
     if (f.antiguedadTotalRango) {
-      const cubeta = cubetaPorDias(diasAntiguedadTotalAllianz(item), config.cubetasAntiguedad);
-      if (cubeta !== f.antiguedadTotalRango) return false;
+      const diasTotal = diasAntiguedadTotalAllianz(item);
+      if (f.antiguedadTotalRango === 'sin-fecha') {
+        if (diasTotal != null) return false;
+      } else {
+        const cubeta = cubetaPorDias(diasTotal, config.cubetasAntiguedad);
+        if (cubeta !== f.antiguedadTotalRango) return false;
+      }
     }
     if (f.documentoCategoria) {
       const doc = clasificarDocumentoFaltanteAllianz(item.documentoFaltante, config);
@@ -322,6 +354,55 @@ export function filtrosTorreActivos(filtros = FILTROS_TORRE_VACIOS) {
   return Object.entries({ ...FILTROS_TORRE_VACIOS, ...(filtros || {}) }).filter(([, v]) =>
     String(v || '').trim()
   );
+}
+
+function tipoPolizaTorreAllianz(caso = {}) {
+  const tipo = homologarTipoPolizaAllianz(caso.tipoPoliza, caso.tipoPolizaOtro);
+  if (!tipo) return '';
+  if (TIPOS_POLIZA_ALLIANZ.includes(tipo)) return tipo;
+  return 'Otros';
+}
+
+function agruparPorTipoPolizaAllianz(lista = []) {
+  const agrupado = agruparConteoYReserva(lista, tipoPolizaTorreAllianz, {
+    vacio: 'Sin tipo de póliza',
+  });
+  const map = new Map(agrupado.map((fila) => [fila.nombre, fila]));
+  const filas = TIPOS_POLIZA_ALLIANZ.map(
+    (nombre) =>
+      map.get(nombre) || {
+        nombre,
+        cantidad: 0,
+        reserva: 0,
+        conReserva: 0,
+        promedio: 0,
+        pct: 0,
+      }
+  );
+  const sinTipo = map.get('Sin tipo de póliza');
+  if (sinTipo?.cantidad) filas.push(sinTipo);
+  const otros = map.get('Otros');
+  if (otros?.cantidad) filas.push(otros);
+  return filas;
+}
+
+function agruparPorDiasAllianz(lista = [], cubetas = []) {
+  const map = new Map(
+    cubetas.map((c) => [c.id, { clave: c.id, nombre: c.label, cantidad: 0, reserva: 0 }])
+  );
+  const sinFecha = { clave: 'sin-fecha', nombre: 'Sin fecha de ingreso', cantidad: 0, reserva: 0 };
+  for (const caso of lista) {
+    const dias = diasAntiguedadTotalAllianz(caso);
+    const reserva = reservaPositivaAllianz(caso);
+    const cubeta = cubetaPorDias(dias, cubetas);
+    const fila = cubeta ? map.get(cubeta) : sinFecha;
+    if (!fila) continue;
+    fila.cantidad += 1;
+    if (reserva > 0) fila.reserva += reserva;
+  }
+  const filas = cubetas.map((c) => map.get(c.id)).filter(Boolean);
+  if (sinFecha.cantidad) filas.push(sinFecha);
+  return filas;
 }
 
 function agruparConteoYReserva(casos, getter, { vacio = 'Sin dato', limite = 0 } = {}) {
@@ -405,9 +486,9 @@ function construirSerieFlujo(casos, granularidad, config) {
   const fechas = [];
   for (const caso of casos) {
     const alta = fechaAltaListadoAllianz(caso);
-    const fin = fechaCierreListadoAllianz(caso);
+    const pago = fechaPagoListadoAllianz(caso);
     if (alta) fechas.push(alta);
-    if (fin) fechas.push(fin);
+    if (pago) fechas.push(pago);
   }
   if (!fechas.length) return { serie: [], indiceEvacuacion: null, ingresosPeriodo: 0, finalizadosPeriodo: 0 };
 
@@ -440,12 +521,21 @@ function construirSerieFlujo(casos, granularidad, config) {
     let backlog = 0;
     for (const caso of casos) {
       const alta = fechaAltaListadoAllianz(caso);
-      const cierre = fechaCierreListadoAllianz(caso);
+      const pago = fechaPagoListadoAllianz(caso);
+      const cerrado = esEstadoCerradoAllianz(caso.estado);
       const altaMs = inicioDia(alta);
-      const cierreMs = inicioDia(cierre);
+      const pagoMs = inicioDia(pago);
       if (altaMs != null && altaMs >= iniMs && altaMs <= finMs) ingresos += 1;
-      if (cierreMs != null && cierreMs >= iniMs && cierreMs <= finMs) finalizados += 1;
-      if (altaMs != null && altaMs <= finMs && (cierreMs == null || cierreMs > finMs)) backlog += 1;
+      if (pagoMs != null && pagoMs >= iniMs && pagoMs <= finMs) finalizados += 1;
+      if (
+        altaMs != null &&
+        altaMs <= finMs &&
+        !cerrado &&
+        homologarEstadoAllianz(caso.estado) !== ESTADO_ALLIANZ_PAGO &&
+        (pagoMs == null || pagoMs > finMs)
+      ) {
+        backlog += 1;
+      }
     }
     return { clave, etiqueta: etiquetaBucket(clave, granularidad), ingresos, finalizados, backlog };
   });
@@ -647,9 +737,10 @@ export function construirTorreAllianz(
     }
 
     for (const tramo of TRAMOS_ETAPA_ALLIANZ) {
-      const hasta = tramo.hasta === 'fechaVisita'
-        ? caso.fechaVisita || caso.fechaInspeccion
-        : caso[tramo.hasta];
+      const hasta =
+        tramo.hasta === 'fechaInspeccionRealizada'
+          ? caso.fechaInspeccionRealizada || caso.fechaVisita || caso.fechaInspeccion
+          : caso[tramo.hasta];
       const d = diasEntreFechas(caso[tramo.desde], hasta);
       if (d != null) tramosDias[tramo.id].push(d);
     }
@@ -796,9 +887,10 @@ export function construirTorreAllianz(
     porCiudad: agruparConteoYReserva(lista, (c) => homologarCiudadAllianz(c.ciudad), {
       vacio: 'Sin ciudad',
     }),
-    porTipoPoliza: agruparConteoYReserva(lista, (c) => etiquetaTipoPolizaAllianz(c), {
-      vacio: 'Sin tipo de póliza',
-    }),
+    porTipoPoliza: agruparPorTipoPolizaAllianz(lista),
+    porAjustador: agruparConteoYReserva(lista, (c) => c.ajustador, { vacio: 'Sin ajustador' }),
+    porInspector: agruparConteoYReserva(lista, (c) => c.inspector, { vacio: 'Sin inspector' }),
+    porDias: agruparPorDiasAllianz(lista, cubetasAge),
     porModalidad: agruparConteoYReserva(lista, (c) => c.modalidadAtencion, { vacio: 'Sin modalidad' }),
     topReservas: topReservas.slice(0, config.limiteTopReservas || 15).map((fila) => ({
       ...fila,

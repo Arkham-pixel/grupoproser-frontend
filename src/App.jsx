@@ -90,6 +90,7 @@ import DashboardZurich from './components/SubcomponenteZurich/DashboardZurich';
 import BoletinDiarioZurich from './components/SubcomponenteZurich/BoletinDiarioZurich';
 import ReporteZurichListado from './components/SubcomponenteZurich/ReporteZurichListado';
 import DashboardZurichListado from './components/SubcomponenteZurich/DashboardZurichListado';
+import BandejaFacturacionZurich from './components/SubcomponenteZurich/BandejaFacturacionZurich';
 import CasoZurichWorkspace, {
   RedirectZurichInforme,
   RedirectZurichLiquidador,
@@ -634,6 +635,7 @@ export default function App() {
           <Route path="seguros-alfa/liquidador" element={<RedirectAlfaLiquidador />} />
           <Route path="seguros-alfa/informe-unico" element={<RedirectAlfaInforme />} />
 
+          <Route path="zurich/bandeja-facturacion" element={<BandejaFacturacionZurich />} />
           <Route path="zurich/carga" element={<FormularioZurich origen="listado" />} />
           <Route path="zurich/listado/reporte" element={<ReporteZurichListado />} />
           <Route path="zurich/listado/mis-casos" element={<ReporteZurichListado modoAsignados />} />

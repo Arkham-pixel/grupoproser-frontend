@@ -43,6 +43,7 @@ import {
   desgloseReservaPreliminarZurich,
   formatearPorcentajeLibreZurich,
   reservaSugeridaZurich,
+  valorAseguradoPresupuestoZurich,
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
 import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
@@ -416,16 +417,56 @@ const campoFila = (label, value, opts = {}) =>
   });
 
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
-function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}, portada = {} } = {}) {
+function extrasReservaWord(info = {}, { caso = {}, enc = {}, liquidador = null } = {}) {
+  return {
+    caso,
+    encabezado: enc,
+    liquidador,
+    valorAsegurado:
+      valorAseguradoPresupuestoZurich(liquidador || {}) || caso?.valorAseguradoInmueble,
+  };
+}
+
+function etiquetaGanadorReservaWord(desglose = {}) {
+  if (desglose.tipoGanador === 'valor_asegurado') return '% valor asegurado';
+  if (desglose.tipoGanador === 'perdida') return '% pérdida';
+  return desglose.tipoMinimo || 'SMMLV';
+}
+
+function filasDeducibleReservaWord(desglose = {}) {
+  const pctTxt = formatearPorcentajeLibreZurich(desglose.porcentaje);
+  return [
+    [`DEDUCIBLE ${pctTxt}% SOBRE VALOR ASEGURADO`, money(desglose.montoPctVa)],
+    [`DEDUCIBLE ${pctTxt}% SOBRE LA PÉRDIDA`, money(desglose.montoPctPerdida)],
+    [
+      `DEDUCIBLE ${desglose.cantidadMinimo || 0} ${desglose.tipoMinimo || 'SMMLV'}`,
+      money(desglose.montoMinimo),
+    ],
+    [
+      `DEDUCIBLE APLICADO (EL MAYOR: ${etiquetaGanadorReservaWord(desglose)})`,
+      desglose.deducible > 0 ? `− ${money(desglose.deducible)}` : money(0),
+    ],
+  ];
+}
+
+function construirCuadroPrincipal({
+  caso = {},
+  enc = {},
+  info = {},
+  totales = {},
+  portada = {},
+  liquidador = null,
+} = {}) {
   const vigencia =
     caso.fechaInicioPoliza || caso.fechaFinPoliza
       ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
       : '—';
 
   const esPreliminar = esInformePreliminarZurich(info);
-  const desgloseReserva = desgloseReservaPreliminarZurich(info);
-  const reserva = desgloseReserva.perdida > 0 ? desgloseReserva.reserva : reservaSugeridaZurich(info);
-  const pctReservaTxt = formatearPorcentajeLibreZurich(desgloseReserva.porcentaje);
+  const extras = extrasReservaWord(info, { caso, enc, liquidador });
+  const desgloseReserva = desgloseReservaPreliminarZurich(info, extras);
+  const reserva =
+    desgloseReserva.perdida > 0 ? desgloseReserva.reserva : reservaSugeridaZurich(info, extras);
   const ciudad = caso.ciudad || enc.ciudad || portada.municipio || '';
   const departamento = resolverDepartamentoZurich({
     ciudad,
@@ -469,10 +510,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ...(esPreliminar
       ? [
           ['VALOR DE LA PÉRDIDA', money(desgloseReserva.perdida)],
-          [
-            `DEDUCIBLE ${pctReservaTxt}% SOBRE LA PÉRDIDA`,
-            desgloseReserva.deducible > 0 ? `− ${money(desgloseReserva.deducible)}` : money(0),
-          ],
+          ...filasDeducibleReservaWord(desgloseReserva),
           ['RESERVA SUGERIDA', money(reserva)],
         ]
       : [
@@ -1143,13 +1181,15 @@ function tablaAnalisisPolizaZurich(filas = []) {
   });
 }
 
-function tablaPresupuestoPreliminarZurich(filas = [], info = {}) {
+function tablaPresupuestoPreliminarZurich(filas = [], info = {}, extras = {}) {
   const lista = Array.isArray(filas) ? filas : [];
-  const desglose = desgloseReservaPreliminarZurich({
-    ...info,
-    filasPresupuestoPreliminar: lista,
-  });
-  const pctTxt = formatearPorcentajeLibreZurich(desglose.porcentaje);
+  const desglose = desgloseReservaPreliminarZurich(
+    {
+      ...info,
+      filasPresupuestoPreliminar: lista,
+    },
+    extras
+  );
   const rows = [
     new TableRow({
       children: [
@@ -1236,21 +1276,24 @@ function tablaPresupuestoPreliminarZurich(filas = [], info = {}) {
         }),
       ],
     }),
-    new TableRow({
-      children: [
-        cell(`DEDUCIBLE ${pctTxt}% SOBRE LA PÉRDIDA`, {
-          width: 7360,
-          columnSpan: 2,
-          cuadro: true,
-          alignment: AlignmentType.RIGHT,
-        }),
-        cell(desglose.deducible > 0 ? `− ${money(desglose.deducible)}` : money(0), {
-          width: 2000,
-          cuadro: true,
-          alignment: AlignmentType.RIGHT,
-        }),
-      ],
-    }),
+    ...filasDeducibleReservaWord(desglose).map(
+      ([etiqueta, valor]) =>
+        new TableRow({
+          children: [
+            cell(etiqueta, {
+              width: 7360,
+              columnSpan: 2,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+            cell(valor, {
+              width: 2000,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+          ],
+        })
+    ),
     new TableRow({
       children: [
         cell('RESERVA SUGERIDA', {
@@ -1831,7 +1874,11 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             before: 40,
             after: 120,
           }),
-          tablaPresupuestoPreliminarZurich(info.filasPresupuestoPreliminar, info),
+          tablaPresupuestoPreliminarZurich(
+            info.filasPresupuestoPreliminar,
+            info,
+            extrasReservaWord(info, { caso, enc, liquidador: liq })
+          ),
         ]),
     p('Conclusiones', { bold: true, before: 180, after: 40 }),
     p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
@@ -1883,6 +1930,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           info,
           totales,
           portada: liq?.evaluacionSismicaNSR10?.portada || {},
+          liquidador: liq,
         }),
       ],
     },

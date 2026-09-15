@@ -35,6 +35,7 @@ import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { contarItemsPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import SelectorTipoInformePrevisora from './SelectorTipoInformePrevisora.jsx';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
@@ -168,6 +169,8 @@ export default function InformeUnicoPrevisora({
     (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
   );
+  const nItemsNsr = contarItemsPresupuestoNsr(liquidador);
+  const mostrarPresupuestoSinPdf = nItemsNsr > 0 && !tieneCotizacionPdf;
   const nFotos = esPreliminar ? 4 : 6;
   const nConclusiones = esPreliminar ? 5 : 7;
   const nFirmas = esPreliminar ? 6 : 8;
@@ -598,10 +601,19 @@ export default function InformeUnicoPrevisora({
         </p>
 
         <div className="mb-4">
+          {mostrarPresupuestoSinPdf ? (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+              {t('previsora.settlement.nsrFilledNoQuote', {
+                count: nItemsNsr,
+                amount: formatearMonto(totales.totalDanios),
+              })}
+            </p>
+          ) : null}
           <CotizacionPdfLiquidacion
             i18nPrefix="previsora.settlement"
             value={liquidador.cotizacionPdf}
             onChange={handleCotizacionChange}
+            compactEmpty={mostrarPresupuestoSinPdf}
             casoId={casoPrevisora?._id}
             api={api}
             archivosCaso={casoPrevisora?.archivos || []}
