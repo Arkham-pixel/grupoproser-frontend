@@ -71,6 +71,7 @@ export default function CotizacionPdfLiquidacion({
   descripcionUpload = '',
   mostrarUsarComoBase = true,
   usarComoBasePorDefecto = true,
+  compactEmpty = false,
 } = {}) {
   const { t } = useTranslation();
   const tq = (key, opts) => t(`${i18nPrefix}.${key}`, opts);
@@ -549,6 +550,9 @@ export default function CotizacionPdfLiquidacion({
 
   const montoNum = parsearMontoCotizacionExport(cotizacion?.montoFinal);
   const candidatos = Array.isArray(cotizacion?.candidatos) ? cotizacion.candidatos : [];
+  const estaVacia =
+    paginas.length === 0 && !pdfOriginal && !String(cotizacion?.nombreOriginal || '').trim();
+  const dropzoneCompacto = compactEmpty && estaVacia && !procesando;
 
   return (
     <div className="space-y-3">
@@ -557,27 +561,47 @@ export default function CotizacionPdfLiquidacion({
           {titulo || tq('quoteTitle')}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {hint || tq('quoteHint')}
+          {dropzoneCompacto
+            ? tq('quoteEmptyCompact', {
+                defaultValue: 'Opcional: suba el PDF de cotización del cliente.',
+              })
+            : hint || tq('quoteHint')}
         </p>
       </div>
 
       {error && <p className={expressAlertError}>{error}</p>}
 
       <div
-        className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center dark:border-gray-700 dark:bg-gray-900/40"
+        className={
+          dropzoneCompacto
+            ? 'flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40'
+            : 'rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center dark:border-gray-700 dark:bg-gray-900/40'
+        }
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
       >
-        <FaFilePdf className="mx-auto mb-2 h-8 w-8 text-red-600" />
-        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
-          {procesando
-            ? tq('quoteProcessing')
-            : tq('quoteDropTitle')}
-        </p>
-        <p className="mt-1 text-xs text-gray-500">
-          {tq('quoteDropSubtitle')}
-        </p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+        {!dropzoneCompacto ? <FaFilePdf className="mx-auto mb-2 h-8 w-8 text-red-600" /> : null}
+        <div className={dropzoneCompacto ? 'min-w-0 text-left' : ''}>
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+            {procesando
+              ? tq('quoteProcessing')
+              : dropzoneCompacto
+                ? tq('quoteEmptyCompact', {
+                    defaultValue: 'Opcional: suba el PDF de cotización del cliente.',
+                  })
+                : tq('quoteDropTitle')}
+          </p>
+          {!dropzoneCompacto ? (
+            <p className="mt-1 text-xs text-gray-500">{tq('quoteDropSubtitle')}</p>
+          ) : null}
+        </div>
+        <div
+          className={
+            dropzoneCompacto
+              ? 'flex flex-wrap items-center gap-2'
+              : 'mt-3 flex flex-wrap items-center justify-center gap-2'
+          }
+        >
           <input
             ref={inputRef}
             type="file"

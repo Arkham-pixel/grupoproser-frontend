@@ -518,6 +518,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
   recargosPresupuesto = null,
   ocultarPresupuestoEscrito = false,
   totalPresupuestoOverride = null,
+  /** Oculta el recuadro «Liquidación presupuesto». */
+  ocultarLiquidacionPresupuesto = false,
+  /** Si hay cotización PDF, no pisar la indemnización sugerida con el diagrama NSR. */
+  omitirSincronizarIndemnizacion = false,
+  /** Texto bajo el recuadro NSR (p. ej. que no afecta la cotización PDF). */
+  notaLiquidacionPresupuesto = '',
   /** Override de reglas por cobertura (p. ej. Sura terremoto 2%). */
   reglasDeduciblePorCobertura = null,
   /** Oculta gastos y el selector técnico de deducible; usado por Allianz. */
@@ -633,6 +639,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
       }),
     [liquidacion]
   );
+  const tipoMinimoPresupuesto =
+    (deducibleCfgPresupuestoInput.tipoMinimo ||
+      deducibleCfgPresupuesto.tipoMinimo ||
+      'SMMLV') === 'SMDLV'
+      ? 'SMDLV'
+      : 'SMMLV';
+  const esSmdlvPresupuesto = tipoMinimoPresupuesto === 'SMDLV';
   const usaTotalPresupuestoOverride =
     totalPresupuestoOverride != null &&
     totalPresupuestoOverride !== '' &&
@@ -775,6 +788,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
 
   useEffect(() => {
     if (!modoLiquidador) return;
+    if (omitirSincronizarIndemnizacion) return;
     const actual = String(formData.indemnizacionSugerida ?? '').trim();
     const siguiente = String(
       Math.round(
@@ -1746,8 +1760,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
                 Cada artículo de póliza que elija (Contenidos, Mercancías, Edificio…) lleva su
                 propio cálculo. La suma asegurada es la de la categoría (no se suma ítem a ítem).
-                El deducible (fórmula, no editable) se aplica una sola vez. Terremoto = mayor
-                entre 3% de esa base y 3 SMMLV.
+                El deducible se aplica una sola vez. Terremoto: mayor entre el % de la póliza
+                (editable) y el mínimo en SMMLV (mensual) o SMDLV (diario).
               </p>
             </label>
           ) : null}
@@ -2402,6 +2416,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
           </div>
 
+          {ocultarLiquidacionPresupuesto ? null : (
           <div
             className="ml-auto w-full max-w-lg space-y-3 rounded-lg border p-4 text-sm"
             style={{ borderColor, backgroundColor: softBg }}
@@ -2412,6 +2427,51 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </h4>
             </div>
             {usaPorArticuloPresupuesto ? null : (
+            <>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`rounded border px-2 py-1 text-xs font-semibold ${
+                  !esSmdlvPresupuesto ? 'border-blue-500 text-blue-600' : ''
+                }`}
+                style={
+                  !esSmdlvPresupuesto ? undefined : { borderColor, color: textSecondary }
+                }
+                onClick={() =>
+                  actualizarDeduciblePresupuesto({
+                    tipoMinimo: 'SMMLV',
+                    cantidadSMMLV:
+                      deducibleCfgPresupuestoInput.cantidadSMMLV === '' ||
+                      deducibleCfgPresupuestoInput.cantidadSMMLV == null
+                        ? deducibleCfgPresupuestoInput.cantidadSMDLV ?? ''
+                        : deducibleCfgPresupuestoInput.cantidadSMMLV,
+                  })
+                }
+              >
+                SMMLV (mensual)
+              </button>
+              <button
+                type="button"
+                className={`rounded border px-2 py-1 text-xs font-semibold ${
+                  esSmdlvPresupuesto ? 'border-blue-500 text-blue-600' : ''
+                }`}
+                style={
+                  esSmdlvPresupuesto ? undefined : { borderColor, color: textSecondary }
+                }
+                onClick={() =>
+                  actualizarDeduciblePresupuesto({
+                    tipoMinimo: 'SMDLV',
+                    cantidadSMDLV:
+                      deducibleCfgPresupuestoInput.cantidadSMDLV === '' ||
+                      deducibleCfgPresupuestoInput.cantidadSMDLV == null
+                        ? deducibleCfgPresupuestoInput.cantidadSMMLV ?? ''
+                        : deducibleCfgPresupuestoInput.cantidadSMDLV,
+                  })
+                }
+              >
+                SMDLV (diario)
+              </button>
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible
@@ -2434,29 +2494,33 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 />
               </label>
               <label className="block text-xs" style={{ color: textSecondary }}>
-                Cant. SMMLV
+                {esSmdlvPresupuesto ? 'Cant. SMDLV' : 'Cant. SMMLV'}
                 <input
                   type="text"
                   inputMode="decimal"
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                   value={valorInputDeducible(
-                    deducibleCfgPresupuestoInput.cantidadSMMLV,
-                    simplificarDeducible ? 3 : 4
+                    esSmdlvPresupuesto
+                      ? deducibleCfgPresupuestoInput.cantidadSMDLV
+                      : deducibleCfgPresupuestoInput.cantidadSMMLV,
+                    esSmdlvPresupuesto ? 10 : simplificarDeducible ? 3 : 4
                   )}
                   onChange={(e) => {
                     const raw = e.target.value
                       .replace(',', '.')
                       .replace(/[^\d.]/g, '');
                     if ((raw.match(/\./g) || []).length > 1) return;
-                    actualizarDeduciblePresupuesto({
-                      cantidadSMMLV: raw,
-                      tipoMinimo: 'SMMLV',
-                    });
+                    actualizarDeduciblePresupuesto(
+                      esSmdlvPresupuesto
+                        ? { cantidadSMDLV: raw, tipoMinimo: 'SMDLV' }
+                        : { cantidadSMMLV: raw, tipoMinimo: 'SMMLV' }
+                    );
                   }}
                 />
               </label>
             </div>
+            </>
             )}
             <div className="overflow-hidden rounded border" style={{ borderColor }}>
               <table className="w-full text-sm">
@@ -2483,10 +2547,14 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       <tr className="border-b" style={{ borderColor }}>
                         <td className="px-3 py-2" style={{ color: textSecondary }}>
                           DEDUCIBLE{' '}
-                          {diagrama.deduciblePresupuesto?.cantidadSMMLV ??
-                            deducibleCfgPresupuesto.cantidadSMMLV ??
-                            4}{' '}
-                          SMMLV
+                          {esSmdlvPresupuesto
+                            ? diagrama.deduciblePresupuesto?.cantidadSMDLV ??
+                              deducibleCfgPresupuesto.cantidadSMDLV ??
+                              ''
+                            : diagrama.deduciblePresupuesto?.cantidadSMMLV ??
+                              deducibleCfgPresupuesto.cantidadSMMLV ??
+                              ''}{' '}
+                          {tipoMinimoPresupuesto}
                         </td>
                         <td className="px-3 py-2 text-right">
                           {money(diagrama.deduciblePresupuesto?.montoSmmlv || 0)}
@@ -2522,10 +2590,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
             <p className="text-xs" style={{ color: textSecondary }}>
               {usaPorArticuloPresupuesto
-                ? 'Toma el total del presupuesto y el deducible ya calculado arriba. No se vuelve a aplicar % / SMMLV general.'
-                : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
+                ? 'Toma el total del presupuesto y el deducible ya calculado arriba. No se vuelve a aplicar % / SMMLV / SMDLV general.'
+                : 'Las dos vías quedan habilitadas. Se resta el mayor entre el mínimo (SMMLV o SMDLV, según la póliza) y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
+            {notaLiquidacionPresupuesto ? (
+              <p className="text-xs" style={{ color: textSecondary }}>
+                {notaLiquidacionPresupuesto}
+              </p>
+            ) : null}
           </div>
+          )}
 
           {modoLiquidador && !simplificarDeducible ? (
             <div className="space-y-4 border-t pt-4" style={{ borderColor }}>
@@ -2767,8 +2841,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
                 Cada artículo de póliza que elija (Contenidos, Mercancías, Edificio…) lleva su
                 propio cálculo. La suma asegurada es la de la categoría (no se suma ítem a ítem).
-                El deducible (fórmula, no editable) se aplica una sola vez. Terremoto = mayor
-                entre 3% de esa base y 3 SMMLV.
+                El deducible se aplica una sola vez. Terremoto: mayor entre el % de la póliza
+                (editable) y el mínimo en SMMLV (mensual) o SMDLV (diario).
               </p>
             </label>
             ) : null}

@@ -31,6 +31,13 @@ import {
   fusionarEncabezadoDesdeFichaZurich,
   mapcasoZurichALiquidador,
   migrarLiquidadorDeducibleTerremotoZurich,
+  asegurarLiquidacionCotizacionPdfZurich,
+  configDeducibleCotizacionPdfZurich,
+  liquidacionCotizacionPdfZurich,
+  patchAiuCotizacionPdfZurich,
+  patchDeducibleCotizacionPdfZurich,
+  patchValorAseguradoZurich,
+  resolverAiuPctZurich,
   normalizarTipoInformeZurich,
   desgloseReservaPreliminarZurich,
   formatearPorcentajeLibreZurich,
@@ -38,7 +45,7 @@ import {
   totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
-import { resolverDepartamentoZurich } from './zurichHelpers.js';
+import { formatMiles, resolverDepartamentoZurich } from './zurichHelpers.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
 import FotosInspeccionZurich from './FotosInspeccionZurich.jsx';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
@@ -47,7 +54,8 @@ import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
-import { serializarPaginasCotizacion, montoCotizacionPdf, usaCotizacionComoBasePresupuesto } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { serializarPaginasCotizacion, usaCotizacionComoBasePresupuesto } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import EditorDeducibleZurich from './EditorDeducibleZurich.jsx';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -268,6 +276,15 @@ export default function InformeUnicoZurich({
     (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
   );
+  const usaCotizBase = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
+
+  useEffect(() => {
+    if (!usaCotizBase) return;
+    setLiquidador((prev) => {
+      const next = asegurarLiquidacionCotizacionPdfZurich(prev);
+      return next === prev ? prev : next;
+    });
+  }, [usaCotizBase]);
   const encPoliza = liquidador?.encabezado || {};
   const datoPoliza = (claveCaso, claveEnc) => {
     const a = casoZurich?.[claveCaso];
@@ -370,6 +387,8 @@ export default function InformeUnicoZurich({
     casoZurich?.departamento,
     casoZurich?.siniestro,
     casoZurich?.zc,
+    casoZurich?.valorAseguradoInmueble,
+    casoZurich?.valorAseguradoContenidos,
   ]);
 
   useEffect(() => {
@@ -467,7 +486,9 @@ export default function InformeUnicoZurich({
 
   const handleCotizacionChange = (cotizacionPdf) => {
     setLiquidador((prev) =>
-      migrarLiquidadorDeducibleTerremotoZurich({ ...prev, cotizacionPdf }, casoZurich || {})
+      asegurarLiquidacionCotizacionPdfZurich(
+        migrarLiquidadorDeducibleTerremotoZurich({ ...prev, cotizacionPdf }, casoZurich || {})
+      )
     );
     setInforme((prev) => ({
       ...prev,
@@ -948,6 +969,25 @@ export default function InformeUnicoZurich({
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('zurich.reportUnique.finalAddsSettlement')}
         </p>
+        <div className="mb-4 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo label={t('zurich.settlement.insuredValue')}>
+            <InputFenix
+              inputMode="numeric"
+              value={formatMiles(
+                encPoliza.valorAseguradoInmueble ||
+                  liquidador.liquidacionCatastrofico?.valorAsegurado ||
+                  casoZurich?.valorAseguradoInmueble ||
+                  ''
+              )}
+              placeholder="245.000.000"
+              title={t('zurich.settlement.insuredValueHint')}
+              onChange={(e) =>
+                setLiquidador((prev) => patchValorAseguradoZurich(prev, e.target.value))
+              }
+            />
+            <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.insuredValueHint')}</p>
+          </Campo>
+        </div>
         <div className="mb-4">
           <CotizacionPdfLiquidacion
             value={liquidador.cotizacionPdf}
@@ -971,6 +1011,35 @@ export default function InformeUnicoZurich({
             disabled={guardandoCaso}
           />
         </div>
+        {usaCotizBase ? (
+        <div className="mb-4 max-w-xl">
+          <EditorDeducibleZurich
+            cfg={configDeducibleCotizacionPdfZurich(liquidador)}
+            aiuPorcentaje={
+              Number.isFinite(Number(liquidacionCotizacionPdfZurich(liquidador).aiuPorcentaje))
+                ? liquidacionCotizacionPdfZurich(liquidador).aiuPorcentaje
+                : resolverAiuPctZurich(liquidador)
+            }
+            valorAsegurado={
+              encPoliza.valorAseguradoInmueble ||
+              liquidador.liquidacionCatastrofico?.valorAsegurado ||
+              casoZurich?.valorAseguradoInmueble ||
+              ''
+            }
+            mostrarAiu
+            onDeducibleChange={(patch) =>
+              setLiquidador((prev) => patchDeducibleCotizacionPdfZurich(prev, patch))
+            }
+            onAiuChange={(aiuPorcentaje) =>
+              setLiquidador((prev) => patchAiuCotizacionPdfZurich(prev, aiuPorcentaje))
+            }
+            onValorAseguradoChange={(valor) =>
+              setLiquidador((prev) => patchValorAseguradoZurich(prev, valor))
+            }
+            disabled={guardandoCaso}
+          />
+        </div>
+        ) : null}
         <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           {filasResumenLiq.map((fila, idx) => (
             <div
@@ -990,11 +1059,12 @@ export default function InformeUnicoZurich({
           onInputChange={handleNsrChange}
           modoLiquidador
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
-          ocultarPresupuestoEscrito={tieneCotizacionPdf}
-          totalPresupuestoOverride={
-            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-              ? montoCotizacionPdf(liquidador.cotizacionPdf)
-              : null
+          ocultarPresupuestoEscrito={false}
+          ocultarLiquidacionPresupuesto={false}
+          totalPresupuestoOverride={null}
+          omitirSincronizarIndemnizacion={usaCotizBase}
+          notaLiquidacionPresupuesto={
+            usaCotizBase ? t('zurich.settlement.nsrLiquidacionIndependentHint') : ''
           }
         />
         {onGuardarLiquidador && (

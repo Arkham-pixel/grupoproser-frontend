@@ -1305,8 +1305,8 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   );
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
-    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
-  );
+    (totales.aiuPct ?? totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 10000
+  ) / 100;
   const imprPct = Math.round(
     (totales.presupuesto?.imprPct ?? presupuesto.imprevistosPorcentaje ?? 0) * 100
   );
@@ -1433,12 +1433,13 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     );
   }
   const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
+  const desgloseDedWord = desgloseDeducibleTerremotoZurich(liq, totales.diagrama);
   const seccionCotizacion = cotizacionParrafos.length
     ? [
         heading('Cotización de reparación'),
         p(
           totales.origenPresupuesto === 'cotizacion'
-            ? `Soporte de la cotización usada como base de liquidación. Monto final: ${montoCotizTxt}. El deducible de terremoto es el mayor entre 3% del valor asegurable y 3 SMMLV; el tope es este monto.`
+            ? `Soporte de la cotización usada como base de liquidación. Monto final: ${montoCotizTxt}. Se suma AIU (${aiuPct}%). El deducible de terremoto es el mayor entre ${desgloseDedWord.porcentaje}% del valor asegurable y ${desgloseDedWord.cantidadMinimo} ${desgloseDedWord.tipoMinimo}; el tope es la cotización con AIU.`
             : `Captura de la cotización adjunta (${cotizacionesIncluidas} página(s)).`,
           { after: 120, size: SIZE_12 }
         ),
