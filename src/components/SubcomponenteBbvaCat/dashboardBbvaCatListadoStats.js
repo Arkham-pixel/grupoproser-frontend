@@ -121,6 +121,168 @@ function montoPositivo(valor) {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+function inicioDiaLocal(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function modalidadBbvaCat(caso = {}) {
+  return String(caso.modalidadAtencion || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function esVideoperitajeBbvaCat(caso = {}) {
+  const mod = modalidadBbvaCat(caso);
+  if (mod.includes('VIDEOPERITAJE') || mod.includes('VIDEO')) return true;
+  if (mod.includes('CAMPO') || mod.includes('PRESENCIAL')) return false;
+  return Boolean(parseFecha(caso.fechaVisita));
+}
+
+function esPresencialBbvaCat(caso = {}) {
+  const mod = modalidadBbvaCat(caso);
+  return mod.includes('CAMPO') || mod.includes('PRESENCIAL');
+}
+
+function tieneAsignacionBbvaCat(caso = {}) {
+  return Boolean(parseFecha(caso.fechaAsignacion));
+}
+
+/** Contactado: ya hay visita, coordinación o salió de CASO NUEVO. */
+function esContactadoBbvaCat(caso = {}) {
+  if (parseFecha(caso.fechaVisita) || parseFecha(caso.fechaCoordinandoInspeccion)) return true;
+  const estado = claveEstado(caso.estado);
+  return Boolean(estado && estado !== 'CASO NUEVO');
+}
+
+function casoDocumentadoBbvaCat(caso = {}) {
+  if (caso.tieneInforme || (caso.informeUnico && typeof caso.informeUnico === 'object')) return true;
+  const n = Number(caso.nArchivos);
+  if (Number.isFinite(n) && n > 0) return true;
+  return Array.isArray(caso.archivos) && caso.archivos.length > 0;
+}
+
+/**
+ * Tablas de reunión BBVA: pivot por estado (cuenta + reservas) y panel operativo.
+ * Reserva actuarial = suma valorEstimadoAseguradora. Reserva ajustador = suma valorLiquidado.
+ * Videoperitajes: modalidad VIDEOPERITAJE o fechaVisita (Calendly); realizados/programados por fechaVisita vs hoy.
+ */
+export function construirResumenReunionBbvaCat(casos = [], ahora = new Date()) {
+  const lista = Array.isArray(casos) ? casos : [];
+  const hoy = inicioDiaLocal(ahora);
+
+  const actuarialMap = new Map(ESTADOS_BBVA_CAT.map((e) => [e, 0]));
+  const ajustadorMap = new Map(ESTADOS_BBVA_CAT.map((e) => [e, 0]));
+  const cuentaMap = new Map(ESTADOS_BBVA_CAT.map((e) => [e, 0]));
+
+  let asignados = 0;
+  let contactados = 0;
+  let videoTotal = 0;
+  let videoRealizados = 0;
+  let videoProgramados = 0;
+  let presencialTotal = 0;
+  let presencialRealizados = 0;
+  let presencialProgramados = 0;
+  let cierresDocumentados = 0;
+  let cierresNoDocumentados = 0;
+
+  for (const caso of lista) {
+    const estado = claveEstado(caso.estado);
+    cuentaMap.set(estado, (cuentaMap.get(estado) || 0) + 1);
+    const actuarial = montoPositivo(caso.valorEstimadoAseguradora);
+    if (actuarial > 0) actuarialMap.set(estado, (actuarialMap.get(estado) || 0) + actuarial);
+    const ajustador = reservaAjustadorNumero(caso);
+    if (ajustador > 0) ajustadorMap.set(estado, (ajustadorMap.get(estado) || 0) + ajustador);
+
+    if (tieneAsignacionBbvaCat(caso)) {
+      asignados += 1;
+      if (esContactadoBbvaCat(caso)) contactados += 1;
+    }
+
+    const fVisita = parseFecha(caso.fechaVisita);
+    const visitaPasada = fVisita ? fVisita <= hoy : false;
+    const visitaFutura = fVisita ? fVisita > hoy : false;
+
+    if (esVideoperitajeBbvaCat(caso)) {
+      videoTotal += 1;
+      if (visitaPasada) videoRealizados += 1;
+      else if (visitaFutura) videoProgramados += 1;
+      else if (fVisita) videoRealizados += 1;
+    } else if (esPresencialBbvaCat(caso)) {
+      presencialTotal += 1;
+      if (visitaPasada) presencialRealizados += 1;
+      else if (visitaFutura) presencialProgramados += 1;
+    }
+
+    if (!esCarteraAbiertaBbvaCat(estado)) {
+      if (casoDocumentadoBbvaCat(caso)) cierresDocumentados += 1;
+      else cierresNoDocumentados += 1;
+    }
+  }
+
+  const porEstado = [
+    ...ESTADOS_BBVA_CAT.map((estado) => ({
+      estado,
+      cantidad: cuentaMap.get(estado) || 0,
+      reservaActuarial: actuarialMap.get(estado) || 0,
+      reservaAjustador: ajustadorMap.get(estado) || 0,
+    })),
+    ...[...cuentaMap.entries()]
+      .filter(([estado]) => !ESTADOS_BBVA_CAT.includes(estado) && (cuentaMap.get(estado) || 0) > 0)
+      .map(([estado]) => ({
+        estado,
+        cantidad: cuentaMap.get(estado) || 0,
+        reservaActuarial: actuarialMap.get(estado) || 0,
+        reservaAjustador: ajustadorMap.get(estado) || 0,
+      })),
+  ].filter((f) => f.cantidad > 0);
+
+  const totales = porEstado.reduce(
+    (acc, fila) => {
+      acc.cantidad += fila.cantidad;
+      acc.reservaActuarial += fila.reservaActuarial;
+      acc.reservaAjustador += fila.reservaAjustador;
+      return acc;
+    },
+    { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 }
+  );
+
+  const pct = (parte, total) =>
+    total > 0 ? Math.round((parte / total) * 10000) / 100 : 0;
+
+  return {
+    porEstado,
+    totales,
+    operativo: {
+      asignados,
+      contactados,
+      pctContactados: pct(contactados, asignados),
+      videoperitajes: {
+        total: videoTotal,
+        realizados: videoRealizados,
+        programados: videoProgramados,
+        pctSobreAsignados: pct(videoTotal, asignados),
+        pctRealizados: pct(videoRealizados, videoTotal),
+        pctProgramados: pct(videoProgramados, videoTotal),
+      },
+      presencial: {
+        total: presencialTotal,
+        realizados: presencialRealizados,
+        programados: presencialProgramados,
+        pctSobreAsignados: pct(presencialTotal, asignados),
+        pctRealizados: pct(presencialRealizados, presencialTotal),
+        pctProgramados: pct(presencialProgramados, presencialTotal),
+      },
+      cierres: {
+        documentados: cierresDocumentados,
+        noDocumentados: cierresNoDocumentados,
+        total: cierresDocumentados + cierresNoDocumentados,
+      },
+    },
+  };
+}
+
 /**
  * KPIs y series del dashboard de cartera (vista cliente BBVA).
  * Cuantía probable = mediana por caso. Reserva ajustador = suma de valorLiquidado.
@@ -336,5 +498,6 @@ export function construirDashboardBbvaCatListado(casos = []) {
       reserva: cubetasReserva.get(rango) || 0,
     })),
     grandesPerdidas: grandesPerdidas.slice(0, LIMITE_GRANDES_PERDIDAS_BBVA_CAT),
+    reunion: construirResumenReunionBbvaCat(lista),
   };
 }

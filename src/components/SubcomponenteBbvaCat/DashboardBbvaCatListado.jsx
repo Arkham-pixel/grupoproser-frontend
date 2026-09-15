@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FaCalculator, FaClipboardCheck, FaShieldAlt } from 'react-icons/fa';
+import { FaCalculator, FaClipboardCheck, FaFileExcel, FaShieldAlt } from 'react-icons/fa';
 import {
   Bar,
   BarChart,
@@ -18,6 +18,7 @@ import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import {
   expressBadge,
+  expressBtnSecondary,
   expressChartCard,
   expressPageSubtitle,
   expressPageTitle,
@@ -55,6 +56,7 @@ import {
   esCarteraAbiertaBbvaCat,
   fechaAltaListadoBbvaCat,
 } from './dashboardBbvaCatListadoStats.js';
+import { exportarDashboardBbvaCatExcel } from './exportarDashboardBbvaCatExcel.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F]';
 
@@ -78,6 +80,9 @@ export default function DashboardBbvaCatListado() {
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cargadoEn, setCargadoEn] = useState(null);
+  const [exportando, setExportando] = useState(false);
+  const [avisoExport, setAvisoExport] = useState(null);
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroTipoPoliza, setFiltroTipoPoliza] = useState('');
@@ -87,6 +92,22 @@ export default function DashboardBbvaCatListado() {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
+  const cargarCasos = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAllCasosBbvaCatListado();
+      setCasos(Array.isArray(data) ? data : []);
+      setCargadoEn(new Date());
+    } catch (err) {
+      console.error('Error cargando dashboard listado BBVA CAT:', err);
+      setError(err.message || 'No fue posible cargar el dashboard.');
+      setCasos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let cancelado = false;
     (async () => {
@@ -94,7 +115,9 @@ export default function DashboardBbvaCatListado() {
       setError(null);
       try {
         const data = await fetchAllCasosBbvaCatListado();
-        if (!cancelado) setCasos(Array.isArray(data) ? data : []);
+        if (cancelado) return;
+        setCasos(Array.isArray(data) ? data : []);
+        setCargadoEn(new Date());
       } catch (err) {
         console.error('Error cargando dashboard listado BBVA CAT:', err);
         if (!cancelado) {
@@ -163,8 +186,32 @@ export default function DashboardBbvaCatListado() {
     ]
   );
 
+  const exportarExcelDashboard = async () => {
+    if (!casosFiltrados.length) {
+      setAvisoExport({ tipo: 'error', mensaje: td('reunion.exportEmpty') });
+      return;
+    }
+    setExportando(true);
+    setAvisoExport(null);
+    try {
+      const result = await exportarDashboardBbvaCatExcel(casosFiltrados);
+      setAvisoExport({
+        tipo: 'ok',
+        mensaje: td('reunion.exportOkHint', { count: result.casos }),
+      });
+    } catch (err) {
+      console.error('Error exportando Excel dashboard BBVA CAT:', err);
+      setAvisoExport({
+        tipo: 'error',
+        mensaje: err?.message === 'NO_DATA' ? td('reunion.exportEmpty') : td('reunion.exportError'),
+      });
+    } finally {
+      setExportando(false);
+    }
+  };
+
   const stats = useMemo(() => construirDashboardBbvaCatListado(casosFiltrados), [casosFiltrados]);
-  const { kpis } = stats;
+  const { kpis, reunion } = stats;
 
   const filasPorEstado = useMemo(() => {
     const max = Math.max(1, ...stats.porEstado.map((fila) => Number(fila.cantidad) || 0));
@@ -222,11 +269,35 @@ export default function DashboardBbvaCatListado() {
     <div className={`${root} ${expressScope} p-4 sm:p-6`}>
       <div className={`${expressPageWrap} min-w-0`}>
         <header className="space-y-3">
-          <span className={expressBadge}>{td('badge')}</span>
-          <div>
-            <h1 className={expressPageTitle}>{td('title')}</h1>
-            <p className={expressPageSubtitle}>{td('subtitle')}</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 space-y-3">
+              <span className={expressBadge}>{td('badge')}</span>
+              <div>
+                <h1 className={expressPageTitle}>{td('title')}</h1>
+                <p className={expressPageSubtitle}>{td('subtitle')}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={`${expressBtnSecondary} shrink-0`}
+              onClick={exportarExcelDashboard}
+              disabled={exportando || !casosFiltrados.length}
+            >
+              <FaFileExcel aria-hidden="true" />
+              {exportando ? td('reunion.exporting') : td('reunion.exportExcel')}
+            </button>
           </div>
+          {avisoExport ? (
+            <p
+              className={`font-body text-sm ${
+                avisoExport.tipo === 'ok'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-red-700 dark:text-red-300'
+              }`}
+            >
+              {avisoExport.mensaje}
+            </p>
+          ) : null}
         </header>
 
         <ExpressFilterSection title={td('filters')} showClear={filtrosAplicados} onClear={limpiarFiltros}>
@@ -396,6 +467,14 @@ export default function DashboardBbvaCatListado() {
             </div>
           </div>
         </section>
+
+        <ResumenReunionBbvaCat
+          reunion={reunion}
+          formatCurrency={formatCurrency}
+          td={td}
+          cargadoEn={cargadoEn}
+          onRefresh={cargarCasos}
+        />
 
         <section className={`${expressTableWrap} min-w-0 p-4 sm:p-5`}>
           <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
@@ -644,6 +723,223 @@ export default function DashboardBbvaCatListado() {
       </div>
     </div>
   );
+}
+
+function ResumenReunionBbvaCat({ reunion, formatCurrency, td, cargadoEn, onRefresh }) {
+  const filas = reunion?.porEstado || [];
+  const totales = reunion?.totales || { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 };
+  const op = reunion?.operativo || {};
+  const video = op.videoperitajes || {};
+  const presencial = op.presencial || {};
+  const cierres = op.cierres || {};
+  const hora =
+    cargadoEn instanceof Date && !Number.isNaN(cargadoEn.getTime())
+      ? cargadoEn.toLocaleString('es-CO', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      : null;
+
+  return (
+    <section className="grid w-full min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-2">
+      <div className={`${expressTableWrap} min-w-0 overflow-hidden p-4 sm:p-5`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+              {td('reunion.title')}
+            </h2>
+            {hora ? (
+              <p className="mt-1 font-body text-xs text-[#004481] dark:text-sky-300">
+                {td('reunion.liveAt', { time: hora })}
+              </p>
+            ) : null}
+          </div>
+          {typeof onRefresh === 'function' ? (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="shrink-0 rounded-md border border-[#004481]/30 bg-white px-3 py-1.5 font-body text-xs font-semibold text-[#004481] hover:bg-[#004481]/5 dark:border-sky-700 dark:bg-[#1F1F1F] dark:text-sky-300 dark:hover:bg-sky-950/40"
+            >
+              {td('reunion.refresh')}
+            </button>
+          ) : null}
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className={expressTableHead}>
+              <tr>
+                <th className="px-3 py-2 sm:px-4">{td('reunion.estado')}</th>
+                <th className="px-3 py-2 text-right sm:px-4">{td('reunion.cuenta')}</th>
+                <th className="px-3 py-2 text-right sm:px-4">{td('reunion.reservaActuarial')}</th>
+                <th className="px-3 py-2 text-right sm:px-4">{td('reunion.reservaAjustador')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila) => (
+                <tr
+                  key={fila.estado}
+                  className="border-t border-gray-100 dark:border-gray-800"
+                >
+                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100 sm:px-4">
+                    {fila.estado}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                    {fila.cantidad}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                    {fila.reservaActuarial > 0 ? formatCurrency(fila.reservaActuarial) : '—'}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                    {fila.reservaAjustador > 0 ? formatCurrency(fila.reservaAjustador) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[#004481]/40 dark:border-sky-700/50">
+                <td className="px-3 py-2.5 font-semibold text-[#004481] dark:text-sky-300 sm:px-4">
+                  {td('reunion.total')}
+                </td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
+                  {totales.cantidad}
+                </td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
+                  {formatCurrency(totales.reservaActuarial)}
+                </td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
+                  {formatCurrency(totales.reservaAjustador)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div className={`${expressTableWrap} min-w-0 p-4 sm:p-5`}>
+        <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+          {td('reunion.operativoTitle')}
+        </h2>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="bg-[#004481] text-white dark:bg-sky-900">
+                <th className="px-3 py-2.5 font-semibold sm:px-4">
+                  {td('reunion.asignadosHeader', { pct: op.pctContactados ?? 0 })}
+                </th>
+                <th className="px-3 py-2.5 text-right font-semibold tabular-nums sm:px-4">
+                  {op.asignados ?? 0}
+                </th>
+                <th className="px-3 py-2.5 text-right font-semibold sm:px-4">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-sky-100 bg-sky-50/80 dark:border-sky-900/40 dark:bg-sky-950/30">
+                <td className="px-3 py-2 font-semibold text-gray-900 dark:text-gray-100 sm:px-4">
+                  {td('reunion.videoperitajes')}
+                </td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:px-4">
+                  {video.total ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {fmtPct(video.pctSobreAsignados)}
+                </td>
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2 pl-7 italic text-gray-700 dark:text-gray-300 sm:px-4 sm:pl-8">
+                  {td('reunion.realizados')}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {video.realizados ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {fmtPct(video.pctRealizados)}
+                </td>
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2 pl-7 italic text-gray-700 dark:text-gray-300 sm:px-4 sm:pl-8">
+                  {td('reunion.programados')}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {video.programados ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {fmtPct(video.pctProgramados)}
+                </td>
+              </tr>
+
+              <tr className="border-t border-sky-100 bg-sky-50/80 dark:border-sky-900/40 dark:bg-sky-950/30">
+                <td className="px-3 py-2 font-semibold text-gray-900 dark:text-gray-100 sm:px-4">
+                  {td('reunion.presencial')}
+                </td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:px-4">
+                  {presencial.total ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {fmtPct(presencial.pctSobreAsignados)}
+                </td>
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2 pl-7 italic text-gray-700 dark:text-gray-300 sm:px-4 sm:pl-8">
+                  {td('reunion.realizados')}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {presencial.realizados ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right text-gray-400 dark:text-gray-500 sm:px-4"> </td>
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2 pl-7 italic text-gray-700 dark:text-gray-300 sm:px-4 sm:pl-8">
+                  {td('reunion.programados')}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {presencial.programados ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right text-gray-400 dark:text-gray-500 sm:px-4"> </td>
+              </tr>
+
+              <tr className="border-t border-sky-100 bg-sky-50/80 dark:border-sky-900/40 dark:bg-sky-950/30">
+                <td className="px-3 py-2 font-semibold text-gray-900 dark:text-gray-100 sm:px-4">
+                  {td('reunion.cierres')}
+                </td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:px-4">
+                  {cierres.total ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right text-gray-400 dark:text-gray-500 sm:px-4"> </td>
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2 pl-7 italic text-gray-700 dark:text-gray-300 sm:px-4 sm:pl-8">
+                  {td('reunion.cierresDoc')}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {cierres.documentados ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right text-gray-400 dark:text-gray-500 sm:px-4"> </td>
+              </tr>
+              <tr className="border-t border-gray-100 dark:border-gray-800">
+                <td className="px-3 py-2 pl-7 italic text-gray-700 dark:text-gray-300 sm:px-4 sm:pl-8">
+                  {td('reunion.cierresNoDoc')}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                  {cierres.noDocumentados ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right text-gray-400 dark:text-gray-500 sm:px-4"> </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function fmtPct(valor) {
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return `${n.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
 }
 
 function CasosPorEstadoList({ filas = [] }) {
