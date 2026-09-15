@@ -42,6 +42,10 @@ import {
   extraerConsecutivoAlfaDeNombre,
   parsearInformeCatAlfaExcel,
 } from './parsearInformeCatAlfaExcel.js';
+import {
+  fusionarFotosInspeccionAlfa,
+  subirFotosAnexosCatAlCaso,
+} from './subirFotosAnexosCatAlfa.js';
 import useAlfaCasoAutosave from '../../hooks/useAlfaCasoAutosave.js';
 import useAlfaSharePointSyncStatus from '../../hooks/useAlfaSharePointSyncStatus.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
@@ -542,6 +546,16 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           ? casoAlfa.informeUnico
           : null) ||
         defaultInformeUnicoAlfa(casoAlfa || {});
+
+      let fotosSubidas = { fotosMeta: [], nOk: 0, nFail: 0 };
+      if (Array.isArray(parsed.fotosAnexos) && parsed.fotosAnexos.length) {
+        fotosSubidas = await subirFotosAnexosCatAlCaso({
+          casoId,
+          fotosAnexos: parsed.fotosAnexos,
+          onArchivoCreado: appendArchivoAlCaso,
+        });
+      }
+
       const nextInforme = {
         ...informeBase,
         analisisGeneral: {
@@ -550,6 +564,10 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         },
         ajustadorNombre:
           nextLiq.encabezado?.ajustador || informeBase.ajustadorNombre || '',
+        fotosInspeccion: fusionarFotosInspeccionAlfa(
+          informeBase.fotosInspeccion,
+          fotosSubidas.fotosMeta
+        ),
       };
 
       setLiquidadorState(nextLiq);
@@ -614,8 +632,19 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
           : '';
 
+      const avisoFotos =
+        fotosSubidas.nOk > 0
+          ? ` ${fotosSubidas.nOk} foto(s) de ANEXOS subidas.`
+          : parsed.nFotos > 0 && fotosSubidas.nOk === 0
+            ? ' No se pudieron subir las fotos del Excel.'
+            : '';
+      const avisoFail =
+        fotosSubidas.nFail > 0 ? ` (${fotosSubidas.nFail} foto(s) fallaron).` : '';
+
       const msg = [
         `Excel importado a ARNALD: liquidador (${parsed.nItems} ítem(s)) e informe.`,
+        avisoFotos,
+        avisoFail,
         archivo ? ' Archivo en archivero.' : '',
         avisoConsec,
       ].join('');
@@ -626,7 +655,12 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         message: 'Sincronizado',
       });
       setRestoreNonce((n) => n + 1);
-      return { nItems: parsed.nItems, archivo, mensaje: msg };
+      return {
+        nItems: parsed.nItems,
+        nFotos: fotosSubidas.nOk,
+        archivo,
+        mensaje: msg,
+      };
     } catch (err) {
       console.error(err);
       const msg = err.message || 'No se pudo importar el Excel CAT a ARNALD.';

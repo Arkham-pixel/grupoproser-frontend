@@ -27,6 +27,10 @@ import {
   extraerConsecutivoAlfaDeNombre,
   parsearInformeCatAlfaExcel,
 } from './parsearInformeCatAlfaExcel.js';
+import {
+  fusionarFotosInspeccionAlfa,
+  subirFotosAnexosCatAlCaso,
+} from './subirFotosAnexosCatAlfa.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -135,6 +139,22 @@ export default function LiquidadorSegurosAlfaPage() {
         (casoAlfa?.informeUnico && typeof casoAlfa.informeUnico === 'object'
           ? casoAlfa.informeUnico
           : null) || defaultInformeUnicoAlfa(casoAlfa || {});
+
+      let fotosSubidas = { fotosMeta: [], nOk: 0, nFail: 0 };
+      if (Array.isArray(parsed.fotosAnexos) && parsed.fotosAnexos.length) {
+        fotosSubidas = await subirFotosAnexosCatAlCaso({
+          casoId,
+          fotosAnexos: parsed.fotosAnexos,
+          onArchivoCreado: (creado) => {
+            setCasoAlfa((prev) => {
+              if (!prev || !creado) return prev;
+              const archivos = Array.isArray(prev.archivos) ? [...prev.archivos] : [];
+              return { ...prev, archivos: [...archivos, creado] };
+            });
+          },
+        });
+      }
+
       const nextInforme = {
         ...informeBase,
         analisisGeneral: {
@@ -143,6 +163,10 @@ export default function LiquidadorSegurosAlfaPage() {
         },
         ajustadorNombre:
           nextLiq.encabezado?.ajustador || informeBase.ajustadorNombre || '',
+        fotosInspeccion: fusionarFotosInspeccionAlfa(
+          informeBase.fotosInspeccion,
+          fotosSubidas.fotosMeta
+        ),
       };
 
       setLiquidadorState(nextLiq);
@@ -183,13 +207,20 @@ export default function LiquidadorSegurosAlfaPage() {
         consecArchivo && consecCaso && consecArchivo !== consecCaso.toUpperCase()
           ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
           : '';
+      const avisoFotos =
+        fotosSubidas.nOk > 0
+          ? ` ${fotosSubidas.nOk} foto(s) de ANEXOS subidas.`
+          : parsed.nFotos > 0 && fotosSubidas.nOk === 0
+            ? ' No se pudieron subir las fotos del Excel.'
+            : '';
       const msg = [
         `Excel importado a ARNALD: liquidador (${parsed.nItems} ítem(s)) e informe.`,
+        avisoFotos,
         archivo ? ' Archivo en archivero.' : '',
         avisoConsec,
       ].join('');
       setMensaje(msg);
-      return { nItems: parsed.nItems, archivo, mensaje: msg };
+      return { nItems: parsed.nItems, nFotos: fotosSubidas.nOk, archivo, mensaje: msg };
     } catch (err) {
       console.error(err);
       setError(err.message || 'No se pudo importar el Excel CAT.');

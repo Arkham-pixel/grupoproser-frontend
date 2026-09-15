@@ -721,7 +721,7 @@ export default function LiquidadorSegurosAlfa({
                 className={expressBtnSuccess}
                 disabled={!!exportando || guardandoCaso}
                 onClick={() => fileExcelCatRef.current?.click()}
-                title="Lee el Excel CAT del externo (hojas LIQUIDADOR + ANALISIS GENERAL) y lo pega en ARNALD."
+                title="Lee el Excel CAT (liquidador + análisis + fotos ANEXOS) y lo pega en ARNALD."
               >
                 <FaUpload />
                 {exportando === 'subirExcel'

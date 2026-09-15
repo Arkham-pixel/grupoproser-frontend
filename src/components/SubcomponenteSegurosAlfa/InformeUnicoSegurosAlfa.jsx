@@ -441,7 +441,7 @@ export default function InformeUnicoSegurosAlfa({
               className={expressBtnSuccess}
               disabled={descargando || guardandoCaso}
               onClick={() => fileExcelCatRef.current?.click()}
-              title="Lee el Excel CAT del externo (hojas LIQUIDADOR + ANALISIS GENERAL) y lo pega en ARNALD."
+              title="Lee el Excel CAT (liquidador + análisis + fotos ANEXOS) y lo pega en ARNALD."
             >
               <FaUpload />
               {descargando ? 'Subiendo…' : 'Subir Excel liquidador e informe'}

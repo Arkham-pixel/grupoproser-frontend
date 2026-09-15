@@ -231,6 +231,144 @@ function parsearAnalisisGeneral(sheet) {
   };
 }
 
+/** Fila 1-based donde empieza el bloque ANEXOS (fotos). */
+const ANEXOS_FIRST_ROW = 30;
+
+function filaImagenAncla(range) {
+  const tl = range?.tl;
+  if (!tl) return null;
+  if (tl.nativeRow != null && Number.isFinite(Number(tl.nativeRow))) {
+    return Number(tl.nativeRow) + 1; // nativeRow 0-based → fila Excel
+  }
+  if (tl.row != null && Number.isFinite(Number(tl.row))) {
+    return Math.floor(Number(tl.row)) + 1;
+  }
+  return null;
+}
+
+function colImagenAncla(range) {
+  const tl = range?.tl;
+  if (!tl) return 0;
+  if (tl.nativeCol != null && Number.isFinite(Number(tl.nativeCol))) {
+    return Number(tl.nativeCol) + 1;
+  }
+  if (tl.col != null && Number.isFinite(Number(tl.col))) {
+    return Math.floor(Number(tl.col)) + 1;
+  }
+  return 0;
+}
+
+function bufferMediaAUint8(buf) {
+  if (!buf) return null;
+  if (buf instanceof Uint8Array) return buf;
+  if (buf instanceof ArrayBuffer) return new Uint8Array(buf);
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(buf)) {
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  }
+  try {
+    return new Uint8Array(buf);
+  } catch {
+    return null;
+  }
+}
+
+function mimeDesdeExtension(ext) {
+  const e = String(ext || 'jpeg').toLowerCase().replace(/^\./, '');
+  if (e === 'png') return 'image/png';
+  if (e === 'gif') return 'image/gif';
+  if (e === 'webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+function buscarFilaFirmaAjustador(sheet) {
+  if (!sheet) return null;
+  const last = Math.max(sheet.rowCount || 0, ANEXOS_FIRST_ROW + 80);
+  for (let row = ANEXOS_FIRST_ROW; row <= last; row += 1) {
+    const txt = `${cellTxt(sheet, row, 3)} ${cellTxt(sheet, row, 2)} ${cellTxt(sheet, row, 4)}`;
+    if (/firma\s+del\s+ajustador/i.test(txt)) return row;
+  }
+  return null;
+}
+
+/**
+ * Extrae fotos embebidas del bloque ANEXOS (ANALISIS GENERAL).
+ * Omite logo (arriba), mapa de ubicación (~fila 9) y firma del ajustador.
+ */
+export function extraerFotosAnexosCatDesdeWorkbook(workbook) {
+  const sheet =
+    workbook?.getWorksheet?.('ANALISIS GENERAL') ||
+    workbook?.worksheets?.find?.((ws) => /analisis/i.test(ws.name || '')) ||
+    null;
+  if (!sheet) return [];
+
+  const filaFirma = buscarFilaFirmaAjustador(sheet);
+  const anchors =
+    typeof sheet.getImages === 'function'
+      ? sheet.getImages()
+      : Array.isArray(sheet._media)
+        ? sheet._media
+        : [];
+
+  const out = [];
+  const seen = new Set();
+
+  for (const anchor of anchors) {
+    const fila = filaImagenAncla(anchor.range || anchor);
+    if (fila == null) continue;
+    // Logo / cabecera / mapa (ubicación fila 9)
+    if (fila < ANEXOS_FIRST_ROW) continue;
+    // Firma del ajustador (después de ANEXOS)
+    if (filaFirma != null && fila >= filaFirma) continue;
+
+    const idNum = Number.isFinite(Number(anchor.imageId))
+      ? Number(anchor.imageId)
+      : Number(String(anchor.imageId || '').replace(/\D/g, ''));
+    if (!Number.isFinite(idNum)) continue;
+
+    let media = null;
+    try {
+      media = typeof workbook.getImage === 'function' ? workbook.getImage(idNum) : null;
+    } catch {
+      media = null;
+    }
+    if (!media && Array.isArray(workbook?.model?.media)) {
+      media = workbook.model.media[idNum];
+    }
+    const buffer = bufferMediaAUint8(media?.buffer);
+    if (!buffer?.length) continue;
+
+    // Dedup por contenido corto (mismo buffer referenciado dos veces)
+    const sig = `${idNum}:${buffer.length}:${buffer[0]}:${buffer[buffer.length - 1]}`;
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+
+    const col = colImagenAncla(anchor.range || anchor);
+    const filaDesc = fila + 1;
+    const descIzq = `${cellTxt(sheet, filaDesc, 3)} ${cellTxt(sheet, filaDesc, 4)}`.trim();
+    const descDer = `${cellTxt(sheet, filaDesc, 5)} ${cellTxt(sheet, filaDesc, 6)}`.trim();
+    const descripcion =
+      (col <= 4 ? descIzq : descDer) ||
+      descIzq ||
+      descDer ||
+      `Foto anexo ${out.length + 1}`;
+
+    const extension = String(media?.extension || 'jpeg').toLowerCase().replace(/^\./, '') || 'jpeg';
+    out.push({
+      buffer,
+      extension,
+      mime: mimeDesdeExtension(extension),
+      descripcion: String(descripcion).slice(0, 240),
+      nombre: `anexo-cat-${out.length + 1}.${extension === 'jpeg' ? 'jpg' : extension}`,
+      fila,
+      col,
+    });
+  }
+
+  // Orden visual: fila luego columna
+  out.sort((a, b) => a.fila - b.fila || a.col - b.col);
+  return out;
+}
+
 export function extraerConsecutivoAlfaDeNombre(nombre = '') {
   const m = String(nombre || '').match(/ALFA-\d{4}-\d{2}-\d+/i);
   return m ? m[0].toUpperCase() : '';
@@ -243,6 +381,7 @@ export function esExcelCatManualAlfa(liquidador = {}) {
 /**
  * Lee un Informe CAT Alfa (.xlsx) y lo convierte al estado del liquidador / informe.
  * No modifica el archivo: el llamador debe archivarlo tal cual.
+ * También extrae fotos del bloque ANEXOS (buffers) para subirlas a ARNALD.
  */
 export async function parsearInformeCatAlfaExcel(file, { caso = {}, liquidadorActual = null } = {}) {
   if (!file) throw new Error('Seleccione un archivo Excel CAT Alfa.');
@@ -374,10 +513,13 @@ export async function parsearInformeCatAlfaExcel(file, { caso = {}, liquidadorAc
     wb.worksheets.find((ws) => /analisis/i.test(ws.name || '')) ||
     null;
   const analisis = parsearAnalisisGeneral(hojaAg);
+  const fotosAnexos = extraerFotosAnexosCatDesdeWorkbook(wb);
 
   return {
     liquidador,
     analisisGeneral: analisis,
+    fotosAnexos,
+    nFotos: fotosAnexos.length,
     nItems: detalle.length,
     consecutivoArchivo: extraerConsecutivoAlfaDeNombre(file.name),
   };
