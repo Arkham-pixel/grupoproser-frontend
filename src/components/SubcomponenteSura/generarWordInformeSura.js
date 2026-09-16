@@ -1986,21 +1986,6 @@ export async function descargarWordInformeSura({
             liquidador: liq,
           })
         ),
-        ...(tieneCalculoValorAsegurado && tablaCalculoValorAsegurado
-          ? [
-              p('Cálculo valor asegurado a fecha de siniestro (por artículo de póliza)', {
-                bold: true,
-                before: 200,
-                after: 80,
-                size: SIZE_12,
-              }),
-              p(
-                'Valor a fecha = asegurado + (índice variable × días) / 365; deducible = % sobre ese valor.',
-                { after: 80, size: SIZE_META, color: '555555' }
-              ),
-              tablaCalculoValorAsegurado,
-            ]
-          : []),
       ],
     },
     {
