@@ -84,6 +84,7 @@ export const FILAS_ESTADO_GESTION_ACTUAL = [
   { id: 'inspeccionado', label: 'Inspeccionado' },
   { id: 'liquidado', label: 'Liquidado' },
   { id: 'sinRespuesta', label: 'Sin respuesta efectiva' },
+  { id: 'cerrado', label: 'Cerrado' },
 ];
 
 /** 3. Estado del siniestro (conteo exacto Excel AJ). */
@@ -287,6 +288,7 @@ export function clasificarBucketGestionExacto(caso = {}) {
   if (g === 'INSPECCIONADO') return 'inspeccionado';
   if (g === 'LIQUIDADO') return 'liquidado';
   if (g === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
+  if (g === 'CERRADO') return 'cerrado';
   return 'enGestion';
 }
 

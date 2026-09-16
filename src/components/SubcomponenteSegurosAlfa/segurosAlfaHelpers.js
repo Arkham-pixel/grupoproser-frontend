@@ -8,6 +8,7 @@ export const ESTADOS_GESTION_ALFA = [
   'LIQUIDADO',
   'INSPECCIONADO',
   'SIN RESPUESTA EFECTIVA',
+  'CERRADO',
 ];
 
 export const ESTADOS_SINIESTRO_ALFA = [
@@ -33,6 +34,7 @@ export const GRUPOS_BARRA_ESTADOS_ALFA = [
       { id: 'LIQUIDADO', label: 'Liquidado' },
       { id: 'INSPECCIONADO', label: 'Inspeccionado' },
       { id: 'SIN RESPUESTA EFECTIVA', label: 'Sin respuesta efectiva' },
+      { id: 'CERRADO', label: 'Cerrado' },
     ],
   },
   {
@@ -95,6 +97,8 @@ const LEGACY_ESTADO_A_GESTION = {
   'SIN RESPUESTA': 'SIN RESPUESTA EFECTIVA',
   'SIN RESPUESTA EFECTIVA': 'SIN RESPUESTA EFECTIVA',
   LIQUIDADO: 'LIQUIDADO',
+  CERRADO: 'CERRADO',
+  'CERRADO TOTALMENTE': 'CERRADO',
 };
 
 const LEGACY_ESTADO_A_SINIESTRO = {
@@ -314,6 +318,7 @@ export function contarKpisGestionAlfa(casos = []) {
     inspeccionado: 0,
     liquidado: 0,
     sinRespuesta: 0,
+    cerrado: 0,
     siniestroDefinido: 0,
     slaVencido: 0,
     fueraDeZona: 0,
@@ -325,6 +330,7 @@ export function contarKpisGestionAlfa(casos = []) {
     else if (g === 'INSPECCIONADO') base.inspeccionado += 1;
     else if (g === 'LIQUIDADO') base.liquidado += 1;
     else if (g === 'SIN RESPUESTA EFECTIVA') base.sinRespuesta += 1;
+    else if (g === 'CERRADO') base.cerrado += 1;
     if (homologarEstadoSiniestroAlfa(c.estado, c) !== 'PENDIENTE') base.siniestroDefinido += 1;
     if (casoAlfaVenceSla2Dias(c)) base.slaVencido += 1;
     if (c.fueraDeZona) base.fueraDeZona += 1;
@@ -343,6 +349,7 @@ export const KPI_GESTION_ALFA_FILAS = [
   { key: 'inspeccionado', label: 'INSPECCIONADO' },
   { key: 'liquidado', label: 'LIQUIDADO' },
   { key: 'sinRespuesta', label: 'SIN RESPUESTA EFECTIVA' },
+  { key: 'cerrado', label: 'CERRADO' },
   { key: 'siniestroDefinido', label: 'SINIESTRO DEFINIDO' },
 ];
 

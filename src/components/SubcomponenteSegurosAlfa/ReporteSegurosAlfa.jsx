@@ -924,13 +924,14 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
           }}
         />
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
           {[
             ['EN GESTIÓN', kpisGestion.enGestion],
             ['CONTACTADO/PROGRAMADO', kpisGestion.contactadoProgramado],
             ['INSPECCIONADO', kpisGestion.inspeccionado],
             ['LIQUIDADO', kpisGestion.liquidado],
             ['SIN RESPUESTA EFECTIVA', kpisGestion.sinRespuesta],
+            ['CERRADO', kpisGestion.cerrado],
             ['SINIESTRO DEFINIDO', kpisGestion.siniestroDefinido],
           ].map(([label, n]) => (
             <div
