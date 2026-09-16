@@ -517,8 +517,8 @@ export function calcularTiposDeducibleBbvaCat({
  * AIU = % editable del subtotal (default 25%; 0 = no aplica).
  * Total = subtotal + AIU.
  * Deducible = MAX(SMMLV, %, USD, pesos); el % usa valor global (gestionar) como base.
- * Valor a indemnizar = MAX(0, Total − deducible). El valor global no topea la indemnización
- * (solo alimenta el cálculo del % del deducible).
+ * Base indemnizable = min(Total, valor global) cuando hay valor global
+ * (máx. responsabilidad aseguradora). Luego: MAX(0, base − deducible).
  */
 export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
@@ -542,7 +542,8 @@ export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
   const aiu = redondear(sumaIndemnizable * aiuPct);
   const subTotal = sumaIndemnizable;
   const totalConAiu = redondear(subTotal + aiu);
-  const baseIndemnizable = totalConAiu;
+  const baseIndemnizable =
+    valorGlobal > 0 ? redondear(Math.min(totalConAiu, valorGlobal)) : totalConAiu;
   const dedFmt = resolverDeducibleFormatoBbvaCat(liquidador);
   const tipos = calcularTiposDeducibleBbvaCat({
     deducibleFormato: dedFmt,
@@ -567,6 +568,7 @@ export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
     aiu,
     totalConAiu,
     baseIndemnizable,
+    topeValorGlobal: valorGlobal > 0 && totalConAiu > valorGlobal,
     tiposDeducible: tipos,
     deduciblePoliza,
     deducibleAplicable,
@@ -666,19 +668,21 @@ export function calcularLiquidacionCotizacionPdfBbvaCat(liquidador = {}, caso = 
     parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
     parsearNumero(caso.valorAseguradoInmueble) ||
     0;
+  const baseIndemnizable =
+    valorGlobal > 0 ? redondear(Math.min(totalConAiu, valorGlobal)) : totalConAiu;
   const tipos = calcularTiposDeducibleBbvaCat({
     deducibleFormato: cfg.deducibleFormato,
     anio: ctx.anio,
     valorGlobal,
-    subTotal: totalConAiu,
+    subTotal: baseIndemnizable,
     sumaAsegurable: valorGlobal,
     trm: enc.trm,
   });
   const deduciblePoliza = redondear(tipos.aplicable);
   const deducibleAplicable = redondear(
-    Math.min(deduciblePoliza, totalConAiu || deduciblePoliza)
+    Math.min(deduciblePoliza, baseIndemnizable || deduciblePoliza)
   );
-  const valorAIndemnizar = redondear(Math.max(0, totalConAiu - deducibleAplicable));
+  const valorAIndemnizar = redondear(Math.max(0, baseIndemnizable - deducibleAplicable));
   return {
     activo: monto > 0,
     monto,
@@ -686,6 +690,8 @@ export function calcularLiquidacionCotizacionPdfBbvaCat(liquidador = {}, caso = 
     aiu,
     subTotal: monto,
     totalConAiu,
+    baseIndemnizable,
+    topeValorGlobal: valorGlobal > 0 && totalConAiu > valorGlobal,
     valorGlobal,
     tiposDeducible: tipos,
     deducibleFormato: cfg.deducibleFormato,

@@ -365,4 +365,5 @@ export async function generarLiquidadorBbvaCatExcelBlob(liquidador, totales) {
 export async function descargarLiquidadorBbvaCatExcel(liquidador, totales) {
   const { blob, filename } = await generarLiquidadorBbvaCatExcelBlob(liquidador, totales);
   saveAs(blob, filename);
+  return { blob, filename };
 }

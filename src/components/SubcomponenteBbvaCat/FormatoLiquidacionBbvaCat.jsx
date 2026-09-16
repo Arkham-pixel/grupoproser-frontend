@@ -734,6 +734,16 @@ export default function FormatoLiquidacionBbvaCat({
             <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
               $ {formatearMonto(excel.totalConAiu)}
             </div>
+            {excel.topeValorGlobal ? (
+              <>
+                <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3 text-[#004481]`}>
+                  Tope valor global
+                </div>
+                <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold text-[#004481]`}>
+                  $ {formatearMonto(excel.baseIndemnizable)}
+                </div>
+              </>
+            ) : null}
             <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
               Deducible (el mayor)
             </div>

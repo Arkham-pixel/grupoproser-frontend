@@ -35,8 +35,17 @@ import {
   parsearNumero,
 } from './liquidadorBbvaCatHelpers.js';
 import { descargarFiniquitoBbvaCatWord } from './generarFiniquitoBbvaCatWord.js';
-import { descargarLiquidadorBbvaCatExcel } from './generarLiquidadorBbvaCatExcel.js';
-import { descargarLiquidadorBbvaCatPdf } from './generarLiquidadorBbvaCatPdf.js';
+import {
+  descargarLiquidadorBbvaCatExcel,
+} from './generarLiquidadorBbvaCatExcel.js';
+import {
+  descargarLiquidadorBbvaCatPdf,
+  generarLiquidadorBbvaCatPdfBlob,
+} from './generarLiquidadorBbvaCatPdf.js';
+import {
+  esLiquidadorBbvaCatArchivado,
+  reemplazarArchivosArchiveroBbvaCat,
+} from './reemplazarArchivoArchiveroBbvaCat.js';
 
 /**
  * Liquidador BBVA CAT = formato Excel LIQUIDACIÓN DE INDEMNIZACION
@@ -58,7 +67,9 @@ export default function LiquidadorBbvaCat({
     liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {})
   );
   const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
+  const [guardandoLocal, setGuardandoLocal] = useState(false);
 
   useEffect(() => {
     setLiquidador(liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {}));
@@ -185,6 +196,62 @@ export default function LiquidadorBbvaCat({
     });
   };
 
+  const quitarArchivosDelCaso = (ids = []) => {
+    const borrar = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+    if (!borrar.size) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      return {
+        ...prev,
+        archivos: actuales.filter((a) => !borrar.has(String(a?._id || ''))),
+      };
+    });
+  };
+
+  const esArchivoLiquidadorViejo = esLiquidadorBbvaCatArchivado;
+
+  const archivarLiquidadorBlob = async ({ blob, filename }) => {
+    if (!blob || !filename || !casoBbvaCat?._id) return null;
+    const mime =
+      /\.pdf$/i.test(filename)
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const file = new File([blob], filename, { type: mime });
+
+    let archivosActuales = Array.isArray(casoBbvaCat.archivos) ? casoBbvaCat.archivos : [];
+    try {
+      const fresco = await api.getById(casoBbvaCat._id);
+      if (Array.isArray(fresco?.archivos)) {
+        archivosActuales = fresco.archivos;
+        onCasoChange?.(fresco);
+      }
+    } catch (err) {
+      console.warn('No se pudo refrescar archivos antes de archivar liquidador:', err);
+    }
+
+    const creado = await reemplazarArchivosArchiveroBbvaCat({
+      api,
+      casoId: casoBbvaCat._id,
+      archivosActuales,
+      file,
+      etiqueta: 'LIQUIDACION',
+      origenCarga: 'ajustador',
+      descripcion: 'Liquidador actualizado (reemplaza versión anterior)',
+      coincide: esArchivoLiquidadorViejo,
+      onAppend: appendArchivosAlCaso,
+      onRemoveIds: quitarArchivosDelCaso,
+    });
+
+    try {
+      const fresco = await api.getById(casoBbvaCat._id);
+      if (fresco) onCasoChange?.(fresco);
+    } catch {
+      /* el archivo ya quedó subido */
+    }
+    return creado;
+  };
+
   const handleCotizacionChange = (cotizacionPdf) => {
     setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
     onInformePatch?.({
@@ -194,9 +261,19 @@ export default function LiquidadorBbvaCat({
 
   const correrExport = async (tipo, fn) => {
     setError('');
+    setMensaje('');
     setExportando(tipo);
     try {
-      await fn(liquidadorExport, calcularLiquidacionBbvaCat(liquidadorExport));
+      const resultado = await fn(liquidadorExport, calcularLiquidacionBbvaCat(liquidadorExport));
+      if ((tipo === 'pdf' || tipo === 'excel') && resultado?.blob) {
+        try {
+          await archivarLiquidadorBlob(resultado);
+          setMensaje(t('bbvaCat.settlement.exportSavedArchive'));
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar el liquidador en el archivero BBVA:', errArchivo);
+          setError(t('bbvaCat.settlement.exportArchiveError'));
+        }
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || t('bbvaCat.settlement.exportError'));
@@ -205,14 +282,57 @@ export default function LiquidadorBbvaCat({
     }
   };
 
+  const handleGuardarYArchivar = async () => {
+    if (!onGuardarEnCaso) return;
+    setError('');
+    setMensaje('');
+    setGuardandoLocal(true);
+    try {
+      await onGuardarEnCaso(liquidadorExport, totales);
+      if (casoBbvaCat?._id) {
+        try {
+          const pdfBlob = await generarLiquidadorBbvaCatPdfBlob(
+            liquidadorExport,
+            calcularLiquidacionBbvaCat(liquidadorExport)
+          );
+          const enc = liquidadorExport?.encabezado || {};
+          const safe = String(enc.siniestro || enc.consecutivo || 'BBVA')
+            .replace(/[^\w.-]+/g, '_')
+            .slice(0, 40);
+          await archivarLiquidadorBlob({
+            blob: pdfBlob,
+            filename: `Liquidador_BBVA_CAT_${safe}.pdf`,
+          });
+          setMensaje(t('bbvaCat.settlement.savedAndArchived'));
+        } catch (errArchivo) {
+          console.warn('Liquidador guardado, pero no se actualizó el archivero:', errArchivo);
+          setMensaje(t('bbvaCat.settlement.savedMessage'));
+          setError(t('bbvaCat.settlement.exportArchiveError'));
+        }
+      } else {
+        setMensaje(t('bbvaCat.settlement.savedMessage'));
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('bbvaCat.settlement.saveError'));
+    } finally {
+      setGuardandoLocal(false);
+    }
+  };
+
+  const ocupado = guardandoCaso || guardandoLocal || !!exportando;
+
   return (
     <div className="space-y-5">
+      <p className="rounded-md border border-[#004481]/15 bg-sky-50/70 px-3 py-2 font-body text-xs leading-relaxed text-[#004481] dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
+        {t('bbvaCat.settlement.archiveHint')}
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className={expressBtnSecondary}
-            disabled={!!exportando}
+            disabled={ocupado}
             onClick={() => correrExport('excel', descargarLiquidadorBbvaCatExcel)}
           >
             <FaFileExcel /> Excel
@@ -220,7 +340,7 @@ export default function LiquidadorBbvaCat({
           <button
             type="button"
             className={expressBtnSecondary}
-            disabled={!!exportando}
+            disabled={ocupado}
             onClick={() => correrExport('pdf', descargarLiquidadorBbvaCatPdf)}
           >
             <FaFilePdf /> PDF
@@ -228,7 +348,7 @@ export default function LiquidadorBbvaCat({
           <button
             type="button"
             className={expressBtnGhost}
-            disabled={!!exportando}
+            disabled={ocupado}
             onClick={() => correrExport('finiquito', descargarFiniquitoBbvaCatWord)}
           >
             <FaFileWord /> {t('bbvaCat.settlement.downloadFiniquito')}
@@ -238,17 +358,20 @@ export default function LiquidadorBbvaCat({
           <button
             type="button"
             className={expressBtnPrimary}
-            disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(liquidadorExport, totales)}
+            disabled={ocupado}
+            onClick={handleGuardarYArchivar}
           >
-            {guardandoCaso
-              ? t('bbvaCat.settlement.saving')
+            {ocupado && (guardandoCaso || guardandoLocal)
+              ? t('bbvaCat.settlement.savingArchive')
               : t('bbvaCat.settlement.saveToCase')}
           </button>
         )}
       </div>
 
       {error && <p className={expressAlertError}>{error}</p>}
+      {mensaje && !error ? (
+        <p className="font-body text-sm text-emerald-700 dark:text-emerald-300">{mensaje}</p>
+      ) : null}
 
       <section className={expressFormSection}>
         <CotizacionPdfLiquidacion

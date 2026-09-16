@@ -39,6 +39,10 @@ import {
 } from './deduciblesBbvaCat.js';
 import { descargarWordInformeBbvaCat } from './generarWordInformeBbvaCat.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
+import {
+  esInformeUnicoBbvaCatArchivado,
+  reemplazarArchivosArchiveroBbvaCat,
+} from './reemplazarArchivoArchiveroBbvaCat.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import LiquidacionCotizacionPdfBbvaCat from './LiquidacionCotizacionPdfBbvaCat.jsx';
@@ -213,7 +217,7 @@ export default function InformeUnicoBbvaCat({
     setCampo('infoEvento', INFO_EVENTO_DEFAULT_BBVA_CAT);
   };
 
-  const handleWord = async () => {
+  const handleWord = async ({ descargar = true } = {}) => {
     setDescargando(true);
     setError('');
     setMensaje('');
@@ -222,6 +226,7 @@ export default function InformeUnicoBbvaCat({
         caso: casoBbvaCat || {},
         informe,
         liquidador,
+        descargar,
       });
       const blob = resultado?.blob;
       const nombre = resultado?.filename || resultado?.nombre;
@@ -230,12 +235,39 @@ export default function InformeUnicoBbvaCat({
           const file = new File([blob], nombre, {
             type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           });
-          const creado = await api.subir(casoBbvaCat._id, file, 'INFORME', {
+          let archivosActuales = Array.isArray(casoBbvaCat.archivos) ? casoBbvaCat.archivos : [];
+          try {
+            const fresco = await api.getById(casoBbvaCat._id);
+            if (Array.isArray(fresco?.archivos)) {
+              archivosActuales = fresco.archivos;
+              onCasoChange?.(fresco);
+            }
+          } catch {
+            /* usar lista local */
+          }
+          await reemplazarArchivosArchiveroBbvaCat({
+            api,
+            casoId: casoBbvaCat._id,
+            archivosActuales,
+            file,
+            etiqueta: 'INFORME',
             origenCarga: 'ajustador',
-            descripcion: 'Copia del informe único Word',
+            descripcion: 'Informe único actualizado (reemplaza versión anterior)',
+            coincide: esInformeUnicoBbvaCatArchivado,
+            onAppend: appendArchivosAlCaso,
+            onRemoveIds: (ids) => ids.forEach((id) => quitarArchivoDelCaso(id)),
           });
-          appendArchivosAlCaso([creado]);
-          setMensaje(t('bbvaCat.reportUnique.wordSavedArchive'));
+          try {
+            const fresco = await api.getById(casoBbvaCat._id);
+            if (fresco) onCasoChange?.(fresco);
+          } catch {
+            /* ok */
+          }
+          setMensaje(
+            descargar
+              ? t('bbvaCat.reportUnique.wordSavedArchive')
+              : t('bbvaCat.reportUnique.wordReplacedArchive')
+          );
         } catch (errArchivo) {
           console.warn('No se pudo guardar el informe en el archivero BBVA:', errArchivo);
           setError(t('bbvaCat.reportUnique.wordArchiveError'));
@@ -248,6 +280,21 @@ export default function InformeUnicoBbvaCat({
       setError(t('bbvaCat.reportUnique.wordError'));
     } finally {
       setDescargando(false);
+    }
+  };
+
+  const handleGuardarYArchivar = async () => {
+    if (!onGuardarEnCaso) return;
+    setError('');
+    setMensaje('');
+    try {
+      await onGuardarEnCaso(informe);
+      if (casoBbvaCat?._id) {
+        await handleWord({ descargar: false });
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('bbvaCat.reportUnique.saveError'));
     }
   };
 
@@ -280,6 +327,9 @@ export default function InformeUnicoBbvaCat({
     <div className="space-y-5">
       {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
       {error && <p className={expressAlertError}>{error}</p>}
+      <p className="rounded-md border border-[#004481]/15 bg-sky-50/70 px-3 py-2 font-body text-xs leading-relaxed text-[#004481] dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
+        {t('bbvaCat.reportUnique.archiveHint')}
+      </p>
 
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -631,8 +681,8 @@ export default function InformeUnicoBbvaCat({
         <button
           type="button"
           className={expressBtnSecondary}
-          disabled={descargando}
-          onClick={handleWord}
+          disabled={descargando || guardandoCaso}
+          onClick={() => handleWord({ descargar: true })}
         >
           <FaFileWord /> {t('bbvaCat.reportUnique.downloadWord')}
         </button>
@@ -640,11 +690,11 @@ export default function InformeUnicoBbvaCat({
           <button
             type="button"
             className={expressBtnPrimary}
-            disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(informe)}
+            disabled={guardandoCaso || descargando}
+            onClick={handleGuardarYArchivar}
           >
-            {guardandoCaso
-              ? t('bbvaCat.reportUnique.saving')
+            {guardandoCaso || descargando
+              ? t('bbvaCat.reportUnique.savingArchive')
               : t('bbvaCat.reportUnique.saveDraft')}
           </button>
         )}

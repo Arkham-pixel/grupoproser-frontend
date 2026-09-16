@@ -192,6 +192,9 @@ export async function generarLiquidadorBbvaCatPdfBlob(liquidador, totales) {
     ['Sub total', money(excel.subTotal)],
     [etiquetaAiuBbvaCat(excel.aiuPct), money(excel.aiu)],
     ['Total', money(excel.totalConAiu)],
+    ...(excel.topeValorGlobal
+      ? [['Tope valor global', money(excel.baseIndemnizable)]]
+      : []),
     ['Deducible (el mayor)', money(excel.deduciblePoliza ?? excel.deducibleAplicable)],
     ['Valor a indemnizar', money(excel.valorAIndemnizar)],
   ];
@@ -338,5 +341,7 @@ export async function descargarLiquidadorBbvaCatPdf(liquidador, totales) {
   const safe = String(enc.siniestro || enc.consecutivo || 'BBVA')
     .replace(/[^\w.-]+/g, '_')
     .slice(0, 40);
-  saveAs(blob, `Liquidador_BBVA_CAT_${safe}.pdf`);
+  const filename = `Liquidador_BBVA_CAT_${safe}.pdf`;
+  saveAs(blob, filename);
+  return { blob, filename };
 }

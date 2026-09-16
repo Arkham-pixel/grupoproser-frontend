@@ -1034,7 +1034,12 @@ async function construirZonaFirmasBbvaCat({ info = {} } = {}) {
  * Informe único BbvaCat — misma fórmula visual que Catastrófico/Puertos:
  * encabezado formal, título ÚNICO, cuadro ficha, secciones y cuadros sin relleno.
  */
-export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, liquidador = null } = {}) {
+export async function descargarWordInformeBbvaCat({
+  caso = {},
+  informe = null,
+  liquidador = null,
+  descargar = true,
+} = {}) {
   const info = informe || defaultInformeUnicoBbvaCat(caso);
   const liq = liquidador || mapcasoBbvaCatALiquidador(caso);
   const totales = calcularLiquidacionBbvaCat(liq);
@@ -1838,6 +1843,8 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );
-  saveAs(blob, nombre);
+  if (descargar !== false) {
+    saveAs(blob, nombre);
+  }
   return { blob, filename: nombre };
 }
