@@ -12658,10 +12658,7 @@
       "basePct_valor_global": "Valor global",
       "basePct_subtotal": "Subtotal",
       "aplicable": "Aplicable",
-      "tipoAplicado": "Tipo aplicado"
-    },
-    "reportUnique": {
-      "signatureDaysOf": "días del mes de",
+      "tipoAplicado": "Tipo aplicado",
       "signatureOf": "de",
       "signatureCity": "Ciudad de firma",
       "signatureCityPlaceholder": "Ciudad",
@@ -12690,6 +12687,7 @@
       "quoteDoesNotReplaceBudget": "El PDF es el pedido del cliente (a veces por encima de lo ocurrido). El formato de liquidación BBVA es el que alimenta el pago.",
       "quoteClear": "Quitar cotización",
       "quoteClearConfirm": "¿Quitar la cotización de este liquidador? Las capturas de página también se eliminan del archivero. El PDF original se conserva.",
+      "quoteRemove": "Eliminar",
       "quoteRemovePage": "Eliminar página",
       "quoteRemovePageConfirm": "¿Eliminar esta página de la cotización?",
       "quotePage": "Página {{n}}",

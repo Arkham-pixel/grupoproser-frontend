@@ -12611,6 +12611,7 @@
       "quoteDoesNotReplaceBudget": "The PDF is the client’s request (sometimes higher than what actually happened). The BBVA settlement form feeds the payment.",
       "quoteClear": "Remove quote",
       "quoteClearConfirm": "Remove the quote from this settlement? Page captures will also be deleted from the file cabinet. The original PDF is kept.",
+      "quoteRemove": "Remove",
       "quoteRemovePage": "Remove page",
       "quoteRemovePageConfirm": "Remove this page from the quote?",
       "quotePage": "Page {{n}}",
