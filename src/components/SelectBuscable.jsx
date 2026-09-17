@@ -47,16 +47,17 @@ export default function SelectBuscable({
   const opcionesFiltradas = useMemo(() => {
     const q = normalizar(busqueda);
     if (!q) return options;
-    const score = (label) => {
-      const n = normalizar(label);
-      if (n === q) return 0;
-      if (n.startsWith(q)) return 1;
+    const textoDe = (o) =>
+      normalizar(`${o.label || ''} ${o.value || ''} ${o.codigo || ''} ${o.ciudad || ''}`);
+    const score = (o) => {
+      const n = textoDe(o);
+      const labelN = normalizar(o.label);
+      if (labelN === q || n === q) return 0;
+      if (labelN.startsWith(q) || n.startsWith(q)) return 1;
       if (n.includes(q)) return 2;
       return 3;
     };
-    return options
-      .filter((o) => score(o.label) < 3)
-      .sort((a, b) => score(a.label) - score(b.label));
+    return options.filter((o) => score(o) < 3).sort((a, b) => score(a) - score(b));
   }, [options, busqueda]);
 
   const etiquetaSeleccion =
@@ -189,10 +190,10 @@ export default function SelectBuscable({
             {opcionesFiltradas.length === 0 ? (
               <li className="px-3 py-2 text-sm text-gray-500">{noResultsTextResolved}</li>
             ) : (
-              opcionesFiltradas.map((o) => {
+              opcionesFiltradas.map((o, idx) => {
                 const seleccionado = String(o.value) === String(value);
                 return (
-                  <li key={String(o.value)}>
+                  <li key={`${o.value}::${o.ciudad || ''}::${idx}`}>
                     <button
                       type="button"
                       className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-sky-950/40 ${
