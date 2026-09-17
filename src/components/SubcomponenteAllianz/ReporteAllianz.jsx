@@ -11,10 +11,13 @@ import {
 import FormularioAllianz from './FormularioAllianz.jsx';
 import ArchiveroAllianz from './ArchiveroAllianz.jsx';
 import AccionesAllianzMenu from './AccionesAllianzMenu.jsx';
+import FiltrosLiderAllianz from './FiltrosLiderAllianz.jsx';
 import {
   ALLIANZ_REPORTE_PAGE_SIZE,
+  ESTADOS_ALLIANZ,
   buildOpcionesFiltro,
   coincideFiltroCiudadAllianz,
+  coincideFiltroContieneAllianz,
   coincideFiltroTexto,
   fechaEnRango,
   etiquetaTipoPolizaAllianz,
@@ -29,6 +32,7 @@ import {
   esChecklistCatLleno,
   diasEnEstadoAllianz,
   ultimaGestionAllianz,
+  valorFechaFiltroAllianz,
 } from './allianzHelpers.js';
 import {
   expressBadge,
@@ -272,8 +276,12 @@ export default function ReporteAllianz() {
   const [filtroDepto, setFiltroDepto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [tipoFecha, setTipoFecha] = useState('fechaSiniestro');
+  const [filtroPoliza, setFiltroPoliza] = useState('');
+  const [filtroTipoPoliza, setFiltroTipoPoliza] = useState('');
   const [pagina, setPagina] = useState(1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
@@ -331,8 +339,19 @@ export default function ReporteAllianz() {
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
-  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const estados = ESTADOS_ALLIANZ;
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
+  const tiposPoliza = useMemo(() => {
+    const porNorm = new Map();
+    for (const c of casos) {
+      const label = etiquetaTipoPolizaAllianz(c);
+      const norm = normTexto(label);
+      if (!norm) continue;
+      if (!porNorm.has(norm)) porNorm.set(norm, { value: label, label });
+    }
+    return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  }, [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -341,10 +360,18 @@ export default function ReporteAllianz() {
       if (casoIdUrl) return true;
       if (!coincideFiltroCiudadAllianz(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
-      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (filtroEstado && homologarEstadoAllianz(c.estado) !== filtroEstado) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
+      if (!coincideFiltroContieneAllianz(c.numeroPoliza, filtroPoliza)) return false;
+      if (!coincideFiltroTexto(etiquetaTipoPolizaAllianz(c), filtroTipoPoliza)) return false;
       if (fechaInicio || fechaFin) {
-        if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
+        const fechaRef = valorFechaFiltroAllianz(
+          c,
+          tipoFecha,
+          () => c.fechaSiniestro || c.createdAt
+        );
+        if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
       }
       if (!q) return true;
       const blob = [
@@ -383,8 +410,12 @@ export default function ReporteAllianz() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
+    filtroPoliza,
+    filtroTipoPoliza,
     fechaInicio,
     fechaFin,
+    tipoFecha,
     casoIdUrl,
     coincideCasoUrl,
   ]);
@@ -401,7 +432,7 @@ export default function ReporteAllianz() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc, casoIdUrl]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, filtroPoliza, filtroTipoPoliza, fechaInicio, fechaFin, tipoFecha, orden.campo, orden.asc, casoIdUrl]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -409,8 +440,12 @@ export default function ReporteAllianz() {
     setFiltroDepto('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInspector('');
+    setFiltroPoliza('');
+    setFiltroTipoPoliza('');
     setFechaInicio('');
     setFechaFin('');
+    setTipoFecha('fechaSiniestro');
     limpiarCasoUrl();
   };
 
@@ -482,6 +517,9 @@ export default function ReporteAllianz() {
       filtroDepto ||
       filtroEstado ||
       filtroAjustador ||
+      filtroInspector ||
+      filtroPoliza ||
+      filtroTipoPoliza ||
       fechaInicio ||
       fechaFin ||
       filtroCasoUrl
@@ -557,9 +595,9 @@ export default function ReporteAllianz() {
             <Campo label={t('allianz.fields.estado')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                 <option value="">{t('allianz.report.all')}</option>
-                {estados.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
+                {estados.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
                   </option>
                 ))}
               </SelectFenix>
@@ -577,12 +615,35 @@ export default function ReporteAllianz() {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label={t('allianz.report.from')}>
-              <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+            <Campo label={t('allianz.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('allianz.report.all')}</option>
+                {inspectores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
             </Campo>
-            <Campo label={t('allianz.report.to')}>
-              <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
-            </Campo>
+          </div>
+          <div className="mt-4">
+            <FiltrosLiderAllianz
+              variante="cat"
+              filtroPoliza={filtroPoliza}
+              onFiltroPoliza={setFiltroPoliza}
+              filtroTipoPoliza={filtroTipoPoliza}
+              onFiltroTipoPoliza={setFiltroTipoPoliza}
+              opcionesTipoPoliza={tiposPoliza}
+              tipoFecha={tipoFecha}
+              onTipoFecha={setTipoFecha}
+              fechaInicio={fechaInicio}
+              onFechaInicio={setFechaInicio}
+              fechaFin={fechaFin}
+              onFechaFin={setFechaFin}
+            />
           </div>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading

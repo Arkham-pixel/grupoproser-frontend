@@ -647,6 +647,61 @@ export const fechaEnRango = (fecha, desde, hasta) => {
   return true;
 };
 
+/** Valor del selector «Filtrar fechas por» para inspección coordinada. */
+export const CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA = 'fechaCoordinandoInspeccion';
+
+/**
+ * Fecha contra la que aplican Desde/Hasta.
+ * Si el campo es inspección coordinada, no hay fallback a ingreso.
+ */
+export function valorFechaFiltroAllianz(caso = {}, campo = '', fallback) {
+  const clave = String(campo || '').trim();
+  if (clave) {
+    const directo = caso[clave];
+    if (directo != null && directo !== '') return directo;
+    if (clave === CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA) return null;
+    return null;
+  }
+  if (typeof fallback === 'function') return fallback(caso);
+  if (fallback !== undefined) return fallback;
+  return caso.fechaCasoNuevo || caso.fechaSiniestro || caso.createdAt;
+}
+
+export const OPCIONES_FECHA_FILTRO_ALLIANZ_CAT = [
+  { value: 'fechaSiniestro', labelKey: 'allianz.fields.fechaSiniestro' },
+  { value: 'fechaCasoNuevo', labelKey: 'allianz.fields.fechaCasoNuevo' },
+  { value: 'fechaAsignacion', labelKey: 'allianz.fields.fechaAsignacion' },
+  { value: CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA, labelKey: 'allianz.fields.fechaCoordinandoInspeccion' },
+  { value: 'fechaInspeccion', labelKey: 'allianz.fields.fechaInspeccion' },
+  { value: 'fechaLlamada', labelKey: 'allianz.fields.fechaLlamada' },
+  { value: 'fechaLiquidado', labelKey: 'allianz.fields.fechaLiquidado' },
+  { value: 'fechaInicioPoliza', labelKey: 'allianz.fields.fechaInicioPoliza' },
+  { value: 'fechaFinPoliza', labelKey: 'allianz.fields.fechaFinPoliza' },
+  { value: 'createdAt', labelKey: 'allianz.report.dateCreated' },
+];
+
+export const OPCIONES_FECHA_FILTRO_ALLIANZ_LISTADO = [
+  { value: 'createdAt', labelKey: 'allianz.report.dateCreated' },
+  { value: 'fechaCasoNuevo', labelKey: 'allianz.fields.fechaCasoNuevo' },
+  { value: 'fechaAsignacion', labelKey: 'allianz.fields.fechaAsignacion' },
+  { value: CAMPO_FILTRO_FECHA_INSPECCION_COORDINADA, labelKey: 'allianz.fields.fechaCoordinandoInspeccion' },
+  { value: 'fechaVisita', labelKey: 'allianz.fields.fechaVisita' },
+  { value: 'fechaInspeccionRealizada', labelKey: 'allianz.fields.fechaInspeccionRealizada' },
+  { value: 'fechaAnalisisCaso', labelKey: 'allianz.fields.fechaAnalisisCaso' },
+  { value: 'fechaSolicitudDocumento', labelKey: 'allianz.fields.fechaSolicitudDocumento' },
+  { value: 'fechaRecepcionDocumento', labelKey: 'allianz.fields.fechaRecepcionDocumento' },
+  { value: 'fechaObjecion', labelKey: 'allianz.fields.fechaObjecion' },
+  { value: 'fechaAutorizacionAnalista', labelKey: 'allianz.fields.fechaAutorizacionAnalista' },
+  { value: 'fechaPresentacionCifras', labelKey: 'allianz.fields.fechaPresentacionCifras' },
+  { value: 'fechaCasoParaPago', labelKey: 'allianz.fields.fechaCasoParaPago' },
+  { value: 'fechaCasoPagado', labelKey: 'allianz.fields.fechaCasoPagado' },
+];
+
+export const coincideFiltroContieneAllianz = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  return normTexto(valorCaso).includes(normTexto(filtro));
+};
+
 export const normTexto = (value) =>
   String(value ?? '')
     .normalize('NFD')

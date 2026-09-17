@@ -16,12 +16,14 @@ import ModalImportarExcelAllianz, {
 } from './ModalImportarExcelAllianz.jsx';
 import {
   ALLIANZ_REPORTE_PAGE_SIZE,
+  ESTADOS_ALLIANZ,
   buildOpcionesFiltro,
   casoAllianzCoincideFiltroDocumento,
   casoAllianzEnReporteInformes,
   casoAllianzTieneInforme,
   casoAllianzTieneLiquidador,
   coincideFiltroCiudadAllianz,
+  coincideFiltroContieneAllianz,
   coincideFiltroTexto,
   etiquetaTipoPolizaAllianz,
   fechaEnRango,
@@ -32,7 +34,9 @@ import {
   ultimaGestionAllianz,
   normTexto,
   textoDocumentosAllianz,
+  valorFechaFiltroAllianz,
 } from './allianzHelpers.js';
+import FiltrosLiderAllianz from './FiltrosLiderAllianz.jsx';
 import {
   expressBadge,
   expressBtnPrimary,
@@ -175,7 +179,11 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [filtroDocumento, setFiltroDocumento] = useState('');
+  const [tipoFecha, setTipoFecha] = useState('createdAt');
+  const [filtroPoliza, setFiltroPoliza] = useState('');
+  const [filtroTipoPoliza, setFiltroTipoPoliza] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -226,8 +234,19 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
   }, [recargar]);
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
-  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const estados = ESTADOS_ALLIANZ;
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
+  const tiposPoliza = useMemo(() => {
+    const porNorm = new Map();
+    for (const c of casos) {
+      const label = etiquetaTipoPolizaAllianz(c);
+      const norm = normTexto(label);
+      if (!norm) continue;
+      if (!porNorm.has(norm)) porNorm.set(norm, { value: label, label });
+    }
+    return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  }, [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -237,10 +256,14 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
       if (!coincideCasoUrl(c)) return false;
       if (casoIdUrl) return true;
       if (!coincideFiltroCiudadAllianz(c.ciudad, filtroCiudad)) return false;
-      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (filtroEstado && homologarEstadoAllianz(c.estado) !== filtroEstado) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
+      if (!coincideFiltroContieneAllianz(c.numeroPoliza, filtroPoliza)) return false;
+      if (!coincideFiltroTexto(etiquetaTipoPolizaAllianz(c), filtroTipoPoliza)) return false;
       if (fechaInicio || fechaFin) {
-        if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
+        const fechaRef = valorFechaFiltroAllianz(c, tipoFecha, () => c.createdAt);
+        if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
       }
       if (!q) return true;
       const blob = [
@@ -276,9 +299,13 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
     filtroCiudad,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
+    filtroPoliza,
+    filtroTipoPoliza,
     filtroDocumento,
     fechaInicio,
     fechaFin,
+    tipoFecha,
     casoIdUrl,
     coincideCasoUrl,
     soloInformes,
@@ -301,9 +328,13 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
     filtroCiudad,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
+    filtroPoliza,
+    filtroTipoPoliza,
     filtroDocumento,
     fechaInicio,
     fechaFin,
+    tipoFecha,
     orden.campo,
     orden.asc,
     casoIdUrl,
@@ -314,9 +345,13 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
     setFiltroCiudad('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInspector('');
     setFiltroDocumento('');
+    setFiltroPoliza('');
+    setFiltroTipoPoliza('');
     setFechaInicio('');
     setFechaFin('');
+    setTipoFecha('createdAt');
     limpiarCasoUrl();
   };
 
@@ -402,6 +437,9 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
       filtroCiudad ||
       filtroEstado ||
       filtroAjustador ||
+      filtroInspector ||
+      filtroPoliza ||
+      filtroTipoPoliza ||
       filtroDocumento ||
       fechaInicio ||
       fechaFin ||
@@ -509,9 +547,9 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
             <Campo label={t('allianz.fields.estado')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                 <option value="">{t('allianz.report.all')}</option>
-                {estados.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
+                {estados.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
                   </option>
                 ))}
               </SelectFenix>
@@ -523,6 +561,19 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
               >
                 <option value="">{t('allianz.report.all')}</option>
                 {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('allianz.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('allianz.report.all')}</option>
+                {inspectores.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -543,12 +594,22 @@ export default function ReporteAllianzListado({ modoAsignados = false, soloInfor
                 </SelectFenix>
               </Campo>
             )}
-            <Campo label={t('allianz.report.from')}>
-              <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-            </Campo>
-            <Campo label={t('allianz.report.to')}>
-              <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
-            </Campo>
+          </div>
+          <div className="mt-4">
+            <FiltrosLiderAllianz
+              variante="listado"
+              filtroPoliza={filtroPoliza}
+              onFiltroPoliza={setFiltroPoliza}
+              filtroTipoPoliza={filtroTipoPoliza}
+              onFiltroTipoPoliza={setFiltroTipoPoliza}
+              opcionesTipoPoliza={tiposPoliza}
+              tipoFecha={tipoFecha}
+              onTipoFecha={setTipoFecha}
+              fechaInicio={fechaInicio}
+              onFechaInicio={setFechaInicio}
+              fechaFin={fechaFin}
+              onFechaFin={setFechaFin}
+            />
           </div>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
