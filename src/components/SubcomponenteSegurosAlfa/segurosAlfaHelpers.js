@@ -190,10 +190,21 @@ export function homologarEstadoAlfa(valor, extras = {}) {
 }
 
 /**
+ * Si el siniestro es OBJETADO o DESISTIDO, la gestión queda CERRADO.
+ * (Regla operativa: cierre por objeción/desistimiento.)
+ */
+export function sincronizarGestionConCierreSiniestroAlfa(estadoSiniestro, estadoGestion) {
+  const s = homologarEstadoSiniestroAlfa(estadoSiniestro);
+  if (s === 'OBJETADO' || s === 'DESISTIDO') return 'CERRADO';
+  const g = homologarEstadoGestionAlfa(estadoGestion);
+  return g || 'EN GESTIÓN';
+}
+
+/**
  * @deprecated No usar para nuevos guardados. Se mantiene para migraciones.
  */
 export function estadoGestionDesdeEstadoAlfa(estado) {
-  return homologarEstadoGestionAlfa(estado);
+  return sincronizarGestionConCierreSiniestroAlfa(estado, estado);
 }
 
 /** Plantilla de comunicación cuando el reclamo queda bajo deducible. */
@@ -670,9 +681,12 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
     tipoPerdida: homologarTipoPerdidaAlfa(caso.tipoPerdida),
   };
   base.estado = homologarEstadoSiniestroAlfa(caso.estado, caso);
-  base.estadoGestion = String(caso.estadoGestion || '').trim()
-    ? homologarEstadoGestionAlfa(caso.estadoGestion)
-    : homologarEstadoGestionAlfa(caso.estado);
+  base.estadoGestion = sincronizarGestionConCierreSiniestroAlfa(
+    base.estado,
+    String(caso.estadoGestion || '').trim()
+      ? caso.estadoGestion
+      : caso.estado
+  );
   base.observacionesGestion = aplicarObservacionAutoCierreAlfa(
     base.estado,
     base.observacionesGestion

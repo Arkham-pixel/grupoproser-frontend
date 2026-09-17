@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { etiquetaTipoPolizaBbvaCat, formatDate } from './bbvaCatHelpers.js';
-import { construirResumenReunionBbvaCat } from './dashboardBbvaCatListadoStats.js';
+import { construirResumenReunionBbvaCat, esEstadoAvanzadoBbvaCat, esEstadoPorAvanzarBbvaCat } from './dashboardBbvaCatListadoStats.js';
 
 const COLOR_BBVA = '004481';
 const COLOR_BBVA_SOFT = 'E8F1F8';
@@ -145,7 +145,25 @@ function escribirHojaResumenEstado(workbook, reunion) {
   ws.getRow(1).height = 26;
   ws.getRow(1).eachCell((cell) => estiloHeader(cell));
 
-  for (const fila of reunion.porEstado || []) {
+  const filas = reunion.porEstado || [];
+  const tot = reunion.totales || {};
+  const porAvanzar = reunion.subtotalPorAvanzar || {};
+  const avanzados = reunion.subtotalAvanzados || {};
+
+  const addSubtotalRow = (label, valores, fill) => {
+    const row = ws.addRow([
+      label,
+      valores.cantidad || 0,
+      valores.reservaActuarial || 0,
+      valores.reservaAjustador || 0,
+    ]);
+    row.eachCell((cell, col) => {
+      estiloCelda(cell, { bold: true, fill, align: col === 1 ? 'left' : 'right' });
+      if (col >= 3) cell.numFmt = '"$"#,##0';
+    });
+  };
+
+  filas.forEach((fila, idx) => {
     const row = ws.addRow([
       fila.estado,
       fila.cantidad,
@@ -156,19 +174,19 @@ function escribirHojaResumenEstado(workbook, reunion) {
       estiloCelda(cell, { align: col === 1 ? 'left' : 'right' });
       if (col >= 3) cell.numFmt = '"$"#,##0';
     });
-  }
 
-  const tot = reunion.totales || {};
-  const totalRow = ws.addRow([
-    'Total general',
-    tot.cantidad || 0,
-    tot.reservaActuarial || 0,
-    tot.reservaAjustador || 0,
-  ]);
-  totalRow.eachCell((cell, col) => {
-    estiloCelda(cell, { bold: true, fill: COLOR_BBVA_SOFT, align: col === 1 ? 'left' : 'right' });
-    if (col >= 3) cell.numFmt = '"$"#,##0';
+    const esUltimoPorAvanzar =
+      esEstadoPorAvanzarBbvaCat(fila.estado) &&
+      !esEstadoPorAvanzarBbvaCat(filas[idx + 1]?.estado);
+    if (esUltimoPorAvanzar) addSubtotalRow('Casos por avanzar', porAvanzar, 'F0F7FC');
+
+    const esUltimoAvanzado =
+      esEstadoAvanzadoBbvaCat(fila.estado) &&
+      !esEstadoAvanzadoBbvaCat(filas[idx + 1]?.estado);
+    if (esUltimoAvanzado) addSubtotalRow('Casos avanzados', avanzados, 'F0F7FC');
   });
+
+  addSubtotalRow('Total general', tot, COLOR_BBVA_SOFT);
 
   autoAncho(ws, 14, 32);
   return ws;

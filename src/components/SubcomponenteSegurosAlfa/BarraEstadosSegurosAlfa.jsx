@@ -70,7 +70,7 @@ export default function BarraEstadosSegurosAlfa({
     <div className="space-y-5">
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
         Ambos campos se guardan por separado: AI = estado gestión y AJ = estado de
-        siniestro. No se derivan automáticamente entre sí.
+        siniestro. Si marca OBJETADO o DESISTIDO, la gestión pasa a CERRADO.
       </p>
       {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => {
         const esGestion = grupo.id === 'gestion';

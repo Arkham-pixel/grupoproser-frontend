@@ -54,6 +54,8 @@ import {
   construirDashboardBbvaCatListado,
   diasEnEstadoNumeroBbvaCat,
   esCarteraAbiertaBbvaCat,
+  esEstadoAvanzadoBbvaCat,
+  esEstadoPorAvanzarBbvaCat,
   fechaAltaListadoBbvaCat,
 } from './dashboardBbvaCatListadoStats.js';
 import { exportarDashboardBbvaCatExcel } from './exportarDashboardBbvaCatExcel.js';
@@ -728,6 +730,9 @@ export default function DashboardBbvaCatListado() {
 function ResumenReunionBbvaCat({ reunion, formatCurrency, td, cargadoEn, onRefresh }) {
   const filas = reunion?.porEstado || [];
   const totales = reunion?.totales || { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 };
+  const vacioSub = { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 };
+  const porAvanzar = reunion?.subtotalPorAvanzar || vacioSub;
+  const avanzados = reunion?.subtotalAvanzados || vacioSub;
   const op = reunion?.operativo || {};
   const video = op.videoperitajes || {};
   const presencial = op.presencial || {};
@@ -743,6 +748,29 @@ function ResumenReunionBbvaCat({ reunion, formatCurrency, td, cargadoEn, onRefre
           second: '2-digit',
         })
       : null;
+
+  const renderSubtotal = (label, valores, { borderStrong = false } = {}) => (
+    <tr
+      className={
+        borderStrong
+          ? 'border-t-2 border-[#004481]/40 dark:border-sky-700/50'
+          : 'border-t border-[#004481]/25 bg-[#004481]/5 dark:border-sky-800 dark:bg-sky-950/30'
+      }
+    >
+      <td className="px-3 py-2.5 font-semibold text-[#004481] dark:text-sky-300 sm:px-4">
+        {label}
+      </td>
+      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
+        {valores.cantidad}
+      </td>
+      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
+        {valores.reservaActuarial > 0 ? formatCurrency(valores.reservaActuarial) : '—'}
+      </td>
+      <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
+        {valores.reservaAjustador > 0 ? formatCurrency(valores.reservaAjustador) : '—'}
+      </td>
+    </tr>
+  );
 
   return (
     <section className="grid w-full min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-2">
@@ -779,43 +807,56 @@ function ResumenReunionBbvaCat({ reunion, formatCurrency, td, cargadoEn, onRefre
               </tr>
             </thead>
             <tbody>
-              {filas.map((fila) => (
-                <tr
-                  key={fila.estado}
-                  className="border-t border-gray-100 dark:border-gray-800"
-                >
-                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100 sm:px-4">
-                    {fila.estado}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
-                    {fila.cantidad}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
-                    {fila.reservaActuarial > 0 ? formatCurrency(fila.reservaActuarial) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
-                    {fila.reservaAjustador > 0 ? formatCurrency(fila.reservaAjustador) : '—'}
-                  </td>
-                </tr>
-              ))}
+              {filas.map((fila, idx) => {
+                const filasUi = [
+                  <tr
+                    key={fila.estado}
+                    className="border-t border-gray-100 dark:border-gray-800"
+                  >
+                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100 sm:px-4">
+                      {fila.estado}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                      {fila.cantidad}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                      {fila.reservaActuarial > 0 ? formatCurrency(fila.reservaActuarial) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300 sm:px-4">
+                      {fila.reservaAjustador > 0 ? formatCurrency(fila.reservaAjustador) : '—'}
+                    </td>
+                  </tr>,
+                ];
+                const esUltimoPorAvanzar =
+                  esEstadoPorAvanzarBbvaCat(fila.estado) &&
+                  !esEstadoPorAvanzarBbvaCat(filas[idx + 1]?.estado);
+                if (esUltimoPorAvanzar) {
+                  filasUi.push(
+                    <React.Fragment key="sub-por-avanzar">
+                      {renderSubtotal(td('reunion.casosPorAvanzar'), porAvanzar)}
+                    </React.Fragment>
+                  );
+                }
+                const esUltimoAvanzado =
+                  esEstadoAvanzadoBbvaCat(fila.estado) &&
+                  !esEstadoAvanzadoBbvaCat(filas[idx + 1]?.estado);
+                if (esUltimoAvanzado) {
+                  filasUi.push(
+                    <React.Fragment key="sub-avanzados">
+                      {renderSubtotal(td('reunion.casosAvanzados'), avanzados)}
+                    </React.Fragment>
+                  );
+                }
+                return filasUi;
+              })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-[#004481]/40 dark:border-sky-700/50">
-                <td className="px-3 py-2.5 font-semibold text-[#004481] dark:text-sky-300 sm:px-4">
-                  {td('reunion.total')}
-                </td>
-                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
-                  {totales.cantidad}
-                </td>
-                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
-                  {formatCurrency(totales.reservaActuarial)}
-                </td>
-                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[#004481] dark:text-sky-300 sm:px-4">
-                  {formatCurrency(totales.reservaAjustador)}
-                </td>
-              </tr>
+              {renderSubtotal(td('reunion.total'), totales, { borderStrong: true })}
             </tfoot>
           </table>
+          <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
+            {td('reunion.sectoresHint')}
+          </p>
         </div>
       </div>
 

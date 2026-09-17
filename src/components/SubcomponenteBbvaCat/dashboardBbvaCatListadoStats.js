@@ -15,11 +15,33 @@ export const LIMITE_GRANDES_PERDIDAS_BBVA_CAT = 10;
 const ESTADOS_CERRADOS = new Set(['PAGADO', 'OBJETADO', 'DESISTIMIENTO']);
 const ESTADOS_TRAMITE = new Set(['CASO NUEVO', 'COORDINANDO INSPECCIÓN', 'ANÁLISIS DEL CASO']);
 const ESTADOS_LISTOS_PAGO = new Set(['AUTORIZACIÓN ANALISTA', 'CASO AJUSTADO', 'CASO PARA PAGO']);
+/** Caso nuevo + coordinando (pedido Santiago / reunión). */
+const ESTADOS_POR_AVANZAR = new Set(['CASO NUEVO', 'COORDINANDO INSPECCIÓN']);
+/** Desde análisis en adelante (pedido Santiago / reunión). */
+const ESTADOS_AVANZADOS = new Set([
+  'ANÁLISIS DEL CASO',
+  'PENDIENTE DE DOCUMENTO',
+  'OBJECIÓN',
+  'OBJETADO',
+  'AUTORIZACIÓN ANALISTA',
+  'CASO AJUSTADO',
+  'CASO PARA PAGO',
+  'PAGADO',
+  'DESISTIMIENTO',
+]);
 
 const CUBETAS_ANTIGUEDAD = ['0-7 d', '8-15 d', '16-30 d', '31-45 d', '46+ d'];
 
 function claveEstado(valor) {
   return homologarEstadoBbvaCat(valor);
+}
+
+export function esEstadoPorAvanzarBbvaCat(estado) {
+  return ESTADOS_POR_AVANZAR.has(claveEstado(estado));
+}
+
+export function esEstadoAvanzadoBbvaCat(estado) {
+  return ESTADOS_AVANZADOS.has(claveEstado(estado));
 }
 
 export function esCarteraAbiertaBbvaCat(estado) {
@@ -248,12 +270,36 @@ export function construirResumenReunionBbvaCat(casos = [], ahora = new Date()) {
     { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 }
   );
 
+  const subtotalPorAvanzar = porEstado.reduce(
+    (acc, fila) => {
+      if (!esEstadoPorAvanzarBbvaCat(fila.estado)) return acc;
+      acc.cantidad += fila.cantidad;
+      acc.reservaActuarial += fila.reservaActuarial;
+      acc.reservaAjustador += fila.reservaAjustador;
+      return acc;
+    },
+    { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 }
+  );
+
+  const subtotalAvanzados = porEstado.reduce(
+    (acc, fila) => {
+      if (!esEstadoAvanzadoBbvaCat(fila.estado)) return acc;
+      acc.cantidad += fila.cantidad;
+      acc.reservaActuarial += fila.reservaActuarial;
+      acc.reservaAjustador += fila.reservaAjustador;
+      return acc;
+    },
+    { cantidad: 0, reservaActuarial: 0, reservaAjustador: 0 }
+  );
+
   const pct = (parte, total) =>
     total > 0 ? Math.round((parte / total) * 10000) / 100 : 0;
 
   return {
     porEstado,
     totales,
+    subtotalPorAvanzar,
+    subtotalAvanzados,
     operativo: {
       asignados,
       contactados,

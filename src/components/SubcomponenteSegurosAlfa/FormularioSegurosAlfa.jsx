@@ -47,6 +47,7 @@ import {
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
   homologarTipoPerdidaAlfa,
+  sincronizarGestionConCierreSiniestroAlfa,
   casoAlfaVenceSla2Dias,
   casoTieneEvidenciaComunicacionBajoDeducible,
 } from './segurosAlfaHelpers.js';
@@ -371,7 +372,10 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     payload.fueraDeZona = Boolean(form.fueraDeZona);
     payload.estado = homologarEstadoSiniestroAlfa(form.estado, form);
-    payload.estadoGestion = homologarEstadoGestionAlfa(form.estadoGestion);
+    payload.estadoGestion = sincronizarGestionConCierreSiniestroAlfa(
+      payload.estado,
+      form.estadoGestion
+    );
     payload.observacionesGestion = aplicarObservacionAutoCierreAlfa(
       payload.estado,
       form.observacionesGestion != null ? String(form.observacionesGestion) : ''
@@ -685,6 +689,10 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
                   setForm((prev) => ({
                     ...prev,
                     estado,
+                    estadoGestion: sincronizarGestionConCierreSiniestroAlfa(
+                      estado,
+                      prev.estadoGestion
+                    ),
                     observacionesGestion: aplicarObservacionAutoCierreAlfa(
                       estado,
                       prev.observacionesGestion
