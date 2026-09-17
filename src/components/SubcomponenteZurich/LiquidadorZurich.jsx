@@ -19,9 +19,6 @@ import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismic
 import CampoTomadorZurich from './CampoTomadorZurich.jsx';
 import {
   calcularLiquidacionZurich,
-  desgloseDeducibleTerremotoZurich,
-  filasResumenLiquidacionZurich,
-  formatearMontoPlataformaZurich,
   formDataNsrDesdeLiquidadorZurich,
   mapcasoZurichALiquidador,
   fusionarEncabezadoDesdeFichaZurich,
@@ -111,14 +108,6 @@ export default function LiquidadorZurich({
   ]);
 
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
-  const desgloseDed = useMemo(
-    () => desgloseDeducibleTerremotoZurich(liquidador, totales.diagrama),
-    [liquidador, totales.diagrama]
-  );
-  const filasResumenLiq = useMemo(
-    () => filasResumenLiquidacionZurich(liquidador, totales),
-    [liquidador, totales]
-  );
   const enc = liquidador.encabezado || {};
   const usaCotizBase = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
 
@@ -437,20 +426,6 @@ export default function LiquidadorZurich({
           />
         </div>
         ) : null}
-        <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          {filasResumenLiq.map((fila, idx) => (
-            <div
-              key={`${fila.label}-${idx}`}
-              className={`flex justify-between px-4 py-2 text-sm ${
-                idx < filasResumenLiq.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
-              } ${fila.destacado ? 'font-bold text-emerald-600' : fila.bold ? 'font-bold' : ''}`}
-            >
-              <span>{fila.label}</span>
-              <span>$ {formatearMontoPlataformaZurich(fila.value)}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-gray-500">{desgloseDed.texto}</p>
         {totales.origenPresupuesto === 'cotizacion' && (
           <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.quoteDeductibleNote')}</p>
         )}
@@ -471,6 +446,7 @@ export default function LiquidadorZurich({
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
           ocultarPresupuestoEscrito={false}
           ocultarLiquidacionPresupuesto={false}
+          simplificarDeducible
           totalPresupuestoOverride={null}
           omitirSincronizarIndemnizacion={usaCotizBase}
           notaLiquidacionPresupuesto={

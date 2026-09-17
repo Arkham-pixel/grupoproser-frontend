@@ -9,7 +9,6 @@ import { parsearNumero, valorSmdlvDesdeSmmlv } from '../SubcomponenteExpress/liq
 import { sanitizarInformeUnicoCamposWord } from '../../utils/limpiarTextoInformeWord.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
-  argsDeduciblesPorArticuloDiagrama,
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
@@ -28,6 +27,7 @@ import {
   calcularDiagramaLiquidacion,
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
+  resolverBasePctElegida,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import {
@@ -53,24 +53,37 @@ const REGLA_TERREMOTO = REGLAS_DEDUCIBLE_POR_COBERTURA.terremoto;
 export const TEXTO_DEDUCIBLE_TERREMOTO_ZURICH =
   '3% del valor asegurable, mínimo 3 SMMLV (terremoto)';
 
-export function textoSugeridoDeducibleZurich(cfg = {}) {
+export function basePctDeducibleZurich(cfg = {}, valorAsegurado = 0) {
+  const elegido = resolverBasePctElegida(cfg);
+  if (elegido) return elegido;
+  return parsearNumero(valorAsegurado) > 0 ? 'valor_asegurable' : 'perdida';
+}
+
+function etiquetaBasePctZurich(cfg = {}, valorAsegurado = 0) {
+  return basePctDeducibleZurich(cfg, valorAsegurado) === 'perdida'
+    ? 'la pérdida'
+    : 'el valor asegurable';
+}
+
+export function textoSugeridoDeducibleZurich(cfg = {}, { valorAsegurado = 0 } = {}) {
   const modo = cfg.modo || 'max_pct_minimo';
   const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
   const pct = cfg.porcentaje === '' || cfg.porcentaje == null ? '' : Number(cfg.porcentaje);
   const cantRaw = tipoMinimo === 'SMDLV' ? cfg.cantidadSMDLV : cfg.cantidadSMMLV;
   const cant = cantRaw === '' || cantRaw == null ? '' : Number(cantRaw);
+  const baseTxt = etiquetaBasePctZurich(cfg, valorAsegurado);
   if (modo === 'no_aplica') return 'No aplica';
   if (modo === 'valor_fijo') return 'Valor fijo';
   if (modo === 'solo_porcentaje') {
-    return Number.isFinite(pct) ? `${pct}% del valor asegurable` : '';
+    return Number.isFinite(pct) ? `${pct}% de ${baseTxt}` : '';
   }
   if (modo === 'solo_minimo') {
     return Number.isFinite(cant) ? `Mínimo ${cant} ${tipoMinimo}` : '';
   }
   if (Number.isFinite(pct) && Number.isFinite(cant) && cant > 0) {
-    return `${pct}% del valor asegurable, mínimo ${cant} ${tipoMinimo} (terremoto)`;
+    return `${pct}% de ${baseTxt}, mínimo ${cant} ${tipoMinimo} (terremoto)`;
   }
-  if (Number.isFinite(pct)) return `${pct}% del valor asegurable`;
+  if (Number.isFinite(pct)) return `${pct}% de ${baseTxt}`;
   if (Number.isFinite(cant)) return `Mínimo ${cant} ${tipoMinimo}`;
   return TEXTO_DEDUCIBLE_TERREMOTO_ZURICH;
 }
@@ -129,10 +142,11 @@ export function configDeducibleTerremotoZurich(cfgActual = {}, { valorAsegurado 
     cantidadSMMLV: REGLA_TERREMOTO.cantidadSMMLV,
     tipoMinimo: REGLA_TERREMOTO.tipoMinimo,
     baseDeducible: va > 0 ? 'valor_asegurable' : 'perdida',
+    basePctDeducible: va > 0 ? 'valor_asegurable' : 'perdida',
   };
   return {
     ...cfg,
-    texto: textoSugeridoDeducibleZurich(cfg),
+    texto: textoSugeridoDeducibleZurich(cfg, { valorAsegurado: va }),
   };
 }
 
@@ -148,15 +162,18 @@ export function patchDeduciblePresupuestoZurich(liquidador = {}, patch = {}) {
   };
   if (patch.modo === 'no_aplica') cfg.aplica = false;
   else if (patch.modo) cfg.aplica = true;
-  if (va > 0) cfg.baseDeducible = 'valor_asegurable';
+  const basePct = basePctDeducibleZurich(cfg, va);
+  cfg.basePctDeducible = basePct;
+  cfg.baseDeducible = basePct;
   if (
     patch.porcentaje != null ||
     patch.cantidadSMMLV != null ||
     patch.cantidadSMDLV != null ||
     patch.tipoMinimo != null ||
+    patch.basePctDeducible != null ||
     patch.modo != null
   ) {
-    cfg.texto = textoSugeridoDeducibleZurich(cfg);
+    cfg.texto = textoSugeridoDeducibleZurich(cfg, { valorAsegurado: va });
   }
   return {
     ...liquidador,
@@ -213,15 +230,18 @@ export function patchDeducibleCotizacionPdfZurich(liquidador = {}, patch = {}) {
   };
   if (patch.modo === 'no_aplica') cfg.aplica = false;
   else if (patch.modo) cfg.aplica = true;
-  if (va > 0) cfg.baseDeducible = 'valor_asegurable';
+  const basePct = basePctDeducibleZurich(cfg, va);
+  cfg.basePctDeducible = basePct;
+  cfg.baseDeducible = basePct;
   if (
     patch.porcentaje != null ||
     patch.cantidadSMMLV != null ||
     patch.cantidadSMDLV != null ||
     patch.tipoMinimo != null ||
+    patch.basePctDeducible != null ||
     patch.modo != null
   ) {
-    cfg.texto = textoSugeridoDeducibleZurich(cfg);
+    cfg.texto = textoSugeridoDeducibleZurich(cfg, { valorAsegurado: va });
   }
   return {
     ...liquidador,
@@ -274,11 +294,13 @@ export function configDeducibleCotizacionPdfZurich(liquidador = {}) {
       ? pdf.deducibleConfig
       : null;
   if (guardado) {
-    return {
+    const cfg = {
       ...DEFAULT_DEDUCIBLE_CATASTROFICO,
       ...guardado,
       aplica: guardado.modo === 'no_aplica' ? false : guardado.aplica !== false,
     };
+    const basePct = basePctDeducibleZurich(cfg, va);
+    return { ...cfg, basePctDeducible: basePct, baseDeducible: basePct };
   }
   return configDeducibleTerremotoZurich({}, { valorAsegurado: va });
 }
@@ -365,6 +387,8 @@ export function configDeduciblePresupuestoParaCalculoZurich(liquidador = {}) {
     ...DEFAULT_DEDUCIBLE_CATASTROFICO,
     ...guardado,
     aplica: guardado.modo === 'no_aplica' ? false : guardado.aplica !== false,
+    basePctDeducible: basePctDeducibleZurich(guardado, va),
+    baseDeducible: basePctDeducibleZurich(guardado, va),
   };
 }
 
@@ -383,16 +407,23 @@ export function desgloseDeducibleTerremotoZurich(liquidador = {}, diagrama = nul
     Number.isFinite(cantRaw) && cantRaw >= 0
       ? cantRaw
       : Number(cantCfg) || (tipoMinimo === 'SMDLV' ? 0 : REGLA_TERREMOTO.cantidadSMMLV);
-  const montoPct = Number(pres.montoPctOVa) || 0;
+  const basePct = basePctDeducibleZurich(cfg, va);
+  const montoPctVa = Number(pres.montoPctVa) || 0;
+  const montoPctPerdida = Number(pres.montoPctPerdida) || 0;
+  const montoPct =
+    Number(pres.montoPctOVa) ||
+    (basePct === 'perdida' ? montoPctPerdida : montoPctVa);
   const montoSmmlv = Number(pres.montoSmmlv) || 0;
   const aplicado = Number(pres.aplicado) || 0;
   const neto = Number(pres.neto);
-  const tipoGanador = pres.tipoGanadorLabel || (pres.ganaSmmlv ? tipoMinimo : '%');
+  const tipoGanador =
+    pres.tipoGanadorLabel ||
+    (pres.ganaSmmlv ? tipoMinimo : pres.tipoGanador || '%');
   const tieneArticulos = Boolean(pres.tieneArticulos);
   const etiquetaPct =
-    va > 0
-      ? `DEDUCIBLE ${pct}% SOBRE VALOR ASEGURADO`
-      : 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE';
+    basePct === 'perdida'
+      ? `DEDUCIBLE ${pct}% SOBRE LA PÉRDIDA`
+      : `DEDUCIBLE ${pct}% SOBRE VALOR ASEGURADO`;
   const etiquetaSmmlv = tieneArticulos
     ? `DEDUCIBLE ${cant} ${tipoMinimo} (no aplica)`
     : `DEDUCIBLE ${cant} ${tipoMinimo}`;
@@ -408,7 +439,10 @@ export function desgloseDeducibleTerremotoZurich(liquidador = {}, diagrama = nul
     tipoMinimo,
     valorAsegurado: va,
     montoPct,
+    montoPctVa,
+    montoPctPerdida,
     montoSmmlv,
+    montoMinimo: montoSmmlv,
     aplicado,
     neto: Number.isFinite(neto) ? neto : 0,
     tipoGanador,
@@ -811,7 +845,12 @@ function autoAnalisisConceptoZurich(fila, ctx) {
   }
 
   if (conceptoPolizaCoincide(fila, 'reserva')) {
-    const desglose = desgloseReservaPreliminarZurich(info, { caso, encabezado: enc, liquidador: liq });
+    const desglose = desgloseReservaPreliminarZurich(info, {
+      caso,
+      encabezado: enc,
+      liquidador: liq,
+      perdida: ctx.perdida,
+    });
     const reserva = desglose.reserva || parsearNumero(caso.reserva);
     if (!(desglose.perdida > 0) && !(reserva > 0)) return { analisis: '', conclusion: '' };
     if (desglose.perdida > 0) {
@@ -926,6 +965,102 @@ export function casoZurichConInforme(caso = {}, informe = null) {
   };
 }
 
+const CAMPOS_HEREDABLES_PRELIMINAR_ZURICH = [
+  'infoEvento',
+  'descripcionDanios',
+  'filasDanios',
+  'filasPolizaCobertura',
+  'conclusiones',
+  'recomendacion',
+  'fotosInspeccion',
+  'fotosSeleccionadas',
+  'ajustadorNombre',
+  'actaAjustadorNombre',
+  'actaAjustadorCargo',
+  'actaAjustadorEmail',
+  'actaAjustadorFirmaImagen',
+  'firmaAjustador',
+  'fechaInforme',
+  'coordenadasRiesgo',
+  'imagenMapa',
+  'direccionRiesgo',
+  'analisisCobertura',
+];
+
+function clonarCampoInformeZurich(valor) {
+  if (Array.isArray(valor)) {
+    return valor.map((v) => (v && typeof v === 'object' ? { ...v } : v));
+  }
+  if (valor && typeof valor === 'object') return { ...valor };
+  return valor;
+}
+
+function valorInformeVacioZurich(valor) {
+  if (valor == null || valor === '') return true;
+  if (typeof valor === 'string') return !valor.trim();
+  if (Array.isArray(valor)) {
+    if (!valor.length) return true;
+    return valor.every((item) => {
+      if (item == null) return true;
+      if (typeof item !== 'object') return !String(item).trim();
+      return Object.keys(item)
+        .filter((k) => k !== 'id')
+        .every((k) => valorInformeVacioZurich(item[k]));
+    });
+  }
+  if (typeof valor === 'object') {
+    return Object.values(valor).every((v) => valorInformeVacioZurich(v));
+  }
+  return false;
+}
+
+export function extraerSnapshotPreliminarZurich(informe = {}) {
+  const out = {};
+  CAMPOS_HEREDABLES_PRELIMINAR_ZURICH.forEach((k) => {
+    if (informe[k] !== undefined) out[k] = clonarCampoInformeZurich(informe[k]);
+  });
+  return out;
+}
+
+/** Final y único copian del preliminar solo textos, fotos y firma. No heredan su estructura. */
+export function heredarInformePreliminarZurich(informe = {}, snapshot = null) {
+  const src =
+    snapshot && typeof snapshot === 'object'
+      ? snapshot
+      : informe?.snapshotPreliminar && typeof informe.snapshotPreliminar === 'object'
+        ? informe.snapshotPreliminar
+        : null;
+  if (!src) return informe;
+  const next = { ...informe };
+  CAMPOS_HEREDABLES_PRELIMINAR_ZURICH.forEach((k) => {
+    const actual = next[k];
+    const origen = src[k];
+    if (valorInformeVacioZurich(origen)) return;
+    const esDefaultEvento =
+      k === 'infoEvento' &&
+      String(actual || '').trim() === String(INFO_EVENTO_DEFAULT_ZURICH || '').trim();
+    if (valorInformeVacioZurich(actual) || esDefaultEvento) {
+      next[k] = clonarCampoInformeZurich(origen);
+    }
+  });
+  return next;
+}
+
+export function asegurarSnapshotPreliminarZurich(informe = {}) {
+  const tipo = normalizarTipoInformeZurich(informe?.tipoInforme, 'preliminar');
+  if (tipo === 'preliminar') {
+    return {
+      ...informe,
+      snapshotPreliminar: extraerSnapshotPreliminarZurich(informe),
+    };
+  }
+  const conSnapshot =
+    informe.snapshotPreliminar && typeof informe.snapshotPreliminar === 'object'
+      ? informe
+      : { ...informe, snapshotPreliminar: extraerSnapshotPreliminarZurich(informe) };
+  return heredarInformePreliminarZurich(conSnapshot);
+}
+
 export function etiquetaArchivoInformeZurich(tipo) {
   const t = normalizarTipoInformeZurich(tipo, 'unico');
   if (t === 'preliminar') return 'INFORME_PRELIMINAR';
@@ -1013,6 +1148,7 @@ export function configDeducibleReservaZurich(info = {}) {
     tipoMinimo,
     cantidadSMMLV: raw.cantidadSMMLV ?? '',
     cantidadSMDLV: raw.cantidadSMDLV ?? '',
+    basePctDeducible: raw.basePctDeducible || '',
   };
 }
 
@@ -1040,13 +1176,35 @@ export function valorAseguradoReservaZurich(info = {}, extras = {}) {
 }
 
 export function desgloseReservaPreliminarZurich(info = {}, extras = {}) {
-  const perdida = Math.round(totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar));
+  const perdidaOverride = extras.perdida;
+  const perdida =
+    perdidaOverride != null && perdidaOverride !== ''
+      ? Math.round(parsearNumero(perdidaOverride) || 0)
+      : Math.round(totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar));
   const cfg = configDeducibleReservaZurich(info);
-  const porcentaje = parsearPorcentajeLibreZurich(cfg.porcentaje);
+  const cfgLiq = extras.liquidador
+    ? configDeduciblePresupuestoParaCalculoZurich(extras.liquidador)
+    : null;
+  const tipoMinimoCfg = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : cfgLiq?.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const porcentaje =
+    parsearPorcentajeLibreZurich(cfg.porcentaje) ||
+    parsearPorcentajeLibreZurich(cfgLiq?.porcentaje);
   const valorAsegurado = Math.round(valorAseguradoReservaZurich(info, extras));
-  const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const tipoMinimo = tipoMinimoCfg;
   const cantRaw = tipoMinimo === 'SMDLV' ? cfg.cantidadSMDLV : cfg.cantidadSMMLV;
-  const cantidadMinimo = parsearPorcentajeLibreZurich(cantRaw);
+  const cantLiq =
+    tipoMinimo === 'SMDLV' ? cfgLiq?.cantidadSMDLV : cfgLiq?.cantidadSMMLV;
+  const cantidadMinimo =
+    parsearPorcentajeLibreZurich(cantRaw) || parsearPorcentajeLibreZurich(cantLiq);
+  const basePct = basePctDeducibleZurich(
+    {
+      basePctDeducible:
+        extras.perdida != null && cfgLiq
+          ? cfgLiq.basePctDeducible || cfg.basePctDeducible
+          : cfg.basePctDeducible || cfgLiq?.basePctDeducible,
+    },
+    valorAsegurado
+  );
   const valorSMMLV = SMMLV_DEFAULT;
   const valorSMDLV = valorSmdlvDesdeSmmlv(valorSMMLV);
   const valorMinimo = tipoMinimo === 'SMDLV' ? valorSMDLV : valorSMMLV;
@@ -1056,26 +1214,27 @@ export function desgloseReservaPreliminarZurich(info = {}, extras = {}) {
       : 0;
   const montoPctPerdida =
     perdida > 0 && porcentaje > 0 ? Math.round((perdida * porcentaje) / 100) : 0;
+  const montoPct = basePct === 'perdida' ? montoPctPerdida : montoPctVa;
   const montoMinimo =
     cantidadMinimo > 0 ? Math.round(valorMinimo * cantidadMinimo) : 0;
-  const bruto = Math.max(montoPctVa, montoPctPerdida, montoMinimo);
+  const bruto = Math.max(montoPct, montoMinimo);
   const deducible = perdida > 0 ? Math.min(bruto, perdida) : 0;
   const reserva = Math.max(0, perdida - deducible);
   let tipoGanador = '%';
   if (deducible <= 0) tipoGanador = '%';
-  else if (montoMinimo >= montoPctVa && montoMinimo >= montoPctPerdida) tipoGanador = tipoMinimo;
-  else if (montoPctVa >= montoPctPerdida) tipoGanador = 'valor_asegurado';
-  else tipoGanador = 'perdida';
+  else if (montoMinimo >= montoPct) tipoGanador = tipoMinimo;
+  else tipoGanador = basePct === 'perdida' ? 'perdida' : 'valor_asegurado';
   return {
     perdida,
     porcentaje,
     valorAsegurado,
     tipoMinimo,
     cantidadMinimo,
+    basePct,
     montoPctVa,
     montoPctPerdida,
+    montoPct,
     montoMinimo,
-    montoPct: montoPctPerdida,
     deducible,
     reserva,
     tipoGanador,
@@ -1376,16 +1535,12 @@ export function calcularLiquidacionZurich(liquidadorCrudo = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: configDeducibleParaCalculoZurich(liquidador),
     otrosAmparos: liquidador.otrosAmparos,
-    ...(() => {
-      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
-      if (!usaCotiz) return args;
-      return {
-        ...args,
-        usaDeduciblePorArticuloPresupuesto: false,
-        deduciblePresupuestoPorArticulos: 0,
-        presupuestoNetoPorArticulo: null,
-      };
-    })(),
+    usaDeduciblePorArticuloContenidos: false,
+    usaDeduciblePorArticuloPresupuesto: false,
+    deducibleContenidosPorArticulos: 0,
+    deduciblePresupuestoPorArticulos: 0,
+    contenidosNetoPorArticulo: null,
+    presupuestoNetoPorArticulo: null,
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -1584,7 +1739,7 @@ export function sanitizarInformeUnicoZurich(informe = {}) {
     ? normalizarTipoInformeZurich(limpio.tipoInforme, 'preliminar')
     : undefined;
   const desglose = desgloseReservaPreliminarZurich(limpio);
-  return {
+  const base = {
     ...limpio,
     ...(tipo ? { tipoInforme: tipo } : {}),
     porcentajeDeducibleReserva:
@@ -1597,6 +1752,7 @@ export function sanitizarInformeUnicoZurich(informe = {}) {
     fotosInspeccion: serializarFotosInspeccionZurich(limpio.fotosInspeccion),
     fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
   };
+  return asegurarSnapshotPreliminarZurich(base);
 }
 
 /** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
@@ -1755,7 +1911,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     liquidador: caso.liquidador,
   });
   if (desglose.perdida > 0) limpio.reservaSugerida = String(desglose.reserva);
-  return limpio;
+  return asegurarSnapshotPreliminarZurich(limpio);
 }
 
 export function formatDateLarga(value) {

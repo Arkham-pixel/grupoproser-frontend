@@ -21,9 +21,6 @@ import {
   calcularLiquidacionZurich,
   casoZurichConInforme,
   defaultInformeUnicoZurich,
-  desgloseDeducibleTerremotoZurich,
-  filasResumenLiquidacionZurich,
-  formatearMontoPlataformaZurich,
   etiquetaArchivoInformeZurich,
   formDataNsrDesdeLiquidadorZurich,
   formatearMonto,
@@ -42,6 +39,8 @@ import {
   configDeducibleReservaZurich,
   desgloseReservaPreliminarZurich,
   formatearPorcentajeLibreZurich,
+  heredarInformePreliminarZurich,
+  extraerSnapshotPreliminarZurich,
   patchDeducibleReservaZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
@@ -267,14 +266,6 @@ export default function InformeUnicoZurich({
   const [descargando, setDescargando] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
-  const desgloseDed = useMemo(
-    () => desgloseDeducibleTerremotoZurich(liquidador, totales.diagrama),
-    [liquidador, totales.diagrama]
-  );
-  const filasResumenLiq = useMemo(
-    () => filasResumenLiquidacionZurich(liquidador, totales),
-    [liquidador, totales]
-  );
   const tieneCotizacionPdf = Boolean(
     (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
@@ -322,20 +313,26 @@ export default function InformeUnicoZurich({
     () => totalPresupuestoPreliminarZurich(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
   );
-  const extrasReserva = useMemo(
-    () => ({
+  const extrasReserva = useMemo(() => {
+    const base = {
       caso: casoZurich,
       liquidador,
       valorAsegurado:
         valorAseguradoPresupuestoZurich(liquidador) || casoZurich?.valorAseguradoInmueble,
-    }),
-    [
-      casoZurich,
-      liquidador,
-      liquidador.liquidacionCatastrofico?.valorAsegurado,
-      liquidador.encabezado?.valorAseguradoInmueble,
-    ]
-  );
+    };
+    if (!esPreliminar) {
+      const perdidaNsr = Math.round(Number(totales.totalPresupuesto) || 0);
+      if (perdidaNsr > 0) base.perdida = perdidaNsr;
+    }
+    return base;
+  }, [
+    casoZurich,
+    liquidador,
+    liquidador.liquidacionCatastrofico?.valorAsegurado,
+    liquidador.encabezado?.valorAseguradoInmueble,
+    tipoInforme,
+    totales.totalPresupuesto,
+  ]);
   const desgloseReserva = useMemo(
     () => desgloseReservaPreliminarZurich(informe, extrasReserva),
     [
@@ -449,7 +446,11 @@ export default function InformeUnicoZurich({
   const elegirTipoInforme = (tipo) => {
     const nextTipo = normalizarTipoInformeZurich(tipo, tipoInforme);
     if (nextTipo === tipoInforme) return;
-    const next = { ...informe, tipoInforme: nextTipo };
+    const base =
+      tipoInforme === 'preliminar'
+        ? { ...informe, snapshotPreliminar: extraerSnapshotPreliminarZurich(informe) }
+        : informe;
+    const next = heredarInformePreliminarZurich({ ...base, tipoInforme: nextTipo });
     setInforme(next);
     onGuardarEnCaso?.(next);
   };
@@ -865,6 +866,7 @@ export default function InformeUnicoZurich({
         />
       </section>
 
+      {esPreliminar ? (
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
           4. {t('zurich.reportUnique.sectionConclusions')}
@@ -920,7 +922,9 @@ export default function InformeUnicoZurich({
           <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
               <span>{t('zurich.reportUnique.lossValue')}</span>
-              <span className="font-mono tabular-nums">$ {formatearMonto(totalPreliminar)}</span>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(totalPreliminar)}
+              </span>
             </div>
           </div>
           <EditorDeducibleZurich
@@ -938,22 +942,21 @@ export default function InformeUnicoZurich({
           <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
               <span>
-                {t('zurich.reportUnique.deductibleOnInsured', {
-                  pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
-                })}
+                {desgloseReserva.basePct === 'perdida'
+                  ? t('zurich.reportUnique.deductibleOnLoss', {
+                      pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
+                    })
+                  : t('zurich.reportUnique.deductibleOnInsured', {
+                      pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
+                    })}
               </span>
               <span className="font-mono tabular-nums">
-                $ {formatearMonto(desgloseReserva.montoPctVa)}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-              <span>
-                {t('zurich.reportUnique.deductibleOnLoss', {
-                  pct: formatearPorcentajeLibreZurich(desgloseReserva.porcentaje),
-                })}
-              </span>
-              <span className="font-mono tabular-nums">
-                $ {formatearMonto(desgloseReserva.montoPctPerdida)}
+                ${' '}
+                {formatearMonto(
+                  desgloseReserva.basePct === 'perdida'
+                    ? desgloseReserva.montoPctPerdida
+                    : desgloseReserva.montoPctVa
+                )}
               </span>
             </div>
             <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
@@ -1017,12 +1020,12 @@ export default function InformeUnicoZurich({
           </Campo>
         </div>
       </section>
-
-      {!esPreliminar && (
+      ) : (
+      <>
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className={`${expressSectionTitle} mb-0`}>
-            5. {t('zurich.reportUnique.sectionSettlement')}
+            4. {t('zurich.reportUnique.sectionSettlement')}
           </h3>
           {onAbrirPresupuesto && (
             <button type="button" className={expressBtnGhost} onClick={onAbrirPresupuesto}>
@@ -1030,9 +1033,6 @@ export default function InformeUnicoZurich({
             </button>
           )}
         </div>
-        <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('zurich.reportUnique.finalAddsSettlement')}
-        </p>
         <div className="mb-4 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
           <Campo label={t('zurich.settlement.insuredValue')}>
             <InputFenix
@@ -1104,20 +1104,6 @@ export default function InformeUnicoZurich({
           />
         </div>
         ) : null}
-        <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          {filasResumenLiq.map((fila, idx) => (
-            <div
-              key={`${fila.label}-${idx}`}
-              className={`flex justify-between px-4 py-2 text-sm ${
-                idx < filasResumenLiq.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
-              } ${fila.destacado ? 'font-bold text-emerald-600' : fila.bold ? 'font-bold' : ''}`}
-            >
-              <span>{fila.label}</span>
-              <span>$ {formatearMontoPlataformaZurich(fila.value)}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mb-4 mt-2 text-xs text-gray-500">{desgloseDed.texto}</p>
         <ChecklistEvaluacionSismicaNSR10
           formData={formDataNsr}
           onInputChange={handleNsrChange}
@@ -1125,6 +1111,7 @@ export default function InformeUnicoZurich({
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
           ocultarPresupuestoEscrito={false}
           ocultarLiquidacionPresupuesto={false}
+          simplificarDeducible
           totalPresupuestoOverride={null}
           omitirSincronizarIndemnizacion={usaCotizBase}
           notaLiquidacionPresupuesto={
@@ -1146,6 +1133,33 @@ export default function InformeUnicoZurich({
           </div>
         )}
       </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>
+          5. {t('zurich.reportUnique.sectionConclusions')}
+        </h3>
+        <div>
+          <Campo label={t('zurich.reportUnique.conclusions')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={4}
+              value={informe.conclusiones || ''}
+              onChange={(e) => setCampo('conclusiones', e.target.value)}
+            />
+          </Campo>
+        </div>
+        <div className="mt-3">
+          <Campo label={t('zurich.reportUnique.recommendation')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={4}
+              value={informe.recomendacion || ''}
+              onChange={(e) => setCampo('recomendacion', e.target.value)}
+            />
+          </Campo>
+        </div>
+      </section>
+      </>
       )}
 
       <section className={expressFormSection}>

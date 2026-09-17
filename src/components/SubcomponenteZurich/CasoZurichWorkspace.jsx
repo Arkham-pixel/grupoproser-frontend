@@ -29,7 +29,7 @@ import {
   guardarInformeUnicoEnCasoZurichListado,
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
-import { calcularLiquidacionZurich, defaultInformeUnicoZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
+import { calcularLiquidacionZurich, defaultInformeUnicoZurich, extraerSnapshotPreliminarZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, heredarInformePreliminarZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
@@ -377,8 +377,12 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   const elegirTipoInformeWorkspace = (tipo) => {
     const nextTipo = normalizarTipoInformeZurich(tipo, tipoInformeActual);
     if (nextTipo === tipoInformeActual) return;
-    const base = informeState || defaultInformeUnicoZurich(casoZurich || {});
-    const next = { ...base, tipoInforme: nextTipo };
+    const actual = informeState || defaultInformeUnicoZurich(casoZurich || {});
+    const base =
+      tipoInformeActual === 'preliminar'
+        ? { ...actual, snapshotPreliminar: extraerSnapshotPreliminarZurich(actual) }
+        : actual;
+    const next = heredarInformePreliminarZurich({ ...base, tipoInforme: nextTipo });
     setInformeState(next);
     if (casoId) handleGuardarInforme(next);
   };

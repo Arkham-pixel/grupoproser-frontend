@@ -68,6 +68,7 @@ import {
   calcularDiagramaLiquidacion,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
   normalizarDeducibleCatastrofico,
+  resolverBasePctElegida,
   valorSmdlvDesdeSmmlv,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
@@ -646,6 +647,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
       ? 'SMDLV'
       : 'SMMLV';
   const esSmdlvPresupuesto = tipoMinimoPresupuesto === 'SMDLV';
+  const vaPresupuestoDiagrama =
+    valoresAsegurablesCaso.inmueble ||
+    liquidacion.valorAsegurado ||
+    formData?.valorAseguradoInmueble ||
+    formData?.encabezado?.valorAseguradoInmueble;
+  const basePctPresupuesto = simplificarDeducible
+    ? resolverBasePctElegida(deducibleCfgPresupuestoInput) ||
+      resolverBasePctElegida(deducibleCfgPresupuesto) ||
+      (vaPresupuestoDiagrama > 0 ? 'valor_asegurable' : 'perdida')
+    : resolverBasePctElegida(deducibleCfgPresupuestoInput) ||
+      resolverBasePctElegida(deducibleCfgPresupuesto) ||
+      '';
+  const esPctSobrePerdida = basePctPresupuesto === 'perdida';
   const usaTotalPresupuestoOverride =
     totalPresupuestoOverride != null &&
     totalPresupuestoOverride !== '' &&
@@ -691,10 +705,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
     () =>
       calcularDiagramaLiquidacion({
         valorAsegurado:
+          valoresAsegurablesCaso.inmueble ||
           liquidacion.valorAsegurado ||
           formData?.valorAseguradoInmueble ||
           formData?.encabezado?.valorAseguradoInmueble,
         valorAseguradoContenidos:
+          valoresAsegurablesCaso.contenidos ||
           formData?.valorAseguradoContenidos ||
           formData?.encabezado?.valorAseguradoContenidos,
         usarValorAseguradoGeneralParaContenidos: !simplificarDeducible,
@@ -706,8 +722,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
         deducible: liquidacion.deducible,
         deducibleConfig: liquidacion.deducibleConfig || deducibleCfg,
         deducibleConfigContenidos: liquidacion.deducibleConfigContenidos || deducibleCfg,
-        deducibleConfigPresupuesto:
-          liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto,
+        deducibleConfigPresupuesto: simplificarDeducible
+          ? {
+              ...(liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto),
+              basePctDeducible: basePctPresupuesto || 'valor_asegurable',
+              baseDeducible: basePctPresupuesto || 'valor_asegurable',
+            }
+          : liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto,
         otrosAmparos: simplificarDeducible ? [] : formData.otrosAmparos,
         deducibleCompartido:
           simplificarDeducible &&
@@ -742,11 +763,14 @@ export default function ChecklistEvaluacionSismicaNSR10({
       resumenTotales,
       deducibleCfg,
       deducibleCfgPresupuesto,
+      valoresAsegurablesCaso.inmueble,
+      valoresAsegurablesCaso.contenidos,
       formData.otrosAmparos,
       usaTotalPresupuestoOverride,
       totalDaniosDiagrama,
       totalPresupuestoDiagrama,
       simplificarDeducible,
+      basePctPresupuesto,
       resultadoCalculoValorAsegurado?.valorDeducible,
       presupuesto?.calculoValorAsegurado?.valorDeducible,
     ]
@@ -2472,6 +2496,49 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 SMDLV (diario)
               </button>
             </div>
+            {simplificarDeducible ? (
+              <div>
+                <p className="mb-1.5 text-xs font-medium" style={{ color: textSecondary }}>
+                  % sobre
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      !esPctSobrePerdida ? 'border-blue-500 text-blue-600' : ''
+                    }`}
+                    style={
+                      !esPctSobrePerdida ? undefined : { borderColor, color: textSecondary }
+                    }
+                    onClick={() =>
+                      actualizarDeduciblePresupuesto({
+                        basePctDeducible: 'valor_asegurable',
+                        baseDeducible: 'valor_asegurable',
+                      })
+                    }
+                  >
+                    Valor asegurado
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      esPctSobrePerdida ? 'border-blue-500 text-blue-600' : ''
+                    }`}
+                    style={
+                      esPctSobrePerdida ? undefined : { borderColor, color: textSecondary }
+                    }
+                    onClick={() =>
+                      actualizarDeduciblePresupuesto({
+                        basePctDeducible: 'perdida',
+                        baseDeducible: 'perdida',
+                      })
+                    }
+                  >
+                    Pérdida
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible
@@ -2536,14 +2603,35 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                   {usaPorArticuloPresupuesto ? null : (
                     <>
-                      <tr className="border-b" style={{ borderColor }}>
-                        <td className="px-3 py-2" style={{ color: textSecondary }}>
-                          DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {money(diagrama.deduciblePresupuesto?.montoPctOVa || 0)}
-                        </td>
-                      </tr>
+                      {simplificarDeducible ? (
+                        <tr className="border-b" style={{ borderColor }}>
+                          <td className="px-3 py-2" style={{ color: textSecondary }}>
+                            DEDUCIBLE{' '}
+                            {diagrama.deduciblePresupuesto?.porcentaje ??
+                              deducibleCfgPresupuesto.porcentaje ??
+                              ''}
+                            % SOBRE {esPctSobrePerdida ? 'LA PÉRDIDA' : 'VALOR ASEGURADO'}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {money(
+                              esPctSobrePerdida
+                                ? diagrama.deduciblePresupuesto?.montoPctPerdida || 0
+                                : diagrama.deduciblePresupuesto?.montoPctVa ||
+                                  diagrama.deduciblePresupuesto?.montoPctOVa ||
+                                  0
+                            )}
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr className="border-b" style={{ borderColor }}>
+                          <td className="px-3 py-2" style={{ color: textSecondary }}>
+                            DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {money(diagrama.deduciblePresupuesto?.montoPctOVa || 0)}
+                          </td>
+                        </tr>
+                      )}
                       <tr className="border-b" style={{ borderColor }}>
                         <td className="px-3 py-2" style={{ color: textSecondary }}>
                           DEDUCIBLE{' '}
@@ -2591,7 +2679,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
             <p className="text-xs" style={{ color: textSecondary }}>
               {usaPorArticuloPresupuesto
                 ? 'Toma el total del presupuesto y el deducible ya calculado arriba. No se vuelve a aplicar % / SMMLV / SMDLV general.'
-                : 'Las dos vías quedan habilitadas. Se resta el mayor entre el mínimo (SMMLV o SMDLV, según la póliza) y el porcentaje sobre pérdida o valor asegurable.'}
+                : simplificarDeducible
+                  ? 'Se resta el mayor entre el mínimo (SMMLV o SMDLV) y el % sobre la base elegida (valor asegurado o pérdida).'
+                  : 'Las dos vías quedan habilitadas. Se resta el mayor entre el mínimo (SMMLV o SMDLV, según la póliza) y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
             {notaLiquidacionPresupuesto ? (
               <p className="text-xs" style={{ color: textSecondary }}>

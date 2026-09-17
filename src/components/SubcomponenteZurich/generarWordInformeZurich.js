@@ -17,15 +17,14 @@ import {
 import { saveAs } from 'file-saver';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, esModoDeduciblePorArticuloNsr, filaPresupuestoListaParaDeducible, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { esModoDeduciblePorArticuloNsr, filaPresupuestoListaParaDeducible, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionZurich,
   completarFilasPolizaCoberturaZurich,
   defaultInformeUnicoZurich,
+  heredarInformePreliminarZurich,
   desgloseDeducibleTerremotoZurich,
-  filasResumenLiquidacionZurich,
-  formatearMontoPlataformaZurich,
   etiquetaArchivoInformeZurich,
   etiquetaEncabezadoInformeZurich,
   etiquetaReporteCuadroZurich,
@@ -34,7 +33,6 @@ import {
   formatearMonto,
   formatDateLarga,
   fotosInformeDesdeCasoZurich,
-  itemsPlanosZurich,
   mapcasoZurichALiquidador,
   migrarLiquidadorDeducibleTerremotoZurich,
   normalizarTipoInformeZurich,
@@ -79,6 +77,7 @@ const FONT = 'Arial';
 const SIZE_12 = 24;
 const SIZE_META = 20;
 const SIZE_NSR = 14; // 7 pt — tabla presupuesto completa en landscape
+const SIZE_UNICO = 16; // 8 pt — liquidador único en vertical (9 columnas)
 /** Tamaño en página (docx px). El JPEG embebido va a ~2× para impresión nítida. */
 const FOTO_WORD_ANCHO = 400;
 const FOTO_WORD_ALTO = 260;
@@ -104,6 +103,23 @@ const NSR_COLS = {
   ],
 };
 const NSR_TABLE_W = NSR_COLS.widths.reduce((a, b) => a + b, 0);
+
+/** Liquidador del informe único: 9 columnas en vertical (sin cubierto ni observación). */
+const UNICO_COLS = {
+  widths: [1300, 1200, 2260, 480, 540, 980, 980, 720, 900],
+  labels: [
+    'CAPÍTULO',
+    'COMPONENTE',
+    'ACTIVIDAD / REPARACIÓN',
+    'UND',
+    'CANT.',
+    'VLR. UNITARIO',
+    'VLR. TOTAL',
+    'PRIORIDAD',
+    'FUENTE',
+  ],
+};
+const UNICO_TABLE_W = UNICO_COLS.widths.reduce((a, b) => a + b, 0);
 
 const txt = (v, fallback = '—') => {
   const s = String(v ?? '').trim();
@@ -133,7 +149,6 @@ const fmtFecha = (value) => {
 };
 
 const money = (v) => `$ ${formatearMonto(v)}`;
-const moneyPlataforma = (v) => `$ ${formatearMontoPlataformaZurich(v)}`;
 
 function construirTablaPolizaCasoZurich({ caso = {}, enc = {}, info = {} } = {}) {
   const departamento = resolverDepartamentoZurich({
@@ -435,9 +450,12 @@ function etiquetaGanadorReservaWord(desglose = {}) {
 
 function filasDeducibleReservaWord(desglose = {}) {
   const pctTxt = formatearPorcentajeLibreZurich(desglose.porcentaje);
+  const filaPct =
+    desglose.basePct === 'perdida'
+      ? [`DEDUCIBLE ${pctTxt}% SOBRE LA PÉRDIDA`, money(desglose.montoPctPerdida)]
+      : [`DEDUCIBLE ${pctTxt}% SOBRE VALOR ASEGURADO`, money(desglose.montoPctVa)];
   return [
-    [`DEDUCIBLE ${pctTxt}% SOBRE VALOR ASEGURADO`, money(desglose.montoPctVa)],
-    [`DEDUCIBLE ${pctTxt}% SOBRE LA PÉRDIDA`, money(desglose.montoPctPerdida)],
+    filaPct,
     [
       `DEDUCIBLE ${desglose.cantidadMinimo || 0} ${desglose.tipoMinimo || 'SMMLV'}`,
       money(desglose.montoMinimo),
@@ -456,17 +474,23 @@ function construirCuadroPrincipal({
   totales = {},
   portada = {},
   liquidador = null,
+  perdidaAjuste = null,
 } = {}) {
   const vigencia =
     caso.fechaInicioPoliza || caso.fechaFinPoliza
       ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
       : '—';
 
-  const esPreliminar = esInformePreliminarZurich(info);
+  const tipoNorm = normalizarTipoInformeZurich(info.tipoInforme, 'preliminar');
+  const esPreliminar = tipoNorm === 'preliminar';
   const extras = extrasReservaWord(info, { caso, enc, liquidador });
-  const desgloseReserva = desgloseReservaPreliminarZurich(info, extras);
+  const extrasCalc =
+    perdidaAjuste != null && perdidaAjuste !== ''
+      ? { ...extras, perdida: perdidaAjuste }
+      : extras;
+  const desgloseReserva = desgloseReservaPreliminarZurich(info, extrasCalc);
   const reserva =
-    desgloseReserva.perdida > 0 ? desgloseReserva.reserva : reservaSugeridaZurich(info, extras);
+    desgloseReserva.perdida > 0 ? desgloseReserva.reserva : reservaSugeridaZurich(info, extrasCalc);
   const ciudad = caso.ciudad || enc.ciudad || portada.municipio || '';
   const departamento = resolverDepartamentoZurich({
     ciudad,
@@ -514,8 +538,10 @@ function construirCuadroPrincipal({
           ['RESERVA SUGERIDA', money(reserva)],
         ]
       : [
-          ['RESERVA PRELIMINAR', money(reserva)],
-          ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
+          [
+            'INDEMNIZACIÓN SUGERIDA',
+            money(desgloseReserva.perdida > 0 ? desgloseReserva.reserva : totales.totalIndemnizar),
+          ],
         ]),
   ];
 
@@ -1320,6 +1346,263 @@ function tablaPresupuestoPreliminarZurich(filas = [], info = {}, extras = {}) {
   });
 }
 
+function totalesLiquidadorUnicoDesdeFilas(filas = [], aiuPct = 25, imprPct = 0, impPct = 0) {
+  const subtotal = (Array.isArray(filas) ? filas : []).reduce((s, it) => {
+    const t = totalFilaPresupuesto(it);
+    return s + (t == null ? 0 : Number(t) || 0);
+  }, 0);
+  const aiu = subtotal * (Number(aiuPct) || 0) / 100;
+  const imprevistos = (Number(imprPct) || 0) > 0 ? (subtotal + aiu) * (Number(imprPct) / 100) : 0;
+  const impuestos =
+    (Number(impPct) || 0) > 0 ? (subtotal + aiu + imprevistos) * (Number(impPct) / 100) : 0;
+  return { subtotal, aiu, imprevistos, impuestos, total: subtotal + aiu + imprevistos + impuestos };
+}
+
+function tablaLiquidadorUnicoZurich({
+  filas = [],
+  totalesFooter = {},
+  aiuPct = 25,
+  mostrarImprevistos = false,
+  mostrarImpuestos = false,
+  imprPct = 0,
+  impPct = 0,
+} = {}) {
+  const w = UNICO_COLS.widths;
+  const cellU = (text, colIdx, opts = {}) =>
+    cell(text, {
+      width: w[colIdx] || 900,
+      size: SIZE_UNICO,
+      compact: true,
+      cuadro: true,
+      alignment: opts.alignment || AlignmentType.LEFT,
+      bold: !!opts.bold,
+      columnSpan: opts.columnSpan || 1,
+    });
+
+  const rows = [
+    new TableRow({
+      children: UNICO_COLS.labels.map((label, i) =>
+        cellU(label, i, { bold: true, alignment: AlignmentType.CENTER })
+      ),
+    }),
+  ];
+
+  const filasConDatos = (Array.isArray(filas) ? filas : []).filter(
+    (it) =>
+      String(it?.actividad || '').trim() ||
+      String(it?.componente || '').trim() ||
+      String(it?.capitulo || '').trim() ||
+      Number(it?.cantidad) > 0
+  );
+
+  if (filasConDatos.length) {
+    filasConDatos.forEach((it) => {
+      const tot = totalFilaPresupuesto(it);
+      rows.push(
+        new TableRow({
+          children: [
+            cellU(it.capitulo || '—', 0),
+            cellU(it.componente || '—', 1),
+            cellU(it.actividad || '—', 2),
+            cellU(it.unidad || '—', 3, { alignment: AlignmentType.CENTER }),
+            cellU(
+              it.cantidad === '' || it.cantidad == null ? '—' : String(it.cantidad),
+              4,
+              { alignment: AlignmentType.RIGHT }
+            ),
+            cellU(
+              it.valorUnitario === '' || it.valorUnitario == null
+                ? '—'
+                : money(it.valorUnitario),
+              5,
+              { alignment: AlignmentType.RIGHT }
+            ),
+            cellU(tot == null ? '—' : money(tot), 6, { alignment: AlignmentType.RIGHT }),
+            cellU(it.prioridad || '—', 7, { alignment: AlignmentType.CENTER }),
+            cellU(it.fuente || '—', 8),
+          ],
+        })
+      );
+    });
+  } else {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('Sin ítems en el presupuesto', {
+            width: UNICO_TABLE_W,
+            columnSpan: 9,
+            size: SIZE_UNICO,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.CENTER,
+          }),
+        ],
+      })
+    );
+  }
+
+  const resumen = [
+    ['SUBTOTAL (COSTO DIRECTO)', money(totalesFooter.subtotal)],
+    [`AIU (${aiuPct}%)`, money(totalesFooter.aiu)],
+    ...(mostrarImprevistos ? [[`IMPREVISTOS (${imprPct}%)`, money(totalesFooter.imprevistos)]] : []),
+    ...(mostrarImpuestos ? [[`IMPUESTOS (${impPct}%)`, money(totalesFooter.impuestos)]] : []),
+    ['TOTAL, ESTIMADO', money(totalesFooter.total)],
+  ];
+  const wLabel = w.slice(0, 6).reduce((a, b) => a + b, 0);
+  resumen.forEach(([lab, val]) => {
+    rows.push(
+      new TableRow({
+        children: [
+          cell(lab, {
+            width: wLabel,
+            columnSpan: 6,
+            size: SIZE_UNICO,
+            compact: true,
+            cuadro: true,
+            bold: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell(val, {
+            width: w[6],
+            size: SIZE_UNICO,
+            compact: true,
+            cuadro: true,
+            bold: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell('', { width: w[7], size: SIZE_UNICO, compact: true, cuadro: true }),
+          cell('', { width: w[8], size: SIZE_UNICO, compact: true, cuadro: true }),
+        ],
+      })
+    );
+  });
+
+  return new Table({
+    width: { size: UNICO_TABLE_W, type: WidthType.DXA },
+    columnWidths: w,
+    borders: bordersCuadro,
+    rows,
+  });
+}
+
+function tablaDiagramaAjusteZurich(desglose = {}) {
+  const rows = [
+    new TableRow({
+      children: [
+        cell('Capítulo', {
+          bold: true,
+          width: 2800,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('Descripción del alcance', {
+          bold: true,
+          width: 4560,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('Valor estimado', {
+          bold: true,
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('PERDIDA OBRA CIVIL ESTABLECIDA', {
+          bold: true,
+          width: 2800,
+          cuadro: true,
+          verticalAlign: VerticalAlign.TOP,
+        }),
+        cell('VER ITEM PRESUPUESTO', {
+          width: 4560,
+          cuadro: true,
+          verticalAlign: VerticalAlign.TOP,
+        }),
+        cell(money(desglose.perdida), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+          verticalAlign: VerticalAlign.TOP,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('VALOR DE LA PÉRDIDA', {
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(money(desglose.perdida), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('VALOR ASEGURADO', {
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(money(desglose.valorAsegurado), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+    ...filasDeducibleReservaWord(desglose).map(
+      ([etiqueta, valor]) =>
+        new TableRow({
+          children: [
+            cell(etiqueta, {
+              width: 7360,
+              columnSpan: 2,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+            cell(valor, {
+              width: 2000,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+          ],
+        })
+    ),
+    new TableRow({
+      children: [
+        cell('RESERVA SUGERIDA', {
+          bold: true,
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(money(desglose.reserva), {
+          bold: true,
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+  ];
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [2800, 4560, 2000],
+    borders: bordersCuadro,
+    rows,
+  });
+}
 
 /**
  * Informe preliminar, final o único Zurich.
@@ -1328,14 +1611,16 @@ function tablaPresupuestoPreliminarZurich(filas = [], info = {}, extras = {}) {
  * El único es el expediente completo con liquidador.
  */
 export async function descargarWordInformeZurich({ caso = {}, informe = null, liquidador = null } = {}) {
-  const info = informe || defaultInformeUnicoZurich(caso);
+  const info = heredarInformePreliminarZurich(
+    informe || defaultInformeUnicoZurich(caso),
+    informe?.snapshotPreliminar || caso?.informeUnico?.snapshotPreliminar || caso?.informeUnico
+  );
   const liq = migrarLiquidadorDeducibleTerremotoZurich(
     liquidador || mapcasoZurichALiquidador(caso),
     caso
   );
   const totales = calcularLiquidacionZurich(liq);
   const enc = liq.encabezado || {};
-  const items = itemsPlanosZurich(liq);
   const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
     ? liq.evaluacionSismicaNSR10.presupuesto.items
     : [];
@@ -1362,12 +1647,37 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     usaDeduciblePorArticulo: totales.contenidos?.usaDeduciblePorArticulo,
     usaDeduciblePorArticuloPresupuesto: totales.presupuesto?.usaDeduciblePorArticulo,
   });
-  const criterio = totales.criterio || {};
   const esPreliminar = esInformePreliminarZurich(info);
   const tipoNorm = normalizarTipoInformeZurich(info.tipoInforme, 'preliminar');
   const tipoEtiqueta =
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
-  const seccionFotos = esPreliminar ? 5 : 7;
+  const filasConDatos = filasPresupuesto.filter(
+    (it) =>
+      String(it?.actividad || '').trim() ||
+      String(it?.componente || '').trim() ||
+      String(it?.capitulo || '').trim() ||
+      Number(it?.cantidad) > 0
+  );
+  const conLiquidador = !esPreliminar;
+  const seccionFotos = conLiquidador ? 6 : 5;
+  const aiuPctLiquidadorUnico =
+    totales.origenPresupuesto === 'cotizacion' ? 25 : aiuPct;
+  const totalesUnicoNsr = totalesLiquidadorUnicoDesdeFilas(
+    filasConDatos,
+    aiuPctLiquidadorUnico,
+    mostrarImprevistos ? imprPct : 0,
+    mostrarImpuestos ? impPct : 0
+  );
+  const perdidaAjusteUnico = Math.round(
+    filasConDatos.length
+      ? totalesUnicoNsr.total
+      : Number(totales.totalPresupuesto) || 0
+  );
+  const extrasAjusteUnico = {
+    ...extrasReservaWord(info, { caso, enc, liquidador: liq }),
+    perdida: perdidaAjusteUnico,
+  };
+  const desgloseAjusteUnico = desgloseReservaPreliminarZurich(info, extrasAjusteUnico);
 
   const fotosParaWord = fotosInformeDesdeCasoZurich(caso, info);
 
@@ -1490,149 +1800,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       ]
     : [];
 
-  const filasCuadro = [
-    new TableRow({
-      children: [
-        cell('#', { bold: true, width: 600, alignment: AlignmentType.CENTER, cuadro: true }),
-        cell('Concepto', { bold: true, width: 4000, cuadro: true }),
-        cell('Reclamado', {
-          bold: true,
-          width: 2200,
-          alignment: AlignmentType.RIGHT,
-          cuadro: true,
-        }),
-        cell('Indemnizable', {
-          bold: true,
-          width: 2200,
-          alignment: AlignmentType.RIGHT,
-          cuadro: true,
-        }),
-      ],
-    }),
-  ];
-
-  if (items.length) {
-    items.forEach((it, idx) => {
-      filasCuadro.push(
-        new TableRow({
-          children: [
-            cell(String(idx + 1), {
-              width: 600,
-              alignment: AlignmentType.CENTER,
-              cuadro: true,
-            }),
-            cell(it.concepto || '—', { width: 4000, cuadro: true }),
-            cell(money(it.valorReclamado), {
-              width: 2200,
-              alignment: AlignmentType.RIGHT,
-              cuadro: true,
-            }),
-            cell(money(it.valorIndemnizable), {
-              width: 2200,
-              alignment: AlignmentType.RIGHT,
-              cuadro: true,
-            }),
-          ],
-        })
-      );
-    });
-  } else {
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('—', { width: 600, cuadro: true }),
-          cell('Sin ítems en el liquidador', { width: 4000, cuadro: true }),
-          cell(money(0), { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(money(0), { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-        ],
-      })
-    );
-  }
-
-  const desgloseDed = desgloseDeducibleTerremotoZurich(liq, totales.diagrama);
-  if (desgloseDed.aplicado > 0) {
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('', { width: 600, cuadro: true }),
-          cell(desgloseDed.etiquetaPct, { width: 4000, cuadro: true }),
-          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(money(desgloseDed.montoPct), {
-            width: 2200,
-            alignment: AlignmentType.RIGHT,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('', { width: 600, cuadro: true }),
-          cell(desgloseDed.etiquetaSmmlv, { width: 4000, cuadro: true }),
-          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(money(desgloseDed.montoSmmlv), {
-            width: 2200,
-            alignment: AlignmentType.RIGHT,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('', { width: 600, cuadro: true }),
-          cell(desgloseDed.etiquetaAplicado, { width: 4000, cuadro: true }),
-          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(`− ${money(desgloseDed.aplicado)}`, {
-            width: 2200,
-            alignment: AlignmentType.RIGHT,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-  }
-  const deducibleContenidos = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
-  if (deducibleContenidos > 0) {
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('', { width: 600, cuadro: true }),
-          cell('Deducible contenidos', { width: 4000, cuadro: true }),
-          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(`− ${money(deducibleContenidos)}`, {
-            width: 2200,
-            alignment: AlignmentType.RIGHT,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-  }
-
-  filasCuadro.push(
-    new TableRow({
-      children: [
-        cell('', { width: 600, cuadro: true }),
-        cell('TOTALES', { bold: true, width: 4000, cuadro: true }),
-        cell(money(totales.totalReclamado), {
-          bold: true,
-          width: 2200,
-          alignment: AlignmentType.RIGHT,
-          cuadro: true,
-        }),
-        cell(money(totales.totalIndemnizable), {
-          bold: true,
-          width: 2200,
-          alignment: AlignmentType.RIGHT,
-          cuadro: true,
-        }),
-      ],
-    })
-  );
-
   const infoEventoParrafos = String(info.infoEvento || '')
     .split(/\n+/)
     .filter((l) => l.trim())
@@ -1679,25 +1846,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     usaCotizacion ||
     (Array.isArray(liq?.cotizacionPdf?.paginas) && liq.cotizacionPdf.paginas.length > 0) ||
     Boolean(liq?.cotizacionPdf?.archivoPdf);
-  const liquidacionResumen = [
-    ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-      ? []
-      : [
-          campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
-          campoFila(
-            'Categoría / Habitabilidad',
-            `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
-            { labelW: 5000, valueW: 5000 }
-          ),
-        ]),
-    ...filasResumenLiquidacionZurich(liq, totales).map((fila) =>
-      campoFila(fila.label, moneyPlataforma(fila.value), {
-        boldValue: !!(fila.bold || fila.destacado),
-        labelW: 5000,
-        valueW: 5000,
-      })
-    ),
-  ];
 
   const w = NSR_COLS.widths;
   const cellNsr = (text, colIdx, opts = {}) =>
@@ -1718,14 +1866,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       ),
     }),
   ];
-
-  const filasConDatos = filasPresupuesto.filter(
-    (it) =>
-      String(it?.actividad || '').trim() ||
-      String(it?.componente || '').trim() ||
-      String(it?.capitulo || '').trim() ||
-      Number(it?.cantidad) > 0
-  );
 
   if (filasConDatos.length) {
     filasConDatos.forEach((it) => {
@@ -1860,26 +2000,33 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   };
 
   const seccionConclusiones = [
-    heading('4. Conclusiones y recomendación del ajustador'),
-    ...(tieneCotizacionPdf
+    heading(
+      `${conLiquidador ? 5 : 4}. Conclusiones y recomendación del ajustador`
+    ),
+    ...(conLiquidador
       ? [
-          p(
-            'No se incluye presupuesto preliminar escrito: la cotización PDF es el soporte de reparación.',
-            { after: 120 }
-          ),
+          p('DIAGRAMA DE AJUSTE', { bold: true, before: 40, after: 120 }),
+          tablaDiagramaAjusteZurich(desgloseAjusteUnico),
         ]
-      : [
-          p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
-            bold: true,
-            before: 40,
-            after: 120,
-          }),
-          tablaPresupuestoPreliminarZurich(
-            info.filasPresupuestoPreliminar,
-            info,
-            extrasReservaWord(info, { caso, enc, liquidador: liq })
-          ),
-        ]),
+      : tieneCotizacionPdf
+        ? [
+            p(
+              'No se incluye presupuesto preliminar escrito: la cotización PDF es el soporte de reparación.',
+              { after: 120 }
+            ),
+          ]
+        : [
+            p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
+              bold: true,
+              before: 40,
+              after: 120,
+            }),
+            tablaPresupuestoPreliminarZurich(
+              info.filasPresupuestoPreliminar,
+              info,
+              extrasReservaWord(info, { caso, enc, liquidador: liq })
+            ),
+          ]),
     p('Conclusiones', { bold: true, before: 180, after: 40 }),
     p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
       after: 120,
@@ -1931,6 +2078,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           totales,
           portada: liq?.evaluacionSismicaNSR10?.portada || {},
           liquidador: liq,
+          perdidaAjuste: !esPreliminar ? perdidaAjusteUnico : null,
         }),
       ],
     },
@@ -1970,6 +2118,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             encabezado: enc,
             informe: info,
             liquidador: liq,
+            ...(!esPreliminar && perdidaAjusteUnico > 0 ? { perdida: perdidaAjusteUnico } : {}),
           }).filter((f) => {
             const concepto = String(f?.concepto || '')
               .toLowerCase()
@@ -1981,90 +2130,50 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
         ),
       ],
     },
-    {
+  ];
+
+  if (conLiquidador) {
+    const totalesFooterUnico = filasConDatos.length
+      ? totalesUnicoNsr
+      : {
+          subtotal: totales.subtotal,
+          aiu: totales.aiu,
+          imprevistos: totales.imprevistos,
+          impuestos: totales.impuestos,
+          total: totales.totalPresupuesto ?? totales.presupuesto?.total,
+        };
+    sections.push({
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('4. Liquidador (presupuesto de reparación ajustador)'),
+        tablaLiquidadorUnicoZurich({
+          filas: filasPresupuesto,
+          totalesFooter: totalesFooterUnico,
+          aiuPct: aiuPctLiquidadorUnico,
+          mostrarImprevistos,
+          mostrarImpuestos,
+          imprPct,
+          impPct,
+        }),
+      ],
+    });
+    sections.push({
       properties: { page: pagePortrait },
       headers: { default: header },
       children: seccionConclusiones,
-    },
-  ];
-
-  if (!esPreliminar) {
-    sections.push({
-      properties: { page: pageLandscape },
-      headers: { default: header },
-      children: [
-        heading('5. Liquidador (presupuesto de reparación)'),
-        ...(tieneCotizacionPdf
-          ? []
-          : [
-              p(
-                mostrarImprevistos || mostrarImpuestos
-                  ? 'Presupuesto de reparación — columnas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos. Los valores salen de la pestaña Presupuesto.'
-                  : 'Presupuesto de reparación — columnas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (único recargo). Los valores salen de la pestaña Presupuesto.',
-                { after: 120 }
-              ),
-              tablaLiquidadorCompleto,
-            ]),
-        ...(tieneContenidosDiligenciados
-          ? [
-              p('Contenidos del inmueble (bienes muebles)', {
-                bold: true,
-                before: 180,
-                after: 80,
-                size: SIZE_12,
-              }),
-              p(
-                contenidosNsr.tipoInmueble
-                  ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
-                  : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
-                { after: 100 }
-              ),
-              tablaContenidos,
-            ]
-          : []),
-        p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-        new Table({
-          width: { size: 10000, type: WidthType.DXA },
-          columnWidths: [5000, 5000],
-          borders: bordersCuadro,
-          rows: liquidacionResumen,
-        }),
-        p(desgloseDed.texto, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
-        ...(liq.observaciones
-          ? [
-              p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
-              p(liq.observaciones, { after: 80 }),
-            ]
-          : []),
-      ],
     });
-    if (seccionCotizacion.length) {
-      sections.push({
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: seccionCotizacion,
-      });
-    }
     sections.push({
       properties: { page: pagePortrait },
       headers: { default: header },
-      children: [
-        heading('6. Relación de valores reclamados vs. valores indemnizables'),
-        new Table({
-          width: { size: 9000, type: WidthType.DXA },
-          columnWidths: [600, 4000, 2200, 2200],
-          borders: bordersCuadro,
-          rows: filasCuadro,
-        }),
-        p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
-          before: 100,
-          after: 160,
-          size: SIZE_12,
-        }),
-        ...seccionFotosFirmas,
-      ],
+      children: seccionFotosFirmas,
     });
   } else {
+    sections.push({
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: seccionConclusiones,
+    });
     sections.push({
       properties: { page: pagePortrait },
       headers: { default: header },

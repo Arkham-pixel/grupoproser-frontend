@@ -117,6 +117,49 @@ export default function EditorDeducibleZurich({
       </Campo>
       ) : null}
 
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+          {t('zurich.settlement.deductibleBaseLabel')}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={disabled}
+            className={
+              (cfg.basePctDeducible || 'valor_asegurable') !== 'perdida'
+                ? expressBtnPrimary
+                : expressBtnGhost
+            }
+            onClick={() =>
+              emitir({
+                basePctDeducible: 'valor_asegurable',
+                baseDeducible: 'valor_asegurable',
+              })
+            }
+          >
+            {t('zurich.settlement.deductibleBaseInsured')}
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            className={
+              cfg.basePctDeducible === 'perdida' ? expressBtnPrimary : expressBtnGhost
+            }
+            onClick={() =>
+              emitir({
+                basePctDeducible: 'perdida',
+                baseDeducible: 'perdida',
+              })
+            }
+          >
+            {t('zurich.settlement.deductibleBaseLoss')}
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          {t('zurich.settlement.deductibleBaseHint')}
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label={t('zurich.settlement.deductiblePercent')}>
           <InputFenix

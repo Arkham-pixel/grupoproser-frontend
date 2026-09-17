@@ -496,13 +496,40 @@ function redondearCopDeducible(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
+/**
+ * Elección explícita del ajustador: el % va sobre pérdida o sobre valor asegurado.
+ * Vacío = aún no eligió (se resuelve con baseDeducible o con el VA).
+ */
+export function resolverBasePctElegida(cfg = {}) {
+  const elegido = String(cfg?.basePctDeducible || '').trim();
+  if (elegido === 'perdida' || elegido === 'perdida_total') return 'perdida';
+  if (elegido === 'valor_asegurable' || elegido === 'valor_asegurado') {
+    return 'valor_asegurable';
+  }
+  return '';
+}
+
+/**
+ * Base del % de deducible: pérdida o valor asegurable.
+ */
+export function resolverBasePctDeducible(cfg = {}, { valorAsegurado = 0 } = {}) {
+  const elegido = resolverBasePctElegida(cfg);
+  if (elegido) return elegido;
+  const legacy = String(cfg?.baseDeducible || '').trim();
+  if (legacy === 'perdida' || legacy === 'perdida_total') return 'perdida';
+  if (legacy === 'valor_asegurable' || legacy === 'valor_asegurado') {
+    return 'valor_asegurable';
+  }
+  return parsearNumero(valorAsegurado) > 0 ? 'valor_asegurable' : 'perdida';
+}
+
 function montoMinimoDeducible(calc = {}) {
   return calc.tipoMinimo === 'SMDLV' ? calc.deducibleSMDLV || 0 : calc.deducibleSMMLV || 0;
 }
 
 /**
- * SMMLV/SMDLV y % sobre pérdida o valor asegurable.
- * Si hay cálculo por artículo, no se cuenta el deducible general: solo esa suma, con tope en la pérdida.
+ * SMMLV/SMDLV y % sobre pérdida y/o valor asegurable: se aplica el mayor, con tope en la pérdida.
+ * Si hay cálculo por artículo, no se cuenta el deducible general: solo esa suma.
  */
 export function aplicarMayorEntreSmmlvYPctOVa({
   calcGeneral = {},
@@ -520,8 +547,12 @@ export function aplicarMayorEntreSmmlvYPctOVa({
       artN > 0);
   const smmlv =
     noAplica || tieneArticulos ? 0 : montoMinimoDeducible(calcGeneral);
+  const montoPctVa =
+    noAplica || tieneArticulos ? 0 : Number(calcGeneral.montoPctVa) || 0;
+  const montoPctPerdida =
+    noAplica || tieneArticulos ? 0 : Number(calcGeneral.montoPctPerdida) || 0;
   const pctGeneral =
-    noAplica || tieneArticulos ? 0 : calcGeneral.deduciblePorcentaje || 0;
+    noAplica || tieneArticulos ? 0 : Number(calcGeneral.deduciblePorcentaje) || 0;
   const montoPctOVa = tieneArticulos
     ? Number.isFinite(artN)
       ? artN
@@ -536,37 +567,51 @@ export function aplicarMayorEntreSmmlvYPctOVa({
   );
   const ganaSmmlv = !tieneArticulos && smmlv > montoPctOVa;
   const tipoMinimo = calcGeneral.tipoMinimo || 'SMMLV';
-  const tipoGanador = tieneArticulos
-    ? 'pct_va'
-    : ganaSmmlv
-      ? tipoMinimo
-      : '%';
+  const basePct =
+    calcGeneral.basePctUsada === 'perdida' || calcGeneral.basePctUsada === 'perdida_total'
+      ? 'perdida'
+      : 'valor_asegurado';
+  let tipoGanador = '%';
+  let tipoGanadorLabel = '%';
+  if (tieneArticulos) {
+    tipoGanador = 'pct_va';
+    tipoGanadorLabel = 'por artículo';
+  } else if (ganaSmmlv) {
+    tipoGanador = tipoMinimo;
+    tipoGanadorLabel = tipoMinimo;
+  } else if (basePct === 'perdida') {
+    tipoGanador = 'perdida';
+    tipoGanadorLabel = '% pérdida';
+  } else {
+    tipoGanador = 'valor_asegurado';
+    tipoGanadorLabel = '% valor asegurado';
+  }
   const texto = tieneArticulos
     ? 'Cálculo por artículo: no se resta el deducible general (SMMLV / %)'
     : ganaSmmlv
       ? `Se aplica el mayor: ${tipoMinimo}`
-      : 'Se aplica el mayor: % sobre pérdida o valor asegurable';
+      : basePct === 'perdida'
+        ? 'Se aplica el mayor: % sobre la pérdida'
+        : 'Se aplica el mayor: % sobre valor asegurado';
   return {
     montoSmmlv: redondearCopDeducible(smmlv),
     montoPctOVa: redondearCopDeducible(montoPctOVa),
+    montoPctVa: redondearCopDeducible(montoPctVa),
+    montoPctPerdida: redondearCopDeducible(montoPctPerdida),
     porArticulosMonto: tieneArticulos ? redondearCopDeducible(Number.isFinite(artN) ? artN : 0) : 0,
     tieneArticulos,
     aplicado,
     ganaSmmlv,
     tipoGanador,
-    tipoGanadorLabel: tieneArticulos
-      ? 'por artículo'
-      : ganaSmmlv
-        ? tipoMinimo
-        : '%',
+    tipoGanadorLabel,
     texto,
     aplica: aplicado > 0,
   };
 }
 
 /**
- * Si baseDeducible = valor_asegurable, el % se calcula sobre el VA y se topea con la pérdida.
- * Sin VA no se aplica (evita caer al % de la pérdida).
+ * El % se calcula sobre la base elegida (pérdida o valor asegurado).
+ * Ese monto compite con el mínimo SMMLV/SMDLV y se topea con la pérdida.
  */
 export function calcularDeducibleSobreBaseConfig(
   deducibleConfig = {},
@@ -574,26 +619,40 @@ export function calcularDeducibleSobreBaseConfig(
 ) {
   const cfg =
     deducibleConfig && typeof deducibleConfig === 'object' ? deducibleConfig : {};
-  const usaVa = String(cfg.baseDeducible || '') === 'valor_asegurable';
-  const perdidaN = Number(perdida) || 0;
-  const va = Number(valorAsegurado) || 0;
+  const perdidaN = parsearNumero(perdida);
+  const va = parsearNumero(valorAsegurado);
+  const usaVa = resolverBasePctDeducible(cfg, { valorAsegurado: va }) === 'valor_asegurable';
+  const calcPerdida = calcularDeducibleEstiloExpress(perdidaN, cfg);
+  const calcVa = va > 0 ? calcularDeducibleEstiloExpress(va, cfg) : null;
+  const montoPctVa = calcVa ? Number(calcVa.deduciblePorcentaje) || 0 : 0;
+  const montoPctPerdida = Number(calcPerdida.deduciblePorcentaje) || 0;
+  const montoPct = usaVa ? montoPctVa : montoPctPerdida;
+  const calc = {
+    ...calcPerdida,
+    deduciblePorcentaje: redondearCopDeducible(montoPct),
+    montoPctVa: redondearCopDeducible(montoPctVa),
+    montoPctPerdida: redondearCopDeducible(montoPctPerdida),
+    basePctUsada: usaVa ? 'valor_asegurable' : 'perdida',
+    requiereValorAsegurado: usaVa && !(va > 0),
+  };
 
-  if (!usaVa) {
-    return calcularDeducibleEstiloExpress(perdidaN, cfg);
-  }
-  if (!(va > 0)) {
-    const calc = calcularDeducibleEstiloExpress(0, cfg);
+  if (calc.modo === 'no_aplica' || cfg.aplica === false) {
     return {
       ...calc,
       aplica: false,
       deducibleAplicado: 0,
-      requiereValorAsegurado: true,
-      texto: String(cfg.texto || '').trim() || 'Indique el valor asegurado para calcular el deducible',
+      montoPctVa: 0,
+      montoPctPerdida: 0,
+      deduciblePorcentaje: 0,
     };
   }
 
-  const calc = calcularDeducibleEstiloExpress(va, cfg);
-  const bruto = brutoDeducibleSinTope(calc);
+  const minimo = montoMinimoDeducible(calc);
+  let bruto = Math.max(montoPct, minimo);
+  if (calc.modo === 'solo_porcentaje') bruto = montoPct;
+  else if (calc.modo === 'solo_minimo') bruto = minimo;
+  else if (calc.modo === 'valor_fijo') bruto = numDeducible(cfg.valorFijo, 0);
+
   const deducibleAplicado =
     perdidaN > 0
       ? Math.round(Math.min(bruto, perdidaN) * 100) / 100
@@ -601,8 +660,7 @@ export function calcularDeducibleSobreBaseConfig(
   return {
     ...calc,
     deducibleAplicado,
-    requiereValorAsegurado: false,
-    usaMinimo: bruto > (calc.deduciblePorcentaje || 0),
+    usaMinimo: bruto > montoPct,
   };
 }
 
@@ -636,8 +694,8 @@ export function calcularDiagramaLiquidacion({
   /** Un solo deducible sobre infraestructura + contenidos (p. ej. póliza Allianz). */
   deducibleCompartido = false,
 } = {}) {
-  const va = Number(valorAsegurado) || 0;
-  const vaContN = Number(valorAseguradoContenidos);
+  const va = parsearNumero(valorAsegurado);
+  const vaContN = parsearNumero(valorAseguradoContenidos);
   const vaCont =
     vaContN > 0 ? vaContN : usarValorAseguradoGeneralParaContenidos ? va : 0;
   const danios = Number(totalDanios) || 0;
