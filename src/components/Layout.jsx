@@ -928,9 +928,6 @@ export default function Layout() {
             { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
             { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
             { path: '/zurich/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
-            { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
-            { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
-            { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
             { path: '/zurich/boletin-diario', icon: FaCalendarAlt, label: t('nav.zurichDailyBulletin') },
           ]
       : [],
