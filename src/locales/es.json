@@ -8056,7 +8056,9 @@
         "errorPrefix": "Error: {{message}}",
         "title": "Ajustadores catastróficos",
         "newItem": "Nuevo ajustador",
-        "subtitle": "Copia adaptada de Responsables, con ciudad para filtrar en Alfa/Sura.",
+        "subtitle": "El catálogo general (vacío o solo BBVA) sale en Zurich, Sura, Previsora, Allianz y Equidad. BBVA y Alfa son equipos extra: marcarlos no saca a la persona del catálogo general.",
+        "modulesLabel": "Compañías donde aparece",
+        "modulesHint": "Si no marca Zurich/Sura/Previsora/Allianz/Equidad, sale en todas esas. Marcar BBVA lo agrega también a BBVA, no lo quita de Previsora ni del resto. Alfa sí es equipo cerrado.",
         "importFromResponsables": "Copiar desde Responsables",
         "importTitle": "Copiar desde Responsables",
         "importHint": "Copia la base de Responsables a este catálogo. Indique la ciudad (Cali, Pereira, etc.).",
@@ -8094,7 +8096,9 @@
         "errorPrefix": "Error: {{message}}",
         "title": "Inspectores catastróficos",
         "newItem": "Nuevo inspector",
-        "subtitle": "Ventana para crear inspectores catastróficos con ciudad de cobertura."
+        "subtitle": "El catálogo general (vacío o solo BBVA) sale en Zurich, Sura, Previsora, Allianz y Equidad. BBVA y Alfa son equipos extra: marcarlos no saca a la persona del catálogo general.",
+        "modulesLabel": "Compañías donde aparece",
+        "modulesHint": "Si no marca Zurich/Sura/Previsora/Allianz/Equidad, sale en todas esas. Marcar BBVA lo agrega también a BBVA, no lo quita de Previsora ni del resto. Alfa sí es equipo cerrado."
       }
     }
   },

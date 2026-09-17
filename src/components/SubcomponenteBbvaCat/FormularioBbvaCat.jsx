@@ -204,8 +204,15 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
       }
     };
     cargar();
+    const recargarSiVisible = () => {
+      if (document.visibilityState === 'visible') cargar();
+    };
+    document.addEventListener('visibilitychange', recargarSiVisible);
+    window.addEventListener('focus', recargarSiVisible);
     return () => {
       cancelado = true;
+      document.removeEventListener('visibilitychange', recargarSiVisible);
+      window.removeEventListener('focus', recargarSiVisible);
     };
   }, []);
 

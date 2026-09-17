@@ -108,6 +108,17 @@ export function mapResponsablesAOpciones(lista = []) {
     .sort((a, b) => a.label.localeCompare(b.label, 'es'));
 }
 
+/** Compañías que se pueden marcar en el catálogo (admin). */
+export const MODULOS_CATALOGO_CATASTROFICO = [
+  { id: 'bbvaCat', label: 'BBVA CAT' },
+  { id: 'alfa', label: 'Alfa' },
+  { id: 'zurich', label: 'Zurich' },
+  { id: 'sura', label: 'Sura' },
+  { id: 'previsora', label: 'Previsora' },
+  { id: 'allianz', label: 'Allianz' },
+  { id: 'equidadCat', label: 'Equidad CAT' },
+];
+
 /** Mapea filas de catálogos catastróficos (ajustador/inspector) a opciones. */
 export function mapCatalogoCatastroficoAOpciones(lista = [], modulo = '') {
   const mapped = lista
@@ -185,9 +196,19 @@ function esExcluidoCatalogoZurich(opcion = {}) {
   return n.includes('ARNALDO') && n.includes('TAPIA');
 }
 
+function esTagBbva(m) {
+  return m === 'bbvacat' || m === 'bbva';
+}
+
+function esTagAlfa(m) {
+  return m === 'alfa' || m === 'segurosalfa';
+}
+
 /**
  * Equipos cerrados: BBVA y Alfa solo listan a quienes tienen ese módulo.
- * Catálogo general (sin modulos): Zurich, Sura, Previsora, Allianz, Equidad CAT.
+ * BBVA es extra: tener bbvaCat no saca a la persona de Zurich/Sura/Previsora/Allianz/Equidad.
+ * Alfa sí es exclusivo si no tiene tags generales.
+ * Vacío o solo bbvaCat = catálogo general.
  */
 export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
   const clave = claveModuloCatalogo(modulo);
@@ -197,16 +218,14 @@ export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
     const mods = (Array.isArray(o.modulos) ? o.modulos : [])
       .map(claveModuloCatalogo)
       .filter(Boolean);
-    if (bbva) return mods.some((m) => m === 'bbvacat' || m === 'bbva');
-    if (alfa) return mods.some((m) => m === 'alfa' || m === 'segurosalfa');
+    if (bbva) return mods.some(esTagBbva);
+    if (alfa) return mods.some(esTagAlfa);
     if (esModuloZurich(modulo) && esExcluidoCatalogoZurich(o)) return false;
-    if (!mods.length) return true;
-    if (!clave) {
-      return mods.some(
-        (m) => m !== 'bbvacat' && m !== 'bbva' && m !== 'alfa' && m !== 'segurosalfa'
-      );
-    }
-    return mods.includes(clave);
+    const modsGenerales = mods.filter((m) => !esTagBbva(m) && !esTagAlfa(m));
+    const tieneAlfa = mods.some(esTagAlfa);
+    if (!mods.length || (!modsGenerales.length && !tieneAlfa)) return true;
+    if (!clave) return modsGenerales.length > 0 || !tieneAlfa;
+    return modsGenerales.includes(clave);
   });
 }
 

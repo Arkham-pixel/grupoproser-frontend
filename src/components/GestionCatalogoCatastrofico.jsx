@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../config/apiConfig';
 import { FaPlus, FaEdit, FaTrash, FaUserTie, FaSave, FaTimes } from 'react-icons/fa';
 import SelectBuscable from './SelectBuscable.jsx';
+import { MODULOS_CATALOGO_CATASTROFICO } from '../utils/catalogosAsignacionCatastrofico.js';
 
 const vacioForm = () => ({
   codigo: '',
@@ -10,7 +11,17 @@ const vacioForm = () => ({
   email: '',
   telefono: '',
   ciudad: '',
+  modulos: [],
 });
+
+function etiquetasModulos(modulos = []) {
+  const ids = [...(Array.isArray(modulos) ? modulos : [])].map((m) => String(m));
+  const labels = MODULOS_CATALOGO_CATASTROFICO.filter((m) => ids.includes(m.id)).map((m) => m.label);
+  if (!labels.length) return 'Catálogo general';
+  const soloBbva = ids.length && ids.every((m) => m === 'bbvaCat' || m === 'bbva');
+  if (soloBbva) return 'Catálogo general, BBVA CAT';
+  return labels.join(', ');
+}
 
 /**
  * CRUD admin genérico para catálogos catastróficos con ciudad.
@@ -126,6 +137,7 @@ export default function GestionCatalogoCatastrofico({
         email: item.email || '',
         telefono: item.telefono || '',
         ciudad: item.ciudad || '',
+        modulos: Array.isArray(item.modulos) ? item.modulos : [],
       });
     } else {
       setEditando(null);
@@ -422,6 +434,10 @@ export default function GestionCatalogoCatastrofico({
                         {item.telefono}
                       </div>
                     ) : null}
+                    <div>
+                      <span style={{ color: '#DC2626' }}>🏷️ </span>
+                      {etiquetasModulos(item.modulos)}
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 pt-4 border-t" style={{ borderColor: '#DDDDDD' }}>
@@ -458,7 +474,7 @@ export default function GestionCatalogoCatastrofico({
         {mostrarForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div
-              className="rounded-fenix shadow-2xl p-6 w-full max-w-md relative border"
+              className="rounded-fenix shadow-2xl p-6 w-full max-w-md relative border max-h-[90vh] overflow-y-auto"
               style={{ backgroundColor: '#FFFFFF', borderColor: '#DDDDDD' }}
             >
               <h2 className="text-2xl font-bold mb-6 font-heading" style={{ color: '#1C1C1C' }}>
@@ -527,6 +543,42 @@ export default function GestionCatalogoCatastrofico({
                     className={inputCls}
                     style={{ borderColor: '#DDDDDD' }}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 font-heading" style={{ color: '#1C1C1C' }}>
+                    {tr('modulesLabel', { defaultValue: 'Compañías donde aparece *' })}
+                  </label>
+                  <p className="mb-2 font-body text-xs" style={{ color: '#6B7280' }}>
+                    {tr('modulesHint', {
+                      defaultValue:
+                        'Si no marca Zurich/Sura/Previsora/Allianz/Equidad, sale en todas esas. Marcar BBVA lo agrega también a BBVA, no lo quita de Previsora ni del resto.',
+                    })}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MODULOS_CATALOGO_CATASTROFICO.map((mod) => {
+                      const checked = (form.modulos || []).includes(mod.id);
+                      return (
+                        <label
+                          key={mod.id}
+                          className="flex items-center gap-2 text-sm font-body"
+                          style={{ color: '#1C1C1C' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const actual = Array.isArray(form.modulos) ? form.modulos : [];
+                              const next = checked
+                                ? actual.filter((m) => m !== mod.id)
+                                : [...actual, mod.id];
+                              setForm({ ...form, modulos: next });
+                            }}
+                          />
+                          {mod.label}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-3 mt-6">
                   <button
