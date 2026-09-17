@@ -16,6 +16,7 @@ const ACTIONABLE = new Set(['pending', 'syncing', 'failed', 'disabled', 'pending
 
 /**
  * Banner + alertas de sync SharePoint + controles Subir / No subir.
+ * Los botones Subir/No subir solo aparecen si se pasa `onSetEnabled` (usuario autorizado).
  */
 export default function AlfaSharePointSyncBanner({
   summary,
@@ -34,6 +35,7 @@ export default function AlfaSharePointSyncBanner({
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState('');
   const [expanded, setExpanded] = useState(true);
+  const canToggle = typeof onSetEnabled === 'function';
 
   const queueDocs = useMemo(() => {
     return (documents || [])
@@ -45,7 +47,7 @@ export default function AlfaSharePointSyncBanner({
   }, [documents]);
 
   const handleToggle = async (archivoId, enabled) => {
-    if (!onSetEnabled || !archivoId) return;
+    if (!canToggle || !archivoId) return;
     setActionError('');
     setBusyId(archivoId);
     try {
@@ -113,10 +115,15 @@ export default function AlfaSharePointSyncBanner({
                   '{{synced}} en SharePoint · {{pending}} en cola · {{failed}} con error',
               })}
               <span className="mt-0.5 block text-[11px] opacity-80">
-                {t('segurosAlfa.archive.sharepoint.chooseHint', {
-                  defaultValue:
-                    'Revise cada archivo y pulse «Subir» solo cuando esté listo. Por defecto no se copia a SharePoint.',
-                })}
+                {canToggle
+                  ? t('segurosAlfa.archive.sharepoint.chooseHint', {
+                      defaultValue:
+                        'Revise cada archivo y pulse «Subir» solo cuando esté listo. Por defecto no se copia a SharePoint.',
+                    })
+                  : t('segurosAlfa.archive.sharepoint.chooseHintReadonly', {
+                      defaultValue:
+                        'Los archivos quedan en ARNALD. Solo TI puede autorizar la copia a SharePoint.',
+                    })}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -164,7 +171,7 @@ export default function AlfaSharePointSyncBanner({
             </p>
           )}
 
-          {expanded && queueDocs.length > 0 && onSetEnabled && (
+          {expanded && queueDocs.length > 0 && canToggle && (
             <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto border-t border-sky-200/80 pt-2 dark:border-sky-900/60">
               {queueDocs.map((doc) => {
                 const st = doc.sync?.status || 'none';

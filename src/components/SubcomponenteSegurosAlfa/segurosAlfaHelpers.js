@@ -190,12 +190,14 @@ export function homologarEstadoAlfa(valor, extras = {}) {
 }
 
 /**
- * Si el siniestro es OBJETADO o DESISTIDO, la gestión queda CERRADO.
- * (Regla operativa: cierre por objeción/desistimiento.)
+ * Reglas operativas gestión ← siniestro:
+ * - OBJETADO / DESISTIDO → CERRADO
+ * - PENDIENTE ACEPTACION CIFRAS → LIQUIDADO
  */
 export function sincronizarGestionConCierreSiniestroAlfa(estadoSiniestro, estadoGestion) {
   const s = homologarEstadoSiniestroAlfa(estadoSiniestro);
   if (s === 'OBJETADO' || s === 'DESISTIDO') return 'CERRADO';
+  if (s === 'PENDIENTE ACEPTACION CIFRAS') return 'LIQUIDADO';
   const g = homologarEstadoGestionAlfa(estadoGestion);
   return g || 'EN GESTIÓN';
 }

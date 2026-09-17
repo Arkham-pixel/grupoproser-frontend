@@ -29,6 +29,7 @@ import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx'
 import BotonDescargaStorage from '../shared/BotonDescargaStorage.jsx';
 import { ETIQUETAS_ARCHIVO_ALFA, formatDate } from './segurosAlfaHelpers.js';
 import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
+import { esUsuarioAlfaSharePointSubir } from './ModalImportarExcelAlfa.jsx';
 
 const canRetrySharePoint = () => {
   const rol = String(localStorage.getItem('rol') || '')
@@ -67,6 +68,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
   const [togglingId, setTogglingId] = useState(null);
   const [documentos, setDocumentos] = useState([]);
   const allowRetry = useMemo(() => canRetrySharePoint(), []);
+  const puedeSubirSharePoint = useMemo(() => esUsuarioAlfaSharePointSubir(), []);
 
   const {
     summary,
@@ -83,11 +85,14 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
 
   const handleSharePointEnabled = useCallback(
     async (archivoId, enabled) => {
+      if (!puedeSubirSharePoint) {
+        throw new Error('Solo el usuario autorizado puede marcar documentos para SharePoint.');
+      }
       await setSharePointEnabledAlfa(caso._id, archivoId, enabled);
       await cargarEstadoSharePoint();
       if (enabled) boostPolling();
     },
-    [boostPolling, cargarEstadoSharePoint, caso?._id]
+    [boostPolling, cargarEstadoSharePoint, caso?._id, puedeSubirSharePoint]
   );
 
   const cargarPolizasImportadas = useCallback(async () => {
@@ -133,8 +138,9 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
       await refrescar();
       boostPolling();
       setExito(t('segurosAlfa.archive.sharepoint.queuedOk', {
-        defaultValue:
-          'Guardado en ARNALD. Revise y pulse «Subir» en la fila para enviarlo a SharePoint.',
+        defaultValue: puedeSubirSharePoint
+          ? 'Guardado en ARNALD. Revise y pulse «Subir» en la fila para enviarlo a SharePoint.'
+          : 'Guardado en ARNALD. La copia a SharePoint la autoriza TI.',
       }));
     } catch (err) {
       setError(err.message || t('segurosAlfa.archive.uploadError'));
@@ -194,7 +200,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
   };
 
   const handleToggleSharePoint = async (archivoId, enabled) => {
-    if (!archivoId || !caso?._id) return;
+    if (!puedeSubirSharePoint || !archivoId || !caso?._id) return;
     setError(null);
     setExito(null);
     setTogglingId(archivoId);
@@ -221,7 +227,8 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
     const busy = togglingId === String(archivoId);
     return (
       <>
-        {(status === 'disabled' || status === 'failed' || status === 'none') && (
+        {puedeSubirSharePoint &&
+          (status === 'disabled' || status === 'failed' || status === 'none') && (
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100"
@@ -233,7 +240,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
             {t('segurosAlfa.archive.sharepoint.doUpload', { defaultValue: 'Subir' })}
           </button>
         )}
-        {(status === 'pending' || status === 'syncing') && (
+        {puedeSubirSharePoint && (status === 'pending' || status === 'syncing') && (
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
@@ -286,14 +293,21 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
       <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
         <p className="font-semibold">
           {t('segurosAlfa.archive.sharepoint.howToTitle', {
-            defaultValue: 'Subir a SharePoint',
+            defaultValue: puedeSubirSharePoint
+              ? 'Subir a SharePoint'
+              : 'Documentos en ARNALD',
           })}
         </p>
         <p className="mt-0.5 text-xs opacity-90">
-          {t('segurosAlfa.archive.sharepoint.howToBody', {
-            defaultValue:
-              'Los archivos se guardan primero en ARNALD. En la columna Acciones de cada fila pulse el botón verde «Subir» cuando ya lo haya revisado.',
-          })}
+          {puedeSubirSharePoint
+            ? t('segurosAlfa.archive.sharepoint.howToBody', {
+                defaultValue:
+                  'Los archivos se guardan primero en ARNALD. En la columna Acciones de cada fila pulse el botón verde «Subir» cuando ya lo haya revisado.',
+              })
+            : t('segurosAlfa.archive.sharepoint.howToBodyReadonly', {
+                defaultValue:
+                  'Los archivos se guardan en ARNALD. La copia a SharePoint solo la autoriza un usuario de TI.',
+              })}
         </p>
       </div>
 
@@ -306,7 +320,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
         documents={syncDocuments}
         onRefresh={cargarEstadoSharePoint}
         onDismissSynced={dismissJustSynced}
-        onSetEnabled={handleSharePointEnabled}
+        onSetEnabled={puedeSubirSharePoint ? handleSharePointEnabled : undefined}
         compact
       />
 

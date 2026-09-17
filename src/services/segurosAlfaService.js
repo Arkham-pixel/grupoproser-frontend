@@ -171,7 +171,7 @@ export const actualizarCasoAlfa = async (id, datos) => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
     const statusHint =
-      response.status === 401 || response.status === 403
+      response.status === 401
         ? ' Sesión vencida: cierre sesión y vuelva a entrar, luego guarde de nuevo.'
         : '';
     throw new Error(

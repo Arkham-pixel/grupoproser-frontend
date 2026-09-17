@@ -13,7 +13,12 @@
 
 import { normalizarRol, obtenerRolAlmacenado, esRolEra } from '../config/roles.js';
 import { identidadEsLiderDeFuente } from './lideresModuloCatastrofico.js';
-import { esIdentidadEra, esIdentidadLiderEra, identidadSesionEra } from './jerarquiaEra.js';
+import {
+  casoMarcadoFirmaEra,
+  esIdentidadEra,
+  esIdentidadLiderEra,
+  identidadSesionEra,
+} from './jerarquiaEra.js';
 
 export const ROL_AJUSTADOR_LIDER = 'ajustador_lider';
 export const ROL_AJUSTADOR_CASO = 'ajustador';
@@ -367,9 +372,12 @@ export function modoEdicionEraDelCaso(caso = {}, identidad = {}) {
   const claves = [id.name, id.nombre, id.login, id.cedula]
     .map((s) => String(s || '').trim())
     .filter(Boolean);
-  if (!claves.length) return null;
-  if (claves.some((k) => coincidenPersonas(caso?.ajustador, k))) return 'ajustador';
-  if (claves.some((k) => coincidenPersonas(caso?.inspector, k))) return 'inspector';
+  if (claves.length) {
+    if (claves.some((k) => coincidenPersonas(caso?.ajustador, k))) return 'ajustador';
+    if (claves.some((k) => coincidenPersonas(caso?.inspector, k))) return 'inspector';
+  }
+  // Pool de la firma (mismo criterio de visibilidad): puede guardar liquidador/informe.
+  if (casoMarcadoFirmaEra(caso)) return 'ajustador';
   return null;
 }
 

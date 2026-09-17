@@ -5,6 +5,7 @@ import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import LiquidadorSegurosAlfa from './LiquidadorSegurosAlfa.jsx';
 import InformeUnicoSegurosAlfa from './InformeUnicoSegurosAlfa.jsx';
 import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
+import { esUsuarioAlfaSharePointSubir } from './ModalImportarExcelAlfa.jsx';
 import {
   expressBtnGhost,
   expressBtnPrimary,
@@ -261,13 +262,18 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     documents: spDocuments,
   } = useAlfaSharePointSyncStatus(casoId, { enabled: Boolean(casoId) });
 
+  const puedeSubirSharePoint = useMemo(() => esUsuarioAlfaSharePointSubir(), []);
+
   const handleSharePointEnabled = useCallback(
     async (archivoId, enabled) => {
+      if (!puedeSubirSharePoint) {
+        throw new Error('Solo el usuario autorizado puede marcar documentos para SharePoint.');
+      }
       await setSharePointEnabledAlfa(casoId, archivoId, enabled);
       await refreshSharePoint();
       if (enabled) boostPolling();
     },
-    [boostPolling, casoId, refreshSharePoint]
+    [boostPolling, casoId, puedeSubirSharePoint, refreshSharePoint]
   );
 
   useEffect(() => {
@@ -850,7 +856,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
             documents={spDocuments}
             onRefresh={refreshSharePoint}
             onDismissSynced={dismissJustSynced}
-            onSetEnabled={handleSharePointEnabled}
+            onSetEnabled={puedeSubirSharePoint ? handleSharePointEnabled : undefined}
             onOpenArchivero={() =>
               navigate(`/seguros-alfa/reporte?archivero=${encodeURIComponent(casoId)}`)
             }
