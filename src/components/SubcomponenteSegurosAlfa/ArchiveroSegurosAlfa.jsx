@@ -251,7 +251,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
             {t('segurosAlfa.archive.sharepoint.doNotUpload', { defaultValue: 'No subir' })}
           </button>
         )}
-        {status === 'synced' && webUrl && (
+        {puedeSubirSharePoint && status === 'synced' && webUrl && (
           <a
             href={webUrl}
             target="_blank"
@@ -286,43 +286,56 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
           disabled={cargandoSync}
         >
           <FaSync className={cargandoSync ? 'animate-spin' : undefined} />
-          {t('segurosAlfa.archive.sharepoint.refresh')}
+          {puedeSubirSharePoint
+            ? t('segurosAlfa.archive.sharepoint.refresh')
+            : t('segurosAlfa.archive.refresh', { defaultValue: 'Actualizar' })}
         </button>
       </div>
 
-      <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
-        <p className="font-semibold">
-          {t('segurosAlfa.archive.sharepoint.howToTitle', {
-            defaultValue: puedeSubirSharePoint
-              ? 'Subir a SharePoint'
-              : 'Documentos en ARNALD',
-          })}
-        </p>
-        <p className="mt-0.5 text-xs opacity-90">
-          {puedeSubirSharePoint
-            ? t('segurosAlfa.archive.sharepoint.howToBody', {
-                defaultValue:
-                  'Los archivos se guardan primero en ARNALD. En la columna Acciones de cada fila pulse el botón verde «Subir» cuando ya lo haya revisado.',
-              })
-            : t('segurosAlfa.archive.sharepoint.howToBodyReadonly', {
-                defaultValue:
-                  'Los archivos se guardan en ARNALD. La copia a SharePoint solo la autoriza un usuario de TI.',
-              })}
-        </p>
-      </div>
+      {puedeSubirSharePoint ? (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
+          <p className="font-semibold">
+            {t('segurosAlfa.archive.sharepoint.howToTitle', {
+              defaultValue: 'Subir a SharePoint',
+            })}
+          </p>
+          <p className="mt-0.5 text-xs opacity-90">
+            {t('segurosAlfa.archive.sharepoint.howToBody', {
+              defaultValue:
+                'Los archivos se guardan primero en ARNALD. En la columna Acciones de cada fila pulse el botón verde «Subir» cuando ya lo haya revisado.',
+            })}
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
+          <p className="font-semibold">
+            {t('segurosAlfa.archive.localOnlyTitle', {
+              defaultValue: 'Documentos en ARNALD',
+            })}
+          </p>
+          <p className="mt-0.5 text-xs opacity-90">
+            {t('segurosAlfa.archive.localOnlyBody', {
+              defaultValue:
+                'Puede subir, descargar y eliminar archivos del caso. La sincronización con SharePoint la gestiona TI.',
+            })}
+          </p>
+        </div>
+      )}
 
-      <AlfaSharePointSyncBanner
-        summary={summary}
-        loading={cargandoSync}
-        hasActivity={hasActivity}
-        pendingTotal={pendingTotal}
-        justSynced={justSynced}
-        documents={syncDocuments}
-        onRefresh={cargarEstadoSharePoint}
-        onDismissSynced={dismissJustSynced}
-        onSetEnabled={puedeSubirSharePoint ? handleSharePointEnabled : undefined}
-        compact
-      />
+      {puedeSubirSharePoint && (
+        <AlfaSharePointSyncBanner
+          summary={summary}
+          loading={cargandoSync}
+          hasActivity={hasActivity}
+          pendingTotal={pendingTotal}
+          justSynced={justSynced}
+          documents={syncDocuments}
+          onRefresh={cargarEstadoSharePoint}
+          onDismissSynced={dismissJustSynced}
+          onSetEnabled={handleSharePointEnabled}
+          compact
+        />
+      )}
 
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
@@ -371,7 +384,9 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                 {t('segurosAlfa.archive.date', { defaultValue: 'Fecha' })}
               </th>
               <th className="px-3 py-2 text-left font-body text-xs font-semibold uppercase text-gray-500">
-                {t('segurosAlfa.archive.sharepoint.column', { defaultValue: 'Estado' })}
+                {puedeSubirSharePoint
+                  ? t('segurosAlfa.archive.sharepoint.column', { defaultValue: 'SharePoint' })
+                  : t('segurosAlfa.archive.statusColumn', { defaultValue: 'Estado' })}
               </th>
               <th className="px-3 py-2 text-right font-body text-xs font-semibold uppercase text-gray-500">
                 {t('segurosAlfa.report.actions', { defaultValue: 'Acciones' })}
@@ -412,17 +427,21 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                       {formatDate(doc.fecha || doc.fechaSubida) || '—'}
                     </td>
                     <td className="px-3 py-2">
-                      <span
-                        className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 font-body text-xs font-semibold ${syncChipClass(
-                          status === 'imported'
-                            ? 'synced'
-                            : status === 'pending_destination'
-                              ? 'pending'
-                              : status
-                        )}`}
-                      >
-                        {doc.estadoLabel || labelForStatus(status)}
-                      </span>
+                      {puedeSubirSharePoint ? (
+                        <span
+                          className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 font-body text-xs font-semibold ${syncChipClass(
+                            status === 'imported'
+                              ? 'synced'
+                              : status === 'pending_destination'
+                                ? 'pending'
+                                : status
+                          )}`}
+                        >
+                          {doc.estadoLabel || labelForStatus(status)}
+                        </span>
+                      ) : (
+                        <span className="font-body text-sm text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex flex-wrap justify-end gap-2">
@@ -447,7 +466,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                             </BotonDescargaStorage>
                           )
                         )}
-                        {doc.sharepoint?.webUrl && (
+                        {puedeSubirSharePoint && doc.sharepoint?.webUrl && (
                           <a
                             href={doc.sharepoint.webUrl}
                             target="_blank"
@@ -461,9 +480,9 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                         {renderSharePointActions(
                           doc.archivoId,
                           status === 'imported' ? 'synced' : status,
-                          doc.sharepoint?.webUrl
+                          puedeSubirSharePoint ? doc.sharepoint?.webUrl : null
                         )}
-                        {doc.canRetry && allowRetry && doc.archivoId && (
+                        {puedeSubirSharePoint && doc.canRetry && allowRetry && doc.archivoId && (
                           <button
                             type="button"
                             className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-300"
@@ -512,11 +531,15 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                       {formatDate(arch.fechaSubida) || '—'}
                     </td>
                     <td className="px-3 py-2">
-                      <span
-                        className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 font-body text-xs font-semibold ${syncChipClass(status)}`}
-                      >
-                        {labelForStatus(status)}
-                      </span>
+                      {puedeSubirSharePoint ? (
+                        <span
+                          className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 font-body text-xs font-semibold ${syncChipClass(status)}`}
+                        >
+                          {labelForStatus(status)}
+                        </span>
+                      ) : (
+                        <span className="font-body text-sm text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="inline-flex flex-wrap justify-end gap-2">
@@ -529,8 +552,12 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                             {t('segurosAlfa.archive.download')}
                           </BotonDescargaStorage>
                         )}
-                        {renderSharePointActions(arch._id, status, sync.webUrl)}
-                        {status === 'failed' && allowRetry && (
+                        {renderSharePointActions(
+                          arch._id,
+                          status,
+                          puedeSubirSharePoint ? sync.webUrl : null
+                        )}
+                        {puedeSubirSharePoint && status === 'failed' && allowRetry && (
                           <button
                             type="button"
                             className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-300"

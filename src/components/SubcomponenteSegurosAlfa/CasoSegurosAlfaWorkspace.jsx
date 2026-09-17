@@ -846,7 +846,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           </p>
         )}
 
-        {casoId && (
+        {casoId && puedeSubirSharePoint && (
           <AlfaSharePointSyncBanner
             summary={spSummary}
             loading={spLoading}
@@ -856,7 +856,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
             documents={spDocuments}
             onRefresh={refreshSharePoint}
             onDismissSynced={dismissJustSynced}
-            onSetEnabled={puedeSubirSharePoint ? handleSharePointEnabled : undefined}
+            onSetEnabled={handleSharePointEnabled}
             onOpenArchivero={() =>
               navigate(`/seguros-alfa/reporte?archivero=${encodeURIComponent(casoId)}`)
             }
