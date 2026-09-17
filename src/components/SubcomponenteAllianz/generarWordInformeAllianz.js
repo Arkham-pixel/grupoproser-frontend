@@ -1349,7 +1349,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   }
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
-  for (const archivo of fotosCotizacion.slice(0, 12)) {
+  for (const archivo of fotosCotizacion) {
     const img = await bytesDesdeFoto(archivo, urlDescargaArchivoAllianz);
     if (!img) continue;
     cotizacionesIncluidas += 1;

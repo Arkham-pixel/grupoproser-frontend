@@ -1747,7 +1747,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   }
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
-  for (const archivo of fotosCotizacion.slice(0, 12)) {
+  for (const archivo of fotosCotizacion) {
     const img = await bytesDesdeFoto(archivo);
     if (!img) continue;
     cotizacionesIncluidas += 1;

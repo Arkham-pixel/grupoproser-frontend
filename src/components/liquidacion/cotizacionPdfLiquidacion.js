@@ -18,7 +18,8 @@ if (typeof window !== 'undefined' && pdfWorkerUrl) {
   GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 }
 
-export const MAX_PAGINAS_COTIZACION_PDF = 12;
+/** Sin tope: el Word del informe debe incluir todas las hojas de la cotización. */
+export const MAX_PAGINAS_COTIZACION_PDF = Number.POSITIVE_INFINITY;
 export const ETIQUETA_ARCHIVO_COTIZACION = 'COTIZACION';
 
 const TOTAL_FUERTE =
@@ -241,6 +242,7 @@ function canvasAJpegBlob(canvas, quality = 0.82) {
 
 /**
  * Rasteriza un PDF y extrae el monto final más probable.
+ * Por defecto captura todas las páginas para el Word del informe.
  * @returns {Promise<{ paginas: object[], textoCompleto: string, montoDetectado: number, candidatos: object[], lineas: string[] }>}
  */
 export async function procesarCotizacionPdf(fuente, { maxPaginas = MAX_PAGINAS_COTIZACION_PDF } = {}) {
@@ -259,7 +261,11 @@ export async function procesarCotizacionPdf(fuente, { maxPaginas = MAX_PAGINAS_C
   const pdf = await loadingTask.promise;
   const total = pdf.numPages || 0;
   if (!total) throw new Error('El PDF no tiene páginas');
-  const hasta = Math.min(total, maxPaginas);
+  const tope =
+    Number.isFinite(Number(maxPaginas)) && Number(maxPaginas) > 0
+      ? Number(maxPaginas)
+      : total;
+  const hasta = Math.min(total, tope);
   const paginas = [];
   const lineasTodas = [];
   let usaTildePdf = false;
@@ -304,6 +310,8 @@ export async function procesarCotizacionPdf(fuente, { maxPaginas = MAX_PAGINAS_C
       height: canvas.height,
       texto: textoPagina,
     });
+    canvas.width = 0;
+    canvas.height = 0;
   }
 
   try {

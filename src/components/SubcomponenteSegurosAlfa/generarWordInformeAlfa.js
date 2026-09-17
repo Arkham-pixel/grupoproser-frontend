@@ -1058,7 +1058,7 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   const fotosCotizacion = paginasTodasCotizacionesPdfAlfa(liq, info);
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
-  for (const archivo of fotosCotizacion.slice(0, 12)) {
+  for (const archivo of fotosCotizacion) {
     const img = await resolverBytesFoto(archivo, caso.archivos || []);
     if (!img) continue;
     cotizacionesIncluidas += 1;

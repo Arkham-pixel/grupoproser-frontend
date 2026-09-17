@@ -1130,7 +1130,7 @@ export async function descargarWordInformeEquidadCat({
   }
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
-  for (const archivo of fotosCotizacion.slice(0, 12)) {
+  for (const archivo of fotosCotizacion) {
     const img = await bytesDesdeFoto(archivo, urlDescargaArchivoEquidadCat);
     if (!img) continue;
     cotizacionesIncluidas += 1;
