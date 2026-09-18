@@ -270,7 +270,9 @@ export default function FormatoLiquidacionAlfa({
   const capitulos = useMemo(() => {
     const fromNsr = Array.isArray(CAPITULOS_PRESUPUESTO_NSR10) ? CAPITULOS_PRESUPUESTO_NSR10 : [];
     const fromBase = Array.isArray(CAPITULOS_BASE_PRECIOS) ? CAPITULOS_BASE_PRECIOS : [];
-    return [...new Set([...fromNsr, ...fromBase])].filter(Boolean);
+    return [...new Set([...fromNsr, ...fromBase])]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }));
   }, []);
 
   const subtotal = useMemo(() => {

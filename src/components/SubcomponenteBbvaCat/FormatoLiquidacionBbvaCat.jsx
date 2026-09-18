@@ -136,7 +136,9 @@ export default function FormatoLiquidacionBbvaCat({
   const capitulos = useMemo(() => {
     const fromBase = Array.isArray(CAPITULOS_BASE_PRECIOS) ? CAPITULOS_BASE_PRECIOS : [];
     const fromNsr = Array.isArray(CAPITULOS_PRESUPUESTO_NSR10) ? CAPITULOS_PRESUPUESTO_NSR10 : [];
-    return [...new Set([...fromBase, ...fromNsr])];
+    return [...new Set([...fromBase, ...fromNsr])].sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true })
+    );
   }, []);
 
   const elegirCatalogo = (idx, it, val) => {

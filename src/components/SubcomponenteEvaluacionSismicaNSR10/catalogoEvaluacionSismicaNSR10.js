@@ -334,12 +334,20 @@ export const CATALOGO_CONTENIDOS_NSR10 = [
   { id: 'otro_contenido', categoria: 'Otros', articulo: 'Otro (especificar)', unidad: 'und', tipos: TIPOS_INMUEBLE_CONTENIDOS_NSR10 },
 ];
 
-/** Filtra catálogo por tipo de inmueble; si no hay tipo, devuelve todo. */
+const collatorContenidos = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+
+/** Filtra catálogo por tipo de inmueble; si no hay tipo, devuelve todo. Orden A–Z por artículo. */
 export function catalogoContenidosPorTipo(tipoInmueble = '') {
   const tipo = String(tipoInmueble || '').trim();
-  if (!tipo || tipo === 'Otro') return CATALOGO_CONTENIDOS_NSR10;
-  return CATALOGO_CONTENIDOS_NSR10.filter(
-    (item) => !item.tipos?.length || item.tipos.includes(tipo)
+  const lista =
+    !tipo || tipo === 'Otro'
+      ? CATALOGO_CONTENIDOS_NSR10
+      : CATALOGO_CONTENIDOS_NSR10.filter(
+          (item) => !item.tipos?.length || item.tipos.includes(tipo)
+        );
+  return [...lista].sort((a, b) =>
+    collatorContenidos.compare(a.articulo || '', b.articulo || '') ||
+    collatorContenidos.compare(a.categoria || '', b.categoria || '')
   );
 }
 

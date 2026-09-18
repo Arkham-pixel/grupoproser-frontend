@@ -23,7 +23,6 @@ import {
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
-  CATALOGO_CONTENIDOS_NSR10,
   catalogoContenidosPorTipo,
   TIPOS_INMUEBLE_CONTENIDOS_NSR10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -72,9 +71,7 @@ function TablaItems({
   onTipoInmuebleChange,
 }) {
   const { t } = useTranslation();
-  const catalogo = conCatalogo
-    ? catalogoContenidosPorTipo(tipoInmueble)
-    : CATALOGO_CONTENIDOS_NSR10;
+  const catalogo = catalogoContenidosPorTipo(conCatalogo ? tipoInmueble : '');
   return (
     <section className={expressFormSection}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

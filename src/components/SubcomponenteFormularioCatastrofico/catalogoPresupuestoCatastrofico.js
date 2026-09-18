@@ -314,14 +314,17 @@ export function aplicarPreciosDesdeReferencia(itemsDestino = [], itemsOrigen = [
 }
 
 export function crearItemsPresupuestoDesdeCatalogo() {
-  return CATALOGO_PRESUPUESTO_CATASTROFICO.map((item) => ({
-    id: item.id,
-    actividad: item.actividad,
-    unidad: item.unidad,
-    valorUnitario: item.valorUnitario,
-    cantidad: 0,
-    observacion: item.observacionDefault || '',
-  }));
+  const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+  return [...CATALOGO_PRESUPUESTO_CATASTROFICO]
+    .sort((a, b) => collator.compare(a.actividad || '', b.actividad || ''))
+    .map((item) => ({
+      id: item.id,
+      actividad: item.actividad,
+      unidad: item.unidad,
+      valorUnitario: item.valorUnitario,
+      cantidad: 0,
+      observacion: item.observacionDefault || '',
+    }));
 }
 
 export function calcularValorFinalItem(item) {

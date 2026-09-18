@@ -596,6 +596,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
     () => catalogoContenidosPorTipo(tipoInmuebleContenidos),
     [tipoInmuebleContenidos]
   );
+  const capitulosPresupuestoAbc = useMemo(
+    () =>
+      [...CAPITULOS_PRESUPUESTO_NSR10].sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true })
+      ),
+    []
+  );
   const hojaRaw = evalData.hojaActiva || 'portada';
   const hojasMenu = (modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10).filter(
     (h) =>
@@ -2034,7 +2041,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         }
                       >
                         <option value="">—</option>
-                        {CAPITULOS_PRESUPUESTO_NSR10.map((c) => (
+                        {capitulosPresupuestoAbc.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>

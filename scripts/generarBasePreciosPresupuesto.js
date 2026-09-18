@@ -125,27 +125,45 @@ const header = `/**
  * Fuente: public/templates/base-precios-presupuesto-general.xlsx (hoja "${sheetName}").
  * Generado con scripts/generarBasePreciosPresupuesto.js — no editar a mano.
  * Items: ${itemsOrdenados.length}
- * Orden: mayor a menor valor unitario dentro de cada capítulo.
+ * Orden en pantalla: alfabético (capítulo — actividad).
  */
 
 export const BASE_PRECIOS_PRESUPUESTO = Object.freeze(${JSON.stringify(itemsOrdenados, null, 2)});
 
+const collatorBasePrecios = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+
 export const CAPITULOS_BASE_PRECIOS = Object.freeze(
-  [...new Set(BASE_PRECIOS_PRESUPUESTO.map((i) => i.capitulo))]
+  [...new Set(BASE_PRECIOS_PRESUPUESTO.map((i) => i.capitulo))].sort((a, b) =>
+    collatorBasePrecios.compare(a, b)
+  )
 );
 
-function ordenarPorValorDesc(lista) {
-  return [...lista].sort(
-    (a, b) => (Number(b.valorUnitario) || 0) - (Number(a.valorUnitario) || 0)
+function etiquetaCatalogo(it) {
+  return \`\${it.capitulo || ''} — \${it.actividad || ''}\`;
+}
+
+function ordenarAlfabetico(lista, { incluirCapitulo = false } = {}) {
+  return [...lista].sort((a, b) =>
+    collatorBasePrecios.compare(
+      incluirCapitulo ? etiquetaCatalogo(a) : String(a.actividad || ''),
+      incluirCapitulo ? etiquetaCatalogo(b) : String(b.actividad || '')
+    )
   );
 }
 
+const cacheCatalogoPorCapitulo = new Map();
+
 export function catalogoPresupuestoPorCapitulo(capitulo = '') {
   const cap = String(capitulo || '').trim();
+  const key = cap || '*';
+  const hit = cacheCatalogoPorCapitulo.get(key);
+  if (hit) return hit;
   const lista = !cap
     ? BASE_PRECIOS_PRESUPUESTO
     : BASE_PRECIOS_PRESUPUESTO.filter((i) => i.capitulo === cap);
-  return ordenarPorValorDesc(lista);
+  const ordenada = Object.freeze(ordenarAlfabetico(lista, { incluirCapitulo: !cap }));
+  cacheCatalogoPorCapitulo.set(key, ordenada);
+  return ordenada;
 }
 
 export function buscarItemBasePrecios(id) {

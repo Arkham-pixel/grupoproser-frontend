@@ -150,16 +150,32 @@ function slugCapitulo(cap) {
   return `cap_${s}`;
 }
 
+const collatorValle = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+
+function etiquetaValle(it) {
+  return `${it.capitulo} — ${it.actividad}`;
+}
+
+function itemsValleAlfabeticos() {
+  return [...BASE_PRECIOS_PRESUPUESTO].sort((a, b) =>
+    collatorValle.compare(etiquetaValle(a), etiquetaValle(b))
+  );
+}
+
 /**
  * Misma base de precios Valle del Cauca de Arnald (951 ítems).
- * Listas desplegables: capítulo → actividad → unidad y valor unitario.
+ * Listas desplegables en orden alfabético (capítulo — actividad).
  */
 function agregarBasePreciosValle(wb) {
-  const caps = [...CAPITULOS_BASE_PRECIOS];
+  const itemsOrdenados = itemsValleAlfabeticos();
+  const caps = [...CAPITULOS_BASE_PRECIOS].sort((a, b) => collatorValle.compare(a, b));
   const porCap = new Map(caps.map((c) => [c, []]));
-  for (const it of BASE_PRECIOS_PRESUPUESTO) {
+  for (const it of itemsOrdenados) {
     if (!porCap.has(it.capitulo)) porCap.set(it.capitulo, []);
     porCap.get(it.capitulo).push(it);
+  }
+  for (const lista of porCap.values()) {
+    lista.sort((a, b) => collatorValle.compare(a.actividad, b.actividad));
   }
 
   const bp = wb.addWorksheet('BASE_PRECIOS_VALLE', {
@@ -175,8 +191,8 @@ function agregarBasePreciosValle(wb) {
     { header: 'Lista (elegir en el liquidador)', width: 72 },
   ];
   fillHeader(bp.getRow(1));
-  const lastItemRow = 1 + BASE_PRECIOS_PRESUPUESTO.length;
-  BASE_PRECIOS_PRESUPUESTO.forEach((it, i) => {
+  const lastItemRow = 1 + itemsOrdenados.length;
+  itemsOrdenados.forEach((it, i) => {
     const r = i + 2;
     bp.getCell(r, 1).value = it.id;
     bp.getCell(r, 2).value = it.capitulo;
@@ -185,7 +201,7 @@ function agregarBasePreciosValle(wb) {
     bp.getCell(r, 5).value = it.valorUnitario;
     moneyFmt(bp.getCell(r, 5));
     bp.getCell(r, 6).value = `${it.capitulo}|${it.actividad}`;
-    bp.getCell(r, 7).value = `${it.capitulo} — ${it.actividad}`;
+    bp.getCell(r, 7).value = etiquetaValle(it);
     bp.getRow(r).font = { name: FONT, size: 9 };
   });
   bp.getColumn(6).hidden = true;
@@ -217,7 +233,7 @@ function agregarBasePreciosValle(wb) {
   listas.getColumn(1).width = 32;
   listas.getColumn(2).width = 28;
 
-  return { caps, nItems: BASE_PRECIOS_PRESUPUESTO.length };
+  return { caps, nItems: itemsOrdenados.length };
 }
 
 function formulaLookupValle(row, colEtiqueta, colResultado) {
