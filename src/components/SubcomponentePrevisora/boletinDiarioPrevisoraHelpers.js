@@ -156,7 +156,7 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   if (estado === 'CASO CERRADO') return 'liquidados';
   if (estado === 'AUTORIZACIÓN ANALISTA') return 'liquidados';
   if (estado === 'PRESENTACIÓN DE CIFRAS' || estado === 'PENDIENTE DE DOCUMENTOS') return 'enLiquidacion';
-  if (estado === 'CASO INSPECCIONADO') return 'enInspeccion';
+  if (estado === 'PROGRAMANDO INSPECCIÓN' || estado === 'CASO INSPECCIONADO') return 'enInspeccion';
   return 'verificacion';
 }
 
@@ -272,7 +272,7 @@ export function clasificarGestionDiscriminada(caso = {}) {
 
   if (estado === 'PRESENTACIÓN DE CIFRAS' || estado === 'AUTORIZACIÓN ANALISTA') return 'enLiquidacion';
   if (estado === 'PENDIENTE DE DOCUMENTOS' || estado === 'OBJECIÓN') return 'pendienteInformacion';
-  if (estado === 'CASO INSPECCIONADO') return 'solicitanInspeccion';
+  if (estado === 'PROGRAMANDO INSPECCIÓN' || estado === 'CASO INSPECCIONADO') return 'solicitanInspeccion';
   if (texto) return 'contactadosSinExito';
   return null;
 }

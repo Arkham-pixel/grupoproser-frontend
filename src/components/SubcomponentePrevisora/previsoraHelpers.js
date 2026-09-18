@@ -4,6 +4,7 @@ export const PREVISORA_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_PREVISORA = [
   'CASO NUEVO',
+  'PROGRAMANDO INSPECCIÓN',
   'CASO INSPECCIONADO',
   'PENDIENTE DE DOCUMENTOS',
   'AUTORIZACIÓN ANALISTA',
@@ -17,6 +18,7 @@ export const MODALIDADES_PREVISORA = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_PREVISORA = {
   'CASO NUEVO': 'fechaCasoNuevo',
+  'PROGRAMANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
   'CASO INSPECCIONADO': 'fechaCasoInspeccionado',
   'PENDIENTE DE DOCUMENTOS': 'fechaSolicitudDocumento',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
@@ -45,7 +47,9 @@ const ESTADOS_PREVISORA_LEGACY = {
   PENDIENTE: 'CASO NUEVO',
   AVISADO: 'CASO NUEVO',
   'EN INSPECCION': 'CASO INSPECCIONADO',
-  'COORDINANDO INSPECCION': 'CASO INSPECCIONADO',
+  'COORDINANDO INSPECCION': 'PROGRAMANDO INSPECCIÓN',
+  'INSPECCION COORDINADA': 'PROGRAMANDO INSPECCIÓN',
+  'PROGRAMANDO INSPECCION': 'PROGRAMANDO INSPECCIÓN',
   INSPECCIONADO: 'CASO INSPECCIONADO',
   'EN AJUSTE': 'PRESENTACIÓN DE CIFRAS',
   'ANALISIS DEL CASO': 'PRESENTACIÓN DE CIFRAS',
@@ -79,7 +83,8 @@ export function homologarEstadoPrevisora(valor) {
 }
 
 const FECHA_LEGADO_POR_ESTADO = {
-  'CASO INSPECCIONADO': ['fechaCoordinandoInspeccion', 'fechaInspeccion'],
+  'PROGRAMANDO INSPECCIÓN': ['fechaProgramandoInspeccion'],
+  'CASO INSPECCIONADO': ['fechaInspeccion'],
   'PRESENTACIÓN DE CIFRAS': ['fechaAnalisisCaso'],
   'CASO CERRADO': ['fechaCasoParaPago', 'fechaLiquidado'],
 };
@@ -783,11 +788,6 @@ export const construirFormDesdecasoPrevisora = (caso = {}) => {
     base.tipoPoliza = 'OTRO';
   }
   base.estado = homologarEstadoPrevisora(base.estado);
-  if (!base.fechaCasoInspeccionado) {
-    base.fechaCasoInspeccionado = fechaParaInput(
-      caso.fechaCasoInspeccionado || caso.fechaCoordinandoInspeccion
-    );
-  }
   if (!base.fechaPresentacionCifras) {
     base.fechaPresentacionCifras = fechaParaInput(
       caso.fechaPresentacionCifras || caso.fechaAnalisisCaso

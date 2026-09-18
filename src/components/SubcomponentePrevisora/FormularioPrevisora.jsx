@@ -308,8 +308,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         fechaVisita: form.fechaVisita,
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
-        fechaCasoInspeccionado: form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion,
-        fechaCoordinandoInspeccion: form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion,
+        fechaCasoInspeccionado: form.fechaCasoInspeccionado,
+        fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
         horaInicioCoordinacion: form.horaInicioCoordinacion,
         horaFinCoordinacion: form.horaFinCoordinacion,
         fechaPresentacionCifras: form.fechaPresentacionCifras || form.fechaAnalisisCaso,
@@ -333,10 +333,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     }
     const payload = { ...form };
     payload.estado = homologarEstadoPrevisora(payload.estado);
-    payload.fechaCasoInspeccionado =
-      form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion;
-    payload.fechaCoordinandoInspeccion =
-      form.fechaCasoInspeccionado || form.fechaCoordinandoInspeccion;
+    payload.fechaCasoInspeccionado = form.fechaCasoInspeccionado;
+    payload.fechaCoordinandoInspeccion = form.fechaCoordinandoInspeccion;
     payload.fechaPresentacionCifras =
       form.fechaPresentacionCifras || form.fechaAnalisisCaso;
     payload.fechaAnalisisCaso = form.fechaPresentacionCifras || form.fechaAnalisisCaso;
@@ -697,11 +695,11 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
             <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
           </Campo>
           <CampoFranjaCoordinacion
-            labelFecha={t('previsora.fields.fechaCasoInspeccionado')}
-            fecha={form.fechaCasoInspeccionado}
+            labelFecha={t('previsora.fields.fechaProgramandoInspeccion')}
+            fecha={form.fechaCoordinandoInspeccion}
             horaInicio={form.horaInicioCoordinacion}
             horaFin={form.horaFinCoordinacion}
-            onFecha={setCampo('fechaCasoInspeccionado')}
+            onFecha={setCampo('fechaCoordinandoInspeccion')}
             onHoraInicio={setCampo('horaInicioCoordinacion')}
             onHoraFin={setCampo('horaFinCoordinacion')}
             ajustador={form.ajustador}
@@ -709,6 +707,13 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
             casoId={initialData?._id}
             disabled={attrsCampoCaso(rolUsuario, 'fechaCoordinandoInspeccion', ctxPermiso).disabled}
           />
+          <Campo label={t('previsora.fields.fechaCasoInspeccionado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaCasoInspeccionado}
+              onChange={setCampo('fechaCasoInspeccionado')}
+            />
+          </Campo>
           <Campo label={t('previsora.fields.fechaSolicitudDocumento')}>
             <InputFenix
               type="date"

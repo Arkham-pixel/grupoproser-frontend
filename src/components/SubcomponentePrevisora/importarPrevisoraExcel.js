@@ -108,6 +108,11 @@ const HEADER_MAP = {
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
   ESTADO: 'estado',
   'ESTADO FINAL': 'estado',
+  'FECHA PROGRAMANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA PROGRAMANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
+  'FECHA COORDINANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA COORDINANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
+  'FECHA CASO INSPECCIONADO': 'fechaCasoInspeccionado',
   'SEVERIDAD CAT': 'severidadCat',
   SEVERIDAD: 'severidadCat',
   'NIVEL SEVERIDAD': 'severidadCat',
@@ -245,6 +250,8 @@ const CAMPOS_FECHA = new Set([
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
   'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaCasoInspeccionado',
 ]);
 
 const HEADERS_QUE_NO_SON_DATOS = new Set([
@@ -560,6 +567,10 @@ const HEADER_MAP_LISTADO = {
   'FECHA ASIGNACION PROVEEDOR': 'fechaAsignacion',
   'FECHA SINIESTRO': 'notaFechaSiniestro',
   'FECHA VISITA': 'fechaVisita',
+  'FECHA PROGRAMANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA PROGRAMANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
+  'FECHA COORDINANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA CASO INSPECCIONADO': 'fechaCasoInspeccionado',
   INSPECTOR: 'inspector',
   AJUSTADOR: 'ajustador',
   ESTADO: 'estado',
@@ -599,7 +610,13 @@ const limpiarNombreAsegurado = (valor) => {
   return texto.replace(/^\d+\s*[-–—]\s*/, '').trim() || texto;
 };
 
-const CAMPOS_FECHA_LISTADO = new Set(['fechaAsignacion', 'fechaVisita', 'fechaCasoNuevo']);
+const CAMPOS_FECHA_LISTADO = new Set([
+  'fechaAsignacion',
+  'fechaVisita',
+  'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaCasoInspeccionado',
+]);
 
 const limpiarTextoListado = (raw) => {
   if (raw === null || raw === undefined || raw === '') return '';
