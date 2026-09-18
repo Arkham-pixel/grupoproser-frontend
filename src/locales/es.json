@@ -12560,6 +12560,7 @@
       "downloadError": "No se pudo descargar el archivo",
       "pageTitle": "Archivero BBVA CAT",
       "pageSubtitle": "Los documentos que subas aquí quedan en el listado y se ven en el reporte listado.",
+      "loadingList": "Cargando listado de casos…",
       "pickCase": "Selecciona un caso del listado (ZC / STRO) para abrir su archivero.",
       "noListadoMatch": "Este caso de inspección no tiene un par en el listado (ZC/STRO). Sube el archivo desde el reporte analista.",
       "labels": {

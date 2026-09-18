@@ -12500,6 +12500,7 @@
       "downloadError": "Could not download the file",
       "pageTitle": "BBVA CAT archive",
       "pageSubtitle": "Files you upload here are stored on the listing and show up in the listing report.",
+      "loadingList": "Loading case list…",
       "pickCase": "Select a listing case (ZC / claim) to open its archive.",
       "noListadoMatch": "This inspection case has no matching listing case (ZC/claim). Upload from the analyst report.",
       "labels": {
