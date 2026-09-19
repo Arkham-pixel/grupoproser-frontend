@@ -14,7 +14,11 @@ import {
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import CampoTomadorPrevisora from './CampoTomadorPrevisora.jsx';
 import {
   calcularLiquidacionPrevisora,
@@ -425,6 +429,16 @@ export default function LiquidadorPrevisora({
                 })}
           </h3>
         )}
+        <SeccionModoLiquidadorCat
+          liquidador={liquidador}
+          onLiquidadorChange={setLiquidador}
+          aiuPorcentaje={
+            Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+            AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+          }
+          disabled={!!exportando || guardandoCaso}
+          ocultarToggle={embeberEnInforme}
+        >
         <Suspense
           fallback={
             <p className="font-body text-sm text-gray-500">Cargando liquidador NSR-10…</p>
@@ -443,6 +457,7 @@ export default function LiquidadorPrevisora({
             }
           />
         </Suspense>
+        </SeccionModoLiquidadorCat>
       </section>
     </div>
   );

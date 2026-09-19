@@ -50,6 +50,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   esSesionExcelVerificacionSura,
+  esSesionFacilitadoresSura,
   etiquetaSesionPersona,
   filtrarCasosAsignadosASesion,
   filtrarCasosPorAsignacionUsuario,
@@ -246,6 +247,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteSura();
   const puedeExcelVerificacion = esSesionExcelVerificacionSura();
+  const puedeFacilitadores = esSesionFacilitadoresSura();
 
   const abrirEdicion = useCallback(async (item) => {
     if (!item?._id) return;
@@ -569,7 +571,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsig
                     {t('nav.assignedCases')}
                   </Link>
                 ))}
-              {!modoAsignados && !soloDocumentacion && (
+              {!modoAsignados && !soloDocumentacion && puedeFacilitadores && (
                 <Link
                   to="/sura/facilitadores"
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"

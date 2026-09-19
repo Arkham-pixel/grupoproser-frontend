@@ -1,7 +1,8 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import FormularioCasoComplex from '../SubcomponenteCompex/FormularioCasoComplex';
 import { actualizarCasoSura, crearCasoSura } from '../../services/segurosSuraService.js';
+import { esSesionGestionarCasoSura } from '../../utils/permisosCasoPorRol.js';
 import { controlHorasTieneDatos } from '../SubcomponenteCompex/controlHoras/controlHorasUtils';
 
 const STORAGE_KEY = 'formularioSura';
@@ -33,6 +34,18 @@ export default function FormularioCasoSura({
   ...rest
 }) {
   const navigate = useNavigate();
+  const permitido = esSesionGestionarCasoSura();
+
+  if (!permitido) {
+    if (embed) {
+      return (
+        <p className="p-4 font-body text-sm text-amber-700 dark:text-amber-400">
+          No tiene permiso para Gestionar / Agregar caso SURA.
+        </p>
+      );
+    }
+    return <Navigate to="/sura/reporte" replace />;
+  }
 
   const handleSave = async (payload) => {
     if (onSave) {

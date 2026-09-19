@@ -1,4 +1,4 @@
-﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { estadoSuraPorTipoInforme } from '../components/SubcomponenteSura/segurosSuraHelpers.js';
 import { construirResumenReporteLiquidacionSura } from '../components/SubcomponenteSura/liquidadorSuraHelpers.js';
 import { sanitizarInformeUnicoCamposWord } from '../utils/limpiarTextoInformeWord.js';
@@ -471,6 +471,11 @@ export const guardarInformeUnicoEnCasoSura = async ({
     '';
   if (fechaPrelim) {
     payload.fchaInfoPrelm = fechaPrelim;
+  }
+  if ((tipo === 'final' || tipo === 'unico') && sanitizado.fechaInforme) {
+    if (!casoBase.fchaInfoFnal) {
+      payload.fchaInfoFnal = sanitizado.fechaInforme;
+    }
   }
 
   delete payload._id;

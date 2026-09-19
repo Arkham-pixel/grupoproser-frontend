@@ -48,6 +48,19 @@ export const SURA_LOGINS_EXCEL_VERIFICACION = Object.freeze([
 ]);
 
 /**
+ * Portal / plantilla Facilitadores SURA + barra de estados especiales en Gestionar.
+ * Solo Oscar Atencia, Bernardo Sojo y Ligia García.
+ */
+export const SURA_LOGINS_FACILITADORES = Object.freeze([
+  '1065012991',
+  '72134505',
+  '66901947',
+]);
+
+/** Misma lista: ven la barra de estados (Anulado / Desistido / Objetado) en Gestionar. */
+export const SURA_LOGINS_BARRA_ESTADOS = SURA_LOGINS_FACILITADORES;
+
+/**
  * Último comentario (antes Descripción del Estado) en Gestionar SURA.
  * Solo Ligia García y Bernardo Sojo pueden editarlo a mano.
  */
@@ -164,6 +177,32 @@ export function esLoginExcelVerificacionSura(login) {
 export function esSesionExcelVerificacionSura() {
   const ctx = obtenerContextoPermisoCaso('sura');
   return [ctx.login, ctx.cedula].some((v) => esLoginExcelVerificacionSura(v));
+}
+
+export function esLoginFacilitadoresSura(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return SURA_LOGINS_FACILITADORES.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+/** Sesión actual: solo Oscar, Bernardo o Ligia ven el Portal de Facilitadores SURA. */
+export function esSesionFacilitadoresSura() {
+  const ctx = obtenerContextoPermisoCaso('sura');
+  return [ctx.login, ctx.cedula].some((v) => esLoginFacilitadoresSura(v));
+}
+
+/** Barra de estados en Gestionar / Agregar caso (mismos usuarios autorizados). */
+export function esSesionBarraEstadosSura() {
+  return esSesionFacilitadoresSura();
+}
+
+/**
+ * Gestionar / Agregar caso SURA: abierto para quien llegue al módulo.
+ * Anulado / Desistido / Objetado siguen solo en la barra (esSesionBarraEstadosSura).
+ */
+export function esSesionGestionarCasoSura() {
+  if (typeof localStorage === 'undefined') return true;
+  return Boolean(localStorage.getItem('token') || localStorage.getItem('login'));
 }
 
 export function esLoginUltimoComentarioSura(login) {

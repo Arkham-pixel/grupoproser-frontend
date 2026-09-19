@@ -76,7 +76,7 @@ import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, es
 import { useIsMobileShell } from '../hooks/useMediaQuery';
 import { apiRequest } from '../config/apiConfig.js';
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
-import { esSesionReporteInformesAllianz } from '../utils/permisosCasoPorRol.js';
+import { esSesionReporteInformesAllianz, esSesionFacilitadoresSura } from '../utils/permisosCasoPorRol.js';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 /** Aviso interno (modal de plataforma) 30 minutos antes del cierre automático */
@@ -974,7 +974,9 @@ export default function Layout() {
           { path: '/sura/caso', icon: FaFileAlt, label: t('nav.suraCase') },
           { path: '/sura/dashboard', icon: FaChartBar, label: t('nav.suraDashboard') },
           { path: '/sura/reporte', icon: FaTable, label: t('nav.suraReport') },
-          { path: '/sura/facilitadores', icon: FaClipboardList, label: t('nav.suraFacilitadores') },
+          ...(esSesionFacilitadoresSura()
+            ? [{ path: '/sura/facilitadores', icon: FaClipboardList, label: t('nav.suraFacilitadores') }]
+            : []),
           { path: '/sura/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/sura/documentacion', icon: FaFolderOpen, label: 'Documentación' },
           { path: '/sura/boletin', icon: FaChartLine, label: t('nav.suraBulletin') },

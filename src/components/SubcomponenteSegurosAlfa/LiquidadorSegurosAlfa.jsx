@@ -24,6 +24,8 @@ import {
 } from './liquidadorAlfaHelpers.js';
 import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
+import { filasDetalleAlfaDesdeExpress } from '../SubcomponenteLiquidadorCatExpress/liquidadorCatExpressHelpers.js';
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
 import { descargarFiniquitoArrendamientoAlfaWord } from './generarFiniquitoArrendamientoAlfaWord.js';
 import {
@@ -844,6 +846,21 @@ export default function LiquidadorSegurosAlfa({
         disabled={!!exportando || guardandoCaso}
       />
 
+      <SeccionModoLiquidadorCat
+        liquidador={liquidador}
+        onLiquidadorChange={setLiquidador}
+        aiuPorcentaje={
+          Number(liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+          AIU_PORCENTAJE_DEFAULT_ALFA
+        }
+        disabled={!!exportando || guardandoCaso}
+        onAfterChange={(liq) =>
+          sincronizarDetalleCatConPresupuestoNsr(
+            liq,
+            filasDetalleAlfaDesdeExpress(liq?.presupuestoExpress?.items || [])
+          )
+        }
+      >
       <FormatoLiquidacionAlfa
         caso={casoLocal}
         encabezado={enc}
@@ -911,6 +928,7 @@ export default function LiquidadorSegurosAlfa({
           }))
         }
       />
+      </SeccionModoLiquidadorCat>
 
       {onGuardarEnCaso && (
         <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">

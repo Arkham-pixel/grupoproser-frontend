@@ -14,9 +14,31 @@ export const ESTADOS_SURA = [
   'ANULADO',
   'DESISTIDO',
   'OBJETADO',
+  'CANCELADO SURA',
 ];
 
-export const ESTADOS_SURA_CERRADOS = ['ANULADO', 'CERRADO', 'DESISTIDO', 'OBJETADO'];
+/**
+ * Estados del Portal Facilitadores (cierre / excepción).
+ * Solo Oscar, Bernardo y Ligia los ven y pueden asignar.
+ */
+export const ESTADOS_SURA_RESTRINGIDOS = Object.freeze([
+  'ANULADO',
+  'DESISTIDO',
+  'OBJETADO',
+  'CANCELADO SURA',
+]);
+
+export const ESTADOS_SURA_OPERATIVOS = Object.freeze(
+  ESTADOS_SURA.filter((e) => !ESTADOS_SURA_RESTRINGIDOS.includes(e))
+);
+
+export const ESTADOS_SURA_CERRADOS = [
+  'ANULADO',
+  'CERRADO',
+  'DESISTIDO',
+  'OBJETADO',
+  'CANCELADO SURA',
+];
 
 /** Etiqueta para textos de estado que no encajan en el catálogo. */
 export const ESTADO_SURA_OTROS = 'OTROS';
@@ -74,6 +96,7 @@ function clasificarEstadoSuraPorTexto(clave) {
     return 'DESISTIDO';
   }
   if (clave.includes('ANULAD')) return 'ANULADO';
+  if (clave.includes('CANCELADO')) return 'CANCELADO SURA';
   if (
     clave.includes('INFORME UNICO') ||
     clave.includes('INFORME FINAL') ||
@@ -149,7 +172,9 @@ function tipoInformeSuraClave(valor) {
 export function estadoSuraPorTipoInforme(tipoInforme, estadoActual) {
   const tipo = tipoInformeSuraClave(tipoInforme);
   const actual = normalizarEstadoSura(estadoActual);
-  if (actual === 'ANULADO' || actual === 'DESISTIDO' || actual === 'OBJETADO') return actual;
+  if (actual === 'ANULADO' || actual === 'DESISTIDO' || actual === 'OBJETADO' || actual === 'CANCELADO SURA') {
+    return actual;
+  }
   if (tipo === 'unico' || tipo === 'final') return ESTADO_SURA_INFORME_UNICO;
   if (tipo === 'preliminar') {
     if (actual === ESTADO_SURA_INFORME_UNICO) return actual;

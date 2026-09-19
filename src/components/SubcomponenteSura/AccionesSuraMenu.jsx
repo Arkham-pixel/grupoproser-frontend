@@ -21,6 +21,7 @@ export default function AccionesSuraMenu({
   docsCount = 0,
   tieneLiquidador = false,
   tieneInforme = false,
+  puedeGestionar = true,
 }) {
   const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
@@ -82,15 +83,17 @@ export default function AccionesSuraMenu({
             left: coords.left,
           }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-            onClick={() => elegir(onGestionar)}
-          >
-            <FaEdit className="text-fenix-primario" />
-            {t('segurosSura.report.manage')}
-          </button>
+          {puedeGestionar && (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+              onClick={() => elegir(onGestionar)}
+            >
+              <FaEdit className="text-fenix-primario" />
+              {t('segurosSura.report.manage')}
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

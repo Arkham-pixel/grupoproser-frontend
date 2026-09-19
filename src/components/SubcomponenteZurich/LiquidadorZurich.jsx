@@ -15,7 +15,11 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import CampoTomadorZurich from './CampoTomadorZurich.jsx';
 import {
   calcularLiquidacionZurich,
@@ -439,6 +443,16 @@ export default function LiquidadorZurich({
               : t('zurich.settlement.nsrTitle')}
           </h3>
         )}
+        <SeccionModoLiquidadorCat
+          liquidador={liquidador}
+          onLiquidadorChange={setLiquidador}
+          aiuPorcentaje={
+            Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+            AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+          }
+          disabled={!!exportando || guardandoCaso}
+          ocultarToggle={embeberEnInforme}
+        >
         <ChecklistEvaluacionSismicaNSR10
           formData={formDataNsr}
           onInputChange={handleNsrChange}
@@ -453,6 +467,7 @@ export default function LiquidadorZurich({
             usaCotizBase ? t('zurich.settlement.nsrLiquidacionIndependentHint') : ''
           }
         />
+        </SeccionModoLiquidadorCat>
       </section>
     </div>
   );

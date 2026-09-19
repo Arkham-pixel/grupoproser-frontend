@@ -15,9 +15,11 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import {
+  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
   REGLAS_DEDUCIBLE_SURA,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import CampoTomadorSura from './CampoTomadorSura.jsx';
 import {
   calcularLiquidacionSura,
@@ -341,6 +343,15 @@ export default function LiquidadorSegurosSura({
                 defaultValue: 'Evaluación y liquidador NSR-10',
               })}
         </h3>
+        <SeccionModoLiquidadorCat
+          liquidador={liquidador}
+          onLiquidadorChange={setLiquidador}
+          aiuPorcentaje={
+            Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+            AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+          }
+          disabled={!!exportando || guardandoCaso}
+        >
         <ChecklistEvaluacionSismicaNSR10
           formData={formDataNsr}
           onInputChange={handleNsrChange}
@@ -353,6 +364,7 @@ export default function LiquidadorSegurosSura({
             usaCotizBase ? montoCotizacionPdf(liquidador.cotizacionPdf) : null
           }
         />
+        </SeccionModoLiquidadorCat>
       </section>
     </div>
   );

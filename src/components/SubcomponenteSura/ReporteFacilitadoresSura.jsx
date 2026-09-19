@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   FaCheck,
   FaFileExcel,
@@ -13,6 +13,7 @@ import {
   listarFacilitadoresSura,
   sugerirFacilitadoresDesdeArnald,
 } from '../../services/suraFacilitadoresService.js';
+import { esSesionFacilitadoresSura } from '../../utils/permisosCasoPorRol.js';
 import { fechaParaInput } from './segurosSuraHelpers.js';
 import {
   CRITERIOS_FACILITADOR,
@@ -101,6 +102,7 @@ function hoyIso() {
 }
 
 export default function ReporteFacilitadoresSura() {
+  const permitido = esSesionFacilitadoresSura();
   const fileRef = useRef(null);
   const [filas, setFilas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +113,10 @@ export default function ReporteFacilitadoresSura() {
   const [guardandoId, setGuardandoId] = useState('');
 
   const recargar = useCallback(async () => {
+    if (!permitido) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await listarFacilitadoresSura();
@@ -124,7 +130,7 @@ export default function ReporteFacilitadoresSura() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [permitido]);
 
   useEffect(() => {
     recargar();
@@ -154,6 +160,10 @@ export default function ReporteFacilitadoresSura() {
       );
     });
   }, [filas, busqueda, soloInvalidos]);
+
+  if (!permitido) {
+    return <Navigate to="/sura/reporte" replace />;
+  }
 
   const onImportar = async (file) => {
     if (!file) return;

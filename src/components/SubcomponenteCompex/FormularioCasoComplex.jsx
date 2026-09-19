@@ -24,7 +24,8 @@ import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
 import { getCasoComplex, updateCasoComplex, moverCasoComplexASura } from '../../services/complexService.js';
 import { getCasoSuraById, actualizarCasoSura } from '../../services/segurosSuraService.js';
-import { esSesionUltimoComentarioSura } from '../../utils/permisosCasoPorRol.js';
+import { esSesionUltimoComentarioSura, esSesionBarraEstadosSura } from '../../utils/permisosCasoPorRol.js';
+import { ESTADOS_SURA_OPERATIVOS, ESTADOS_SURA_RESTRINGIDOS, normalizarEstadoSura } from '../SubcomponenteSura/segurosSuraHelpers.js';
 import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { enriquecerPlantillaContactoInicial } from '../../utils/contactoInicialPlantillaCorreo.js';
@@ -60,7 +61,6 @@ import {
   formatearFechaHoraParaInput,
 } from '../../utils/complexFechaHoraUtils.js';
 import { CAMPOS_FECHA_HITOS_TRAZABILIDAD } from '../../utils/ajusteTrazabilidadComplexMap.js';
-import { ESTADOS_SURA, normalizarEstadoSura } from '../SubcomponenteSura/segurosSuraHelpers.js';
 
 const SURA_ALIASES = ['SEGUROS GENERALES SURAMERICANA', 'SURAMERICANA', 'SEGUROS SURA', 'SURA'];
 
@@ -722,6 +722,32 @@ if (casoData && casoData._id) {
               normalizados.inspector = casoData.inspector || '';
               normalizados.vlorResrva = casoData.vlorResrva ?? casoData.reserva;
               normalizados.vlorReclmo = casoData.vlorReclmo ?? casoData.valorReclamado;
+              // Trazabilidad: si el informe ya tiene fecha pero el hito está vacío, mostrarla.
+              if (!casoData.fchaInfoPrelm) {
+                const inf = casoData.informeUnico;
+                const tipo = String(inf?.tipoInforme || '')
+                  .toLowerCase()
+                  .normalize('NFD')
+                  .replace(/\p{M}/gu, '');
+                const fechaPrelim =
+                  inf?.fechaInformePreliminar ||
+                  (tipo.includes('prelim') ? inf?.fechaInforme : '') ||
+                  '';
+                if (fechaPrelim) normalizados.fchaInfoPrelm = fechaPrelim;
+              }
+              if (!casoData.fchaInfoFnal) {
+                const inf = casoData.informeUnico;
+                const tipo = String(inf?.tipoInforme || '')
+                  .toLowerCase()
+                  .normalize('NFD')
+                  .replace(/\p{M}/gu, '');
+                if (
+                  (tipo.includes('final') || tipo.includes('unic')) &&
+                  inf?.fechaInforme
+                ) {
+                  normalizados.fchaInfoFnal = inf.fechaInforme;
+                }
+              }
             }
             
             // Aplicar las mismas normalizaciones que se hacen con initialData
@@ -1043,6 +1069,14 @@ localStorage.removeItem(storageKey);
     if (name === 'descripcionEstado' && !esSesionUltimoComentarioSura()) {
       return;
     }
+    if (
+      esSura &&
+      name === 'estado' &&
+      ESTADOS_SURA_RESTRINGIDOS.includes(normalizarEstadoSura(value)) &&
+      !esSesionBarraEstadosSura()
+    ) {
+      return;
+    }
     if (CAMPOS_FECHA_HITOS_TRAZABILIDAD.includes(name)) {
       fechasHitoEditadasRef.current.add(name);
     }
@@ -1054,7 +1088,7 @@ localStorage.removeItem(storageKey);
           ...prev,
           estado: nuevoValor,
           codiEstdo: nuevoValor,
-          descripcionEstado: opcion?.label || prev.descripcionEstado,
+          descripcionEstado: opcion?.label || nuevoValor || prev.descripcionEstado,
         };
       }
       if (name === 'departamento') {
@@ -1069,7 +1103,7 @@ localStorage.removeItem(storageKey);
         [name]: nuevoValor
       };
     });
-  }, [estados]);
+  }, [estados, esSura]);
 
   const handlePlantillaContactoChange = useCallback((plantilla) => {
     setFormData((prev) => ({
@@ -2847,7 +2881,8 @@ return;
 
   useEffect(() => {
     if (esSura) {
-      setEstados(ESTADOS_SURA.map((e) => ({ value: e, label: e })));
+      // Flujo operativo en el select normal; Facilitadores va en select aparte.
+      setEstados(ESTADOS_SURA_OPERATIVOS.map((e) => ({ value: e, label: e })));
       return undefined;
     }
     fetch(`${BASE_URL}/api/estados`)
@@ -2873,6 +2908,13 @@ return;
         setEstados([]);
       });
   }, [esSura, ordenarPorLabel]);
+
+  const puedeEstadosFacilitadorSura = esSura && esSesionBarraEstadosSura();
+  const estadosFacilitadorParaSelect = useMemo(() => {
+    if (!puedeEstadosFacilitadorSura) return null;
+    return ESTADOS_SURA_RESTRINGIDOS.map((e) => ({ value: e, label: e }));
+  }, [puedeEstadosFacilitadorSura]);
+  const estadosParaSelect = estados;
 
   // Cargar intermediarios desde la nueva API
   useEffect(() => {
@@ -3678,7 +3720,9 @@ if (!onSave) {
         funcionarios={funcionarios}
         cargandoFuncionarios={cargandoFuncionarios}
             responsables={responsables}
-            estados={estados}
+            estados={estadosParaSelect}
+            ocultarCampoEstado={false}
+            estadosFacilitador={estadosFacilitadorParaSelect}
             hayResponsables={responsables && responsables.length > 0}
         intermediarios={intermediariosOptions}
         onFuncionarioChange={handleFuncionarioChange}

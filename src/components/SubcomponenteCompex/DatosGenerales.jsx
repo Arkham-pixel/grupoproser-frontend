@@ -78,6 +78,9 @@ export default function DatosGenerales({
   hayResponsables,
   intermediarios,
   estados,
+  ocultarCampoEstado = false,
+  /** Select independiente: Anulado / Desistido / Objetado / Cancelado Sura (solo Facilitadores autorizados). */
+  estadosFacilitador = null,
   onResponsableChange,
   onFuncionarioChange,
   camposFijos = false,
@@ -605,8 +608,26 @@ export default function DatosGenerales({
           </Campo>
         ) : null}
 
+        {!ocultarCampoEstado ? (
         <Campo label={t("complex.ui.datos_generales.estado")}>
-          <SelectFenix name="estado" value={valorEstadoSelect} onChange={handleChange} required>
+          <SelectFenix
+            name="estado"
+            value={
+              Array.isArray(estadosFacilitador) &&
+              estadosFacilitador.some((e) => String(e.value) === String(valorEstadoSelect))
+                ? ''
+                : (estados || []).some((e) => String(e.value) === String(valorEstadoSelect))
+                  ? valorEstadoSelect
+                  : ''
+            }
+            onChange={handleChange}
+            required={
+              !(
+                Array.isArray(estadosFacilitador) &&
+                estadosFacilitador.some((e) => String(e.value) === String(valorEstadoSelect))
+              )
+            }
+          >
             <option value="">{t("complex.ui.datos_generales.selecciona_un_estado")}</option>
             {(estados || [])
               .filter((e) => e.value !== undefined && e.value !== null)
@@ -619,7 +640,52 @@ export default function DatosGenerales({
           {(!estados || estados.length === 0) && (
             <p className={complexAlertError}>{t("complex.ui.datos_generales.no_hay_estados_disponibles")}</p>
           )}
+          {valorEstadoSelect &&
+          !(estados || []).some((e) => String(e.value) === String(valorEstadoSelect)) &&
+          !(
+            Array.isArray(estadosFacilitador) &&
+            estadosFacilitador.some((e) => String(e.value) === String(valorEstadoSelect))
+          ) ? (
+            <p className={complexHint}>
+              Estado actual: {valorEstadoSelect}. Solo usuarios Facilitadores autorizados pueden
+              cambiarlo.
+            </p>
+          ) : null}
         </Campo>
+        ) : (
+          <Campo label={t("complex.ui.datos_generales.estado")}>
+            <p className="mt-1 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
+              {valorEstadoSelect || '—'}
+            </p>
+          </Campo>
+        )}
+
+        {Array.isArray(estadosFacilitador) && estadosFacilitador.length > 0 ? (
+          <Campo label="Estado Facilitadores">
+            <SelectFenix
+              name="estado"
+              value={
+                estadosFacilitador.some((e) => String(e.value) === String(valorEstadoSelect))
+                  ? valorEstadoSelect
+                  : ''
+              }
+              onChange={(e) => {
+                if (!e.target.value) return;
+                handleChange(e);
+              }}
+            >
+              <option value="">Sin estado Facilitador…</option>
+              {estadosFacilitador.map((estado) => (
+                <option key={`estado-fac-${estado.value}`} value={estado.value}>
+                  {estado.label}
+                </option>
+              ))}
+            </SelectFenix>
+            <p className={complexHint}>
+              Lista aparte del flujo operativo. Para volver al flujo, elija un estado arriba.
+            </p>
+          </Campo>
+        ) : null}
 
         <Campo label="Último comentario" className="md:col-span-2">
           <TextareaFenix
