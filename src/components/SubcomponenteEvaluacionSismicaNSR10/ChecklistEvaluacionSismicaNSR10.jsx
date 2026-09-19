@@ -72,7 +72,7 @@ import {
   valorSmdlvDesdeSmmlv,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
-import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import { defaultOtrosAmparos, sumarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -803,6 +803,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
     0,
     Math.round((totalPresupuestoLiquidacion - deduciblePresupuestoLiquidacion) * 100) / 100
   );
+  const gastosSinDeducibleLiq = sumarOtrosAmparos(formData.otrosAmparos);
+  const totalIndemnizarPresupuestoConGastos = Math.round(
+    (valorIndemnizarPresupuestoLiquidacion + gastosSinDeducibleLiq) * 100
+  ) / 100;
   const indemnizarPresupuestoVentana = usaPorArticuloPresupuesto
     ? valorIndemnizarPresupuestoLiquidacion
     : diagrama.deduciblePresupuesto?.neto ??
@@ -816,8 +820,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
     Math.round(
       (Number(indemnizarPresupuestoVentana) + Number(indemnizarContenidosVentana)) * 100
     ) / 100;
-  const totalIndemnizarConGastos =
-    Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0
+  const totalIndemnizarConGastos = simplificarDeducible
+    ? Math.round(
+        (totalIndemnizarPresupuestoConGastos + Number(indemnizarContenidosVentana || 0)) * 100
+      ) / 100
+    : Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0
       ? Number(diagrama.totalIndemnizar) || 0
       : sumaAIndemnizarVentanas;
 
@@ -2678,6 +2685,43 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       {money(valorIndemnizarPresupuestoLiquidacion)}
                     </td>
                   </tr>
+                  {gastosSinDeducibleLiq > 0 ? (
+                    <>
+                      <tr className="border-t" style={{ borderColor }}>
+                        <td className="px-3 py-2">
+                          (+) GASTOS SIN DEDUCIBLE
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {money(gastosSinDeducibleLiq)}
+                        </td>
+                      </tr>
+                      {(Array.isArray(diagrama.otrosAmparos) ? diagrama.otrosAmparos : []).map(
+                        (it) => (
+                          <tr
+                            key={it.id || `${it.tipo}-${it.nombre}`}
+                            className="border-t"
+                            style={{ borderColor }}
+                          >
+                            <td className="px-3 py-1.5 pl-6 text-xs" style={{ color: textSecondary }}>
+                              {it.nombre || it.tipo || 'Amparo'}
+                              {it.observacion ? ` — ${it.observacion}` : ''}
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-xs">
+                              {money(Number(it.valor) || 0)}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                      <tr style={{ backgroundColor: softBg }}>
+                        <td className="px-3 py-2.5 font-bold text-emerald-700 dark:text-emerald-300">
+                          TOTAL A INDEMNIZAR
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-700 dark:text-emerald-300">
+                          {money(totalIndemnizarPresupuestoConGastos)}
+                        </td>
+                      </tr>
+                    </>
+                  ) : null}
                 </tbody>
               </table>
             </div>
@@ -2685,7 +2729,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               {usaPorArticuloPresupuesto
                 ? 'Toma el total del presupuesto y el deducible ya calculado arriba. No se vuelve a aplicar % / SMMLV / SMDLV general.'
                 : simplificarDeducible
-                  ? 'Se resta el mayor entre el mínimo (SMMLV o SMDLV) y el % sobre la base elegida (valor asegurado o pérdida).'
+                  ? 'Primero se resta el mayor entre el mínimo (SMMLV o SMDLV) y el % sobre la base elegida. Después se suman los gastos sin deducible al presupuesto neto.'
                   : 'Las dos vías quedan habilitadas. Se resta el mayor entre el mínimo (SMMLV o SMDLV, según la póliza) y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
             {notaLiquidacionPresupuesto ? (

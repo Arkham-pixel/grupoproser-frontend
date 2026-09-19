@@ -554,13 +554,20 @@ export function aplicarMayorEntreSmmlvYPctOVa({
     noAplica || tieneArticulos ? 0 : Number(calcGeneral.montoPctVa) || 0;
   const montoPctPerdida =
     noAplica || tieneArticulos ? 0 : Number(calcGeneral.montoPctPerdida) || 0;
+  const basePct =
+    calcGeneral.basePctUsada === 'perdida' || calcGeneral.basePctUsada === 'perdida_total'
+      ? 'perdida'
+      : 'valor_asegurado';
+  const pctElegido = basePct === 'perdida' ? montoPctPerdida : montoPctVa;
   const pctGeneral =
     noAplica || tieneArticulos ? 0 : Number(calcGeneral.deduciblePorcentaje) || 0;
   const montoPctOVa = tieneArticulos
     ? Number.isFinite(artN)
       ? artN
       : 0
-    : pctGeneral;
+    : pctElegido > 0
+      ? pctElegido
+      : pctGeneral;
   const bruto = Math.max(smmlv, montoPctOVa);
   const tope = Math.max(0, Number(topePerdida) || 0);
   // Por artículo: mostrar el deducible de la tabla/cálculo completo.
@@ -570,10 +577,6 @@ export function aplicarMayorEntreSmmlvYPctOVa({
   );
   const ganaSmmlv = !tieneArticulos && smmlv > montoPctOVa;
   const tipoMinimo = calcGeneral.tipoMinimo || 'SMMLV';
-  const basePct =
-    calcGeneral.basePctUsada === 'perdida' || calcGeneral.basePctUsada === 'perdida_total'
-      ? 'perdida'
-      : 'valor_asegurado';
   let tipoGanador = '%';
   let tipoGanadorLabel = '%';
   if (tieneArticulos) {
