@@ -69,6 +69,16 @@ export default function LiquidadorPrevisora({
     setLiquidador(liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {}));
   }, [casoPrevisora?._id]);
 
+  useEffect(() => {
+    if (!liquidadorInicial?.evaluacionSismicaNSR10 || liquidadorInicial.nsrOmitido) return;
+    setLiquidador((prev) => {
+      if (contarItemsPresupuestoNsr(prev) >= contarItemsPresupuestoNsr(liquidadorInicial)) {
+        return prev;
+      }
+      return liquidadorInicial;
+    });
+  }, [liquidadorInicial]);
+
   const totales = useMemo(() => calcularLiquidacionPrevisora(liquidador), [liquidador]);
   const enc = liquidador.encabezado || {};
   const tieneCotizacionPdf = Boolean(

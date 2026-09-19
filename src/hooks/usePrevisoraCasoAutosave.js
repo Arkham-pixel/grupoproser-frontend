@@ -7,8 +7,67 @@ import {
   guardarLiquidadorEnCasoPrevisora,
 } from '../services/previsoraService.js';
 import { liquidadorParaPersistir } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { normalizarTipoInformePrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
 
 const TAB_INFORME = 'informe';
+
+/** Comparación barata: evita JSON.stringify de base64 y del checklist NSR-10. */
+function snapDataParaComparar(tipo, data) {
+  if (!data || typeof data !== 'object') return '';
+  if (tipo === 'informe') {
+    const {
+      imagenMapa,
+      fotosInspeccion,
+      fotosCotizacion,
+      filasPolizaCobertura,
+      actaAjustadorFirmaImagen,
+      firmaAjustador,
+      ...rest
+    } = data;
+    const firmaLen = (v) =>
+      typeof v === 'string' && v ? `len:${v.length}:${v.slice(0, 16)}` : '';
+    return JSON.stringify({
+      ...rest,
+      imagenMapa: firmaLen(imagenMapa),
+      actaAjustadorFirmaImagen: firmaLen(actaAjustadorFirmaImagen),
+      firmaAjustador: firmaLen(firmaAjustador),
+      fotosInspeccion: (Array.isArray(fotosInspeccion) ? fotosInspeccion : []).map(
+        (f) => f?._id || f?.ruta || f?.nombreOriginal || f?.nombre || ''
+      ),
+      fotosCotizacion: (Array.isArray(fotosCotizacion) ? fotosCotizacion : []).map(
+        (f) => f?._id || f?.ruta || f?.page || ''
+      ),
+      filasPolizaCobertura: (Array.isArray(filasPolizaCobertura)
+        ? filasPolizaCobertura
+        : []
+      ).map(
+        (f) =>
+          `${f?.concepto || ''}|${String(f?.analisis || '').length}|${String(f?.conclusion || '').length}`
+      ),
+    });
+  }
+  return JSON.stringify({
+    modelo: data.modelo,
+    observaciones: data.observaciones,
+    encabezado: data.encabezado,
+    nItemsNsr: Array.isArray(data.evaluacionSismicaNSR10?.presupuesto?.items)
+      ? data.evaluacionSismicaNSR10.presupuesto.items.length
+      : 0,
+    nContenidos: Array.isArray(data.evaluacionSismicaNSR10?.contenidos?.items)
+      ? data.evaluacionSismicaNSR10.contenidos.items.length
+      : 0,
+    cotizacionPdf: data.cotizacionPdf
+      ? {
+          archivoPdf: data.cotizacionPdf.archivoPdf?._id || data.cotizacionPdf.archivoPdf || null,
+          paginas: Array.isArray(data.cotizacionPdf.paginas)
+            ? data.cotizacionPdf.paginas.length
+            : 0,
+        }
+      : null,
+    liquidacionCatastrofico: data.liquidacionCatastrofico,
+    otrosAmparos: Array.isArray(data.otrosAmparos) ? data.otrosAmparos.length : 0,
+  });
+}
 
 /**
  * Autoguardado del workspace Previsora (liquidador / informe)
@@ -49,7 +108,7 @@ export default function usePrevisoraCasoAutosave({
 
     const scheduleSave = (payload) => {
       if (!payload?.data) return;
-      const snap = JSON.stringify(payload.data);
+      const snap = snapDataParaComparar(payload.tipo, payload.data);
       const isInf = payload.tipo === 'informe';
       const prevSnap = isInf ? lastInfSnap.current : lastLiqSnap.current;
 
@@ -88,7 +147,7 @@ export default function usePrevisoraCasoAutosave({
               informeUnico: payload.data,
               casoBase: base,
             });
-            lastInfSnap.current = JSON.stringify(payload.data);
+            lastInfSnap.current = snapDataParaComparar(payload.tipo, payload.data);
           } else {
             actualizado = await guardarLiquidador({
               casoId,
@@ -99,7 +158,7 @@ export default function usePrevisoraCasoAutosave({
               totales: payload.totales || {},
               casoBase: base,
             });
-            lastLiqSnap.current = JSON.stringify(payload.data);
+            lastLiqSnap.current = snapDataParaComparar(payload.tipo, payload.data);
           }
           onCasoActualizado?.(actualizado);
           setAutosaveUiStatus({
@@ -120,8 +179,16 @@ export default function usePrevisoraCasoAutosave({
       timers.push(timer);
     };
 
-    // Siempre vigilar liquidador (también desde tab informe con modoLiquidador)
-    if (liquidadorState) {
+    const tipoInforme = normalizarTipoInformePrevisora(
+      informeState?.tipoInforme,
+      'unico'
+    );
+    const liquidadorUsable =
+      liquidadorState &&
+      !liquidadorState.nsrOmitido &&
+      !(tabActivo === TAB_INFORME && tipoInforme === 'preliminar');
+
+    if (liquidadorUsable) {
       scheduleSave({
         tipo: 'liquidador',
         data: liquidadorState,
@@ -163,7 +230,7 @@ export default function usePrevisoraCasoAutosave({
             informeUnico: payload.data,
             casoBase: base,
           });
-          lastInfSnap.current = JSON.stringify(payload.data);
+          lastInfSnap.current = snapDataParaComparar(payload.tipo, payload.data);
         } else {
           actualizado = await guardarLiquidador({
             casoId,
@@ -174,7 +241,7 @@ export default function usePrevisoraCasoAutosave({
             totales: payload.totales || {},
             casoBase: base,
           });
-          lastLiqSnap.current = JSON.stringify(payload.data);
+          lastLiqSnap.current = snapDataParaComparar(payload.tipo, payload.data);
         }
         onCasoActualizado?.(actualizado);
         setAutosaveUiStatus({

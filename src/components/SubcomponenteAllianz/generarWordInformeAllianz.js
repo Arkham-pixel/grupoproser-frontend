@@ -52,6 +52,7 @@ import {
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -77,6 +78,9 @@ const bordesEncabezado = {
 };
 
 const FONT = 'Arial';
+/** Compactar fotos iPhone para que Packer no se caiga en equipos más livianos. */
+const FOTO_WORD_MAX_LADO = 960;
+const FOTO_WORD_CALIDAD = 0.72;
 /** Tamaño Word: half-points → 24 = 12 pt */
 const SIZE_12 = 24;
 const SIZE_META = 20;
@@ -101,8 +105,11 @@ const NSR_COLS = {
 };
 const NSR_TABLE_W = NSR_COLS.widths.reduce((a, b) => a + b, 0);
 
+const textoWord = (v) =>
+  String(v ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '');
+
 const txt = (v, fallback = '—') => {
-  const s = String(v ?? '').trim();
+  const s = textoWord(v).trim();
   if (!s || s === 'null' || s === 'undefined') return fallback;
   return s;
 };
@@ -314,7 +321,7 @@ const p = (text, opts = {}) =>
     spacing: { before: opts.before ?? 0, after: opts.after ?? 80 },
     children: [
       new TextRun({
-        text: String(text ?? ''),
+        text: textoWord(text),
         font: FONT,
         size: opts.size || SIZE_12,
         bold: !!opts.bold,
@@ -642,19 +649,123 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
   });
 }
 
+function esPngBytes(u8) {
+  return Boolean(u8 && u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50);
+}
+
+function esJpgBytes(u8) {
+  return Boolean(u8 && u8.length > 3 && u8[0] === 0xff && u8[1] === 0xd8);
+}
+
+function headersFetchImagen(url) {
+  try {
+    const origen = typeof window !== 'undefined' ? window.location.origin : '';
+    const u = new URL(url, origen || 'http://localhost');
+    const esApi = u.pathname.includes('/api/') || (origen && u.origin === origen);
+    if (!esApi) return {};
+  } catch {
+    /* url relativa */
+  }
+  if (typeof localStorage === 'undefined') return {};
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function jpegCompactoParaWord(bytes) {
+  if (!bytes || !bytes.length) return null;
+  return new Promise((resolve) => {
+    try {
+      const blob = new Blob([bytes], {
+        type: esPngBytes(bytes) ? 'image/png' : 'image/jpeg',
+      });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (!w || !h) {
+            URL.revokeObjectURL(url);
+            resolve(null);
+            return;
+          }
+          const scale = Math.min(1, FOTO_WORD_MAX_LADO / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            URL.revokeObjectURL(url);
+            resolve(null);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(
+            async (out) => {
+              URL.revokeObjectURL(url);
+              if (!out) {
+                resolve(null);
+                return;
+              }
+              resolve(new Uint8Array(await out.arrayBuffer()));
+            },
+            'image/jpeg',
+            FOTO_WORD_CALIDAD
+          );
+        } catch {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function normalizarBytesImagenWord(bytes) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  if (!u8.length) return null;
+  let out = u8;
+  try {
+    out = await jpegDesdeBytesImagen(u8);
+  } catch {
+    out = u8;
+  }
+  if (!esPngBytes(out) && !esJpgBytes(out)) {
+    const compacto = await jpegCompactoParaWord(out);
+    if (compacto && esJpgBytes(compacto)) return { bytes: compacto, type: 'jpg' };
+    return null;
+  }
+  return { bytes: out, type: esPngBytes(out) ? 'png' : 'jpg' };
+}
+
+async function bytesDesdeFotoParaInforme(foto = {}, urlFn) {
+  const img = await bytesDesdeFoto(foto, urlFn);
+  if (!img) return null;
+  if (img.type === 'jpg' && img.bytes.length <= 100 * 1024) return img;
+  const compacto = await jpegCompactoParaWord(img.bytes);
+  if (compacto && compacto.length && compacto.length < img.bytes.length) {
+    return { bytes: compacto, type: 'jpg' };
+  }
+  return img;
+}
+
 async function fetchImageBytes(url) {
   try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const response = await fetch(url, { headers: headersFetchImagen(url) });
     if (!response.ok) return null;
     const blob = await response.blob();
     if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') return null;
     const buf = await blob.arrayBuffer();
-    const u8 = new Uint8Array(buf);
-    const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
-    return { bytes: u8, type: isPng || blob.type.includes('png') ? 'png' : 'jpg' };
+    return normalizarBytesImagenWord(new Uint8Array(buf));
   } catch {
     return null;
   }
@@ -664,18 +775,14 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
   try {
     if (foto?.file instanceof Blob) {
       const buf = await foto.file.arrayBuffer();
-      const u8 = new Uint8Array(buf);
-      const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
-      return { bytes: u8, type: isPng ? 'png' : 'jpg' };
+      return normalizarBytesImagenWord(new Uint8Array(buf));
     }
     if (typeof foto?.preview === 'string' && (foto.preview.startsWith('blob:') || foto.preview.startsWith('data:'))) {
       const resp = await fetch(foto.preview);
       if (resp.ok) {
         const blob = await resp.blob();
         const buf = await blob.arrayBuffer();
-        const u8 = new Uint8Array(buf);
-        const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
-        return { bytes: u8, type: isPng ? 'png' : 'jpg' };
+        return normalizarBytesImagenWord(new Uint8Array(buf));
       }
     }
   } catch {
@@ -708,7 +815,19 @@ async function imagenDesdeDataUrl(dataUrl) {
     tipo = ext === 'jpg' || ext === 'jpeg' ? 'jpg' : ext === 'webp' ? 'png' : ext;
   }
   try {
-    const data = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)).buffer;
+    const u8 = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+    const normalizado = await normalizarBytesImagenWord(u8);
+    if (!normalizado) return null;
+    let bytes = normalizado.bytes;
+    tipo = normalizado.type;
+    if (bytes.length > 120 * 1024) {
+      const compacto = await jpegCompactoParaWord(bytes);
+      if (compacto && compacto.length) {
+        bytes = compacto;
+        tipo = 'jpg';
+      }
+    }
+    const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     let width = 220;
     let height = 90;
     try {
@@ -1277,7 +1396,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     const descripcionFoto = String(
       archivo.descripcion || archivo.observacion || archivo.comentario || ''
     ).trim();
-    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoAllianz);
+    const img = await bytesDesdeFotoParaInforme(archivo, urlDescargaArchivoAllianz);
     if (!img) {
       fotoParrafos.push(
         p(`• ${nombreFoto} (no embebida)`, {
@@ -1350,7 +1469,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
   for (const archivo of fotosCotizacion) {
-    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoAllianz);
+    const img = await bytesDesdeFotoParaInforme(archivo, urlDescargaArchivoAllianz);
     if (!img) continue;
     cotizacionesIncluidas += 1;
     const natW = Number(archivo.width) || 0;
@@ -2106,7 +2225,16 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     sections: seccionesConEncabezadoUnico(sections, header),
   });
 
-  const blob = await Packer.toBlob(doc);
+  let blob;
+  try {
+    blob = await Packer.toBlob(doc);
+  } catch (err) {
+    throw new Error(
+      err?.message
+        ? `No se pudo armar el Word (${err.message})`
+        : 'No se pudo armar el Word. Recargue la página e intente de nuevo.'
+    );
+  }
   const prefijo = prefijoArchivoInformeAllianz(info.tipoInforme);
   const nombre = `${prefijo}_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,

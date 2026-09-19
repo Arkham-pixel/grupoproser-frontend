@@ -318,6 +318,7 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
         fechaObjecion: form.fechaObjecion,
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
         fechaCasoParaPago: form.fechaCasoParaPago,
+        fechaFinalizado: form.fechaFinalizado,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -711,6 +712,13 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
               type="date"
               value={form.fechaCasoParaPago}
               onChange={setCampo('fechaCasoParaPago')}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.fields.fechaFinalizado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFinalizado}
+              onChange={setCampo('fechaFinalizado')}
             />
           </Campo>
           <Campo label={t('equidadCat.fields.diasEnEstado')}>

@@ -10,6 +10,7 @@ export const ESTADOS_EQUIDAD_CAT = [
   'OBJECIÓN',
   'AUTORIZACIÓN ANALISTA',
   'CASO PARA PAGO',
+  'FINALIZADO',
 ];
 
 export const MODALIDADES_EQUIDAD_CAT = ['CAMPO', 'VIDEOPERITAJE'];
@@ -22,6 +23,7 @@ export const FECHA_ACCION_POR_ESTADO_EQUIDAD_CAT = {
   OBJECIÓN: 'fechaObjecion',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
   'CASO PARA PAGO': 'fechaCasoParaPago',
+  FINALIZADO: 'fechaFinalizado',
 };
 
 export const CAMPOS_FECHA_ACCION_EQUIDAD_CAT = [
@@ -33,6 +35,7 @@ export const CAMPOS_FECHA_ACCION_EQUIDAD_CAT = [
   'fechaObjecion',
   'fechaAutorizacionAnalista',
   'fechaCasoParaPago',
+  'fechaFinalizado',
 ];
 
 const ESTADOS_EQUIDAD_CAT_LEGACY = {
@@ -542,6 +545,7 @@ export const FORM_VACIO_EQUIDAD_CAT = {
   fechaObjecion: '',
   fechaAutorizacionAnalista: '',
   fechaCasoParaPago: '',
+  fechaFinalizado: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',

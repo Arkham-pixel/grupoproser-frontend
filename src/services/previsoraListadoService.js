@@ -132,9 +132,10 @@ export const actualizarCasoPrevisoraListado = async (id, datos) => {
   return normalizePrevisoraListadoItem(payload?.data ?? payload);
 };
 
-export const getCasoPrevisoraListadoById = async (id) => {
+export const getCasoPrevisoraListadoById = async (id, { nsr = false } = {}) => {
   if (!id) throw new Error('Identificador de caso no válido');
   const qs = new URLSearchParams({ _t: Date.now() });
+  if (nsr) qs.set('nsr', '1');
   const response = await fetch(`${API_URL}/${id}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
@@ -150,6 +151,12 @@ const omitirMeta = (casoBase = {}) => {
   delete payload.createdAt;
   delete payload.updatedAt;
   delete payload.archivos;
+  delete payload.tieneInforme;
+  delete payload.tieneInformeLleno;
+  delete payload.tieneLiquidador;
+  delete payload.nArchivos;
+  delete payload.diasEnEstado;
+  delete payload.ultimaGestion;
   return payload;
 };
 
@@ -177,8 +184,10 @@ export const guardarInformeUnicoEnCasoPrevisoraListado = async ({
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
+  const payload = omitirMeta(casoBase);
+  delete payload.liquidador;
   return actualizarCasoPrevisoraListado(casoId, {
-    ...omitirMeta(casoBase),
+    ...payload,
     informeUnico: sanitizarInformeUnicoPrevisora(informeUnico || {}),
   });
 };

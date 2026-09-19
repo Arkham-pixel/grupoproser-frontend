@@ -557,7 +557,12 @@ export default function InformeUnicoAllianz({
       }
     } catch (err) {
       console.error(err);
-      setError(t('allianz.reportUnique.wordError'));
+      const detalle = String(err?.message || '').trim();
+      setError(
+        detalle && detalle !== t('allianz.reportUnique.wordError')
+          ? `${t('allianz.reportUnique.wordError')} ${detalle}`
+          : t('allianz.reportUnique.wordError')
+      );
     } finally {
       setDescargando(false);
     }

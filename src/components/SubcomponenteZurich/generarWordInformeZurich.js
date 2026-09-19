@@ -1480,6 +1480,10 @@ function tablaLiquidadorUnicoZurich({
   if (otros.filas.length) {
     resumen.push(['GASTOS SIN DEDUCIBLE', money(otros.total)]);
     otros.filas.forEach((f) => resumen.push([f.label, money(f.valor)]));
+    resumen.push([
+      'TOTAL ESTIMADO + GASTOS SIN DEDUCIBLE',
+      money((Number(totalesFooter.total) || 0) + otros.total),
+    ]);
   }
   const wLabel = w.slice(0, 6).reduce((a, b) => a + b, 0);
   resumen.forEach(([lab, val]) => {

@@ -14555,6 +14555,7 @@
       "fechaObjecion": "OBJECTION date",
       "fechaAutorizacionAnalista": "ANALYST AUTHORIZATION date",
       "fechaCasoParaPago": "READY FOR PAYMENT date",
+      "fechaFinalizado": "COMPLETED date",
       "diasEnEstado": "Days in status",
       "ultimaGestion": "Last action",
       "documentoFaltante": "Missing document",

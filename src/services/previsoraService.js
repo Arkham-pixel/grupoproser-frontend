@@ -120,9 +120,12 @@ export const fetchAllCasosPrevisora = async (batchSize = 2000, opciones = {}) =>
   return acumulado;
 };
 
-export const getCasoPrevisoraById = async (id) => {
+export const getCasoPrevisoraById = async (id, { nsr = false } = {}) => {
   if (!id) throw new Error('Identificador de caso Previsora no válido');
-  const response = await fetch(`${PREVISORA_API_URL}/${id}`, { headers: authHeaders() });
+  const qs = new URLSearchParams();
+  if (nsr) qs.set('nsr', '1');
+  const url = qs.toString() ? `${PREVISORA_API_URL}/${id}?${qs}` : `${PREVISORA_API_URL}/${id}`;
+  const response = await fetch(url, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error al obtener el caso (${response.status})`);
@@ -378,6 +381,7 @@ export const guardarInformeUnicoEnCasoPrevisora = async ({
   delete payload.createdAt;
   delete payload.updatedAt;
   delete payload.archivos;
+  delete payload.liquidador;
 
   return actualizarCasoPrevisora(casoId, payload);
 };

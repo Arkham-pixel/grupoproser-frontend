@@ -128,6 +128,7 @@ const HEADER_MAP = {
   'FECHA LIQUIDADO': 'fechaLiquidado',
   'FECHA ACEPTACION LIQUIDACION': 'fechaAceptacionLiquidacion',
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
+  'FECHA FINALIZADO': 'fechaFinalizado',
   ESTADO: 'estado',
   'ESTADO FINAL': 'estado',
   'SEVERIDAD CAT': 'severidadCat',
@@ -254,6 +255,7 @@ const CAMPOS_FECHA = new Set([
   'fechaObjecion',
   'fechaAutorizacionAnalista',
   'fechaCasoParaPago',
+  'fechaFinalizado',
 ]);
 
 const HEADERS_QUE_NO_SON_DATOS = new Set([

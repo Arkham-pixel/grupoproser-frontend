@@ -36,7 +36,6 @@ import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { contarItemsPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
-import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import SelectorTipoInformePrevisora from './SelectorTipoInformePrevisora.jsx';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import {
@@ -44,10 +43,32 @@ import {
   montoCotizacionPdf,
   usaCotizacionComoBasePresupuesto,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { scoreInformeLlenoPrevisora } from './previsoraHelpers.js';
 
 const ChecklistEvaluacionSismicaNSR10 = lazy(() =>
   import('../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx')
 );
+const MapaGoogleEarth = lazy(() => import('../MapaGoogleEarth.jsx'));
+
+class MapaInformeErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <p className="p-4 text-sm text-gray-500">
+          El mapa no se pudo cargar. El resto del informe sigue disponible.
+        </p>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -160,11 +181,17 @@ export default function InformeUnicoPrevisora({
   const [descargando, setDescargando] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
-  const totales = useMemo(() => calcularLiquidacionPrevisora(liquidador), [liquidador]);
-  const criterio = totales.criterio || {};
   const tipoInforme = normalizarTipoInformePrevisora(informe.tipoInforme, 'unico');
   const esPreliminar = tipoInforme === 'preliminar';
   const esFinal = tipoInforme === 'final';
+  const totales = useMemo(
+    () =>
+      esPreliminar || liquidador?.nsrOmitido
+        ? {}
+        : calcularLiquidacionPrevisora(liquidador),
+    [liquidador, esPreliminar]
+  );
+  const criterio = totales.criterio || {};
   const tieneCotizacionPdf = Boolean(
     (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
@@ -176,8 +203,9 @@ export default function InformeUnicoPrevisora({
   const nFirmas = esPreliminar ? 6 : 8;
   const reservaMostrada = useMemo(() => reservaSugeridaPrevisora(informe), [informe]);
   const formDataNsr = useMemo(
-    () => formDataNsrDesdeLiquidadorPrevisora(liquidador, casoPrevisora || {}),
-    [liquidador, casoPrevisora]
+    () =>
+      esPreliminar ? {} : formDataNsrDesdeLiquidadorPrevisora(liquidador, casoPrevisora || {}),
+    [liquidador, casoPrevisora, esPreliminar]
   );
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
@@ -213,7 +241,10 @@ export default function InformeUnicoPrevisora({
 
   useEffect(() => {
     const caso = casoPrevisora || {};
-    const liq = liquidadorInicial || mapcasoPrevisoraALiquidador(caso);
+    const tipo = normalizarTipoInformePrevisora(caso?.informeUnico?.tipoInforme, 'unico');
+    const liq =
+      liquidadorInicial ||
+      (tipo === 'preliminar' ? { encabezado: {} } : mapcasoPrevisoraALiquidador(caso));
     const base = defaultInformeUnicoPrevisora(caso);
     setInforme({
       ...base,
@@ -228,14 +259,57 @@ export default function InformeUnicoPrevisora({
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
+    if (!liquidadorInicial?.evaluacionSismicaNSR10 || liquidadorInicial.nsrOmitido) return;
+    setLiquidador((prev) => {
+      if (prev?.evaluacionSismicaNSR10 && !prev.nsrOmitido) return prev;
+      return liquidadorInicial;
+    });
+  }, [liquidadorInicial]);
+
+  const huellaInformeServidor = casoPrevisora?.informeUnico
+    ? [
+        casoPrevisora.informeUnico.tipoInforme || '',
+        String(casoPrevisora.informeUnico.descripcionDanios || '').length,
+        String(casoPrevisora.informeUnico.conclusiones || '').length,
+        Array.isArray(casoPrevisora.informeUnico.fotosInspeccion)
+          ? casoPrevisora.informeUnico.fotosInspeccion.length
+          : 0,
+      ].join('|')
+    : '';
+
+  useEffect(() => {
+    if (!casoPrevisora?.informeUnico) return;
+    setInforme((prev) => {
+      const incoming = defaultInformeUnicoPrevisora(casoPrevisora);
+      if (scoreInformeLlenoPrevisora(prev) >= scoreInformeLlenoPrevisora(incoming)) {
+        return prev;
+      }
+      return {
+        ...incoming,
+        filasPolizaCobertura: completarFilasPolizaCoberturaPrevisora(
+          incoming.filasPolizaCobertura,
+          {
+            caso: casoPrevisora,
+            encabezado: liquidador?.encabezado,
+            informe: incoming,
+            liquidador,
+          }
+        ),
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoPrevisora?._id, huellaInformeServidor]);
+
+  useEffect(() => {
     onEstadoChange?.(informe);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [informe]);
 
   useEffect(() => {
+    if (esPreliminar) return;
     onLiquidadorChange?.(liquidador, totales);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liquidador, totales]);
+  }, [liquidador, totales, esPreliminar]);
 
   const setCampo = (campo, valor) => {
     setInforme((prev) => {
@@ -251,9 +325,7 @@ export default function InformeUnicoPrevisora({
   const elegirTipoInforme = (tipo) => {
     const nextTipo = normalizarTipoInformePrevisora(tipo, tipoInforme);
     if (nextTipo === tipoInforme) return;
-    const next = { ...informe, tipoInforme: nextTipo };
-    setInforme(next);
-    onGuardarEnCaso?.(next);
+    setInforme((prev) => ({ ...prev, tipoInforme: nextTipo }));
   };
 
   const setFila = (campo, idx, key, valor) => {
@@ -497,14 +569,24 @@ export default function InformeUnicoPrevisora({
           </Campo>
 
           <div className="mt-3 min-h-[320px] overflow-hidden rounded-lg">
-            <MapaGoogleEarth
-              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-              coordenadasIniciales={informe.coordenadasRiesgo}
-              direccionInicial={informe.direccionRiesgo || casoPrevisora?.direccionPredio || ''}
-              capturaInicial={capturaMapaInicial || undefined}
-              forzarCaptura={forzarCapturaMapa}
-              onMapaChange={handleMapaChange}
-            />
+            <MapaInformeErrorBoundary>
+              <Suspense
+                fallback={
+                  <p className="flex min-h-[320px] items-center justify-center font-body text-sm text-gray-500">
+                    Cargando mapa…
+                  </p>
+                }
+              >
+                <MapaGoogleEarth
+                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                  coordenadasIniciales={informe.coordenadasRiesgo}
+                  direccionInicial={informe.direccionRiesgo || casoPrevisora?.direccionPredio || ''}
+                  capturaInicial={capturaMapaInicial || undefined}
+                  forzarCaptura={forzarCapturaMapa}
+                  onMapaChange={handleMapaChange}
+                />
+              </Suspense>
+            </MapaInformeErrorBoundary>
           </div>
           <p className="mt-2 font-body text-xs text-gray-500">
             {capturaMapaInicial

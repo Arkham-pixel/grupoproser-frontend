@@ -816,23 +816,21 @@ export default function ChecklistEvaluacionSismicaNSR10({
     Math.round(
       (Number(indemnizarPresupuestoVentana) + Number(indemnizarContenidosVentana)) * 100
     ) / 100;
+  const totalIndemnizarConGastos =
+    Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0
+      ? Number(diagrama.totalIndemnizar) || 0
+      : sumaAIndemnizarVentanas;
 
   useEffect(() => {
     if (!modoLiquidador) return;
     if (omitirSincronizarIndemnizacion) return;
     const actual = String(formData.indemnizacionSugerida ?? '').trim();
-    const siguiente = String(
-      Math.round(
-        (Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0
-          ? diagrama.totalIndemnizar
-          : sumaAIndemnizarVentanas) || 0
-      )
-    );
+    const siguiente = String(Math.round(totalIndemnizarConGastos || 0));
     if (actual !== siguiente) {
       onInputChange({ indemnizacionSugerida: siguiente });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modoLiquidador, diagrama.totalIndemnizar, sumaAIndemnizarVentanas]);
+  }, [modoLiquidador, diagrama.totalIndemnizar, sumaAIndemnizarVentanas, totalIndemnizarConGastos]);
 
   const actualizarLiquidacion = (patch) => {
     onInputChange({
@@ -2793,7 +2791,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     Suma completa a indemnizar
                   </p>
                   <p className="text-lg font-bold text-emerald-600">
-                    {money(sumaAIndemnizarVentanas)}
+                    {money(totalIndemnizarConGastos)}
                   </p>
                 </div>
                 {Number(diagrama.gastosHospedaje) > 0 ? (
@@ -2821,12 +2819,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     Total a indemnizar
                   </p>
                   <p className="text-lg font-bold text-emerald-600">
-                    {money(
-                      Number(diagrama.gastosHospedaje) > 0 ||
-                        Number(diagrama.totalOtrosAmparos) > 0
-                        ? diagrama.totalIndemnizar
-                        : sumaAIndemnizarVentanas
-                    )}
+                    {money(totalIndemnizarConGastos)}
                   </p>
                 </div>
               </div>
@@ -3779,12 +3772,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     Total a indemnizar
                   </p>
                   <p className="text-lg font-bold text-emerald-600">
-                    {money(
-                      Number(diagrama.gastosHospedaje) > 0 ||
-                        Number(diagrama.totalOtrosAmparos) > 0
-                        ? diagrama.totalIndemnizar
-                        : sumaAIndemnizarVentanas
-                    )}
+                    {money(totalIndemnizarConGastos)}
                   </p>
                 </div>
               </div>

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaEdit, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaFolderOpen, FaSave } from 'react-icons/fa';
 import InformeUnicoSegurosSura from './InformeUnicoSegurosSura.jsx';
 import FormularioCasoSura from './FormularioCasoSura.jsx';
+import ArchiveroSegurosSura from './ArchiveroSegurosSura.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -35,6 +36,7 @@ export default function InformeUnicoSegurosSuraPage() {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [gestionarAbierto, setGestionarAbierto] = useState(false);
+  const [archiveroAbierto, setArchiveroAbierto] = useState(false);
 
   const casoId = casoSura?._id || casoIdFromQuery || null;
 
@@ -135,6 +137,23 @@ export default function InformeUnicoSegurosSuraPage() {
             {casoId && (
               <button
                 type="button"
+                className={expressBtnGhost}
+                onClick={async () => {
+                  try {
+                    const fresco = await getCasoSuraById(casoId);
+                    setCasoSura(fresco);
+                  } catch {
+                    /* se abre con lo que hay en memoria */
+                  }
+                  setArchiveroAbierto(true);
+                }}
+              >
+                <FaFolderOpen /> {t('segurosSura.report.archive')}
+              </button>
+            )}
+            {casoId && (
+              <button
+                type="button"
                 className={expressBtnPrimary}
                 disabled={guardando || !informeState}
                 onClick={() => handleGuardar()}
@@ -211,6 +230,22 @@ export default function InformeUnicoSegurosSuraPage() {
               }}
             />
           </div>
+        </ExpressModal>
+      )}
+      {archiveroAbierto && casoSura && (
+        <ExpressModal
+          open
+          onClose={() => setArchiveroAbierto(false)}
+          title={t('segurosSura.archive.title')}
+          wide
+        >
+          <ArchiveroSegurosSura
+            caso={casoSura}
+            onClose={() => setArchiveroAbierto(false)}
+            onChanged={(actualizado) => {
+              setCasoSura((prev) => ({ ...(prev || {}), ...(actualizado || {}) }));
+            }}
+          />
         </ExpressModal>
       )}
     </div>

@@ -13,15 +13,19 @@ import {
   listarFacilitadoresSura,
   sugerirFacilitadoresDesdeArnald,
 } from '../../services/suraFacilitadoresService.js';
-import { formatDate, fechaParaInput } from './segurosSuraHelpers.js';
+import { fechaParaInput } from './segurosSuraHelpers.js';
 import {
   CRITERIOS_FACILITADOR,
   deduplicarFilasFacilitadores,
   descargarPlantillaFacilitadores,
   erroresFilaPortal,
+  fechaOFaltaGestionar,
   filaParaInput,
-  normalizarSinoNa,
   parsearPlantillaFacilitadores,
+  sinoConDefault,
+  textoOFaltaGestionar,
+  TEXTO_FALTA_GESTIONAR,
+  TIPOS_VIVIENDA_FACILITADOR,
 } from './suraFacilitadoresHelpers.js';
 import {
   expressBadge,
@@ -46,9 +50,9 @@ const navActive =
 const inputSm =
   'w-full min-w-[7rem] rounded-md border border-gray-200 bg-white px-2 py-1.5 font-body text-xs text-gray-800 dark:border-gray-700 dark:bg-[#0F0F0F] dark:text-gray-200';
 
-/** Solo Visita se edita con chulo / X; se guarda al hacer clic. */
+/** Solo Visita se edita con chulo / X; vacío se trata como NO. */
 function MarcaVisitaEditable({ value, disabled, onPick }) {
-  const v = normalizarSinoNa(value, { permitirNA: false });
+  const v = sinoConDefault(value, { permitirNA: false });
   const btn = (marca, activeClass, Icon, title) => {
     const activo = v === marca;
     return (
@@ -74,7 +78,13 @@ function MarcaVisitaEditable({ value, disabled, onPick }) {
 }
 
 function Dato({ children }) {
-  if (children == null || children === '') return null;
+  if (children == null || children === '') {
+    return (
+      <span className="font-body text-xs text-amber-700 dark:text-amber-400">
+        {TEXTO_FALTA_GESTIONAR}
+      </span>
+    );
+  }
   return (
     <span className="font-body text-xs text-gray-800 dark:text-gray-200">
       {String(children)}
@@ -361,26 +371,29 @@ export default function ReporteFacilitadoresSura() {
                   <th className="px-3 py-3 text-left">Fecha visita</th>
                   <th className="px-3 py-3 text-left">Criterio</th>
                   <th className="px-3 py-3 text-left">Último comentario</th>
-                  <th className="px-3 py-3 text-left">Informe</th>
-                  <th className="px-3 py-3 text-left">Fecha informe</th>
+                  <th className="px-3 py-3 text-left">Inf. preliminar</th>
+                  <th className="px-3 py-3 text-left">Fecha prelim.</th>
+                  <th className="px-3 py-3 text-left">Inf. final</th>
+                  <th className="px-3 py-3 text-left">Fecha final</th>
                   <th className="px-3 py-3 text-left">Docs</th>
                   <th className="px-3 py-3 text-left">Fecha docs</th>
                   <th className="px-3 py-3 text-left">Cerrado</th>
                   <th className="px-3 py-3 text-left">Fecha cierre</th>
                   <th className="px-3 py-3 text-left">Estado</th>
+                  <th className="px-3 py-3 text-left">Tipo vivienda</th>
                   <th className="px-3 py-3 text-left">Portal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={15} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={18} className="px-4 py-8 text-center text-sm text-gray-500">
                       Cargando plantilla…
                     </td>
                   </tr>
                 ) : visibles.length === 0 ? (
                   <tr>
-                    <td colSpan={15} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={18} className="px-4 py-8 text-center text-sm text-gray-500">
                       {filas.length
                         ? 'No hay filas con esos filtros.'
                         : 'Cargue la plantilla SURA o actualice desde los casos.'}
@@ -399,12 +412,10 @@ export default function ReporteFacilitadoresSura() {
                           {fila.reclamacion}
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>{formatDate(fila.fechaAsignacion)}</Dato>
+                          <Dato>{fechaOFaltaGestionar(fila.fechaAsignacion)}</Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>
-                            {formatDate(fila.fechaPrimerContacto)}
-                          </Dato>
+                          <Dato>{fechaOFaltaGestionar(fila.fechaPrimerContacto)}</Dato>
                         </td>
                         <td className="px-3 py-3">
                           <MarcaVisitaEditable
@@ -414,7 +425,7 @@ export default function ReporteFacilitadoresSura() {
                           />
                         </td>
                         <td className="px-3 py-3">
-                          {normalizarSinoNa(fila.visitaRealizada, { permitirNA: false }) === 'SI' ? (
+                          {sinoConDefault(fila.visitaRealizada, { permitirNA: false }) === 'SI' ? (
                             <input
                               type="date"
                               className={inputSm}
@@ -436,16 +447,16 @@ export default function ReporteFacilitadoresSura() {
                               }}
                             />
                           ) : (
-                            <Dato>{''}</Dato>
+                            <Dato>{fechaOFaltaGestionar(fila.fechaVisita)}</Dato>
                           )}
                         </td>
                         <td className="px-3 py-3">
                           <select
                             className={inputSm}
                             disabled={busyRow}
-                            value={fila.criterioDetalle || ''}
+                            value={fila.criterioDetalle || 'Medio'}
                             onChange={(e) => {
-                              const criterioDetalle = e.target.value;
+                              const criterioDetalle = e.target.value || 'Medio';
                               setFilas((prev) =>
                                 prev.map((f) =>
                                   f._id === fila._id ? { ...f, criterioDetalle } : f
@@ -454,7 +465,6 @@ export default function ReporteFacilitadoresSura() {
                               void guardarDetalleVisita(fila._id, { criterioDetalle });
                             }}
                           >
-                            <option value=""></option>
                             {CRITERIOS_FACILITADOR.map((c) => (
                               <option key={c.value} value={c.value}>
                                 {c.label}
@@ -463,30 +473,62 @@ export default function ReporteFacilitadoresSura() {
                           </select>
                         </td>
                         <td className="max-w-[14rem] px-3 py-3">
-                          <Dato>{fila.ultimoComentario}</Dato>
-                        </td>
-                        <td className="px-3 py-3">
-                          <Dato>{normalizarSinoNa(fila.informeEnviado, { permitirNA: false }) || ''}</Dato>
-                        </td>
-                        <td className="px-3 py-3">
-                          <Dato>{formatDate(fila.fechaInforme)}</Dato>
-                        </td>
-                        <td className="px-3 py-3">
-                          <Dato>{normalizarSinoNa(fila.documentacionCompleta, { permitirNA: false }) || ''}</Dato>
-                        </td>
-                        <td className="px-3 py-3">
-                          <Dato>{formatDate(fila.fechaDocumentacionCompleta)}</Dato>
+                          <Dato>{textoOFaltaGestionar(fila.ultimoComentario)}</Dato>
                         </td>
                         <td className="px-3 py-3">
                           <Dato>
-                            {normalizarSinoNa(fila.casoCerrado, { permitirNA: false }) || ''}
+                            {sinoConDefault(fila.informePreliminarEnviado, { permitirNA: false })}
                           </Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>{formatDate(fila.fechaCierre)}</Dato>
+                          <Dato>{fechaOFaltaGestionar(fila.fechaInformePreliminar)}</Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <Dato>{fila.estadoSiniestro}</Dato>
+                          <Dato>{sinoConDefault(fila.informeEnviado, { permitirNA: false })}</Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Dato>{fechaOFaltaGestionar(fila.fechaInforme)}</Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Dato>
+                            {sinoConDefault(fila.documentacionCompleta, { permitirNA: false })}
+                          </Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Dato>{fechaOFaltaGestionar(fila.fechaDocumentacionCompleta)}</Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Dato>{sinoConDefault(fila.casoCerrado, { permitirNA: false })}</Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Dato>{fechaOFaltaGestionar(fila.fechaCierre)}</Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Dato>
+                            {fila.estadoSiniestro || TEXTO_FALTA_GESTIONAR}
+                          </Dato>
+                        </td>
+                        <td className="px-3 py-3">
+                          <select
+                            className={inputSm}
+                            disabled={busyRow}
+                            value={fila.tipoVivienda || 'URBANA'}
+                            onChange={(e) => {
+                              const tipoVivienda = e.target.value || 'URBANA';
+                              setFilas((prev) =>
+                                prev.map((f) =>
+                                  f._id === fila._id ? { ...f, tipoVivienda } : f
+                                )
+                              );
+                              void guardarDetalleVisita(fila._id, { tipoVivienda });
+                            }}
+                          >
+                            {TIPOS_VIVIENDA_FACILITADOR.map((t) => (
+                              <option key={t.value} value={t.value}>
+                                {t.label}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-3 py-3 font-body text-xs">
                           {errs.length ? (

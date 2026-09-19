@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaEdit, FaFileExcel, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaFileExcel, FaFolderOpen, FaSave } from 'react-icons/fa';
 import LiquidadorSegurosSura from './LiquidadorSegurosSura.jsx';
 import InformeUnicoSegurosSura from './InformeUnicoSegurosSura.jsx';
 import InformeAgilSura from './InformeAgilSura.jsx';
 import FotosLiquidadorSura from './FotosLiquidadorSura.jsx';
 import SalvamentoSura from './SalvamentoSura.jsx';
 import FormularioCasoSura from './FormularioCasoSura.jsx';
+import ArchiveroSegurosSura from './ArchiveroSegurosSura.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -119,6 +120,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
   const [gestionarAbierto, setGestionarAbierto] = useState(false);
+  const [archiveroAbierto, setArchiveroAbierto] = useState(false);
 
   const casoId = casoSura?._id || casoIdFromQuery || null;
 
@@ -155,6 +157,18 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
       }
     }
     setGestionarAbierto(true);
+  };
+
+  const abrirArchivero = async () => {
+    if (casoId) {
+      try {
+        const fresco = await getCasoSuraById(casoId);
+        aplicarFichaAlWorkspace(fresco, casoSura);
+      } catch {
+        /* se abre con lo que hay en memoria */
+      }
+    }
+    setArchiveroAbierto(true);
   };
 
   const casoConSecciones = useCallback(
@@ -519,6 +533,15 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             {casoId && (
               <button
                 type="button"
+                className={expressBtnGhost}
+                onClick={() => abrirArchivero()}
+              >
+                <FaFolderOpen /> {t('segurosSura.report.archive')}
+              </button>
+            )}
+            {casoId && (
+              <button
+                type="button"
                 className={expressBtnSecondary}
                 disabled={exportando}
                 onClick={handleExcelAgil}
@@ -691,6 +714,22 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
               }}
             />
           </div>
+        </ExpressModal>
+      )}
+      {archiveroAbierto && casoSura && (
+        <ExpressModal
+          open
+          onClose={() => setArchiveroAbierto(false)}
+          title={t('segurosSura.archive.title')}
+          wide
+        >
+          <ArchiveroSegurosSura
+            caso={casoSura}
+            onClose={() => setArchiveroAbierto(false)}
+            onChanged={(actualizado) => {
+              setCasoSura((prev) => ({ ...(prev || {}), ...(actualizado || {}) }));
+            }}
+          />
         </ExpressModal>
       )}
       <ArnaldDraftChrome

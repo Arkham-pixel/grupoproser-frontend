@@ -24,7 +24,8 @@ import {
   guardarInformeUnicoEnCasoPrevisoraListado,
   guardarLiquidadorEnCasoPrevisoraListado,
 } from '../../services/previsoraListadoService.js';
-import { calcularLiquidacionPrevisora } from './liquidadorPrevisoraHelpers.js';
+import { calcularLiquidacionPrevisora, normalizarTipoInformePrevisora } from './liquidadorPrevisoraHelpers.js';
+import { fusionarCasoPrevisoraConservandoNsr } from './previsoraHelpers.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
@@ -195,6 +196,41 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     };
   }, [casoIdFromQuery, t, esModuloListado]);
 
+  const tipoInformeActivo = normalizarTipoInformePrevisora(
+    informeState?.tipoInforme || casoPrevisora?.informeUnico?.tipoInforme,
+    'unico'
+  );
+  const necesitaNsrCompleto =
+    tabActivo === TABS_PREVISORA.LIQUIDADOR ||
+    (tabActivo === TABS_PREVISORA.INFORME && tipoInformeActivo !== 'preliminar');
+
+  useEffect(() => {
+    if (!casoIdFromQuery || cargandoCaso || !necesitaNsrCompleto) return undefined;
+    if (!casoPrevisora?.liquidador?.nsrOmitido) return undefined;
+    let cancelado = false;
+    (async () => {
+      try {
+        const full = esModuloListado
+          ? await getCasoPrevisoraListadoById(casoIdFromQuery, { nsr: true })
+          : await getCasoPrevisoraById(casoIdFromQuery, { nsr: true });
+        if (cancelado || !full) return;
+        setCasoPrevisora((prev) => fusionarCasoPrevisoraConservandoNsr(prev, full) || full);
+        if (full.liquidador) setLiquidadorState(full.liquidador);
+      } catch {
+        /* el informe preliminar ya se puede usar sin el blob NSR-10 */
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [
+    casoIdFromQuery,
+    cargandoCaso,
+    necesitaNsrCompleto,
+    casoPrevisora?.liquidador?.nsrOmitido,
+    esModuloListado,
+  ]);
+
   useEffect(() => {
     if (casoIdFromQuery) return undefined;
     let cancelado = false;
@@ -269,7 +305,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     }
     const liquidador = liqArg || liquidadorState;
     const totales = totArg || totalesState || calcularLiquidacionPrevisora(liquidador || {});
-    if (!liquidador) {
+    if (!liquidador || liquidador.nsrOmitido) {
       setError(t('previsora.settlement.noData'));
       return;
     }
@@ -295,7 +331,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
               informeUnico: informeState || casoPrevisora?.informeUnico,
             },
           });
-      setCasoPrevisora(actualizado);
+      setCasoPrevisora((prev) => fusionarCasoPrevisoraConservandoNsr(prev, actualizado));
       setLiquidadorState(liquidador);
       try {
         const draftKey = `${esModuloListado ? 'previsora-listado-ws' : 'previsora-ws'}:${casoId}`;
@@ -353,7 +389,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
               liquidador: liquidadorState || casoPrevisora?.liquidador,
             },
           });
-      setCasoPrevisora(actualizado);
+      setCasoPrevisora((prev) => fusionarCasoPrevisoraConservandoNsr(prev, actualizado));
       setMensaje(t('previsora.reportUnique.savedMessage'));
       setAutosaveUiStatus({
         state: 'synced',
@@ -379,7 +415,8 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
   };
 
   const onCasoDesdeAutosave = useCallback((actualizado) => {
-    if (actualizado) setCasoPrevisora(actualizado);
+    if (!actualizado) return;
+    setCasoPrevisora((prev) => fusionarCasoPrevisoraConservandoNsr(prev, actualizado));
   }, []);
 
   usePrevisoraCasoAutosave({
@@ -399,10 +436,34 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
       : guardarInformeUnicoEnCasoPrevisora,
   });
 
-  const draftPayload = useMemo(
-    () => ({ liquidador: liquidadorState, totales: totalesState, informe: informeState }),
-    [liquidadorState, totalesState, informeState]
-  );
+  const draftPayload = useMemo(() => {
+    const inf = informeState && typeof informeState === 'object' ? { ...informeState } : informeState;
+    if (inf && typeof inf.imagenMapa === 'string' && inf.imagenMapa.length > 80) {
+      inf.imagenMapa = `len:${inf.imagenMapa.length}`;
+    }
+    if (inf && typeof inf.actaAjustadorFirmaImagen === 'string' && inf.actaAjustadorFirmaImagen.length > 80) {
+      inf.actaAjustadorFirmaImagen = `len:${inf.actaAjustadorFirmaImagen.length}`;
+    }
+    if (inf && typeof inf.firmaAjustador === 'string' && inf.firmaAjustador.length > 80) {
+      inf.firmaAjustador = `len:${inf.firmaAjustador.length}`;
+    }
+    const liq =
+      liquidadorState && typeof liquidadorState === 'object'
+        ? {
+            ...liquidadorState,
+            evaluacionSismicaNSR10: liquidadorState.evaluacionSismicaNSR10
+              ? {
+                  nItems: Array.isArray(
+                    liquidadorState.evaluacionSismicaNSR10?.presupuesto?.items
+                  )
+                    ? liquidadorState.evaluacionSismicaNSR10.presupuesto.items.length
+                    : 0,
+                }
+              : null,
+          }
+        : liquidadorState;
+    return { liquidador: liq, totales: totalesState, informe: inf };
+  }, [liquidadorState, totalesState, informeState]);
   const onDraftRestoreAvailable = useCallback((info) => {
     setDraftToRestore(info);
     setShowDraftRestore(true);
@@ -440,7 +501,9 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
                 className={expressBtnPrimary}
                 disabled={
                   guardando ||
-                  (tabActivo === TABS_PREVISORA.INFORME ? !informeState : !liquidadorState)
+                  (tabActivo === TABS_PREVISORA.INFORME
+                    ? !informeState
+                    : !liquidadorState || liquidadorState?.nsrOmitido)
                 }
                 onClick={handleGuardarActual}
               >

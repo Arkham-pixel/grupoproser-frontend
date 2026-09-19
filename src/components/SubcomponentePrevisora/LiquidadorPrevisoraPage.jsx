@@ -51,7 +51,7 @@ export default function LiquidadorPrevisoraPage() {
       setCargandoCaso(true);
       setError('');
       try {
-        const caso = await getCasoPrevisoraById(casoIdFromQuery);
+        const caso = await getCasoPrevisoraById(casoIdFromQuery, { nsr: true });
         if (!cancelado) setcasoPrevisora(caso);
       } catch (err) {
         if (!cancelado) setError(err.message || t('previsora.settlement.loadError'));

@@ -433,11 +433,45 @@ export const guardarInformeUnicoEnCasoSura = async ({
 }) => {
   if (!casoId) throw new Error('El caso Sura debe estar guardado antes de adjuntar el informe.');
 
+  const sanitizado = sanitizarInformeUnicoCamposWord(informeUnico || {});
+  const tipo = String(sanitizado.tipoInforme || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim();
+  const tipoAnterior = String(casoBase?.informeUnico?.tipoInforme || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim();
+
+  // Conservar fecha de preliminar aunque luego pasen a final/único.
+  if (tipo === 'preliminar' && sanitizado.fechaInforme) {
+    sanitizado.fechaInformePreliminar = sanitizado.fechaInforme;
+  } else if (
+    !sanitizado.fechaInformePreliminar &&
+    (tipoAnterior === 'preliminar' || casoBase?.informeUnico?.fechaInformePreliminar)
+  ) {
+    sanitizado.fechaInformePreliminar =
+      casoBase?.informeUnico?.fechaInformePreliminar ||
+      (tipoAnterior === 'preliminar' ? casoBase?.informeUnico?.fechaInforme : '') ||
+      '';
+  }
+
   const payload = {
     ...casoBase,
-    informeUnico: sanitizarInformeUnicoCamposWord(informeUnico || {}),
-    estado: estadoSuraPorTipoInforme(informeUnico?.tipoInforme, casoBase.estado),
+    informeUnico: sanitizado,
+    estado: estadoSuraPorTipoInforme(sanitizado?.tipoInforme, casoBase.estado),
   };
+
+  const fechaPrelim =
+    sanitizado.fechaInformePreliminar ||
+    (tipo === 'preliminar' ? sanitizado.fechaInforme : '') ||
+    casoBase.fchaInfoPrelm ||
+    '';
+  if (fechaPrelim) {
+    payload.fchaInfoPrelm = fechaPrelim;
+  }
 
   delete payload._id;
   delete payload.__v;

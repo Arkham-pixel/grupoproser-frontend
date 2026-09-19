@@ -711,6 +711,22 @@ export function scoreInformeLlenoPrevisora(informe) {
   return textos.reduce((n, s) => n + s.length, 0) + fotos * 20;
 }
 
+/** Conserva el NSR-10 local si el GET/PUT vino recortado (nsrOmitido). */
+export function fusionarCasoPrevisoraConservandoNsr(prev, incoming) {
+  if (!incoming) return prev;
+  if (!incoming?.liquidador?.nsrOmitido) return incoming;
+  const nsrLocal = prev?.liquidador?.evaluacionSismicaNSR10;
+  if (!nsrLocal) return incoming;
+  return {
+    ...incoming,
+    liquidador: {
+      ...incoming.liquidador,
+      evaluacionSismicaNSR10: nsrLocal,
+      nsrOmitido: false,
+    },
+  };
+}
+
 export function casoPrevisoraTieneArchivoInforme(caso = {}) {
   const archivos = Array.isArray(caso?.archivos) ? caso.archivos : [];
   return archivos.some((a) =>

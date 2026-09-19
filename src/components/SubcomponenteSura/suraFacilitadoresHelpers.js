@@ -9,20 +9,22 @@ export const PROVEEDOR_FACILITADORES_SURA = 'PROSER AJUSTES S.A.S';
 export const COLUMNAS_EXPORT_FACILITADORES = [
   'RECLAMACION',
   'PROVEEDOR_ASSIGNADO_A_SERVICIO',
-  'INFORMACIÓN',
   'FECHA_ASIGNACION',
   'FECHA_PRIMER_CONTACTO',
   'VISITA_REALIZADA',
   'FECHA_VISITA',
   'CRITERIO_DETALLE',
   'ULTIMO_COMENTARIO',
-  'INFORME_ENVIADO',
-  'FECHA_INFORME',
+  'INFORME_PRELIMINAR_ENVIADO',
+  'FECHA_INFORME_PRELIMINAR',
+  'INFORME_FINAL_ENVIADO',
+  'FECHA_INFORME_FINAL',
   'DOCUMENTACION_COMPLETA',
   'FECHA_DOCUMENTACION_COMPLETA',
   'CASO_CERRADO',
   'FECHA_CIERRE',
   'ESTADO_SINIESTRO',
+  'TIPO_VIVIENDA',
 ];
 
 export const CRITERIOS_FACILITADOR = [
@@ -37,6 +39,12 @@ export const ESTADOS_FACILITADOR = [
   'Anulado',
   'Desistido',
   'Objetado',
+  'Cancelado Sura',
+];
+
+export const TIPOS_VIVIENDA_FACILITADOR = [
+  { value: 'URBANA', label: 'Urbana' },
+  { value: 'RURAL', label: 'Rural' },
 ];
 
 export function digitsReclamacion(valor) {
@@ -60,12 +68,38 @@ export function normalizarSinoNa(valor, { permitirNA = true } = {}) {
   return '';
 }
 
+/** SI / NO / N/A; si viene vacío → NO (regla operativa Facilitadores). */
+export function sinoConDefault(valor, { permitirNA = true, defecto = 'NO' } = {}) {
+  return normalizarSinoNa(valor, { permitirNA }) || defecto;
+}
+
+export const TEXTO_FALTA_GESTIONAR = 'Falta por gestionar';
+
+/** Fecha presentable; si no hay fecha → «Falta por gestionar». */
+export function fechaOFaltaGestionar(valor) {
+  const iso = fechaParaInput(valor);
+  if (!iso) return TEXTO_FALTA_GESTIONAR;
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+/** Texto libre; si vacío → «Falta por gestionar». */
+export function textoOFaltaGestionar(valor) {
+  const t = String(valor ?? '').trim();
+  return t || TEXTO_FALTA_GESTIONAR;
+}
+
 export function normalizarCriterioFacilitador(valor) {
   const k = clave(valor);
   if (k.startsWith('CRIT')) return 'Critico';
   if (k.startsWith('MED')) return 'Medio';
   if (k.startsWith('BAJ')) return 'Bajo';
   return '';
+}
+
+/** Criterio vacío → Medio (regla operativa Facilitadores). */
+export function criterioConDefault(valor, defecto = 'Medio') {
+  return normalizarCriterioFacilitador(valor) || defecto;
 }
 
 export function normalizarEstadoFacilitador(valor) {
@@ -75,7 +109,41 @@ export function normalizarEstadoFacilitador(valor) {
   if (k.startsWith('ANUL')) return 'Anulado';
   if (k.startsWith('DESIST')) return 'Desistido';
   if (k.startsWith('OBJET')) return 'Objetado';
+  if (k.includes('CANCELADO')) return 'Cancelado Sura';
   return '';
+}
+
+export function normalizarTipoViviendaFacilitador(valor) {
+  const k = clave(valor);
+  if (k.startsWith('RUR')) return 'RURAL';
+  if (k.startsWith('URB')) return 'URBANA';
+  return '';
+}
+
+export function tipoViviendaConDefault(valor, defecto = 'URBANA') {
+  return normalizarTipoViviendaFacilitador(valor) || defecto;
+}
+
+/** Estado en mayúsculas como en la plantilla SURA. */
+export function estadoParaPlantillaSura(valor) {
+  const n = normalizarEstadoFacilitador(valor) || 'Abierto';
+  const mapa = {
+    Abierto: 'ABIERTO',
+    Tramitado: 'TRAMITADO',
+    Anulado: 'ANULADO',
+    Desistido: 'DESISTIDO',
+    Objetado: 'OBJETADO',
+    'Cancelado Sura': 'CANCELADO SURA',
+  };
+  return mapa[n] || 'ABIERTO';
+}
+
+/** Fecha DD/MM/YYYY para plantilla SURA; vacío si no hay fecha. */
+export function fechaParaPlantillaSura(valor) {
+  const iso = fechaParaInput(valor);
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
 }
 
 export function filaPlantillaDesdeExcel(raw = {}) {
@@ -87,10 +155,19 @@ export function filaPlantillaDesdeExcel(raw = {}) {
     fechaPrimerContacto: raw.FECHA_PRIMER_CONTACTO ?? '',
     visitaRealizada: normalizarSinoNa(raw.VISITA_REALIZADA ?? raw.visitaRealizada),
     fechaVisita: raw.FECHA_VISITA ?? '',
-    criterioDetalle: normalizarCriterioFacilitador(raw.CRITERIO_DETALLE ?? raw.criterioDetalle),
+    criterioDetalle: criterioConDefault(raw.CRITERIO_DETALLE ?? raw.criterioDetalle),
     ultimoComentario: raw.ULTIMO_COMENTARIO ?? '',
-    informeEnviado: normalizarSinoNa(raw.INFORME_ENVIADO ?? raw.informeEnviado),
-    fechaInforme: raw.FECHA_INFORME ?? '',
+    informePreliminarEnviado: normalizarSinoNa(
+      raw.INFORME_PRELIMINAR_ENVIADO ?? raw.INFORME_PRELIMINAR ?? raw.informePreliminarEnviado
+    ),
+    fechaInformePreliminar: raw.FECHA_INFORME_PRELIMINAR ?? raw.fechaInformePreliminar ?? '',
+    informeEnviado: normalizarSinoNa(
+      raw.INFORME_FINAL_ENVIADO ??
+        raw.INFORME_ENVIADO ??
+        raw.informeEnviado ??
+        raw.INFORME_FINAL
+    ),
+    fechaInforme: raw.FECHA_INFORME_FINAL ?? raw.FECHA_INFORME ?? raw.fechaInforme ?? '',
     documentacionCompleta: normalizarSinoNa(
       raw.DOCUMENTACION_COMPLETA ?? raw.documentacionCompleta
     ),
@@ -98,6 +175,7 @@ export function filaPlantillaDesdeExcel(raw = {}) {
     casoCerrado: normalizarSinoNa(raw.CASO_CERRADO ?? raw.casoCerrado, { permitirNA: false }),
     fechaCierre: raw.FECHA_CIERRE ?? '',
     estadoSiniestro: normalizarEstadoFacilitador(raw.ESTADO_SINIESTRO ?? raw.estadoSiniestro),
+    tipoVivienda: tipoViviendaConDefault(raw.TIPO_VIVIENDA ?? raw.tipoVivienda),
   };
 }
 
@@ -108,7 +186,10 @@ export function parsearPlantillaFacilitadores(file) {
     reader.onload = () => {
       try {
         const wb = XLSX.read(reader.result, { type: 'array', cellDates: true, raw: false });
-        const hoja = wb.Sheets.BD || wb.Sheets[wb.SheetNames[0]];
+        const hoja =
+          wb.Sheets.Plantilla ||
+          wb.Sheets.BD ||
+          wb.Sheets[wb.SheetNames[0]];
         if (!hoja) {
           reject(new Error('El archivo no tiene hojas.'));
           return;
@@ -126,19 +207,18 @@ export function parsearPlantillaFacilitadores(file) {
 export function erroresFilaPortal(fila = {}) {
   const errores = [];
   if (digitsReclamacion(fila.reclamacion).length !== 13) errores.push('reclamación 13 dígitos');
-  const visita = normalizarSinoNa(fila.visitaRealizada, { permitirNA: false });
-  const informe = normalizarSinoNa(fila.informeEnviado, { permitirNA: false });
-  const docs = normalizarSinoNa(fila.documentacionCompleta, { permitirNA: false });
-  const cerrado = normalizarSinoNa(fila.casoCerrado, { permitirNA: false });
-  if (!visita) errores.push('visita');
+  const visita = sinoConDefault(fila.visitaRealizada, { permitirNA: false });
+  const informePrelim = sinoConDefault(fila.informePreliminarEnviado, { permitirNA: false });
+  const informe = sinoConDefault(fila.informeEnviado, { permitirNA: false });
+  const docs = sinoConDefault(fila.documentacionCompleta, { permitirNA: false });
+  const cerrado = sinoConDefault(fila.casoCerrado, { permitirNA: false });
   if (visita === 'SI' && !fechaParaInput(fila.fechaVisita)) errores.push('fecha visita');
-  if (!informe) errores.push('informe');
-  if (informe === 'SI' && !fechaParaInput(fila.fechaInforme)) errores.push('fecha informe');
-  if (!docs) errores.push('documentación');
+  if (informePrelim === 'SI' && !fechaParaInput(fila.fechaInformePreliminar)) {
+    errores.push('fecha informe preliminar');
+  }
+  if (informe === 'SI' && !fechaParaInput(fila.fechaInforme)) errores.push('fecha informe final');
   if (docs === 'SI' && !fechaParaInput(fila.fechaDocumentacionCompleta)) errores.push('fecha docs');
-  if (!cerrado) errores.push('cerrado');
   if (cerrado === 'SI' && !fechaParaInput(fila.fechaCierre)) errores.push('fecha cierre');
-  if (!normalizarCriterioFacilitador(fila.criterioDetalle)) errores.push('criterio');
   if (!normalizarEstadoFacilitador(fila.estadoSiniestro)) errores.push('estado');
   return errores;
 }
@@ -171,43 +251,9 @@ function estiloCeldaBase(cell, { bold = false, center = false, fill = null, font
   if (fill) cell.fill = fill;
 }
 
-/** Visita en Excel: texto SI / NO (sin N/A ni íconos). */
-function pintarMarcaVisita(cell, valor) {
-  const v = normalizarSinoNa(valor, { permitirNA: false });
-  cell.value = v || '';
-  const fill =
-    v === 'SI' ? fillSolid('FFECFDF5') : v === 'NO' ? fillSolid('FFFEF2F2') : fillSolid('FFFFFFFF');
-  const fontColor = v === 'SI' ? 'FF047857' : v === 'NO' ? 'FFB91C1C' : 'FF111827';
-  estiloCeldaBase(cell, { bold: Boolean(v), center: true, fill, fontColor });
-}
-
-function pintarDatoSino(cell, valor) {
-  const v = normalizarSinoNa(valor, { permitirNA: false });
-  cell.value = v || '';
-  const fill =
-    v === 'SI' ? fillSolid('FFECFDF5') : v === 'NO' ? fillSolid('FFFEF2F2') : fillSolid('FFFFFFFF');
-  const fontColor = v === 'SI' ? 'FF047857' : v === 'NO' ? 'FFB91C1C' : 'FF111827';
-  estiloCeldaBase(cell, { bold: Boolean(v), center: true, fill, fontColor });
-}
-
-function fechaPresentable(valor) {
-  const iso = fechaParaInput(valor);
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-function labelCriterio(valor) {
-  const v = normalizarCriterioFacilitador(valor);
-  if (v === 'Critico') return 'Crítico';
-  if (v === 'Medio') return 'Medio';
-  if (v === 'Bajo') return 'Bajo';
-  return '';
-}
-
 /**
- * Excel alineado a la plataforma (una sola hoja, sin duplicar filas).
- * Visita / Informe / Docs / Cerrado en texto SI o NO.
+ * Excel en formato exacto de la plantilla SURA Facilitadores Terremoto
+ * (hoja «Plantilla» + hoja de valores permitidos).
  */
 export async function descargarPlantillaFacilitadores(filas = []) {
   const lista = deduplicarFilasFacilitadores(filas);
@@ -215,46 +261,15 @@ export async function descargarPlantillaFacilitadores(filas = []) {
   workbook.creator = 'Arnald · Grupo Proser';
   workbook.created = new Date();
 
-  const headersUi = [
-    'Reclamación',
-    'Asignación',
-    '1.er contacto',
-    'Visita',
-    'Fecha visita',
-    'Criterio',
-    'Último comentario',
-    'Informe',
-    'Fecha informe',
-    'Docs',
-    'Fecha docs',
-    'Cerrado',
-    'Fecha cierre',
-    'Estado',
-    'Portal',
-  ];
-
-  const wsUi = workbook.addWorksheet('Seguimiento', {
+  const headers = [...COLUMNAS_EXPORT_FACILITADORES];
+  const ws = workbook.addWorksheet('Plantilla', {
     views: [{ state: 'frozen', ySplit: 1 }],
   });
-  wsUi.columns = [
-    { width: 16 },
-    { width: 12 },
-    { width: 12 },
-    { width: 10 },
-    { width: 12 },
-    { width: 12 },
-    { width: 28 },
-    { width: 10 },
-    { width: 12 },
-    { width: 10 },
-    { width: 12 },
-    { width: 10 },
-    { width: 12 },
-    { width: 12 },
-    { width: 22 },
-  ];
+  ws.columns = headers.map((h) => ({
+    width: Math.max(14, Math.min(28, h.length + 2)),
+  }));
 
-  const headerRow = wsUi.addRow(headersUi);
+  const headerRow = ws.addRow(headers);
   headerRow.height = 22;
   headerRow.eachCell((cell) => {
     estiloCeldaBase(cell, {
@@ -266,69 +281,69 @@ export async function descargarPlantillaFacilitadores(filas = []) {
   });
 
   for (const f of lista) {
-    const errs = erroresFilaPortal(f);
-    const row = wsUi.addRow([
+    const row = ws.addRow([
       digitsReclamacion(f.reclamacion),
-      fechaPresentable(f.fechaAsignacion),
-      fechaPresentable(f.fechaPrimerContacto),
-      '', // Visita se pinta aparte
-      fechaPresentable(f.fechaVisita),
-      labelCriterio(f.criterioDetalle),
+      String(f.proveedor || '').trim() || PROVEEDOR_FACILITADORES_SURA,
+      fechaParaPlantillaSura(f.fechaAsignacion),
+      fechaParaPlantillaSura(f.fechaPrimerContacto),
+      sinoConDefault(f.visitaRealizada, { permitirNA: true }),
+      fechaParaPlantillaSura(f.fechaVisita),
+      criterioConDefault(f.criterioDetalle),
       String(f.ultimoComentario || '').trim(),
-      '',
-      fechaPresentable(f.fechaInforme),
-      '',
-      fechaPresentable(f.fechaDocumentacionCompleta),
-      '',
-      fechaPresentable(f.fechaCierre),
-      normalizarEstadoFacilitador(f.estadoSiniestro) || '',
-      errs.length ? `Falta: ${errs.slice(0, 3).join(', ')}` : 'OK',
+      sinoConDefault(f.informePreliminarEnviado, { permitirNA: true }),
+      fechaParaPlantillaSura(f.fechaInformePreliminar),
+      sinoConDefault(f.informeEnviado, { permitirNA: true }),
+      fechaParaPlantillaSura(f.fechaInforme),
+      sinoConDefault(f.documentacionCompleta, { permitirNA: true }),
+      fechaParaPlantillaSura(f.fechaDocumentacionCompleta),
+      sinoConDefault(f.casoCerrado, { permitirNA: false }),
+      fechaParaPlantillaSura(f.fechaCierre),
+      estadoParaPlantillaSura(f.estadoSiniestro),
+      tipoViviendaConDefault(f.tipoVivienda),
     ]);
-    row.height = 20;
-
-    for (let c = 1; c <= headersUi.length; c += 1) {
-      const cell = row.getCell(c);
-      if (c === 4) {
-        pintarMarcaVisita(cell, f.visitaRealizada);
-        continue;
-      }
-      if (c === 8) {
-        pintarDatoSino(cell, f.informeEnviado);
-        continue;
-      }
-      if (c === 10) {
-        pintarDatoSino(cell, f.documentacionCompleta);
-        continue;
-      }
-      if (c === 12) {
-        pintarDatoSino(cell, f.casoCerrado);
-        continue;
-      }
-      const portalOk = c === 15 && !errs.length;
-      const portalBad = c === 15 && errs.length;
+    row.height = 18;
+    row.eachCell((cell, c) => {
       estiloCeldaBase(cell, {
-        center: ![1, 7, 15].includes(c),
-        fill: portalOk
-          ? fillSolid('FFECFDF5')
-          : portalBad
-            ? fillSolid('FFFFF7ED')
-            : fillSolid('FFFFFFFF'),
-        fontColor: portalOk ? 'FF047857' : portalBad ? 'FFC2410C' : 'FF111827',
-        bold: c === 15,
+        center: ![2, 8].includes(c),
+        fill: fillSolid('FFFFFFFF'),
       });
       if (c === 1) {
         cell.numFmt = '@';
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       }
-    }
+    });
   }
+
+  const wsVals = workbook.addWorksheet('Valores');
+  wsVals.getCell(2, 2).value = 'VISITA_REALIZADA';
+  wsVals.getCell(2, 3).value = 'INFORME_PRELIMINAR_ENVIADO';
+  wsVals.getCell(2, 4).value = 'INFORME_FINAL_ENVIADO';
+  wsVals.getCell(2, 5).value = 'DOCUMENTACION_COMPLETA';
+  wsVals.getCell(2, 6).value = 'CASO_CERRADO';
+  wsVals.getCell(2, 7).value = 'TIPO_VIVIENDA';
+  wsVals.getCell(2, 8).value = 'ESTADO_SINIESTRO';
+  ['SI', 'NO', 'N/A'].forEach((v, i) => {
+    wsVals.getCell(3 + i, 2).value = v;
+    wsVals.getCell(3 + i, 3).value = v;
+    wsVals.getCell(3 + i, 4).value = v;
+    wsVals.getCell(3 + i, 5).value = v;
+  });
+  wsVals.getCell(3, 6).value = 'SI';
+  wsVals.getCell(4, 6).value = 'NO';
+  wsVals.getCell(3, 7).value = 'RURAL';
+  wsVals.getCell(4, 7).value = 'URBANA';
+  ['OBJETADO', 'ANULADO', 'DESISTIDO', 'TRAMITADO', 'ABIERTO', 'CANCELADO SURA'].forEach(
+    (v, i) => {
+      wsVals.getCell(3 + i, 8).value = v;
+    }
+  );
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
   const fecha = new Date().toISOString().slice(0, 10);
-  saveAs(blob, `plantilla-facilitadores-sura-${fecha}.xlsx`);
+  saveAs(blob, `Plantilla_Facilitadores_Terremoto_${fecha}.xlsx`);
 }
 
 export function filaParaInput(fila = {}) {
@@ -337,15 +352,18 @@ export function filaParaInput(fila = {}) {
     fechaAsignacion: fechaParaInput(fila.fechaAsignacion),
     fechaPrimerContacto: fechaParaInput(fila.fechaPrimerContacto),
     fechaVisita: fechaParaInput(fila.fechaVisita),
+    fechaInformePreliminar: fechaParaInput(fila.fechaInformePreliminar),
     fechaInforme: fechaParaInput(fila.fechaInforme),
     fechaDocumentacionCompleta: fechaParaInput(fila.fechaDocumentacionCompleta),
     fechaCierre: fechaParaInput(fila.fechaCierre),
-    visitaRealizada: normalizarSinoNa(fila.visitaRealizada, { permitirNA: false }),
-    informeEnviado: normalizarSinoNa(fila.informeEnviado, { permitirNA: false }),
-    documentacionCompleta: normalizarSinoNa(fila.documentacionCompleta, { permitirNA: false }),
-    casoCerrado: normalizarSinoNa(fila.casoCerrado, { permitirNA: false }) || 'NO',
-    criterioDetalle: normalizarCriterioFacilitador(fila.criterioDetalle),
-    estadoSiniestro: normalizarEstadoFacilitador(fila.estadoSiniestro),
+    visitaRealizada: sinoConDefault(fila.visitaRealizada, { permitirNA: false }),
+    informePreliminarEnviado: sinoConDefault(fila.informePreliminarEnviado, { permitirNA: false }),
+    informeEnviado: sinoConDefault(fila.informeEnviado, { permitirNA: false }),
+    documentacionCompleta: sinoConDefault(fila.documentacionCompleta, { permitirNA: false }),
+    casoCerrado: sinoConDefault(fila.casoCerrado, { permitirNA: false }),
+    criterioDetalle: criterioConDefault(fila.criterioDetalle),
+    estadoSiniestro: normalizarEstadoFacilitador(fila.estadoSiniestro) || 'Abierto',
+    tipoVivienda: tipoViviendaConDefault(fila.tipoVivienda),
   };
 }
 
