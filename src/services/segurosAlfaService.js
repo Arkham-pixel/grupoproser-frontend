@@ -538,6 +538,16 @@ export const guardarLiquidadorEnCasoAlfa = async ({
     reserva: pesosEnterosAlfa(totalIndemnizar) ?? casoBase.reserva ?? 0,
   };
 
+  // Fecha liquidado = día en que se hizo/guardó el liquidador (no pisar si ya existe).
+  const fechaLiqExistente = String(casoBase.fechaLiquidado || '').trim();
+  if (!fechaLiqExistente) {
+    const ahora = new Date();
+    const y = ahora.getFullYear();
+    const m = String(ahora.getMonth() + 1).padStart(2, '0');
+    const d = String(ahora.getDate()).padStart(2, '0');
+    payload.fechaLiquidado = `${y}-${m}-${d}`;
+  }
+
   // Conservar informe: no mandar null/vacío que lo borre
   if (casoBase.informeUnico && typeof casoBase.informeUnico === 'object') {
     payload.informeUnico = casoBase.informeUnico;

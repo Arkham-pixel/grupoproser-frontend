@@ -59,6 +59,7 @@ const COLOR_AYER = '#9CA3AF';
 const PALETA_FENIX = ['#DC2626', '#F59E0B', '#EF4444', '#B91C1C', '#F87171', '#78716C', '#A8A29E', '#57534E'];
 const COLOR_PARCIAL = '#F59E0B';
 const COLOR_TOTAL = '#DC2626';
+const COLOR_INHABITABLE = '#7C3AED';
 
 const tooltipEstilo = {
   borderRadius: 10,
@@ -107,6 +108,7 @@ const ICONS_CIERRES_DIA = {
 const ICONS_CLASIFICACION_PERDIDAS = {
   parcial: FaCircle,
   total: FaCircle,
+  inhabitable: FaCircle,
 };
 
 function VariacionCell({ valor, maloSiSube = false }) {
@@ -231,7 +233,12 @@ function GraficaDonutPerdidas({ filas = [] }) {
         .map((f) => ({
           name: f.label,
           value: Number(f.cantidad) || 0,
-          fill: f.id === 'total' ? COLOR_TOTAL : COLOR_PARCIAL,
+          fill:
+            f.id === 'total'
+              ? COLOR_TOTAL
+              : f.id === 'inhabitable'
+                ? COLOR_INHABITABLE
+                : COLOR_PARCIAL,
         }))
         .filter((d) => d.value > 0),
     [filas]
@@ -685,6 +692,7 @@ export default function BoletinDiarioSegurosAlfa() {
           iconClassById={{
             parcial: 'text-amber-400',
             total: 'text-fenix-error',
+            inhabitable: 'text-violet-500',
           }}
           chart="donut"
         />

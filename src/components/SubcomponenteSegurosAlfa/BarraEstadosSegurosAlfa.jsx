@@ -3,6 +3,7 @@ import {
   GRUPOS_BARRA_ESTADOS_ALFA,
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
+  estadosSiniestroPermitidosParaGestionAlfa,
 } from './segurosAlfaHelpers.js';
 
 /**
@@ -51,10 +52,14 @@ const estiloChip = (activo, deshabilitado, tone = 'gestion') => {
   return `${base} ${activo ? t.activo : t.inactivo}`;
 };
 
+function toneSiniestro(id) {
+  if (id === 'OBJETADO' || id === 'DESISTIDO') return 'objecion';
+  return 'cierre';
+}
+
 /**
- * Dos barras independientes:
- * - Estado gestión (Excel AI)
- * - Estado de siniestro (Excel AJ)
+ * Dos barras independientes con relación oficial:
+ * cada gestión solo habilita los siniestros permitidos en su etapa.
  */
 export default function BarraEstadosSegurosAlfa({
   valorGestion,
@@ -65,12 +70,13 @@ export default function BarraEstadosSegurosAlfa({
 }) {
   const actualGestion = homologarEstadoGestionAlfa(valorGestion);
   const actualSiniestro = homologarEstadoSiniestroAlfa(valorSiniestro);
+  const siniestrosPermitidos = new Set(estadosSiniestroPermitidosParaGestionAlfa(actualGestion));
 
   return (
     <div className="space-y-5">
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
-        Ambos campos se guardan por separado: AI = estado gestión y AJ = estado de
-        siniestro. OBJETADO/DESISTIDO → CERRADO; PENDIENTE ACEPTACION CIFRAS → LIQUIDADO.
+        Cada estado de gestión solo admite los estados de siniestro de su etapa (flujo
+        oficial Alfa). Desistido va con Inspeccionado; Objetado va con Liquidado.
       </p>
       {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => {
         const esGestion = grupo.id === 'gestion';
@@ -86,16 +92,28 @@ export default function BarraEstadosSegurosAlfa({
                 const id = typeof estado === 'string' ? estado : estado.id;
                 const label = typeof estado === 'string' ? estado : estado.label;
                 const activo = actual === id;
+                const fueraDeEtapa = !esGestion && !siniestrosPermitidos.has(id);
+                const chipDisabled = disabled || fueraDeEtapa;
                 return (
                   <button
                     key={id}
                     type="button"
-                    disabled={disabled}
+                    disabled={chipDisabled}
                     aria-pressed={activo}
-                    title={id !== label ? id : undefined}
-                    className={estiloChip(activo, disabled, grupo.tone)}
+                    title={
+                      fueraDeEtapa
+                        ? `No permitido con gestión «${actualGestion}»`
+                        : id !== label
+                          ? id
+                          : undefined
+                    }
+                    className={estiloChip(
+                      activo,
+                      chipDisabled,
+                      esGestion ? grupo.tone : toneSiniestro(id)
+                    )}
                     onClick={() => {
-                      if (disabled || activo) return;
+                      if (chipDisabled || activo) return;
                       onChange?.(id);
                     }}
                   >

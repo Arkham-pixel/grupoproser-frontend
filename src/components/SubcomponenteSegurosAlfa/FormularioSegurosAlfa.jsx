@@ -47,6 +47,7 @@ import {
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
   homologarTipoPerdidaAlfa,
+  asegurarSiniestroCompatibleConGestionAlfa,
   sincronizarGestionConCierreSiniestroAlfa,
   casoAlfaVenceSla2Dias,
   casoTieneEvidenciaComunicacionBajoDeducible,
@@ -376,6 +377,11 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       payload.estado,
       form.estadoGestion
     );
+    payload.estado = asegurarSiniestroCompatibleConGestionAlfa(
+      payload.estadoGestion,
+      payload.estado,
+      form
+    );
     payload.observacionesGestion = aplicarObservacionAutoCierreAlfa(
       payload.estado,
       form.observacionesGestion != null ? String(form.observacionesGestion) : ''
@@ -679,10 +685,22 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
                 }
                 onChangeGestion={(estadoGestion) => {
                   if (!puedeEditarCampoCaso(rolUsuario, 'estadoGestion', ctxPermiso)) return;
-                  setForm((prev) => ({
-                    ...prev,
-                    estadoGestion,
-                  }));
+                  setForm((prev) => {
+                    const estado = asegurarSiniestroCompatibleConGestionAlfa(
+                      estadoGestion,
+                      prev.estado,
+                      prev
+                    );
+                    return {
+                      ...prev,
+                      estadoGestion,
+                      estado,
+                      observacionesGestion: aplicarObservacionAutoCierreAlfa(
+                        estado,
+                        prev.observacionesGestion
+                      ),
+                    };
+                  });
                 }}
                 onChangeSiniestro={(estado) => {
                   if (!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)) return;
@@ -965,6 +983,10 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               type="date"
               value={form.fechaLiquidado}
               onChange={setCampo('fechaLiquidado')}
+              disabled
+              title={t('segurosAlfa.fields.fechaLiquidadoHint', {
+                defaultValue: 'Se asigna sola al guardar el liquidador.',
+              })}
             />
           </Campo>
           <Campo label={t('segurosAlfa.fields.fechaAceptacionLiquidacion')}>

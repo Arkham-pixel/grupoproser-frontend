@@ -28,16 +28,16 @@ const CORTES_KEY = 'segurosAlfa.boletinDiario.cortes.v6';
 export const CATEGORIAS_GESTION_TERREMOTO = [
   {
     id: 'enGestion',
-    label: 'EN GESTIÓN / SIN RESPUESTA',
-    labelCorto: 'En gestión',
+    label: 'PTE CONTACTO / SIN RESPUESTA',
+    labelCorto: 'Pte contacto',
     descripcion:
-      'EN GESTIÓN y SIN RESPUESTA EFECTIVA — verificación de pérdidas mediante llamadas',
+      'PTE CONTACTO, SOLICITUD DTOS y SIN RESPUESTA EFECTIVA — verificación de pérdidas mediante llamadas',
   },
   {
     id: 'enInspeccion',
-    label: 'CONTACTADO/PROGRAMADO',
+    label: 'CONTACTADO Y PROGRAMADO',
     labelCorto: 'Contactado',
-    descripcion: 'CONTACTADO/PROGRAMADO — en proceso de inspección',
+    descripcion: 'CONTACTADO Y PROGRAMADO — en proceso de inspección',
   },
   {
     id: 'enLiquidacion',
@@ -110,6 +110,7 @@ export const FILAS_CIERRES_DEL_DIA = [
 export const FILAS_CLASIFICACION_PERDIDAS = [
   { id: 'parcial', label: 'Pérdida parcial' },
   { id: 'total', label: 'Pérdida total' },
+  { id: 'inhabitable', label: 'Inhabitable' },
 ];
 
 /** Orden de avance para detectar retrocesos (menor = más temprano). */
@@ -218,8 +219,8 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     return 'liquidados';
   }
   if (estadoGestion === 'INSPECCIONADO') return 'enLiquidacion';
-  if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'enInspeccion';
-  // EN GESTIÓN + SIN RESPUESTA EFECTIVA → misma tarjeta (verificación / por llamar)
+  if (estadoGestion === 'CONTACTADO Y PROGRAMADO') return 'enInspeccion';
+  // PTE CONTACTO / SOLICITUD DTOS / SIN RESPUESTA EFECTIVA → misma tarjeta
   return 'enGestion';
 }
 
@@ -227,11 +228,11 @@ function desgloseCasoTerremoto(caso = {}, cat) {
   const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
   const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
   if (cat === 'enGestion') {
-    return estadoGestion === 'SIN RESPUESTA EFECTIVA'
-      ? 'SIN RESPUESTA EFECTIVA'
-      : 'EN GESTIÓN';
+    if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'SIN RESPUESTA EFECTIVA';
+    if (estadoGestion === 'SOLICITUD DTOS') return 'SOLICITUD DTOS';
+    return 'PTE CONTACTO';
   }
-  if (cat === 'enInspeccion') return 'CONTACTADO/PROGRAMADO';
+  if (cat === 'enInspeccion') return 'CONTACTADO Y PROGRAMADO';
   if (cat === 'enLiquidacion') return 'INSPECCIONADO';
   if (cat === 'liquidados') {
     if (estadoSiniestro === 'PENDIENTE ACEPTACION CIFRAS') {
@@ -284,11 +285,12 @@ export function casosConGestionEfectiva(counts = {}) {
 /** Bucket exacto ESTADO GESTION (AI). */
 export function clasificarBucketGestionExacto(caso = {}) {
   const g = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
-  if (g === 'CONTACTADO/PROGRAMADO') return 'contactadoProgramado';
+  if (g === 'CONTACTADO Y PROGRAMADO') return 'contactadoProgramado';
   if (g === 'INSPECCIONADO') return 'inspeccionado';
   if (g === 'LIQUIDADO') return 'liquidado';
   if (g === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
-  if (g === 'CERRADO') return 'cerrado';
+  if (g === 'SIN PÓLIZA') return 'cerrado';
+  if (g === 'SOLICITUD DTOS') return 'solicitudDtos';
   return 'enGestion';
 }
 
@@ -414,15 +416,16 @@ export function contarCierresDelDia(casos = [], isoDia) {
 }
 
 /**
- * 5. Clasificación de pérdidas: stock actual PARCIAL / TOTAL.
+ * 5. Clasificación de pérdidas: stock actual PARCIAL / TOTAL / INHABITABLE.
  */
 export function contarClasificacionPerdidas(casos = []) {
-  const counts = { parcial: 0, total: 0, sinClasificar: 0 };
+  const counts = { parcial: 0, total: 0, inhabitable: 0, sinClasificar: 0 };
 
   for (const caso of Array.isArray(casos) ? casos : []) {
     const tipo = homologarTipoPerdidaAlfa(caso.tipoPerdida);
     if (tipo === 'PARCIAL') counts.parcial += 1;
     else if (tipo === 'TOTAL') counts.total += 1;
+    else if (tipo === 'INHABITABLE') counts.inhabitable += 1;
     else if (esPerdidaTotalTexto(caso.observacionesGestion, caso.observacionLlamada, caso.estado)) {
       counts.total += 1;
     } else {
@@ -494,7 +497,8 @@ export function clasificarGestionDiscriminada(caso = {}) {
     texto.includes('documento') ||
     texto.includes('informacion') ||
     texto.includes('pendiente de info') ||
-    estadoGestion === 'EN GESTIÓN'
+    estadoGestion === 'PTE CONTACTO' ||
+    estadoGestion === 'SOLICITUD DTOS'
   ) {
     return 'pendienteInformacion';
   }
@@ -507,7 +511,7 @@ export function clasificarGestionDiscriminada(caso = {}) {
   ) {
     return 'contactadosSinExito';
   }
-  if (estadoGestion === 'CONTACTADO/PROGRAMADO') return 'solicitanInspeccion';
+  if (estadoGestion === 'CONTACTADO Y PROGRAMADO') return 'solicitanInspeccion';
   if (texto) return 'contactadosSinExito';
   return null;
 }

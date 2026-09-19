@@ -3,22 +3,41 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 export const ALFA_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_GESTION_ALFA = [
-  'EN GESTIÓN',
-  'CONTACTADO/PROGRAMADO',
-  'LIQUIDADO',
+  'PTE CONTACTO',
+  'SOLICITUD DTOS',
+  'CONTACTADO Y PROGRAMADO',
   'INSPECCIONADO',
+  'LIQUIDADO',
   'SIN RESPUESTA EFECTIVA',
-  'CERRADO',
+  'SIN PÓLIZA',
 ];
 
 export const ESTADOS_SINIESTRO_ALFA = [
   'PENDIENTE',
-  'DESISTIDO',
+  'INSPECCIONADO PENDIENTE',
   'CERRADO',
-  'OBJETADO',
+  'DESISTIDO',
   'PROCESO DE PAGO',
   'PENDIENTE ACEPTACION CIFRAS',
+  'OBJETADO',
+  'PAGADO',
 ];
+
+/** Relación oficial: gestión → siniestros permitidos. */
+export const RELACION_GESTION_SINIESTRO_ALFA = Object.freeze({
+  'PTE CONTACTO': ['PENDIENTE'],
+  'SOLICITUD DTOS': ['PENDIENTE'],
+  'CONTACTADO Y PROGRAMADO': ['PENDIENTE'],
+  INSPECCIONADO: ['INSPECCIONADO PENDIENTE', 'CERRADO', 'DESISTIDO'],
+  LIQUIDADO: [
+    'PROCESO DE PAGO',
+    'PENDIENTE ACEPTACION CIFRAS',
+    'OBJETADO',
+    'PAGADO',
+  ],
+  'SIN RESPUESTA EFECTIVA': ['PENDIENTE'],
+  'SIN PÓLIZA': ['CERRADO'],
+});
 
 /** Alias de compatibilidad (filtro de estado actual). */
 export const ESTADOS_ALFA = ESTADOS_SINIESTRO_ALFA;
@@ -29,12 +48,13 @@ export const GRUPOS_BARRA_ESTADOS_ALFA = [
     label: 'Estado gestión',
     tone: 'gestion',
     estados: [
-      { id: 'EN GESTIÓN', label: 'En gestión' },
-      { id: 'CONTACTADO/PROGRAMADO', label: 'Contactado/Programado' },
-      { id: 'LIQUIDADO', label: 'Liquidado' },
+      { id: 'PTE CONTACTO', label: 'Pte contacto' },
+      { id: 'SOLICITUD DTOS', label: 'Solicitud dtos' },
+      { id: 'CONTACTADO Y PROGRAMADO', label: 'Contactado y programado' },
       { id: 'INSPECCIONADO', label: 'Inspeccionado' },
+      { id: 'LIQUIDADO', label: 'Liquidado' },
       { id: 'SIN RESPUESTA EFECTIVA', label: 'Sin respuesta efectiva' },
-      { id: 'CERRADO', label: 'Cerrado' },
+      { id: 'SIN PÓLIZA', label: 'Sin póliza' },
     ],
   },
   {
@@ -43,11 +63,13 @@ export const GRUPOS_BARRA_ESTADOS_ALFA = [
     tone: 'cierre',
     estados: [
       { id: 'PENDIENTE', label: 'Pendiente' },
-      { id: 'DESISTIDO', label: 'Desistido' },
+      { id: 'INSPECCIONADO PENDIENTE', label: 'Inspeccionado pendiente' },
       { id: 'CERRADO', label: 'Cerrado' },
-      { id: 'OBJETADO', label: 'Objetado' },
+      { id: 'DESISTIDO', label: 'Desistido' },
       { id: 'PROCESO DE PAGO', label: 'Proceso de pago' },
-      { id: 'PENDIENTE ACEPTACION CIFRAS', label: 'Pendiente aceptacion cifras' },
+      { id: 'PENDIENTE ACEPTACION CIFRAS', label: 'Pte aceptación cifras' },
+      { id: 'OBJETADO', label: 'Objetado' },
+      { id: 'PAGADO', label: 'Pagado' },
     ],
   },
 ];
@@ -65,6 +87,7 @@ export const ESTADOS_REQUIEREN_OBS_ALFA = new Set([
 export const TIPOS_PERDIDA_ALFA = [
   { id: 'PARCIAL', label: 'Parcial' },
   { id: 'TOTAL', label: 'Total' },
+  { id: 'INHABITABLE', label: 'Inhabitable' },
 ];
 
 export function homologarTipoPerdidaAlfa(valor) {
@@ -73,6 +96,10 @@ export function homologarTipoPerdidaAlfa(valor) {
     .replace(/\p{M}/gu, '')
     .toUpperCase()
     .trim();
+  if (!n) return '';
+  if (n === 'INHABITABLE' || n.includes('INHABITABLE') || n.includes('INHABITABIL')) {
+    return 'INHABITABLE';
+  }
   if (n === 'PARCIAL' || n.includes('PARCIAL')) return 'PARCIAL';
   if (n === 'TOTAL' || n.includes('TOTAL')) return 'TOTAL';
   return '';
@@ -86,23 +113,32 @@ const ESTADOS_GESTION_ALFA_SET = new Set(ESTADOS_GESTION_ALFA);
 const ESTADOS_SINIESTRO_ALFA_SET = new Set(ESTADOS_SINIESTRO_ALFA);
 
 const LEGACY_ESTADO_A_GESTION = {
-  'SIN CONTACTAR': 'EN GESTIÓN',
-  // Ya hubo gestión (docs pedidos): no cuenta como «por llamar» / EN GESTIÓN.
-  'SOLICITUD DE DOCUMENTOS': 'INSPECCIONADO',
-  'EN GESTION': 'EN GESTIÓN',
-  'EN GESTIÓN': 'EN GESTIÓN',
-  'CONTACTADO Y PROGRAMADO': 'CONTACTADO/PROGRAMADO',
-  'CONTACTADO - PROGRAMADO': 'CONTACTADO/PROGRAMADO',
+  'SIN CONTACTAR': 'PTE CONTACTO',
+  'PTE CONTACTO': 'PTE CONTACTO',
+  'PENDIENTE DE CONTACTO': 'PTE CONTACTO',
+  'PENDIENTE DE CONTACTO Y SOLICITUD DE DOCUMENTOS': 'PTE CONTACTO',
+  'EN GESTION': 'PTE CONTACTO',
+  'EN GESTIÓN': 'PTE CONTACTO',
+  PENDIENTE: 'PTE CONTACTO',
+  'SOLICITUD DE DOCUMENTOS': 'SOLICITUD DTOS',
+  'SOLICITUD DTOS': 'SOLICITUD DTOS',
+  'SOLICITUD DOCUMENTOS': 'SOLICITUD DTOS',
+  'CONTACTADO Y PROGRAMADO': 'CONTACTADO Y PROGRAMADO',
+  'CONTACTADO - PROGRAMADO': 'CONTACTADO Y PROGRAMADO',
+  'CONTACTADO/PROGRAMADO': 'CONTACTADO Y PROGRAMADO',
   INSPECCIONADO: 'INSPECCIONADO',
   'SIN RESPUESTA': 'SIN RESPUESTA EFECTIVA',
   'SIN RESPUESTA EFECTIVA': 'SIN RESPUESTA EFECTIVA',
   LIQUIDADO: 'LIQUIDADO',
-  CERRADO: 'CERRADO',
-  'CERRADO TOTALMENTE': 'CERRADO',
+  'SIN POLIZA': 'SIN PÓLIZA',
+  'SIN PÓLIZA': 'SIN PÓLIZA',
+  CERRADO: 'SIN PÓLIZA',
+  'CERRADO TOTALMENTE': 'SIN PÓLIZA',
 };
 
 const LEGACY_ESTADO_A_SINIESTRO = {
   PENDIENTE: 'PENDIENTE',
+  'INSPECCIONADO PENDIENTE': 'INSPECCIONADO PENDIENTE',
   DESISTIDO: 'DESISTIDO',
   DESISTIDOS: 'DESISTIDO',
   DESISTIMIENTO: 'DESISTIDO',
@@ -117,23 +153,30 @@ const LEGACY_ESTADO_A_SINIESTRO = {
   'ENVIADO ASEGURADORA': 'PROCESO DE PAGO',
   'EN PROCESO DE PAGO': 'PROCESO DE PAGO',
   'PROCESO DE PAGO': 'PROCESO DE PAGO',
+  PAGADO: 'PAGADO',
   'PENDIENTE ACEPTACION DE CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
   'PENDIENTE ACEPTACIÓN DE CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
   'PENDIENTE ACEPTACION CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
   'PENDIENTE ACEPTACION DE CIFRA': 'PENDIENTE ACEPTACION CIFRAS',
   'PENDIENTE ACEPTACIÓN DE CIFRA': 'PENDIENTE ACEPTACION CIFRAS',
   'PENDIENTE ACEPTACION CIFRA': 'PENDIENTE ACEPTACION CIFRAS',
+  'PTE ACEPTACION CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
+  'PTE ACEPTACIÓN CIFRAS': 'PENDIENTE ACEPTACION CIFRAS',
   // Etiquetas de gestión mal ubicadas en ESTADO SINIESTRO
   'SIN CONTACTAR': 'PENDIENTE',
+  'PTE CONTACTO': 'PENDIENTE',
   'EN GESTION': 'PENDIENTE',
   'EN GESTIÓN': 'PENDIENTE',
   'CONTACTADO Y PROGRAMADO': 'PENDIENTE',
   'CONTACTADO - PROGRAMADO': 'PENDIENTE',
   'CONTACTADO/PROGRAMADO': 'PENDIENTE',
   'SOLICITUD DE DOCUMENTOS': 'PENDIENTE',
-  INSPECCIONADO: 'PENDIENTE',
+  'SOLICITUD DTOS': 'PENDIENTE',
+  INSPECCIONADO: 'INSPECCIONADO PENDIENTE',
   'SIN RESPUESTA': 'PENDIENTE',
   'SIN RESPUESTA EFECTIVA': 'PENDIENTE',
+  'SIN POLIZA': 'CERRADO',
+  'SIN PÓLIZA': 'CERRADO',
 };
 
 function normKeyEstado(value) {
@@ -161,7 +204,7 @@ export function homologarEstadoGestionAlfa(valor) {
   if (ESTADOS_GESTION_ALFA_SET.has(raw)) return raw;
   const key = normKeyEstado(raw);
   if (LEGACY_ESTADO_A_GESTION[key]) return LEGACY_ESTADO_A_GESTION[key];
-  return 'EN GESTIÓN';
+  return 'PTE CONTACTO';
 }
 
 export function homologarEstadoSiniestroAlfa(valor, extras = {}) {
@@ -180,6 +223,8 @@ export function homologarEstadoSiniestroAlfa(valor, extras = {}) {
   if (gestion === 'LIQUIDADO') {
     return aceptoCifrasAlfa(extras) ? 'PROCESO DE PAGO' : 'PENDIENTE ACEPTACION CIFRAS';
   }
+  if (gestion === 'INSPECCIONADO') return 'INSPECCIONADO PENDIENTE';
+  if (gestion === 'SIN PÓLIZA') return 'CERRADO';
 
   return 'PENDIENTE';
 }
@@ -189,17 +234,63 @@ export function homologarEstadoAlfa(valor, extras = {}) {
   return homologarEstadoSiniestroAlfa(valor, extras);
 }
 
+export function estadosSiniestroPermitidosParaGestionAlfa(estadoGestion) {
+  const g = homologarEstadoGestionAlfa(estadoGestion);
+  return RELACION_GESTION_SINIESTRO_ALFA[g] || ['PENDIENTE'];
+}
+
+export function asegurarSiniestroCompatibleConGestionAlfa(
+  estadoGestion,
+  estadoSiniestro,
+  extras = {}
+) {
+  const g = homologarEstadoGestionAlfa(estadoGestion);
+  const permitidos = estadosSiniestroPermitidosParaGestionAlfa(g);
+  const s = homologarEstadoSiniestroAlfa(estadoSiniestro, extras);
+  if (permitidos.includes(s)) return s;
+  return permitidos[0] || 'PENDIENTE';
+}
+
 /**
- * Reglas operativas gestión ← siniestro:
- * - OBJETADO / DESISTIDO → CERRADO
- * - PENDIENTE ACEPTACION CIFRAS → LIQUIDADO
+ * Reglas operativas gestión ← siniestro (flujo oficial):
+ * - OBJETADO / PTE ACEPTACION / PROCESO DE PAGO / PAGADO → LIQUIDADO
+ * - DESISTIDO / INSPECCIONADO PENDIENTE → INSPECCIONADO
+ * - CERRADO → INSPECCIONADO o SIN PÓLIZA
  */
 export function sincronizarGestionConCierreSiniestroAlfa(estadoSiniestro, estadoGestion) {
   const s = homologarEstadoSiniestroAlfa(estadoSiniestro);
-  if (s === 'OBJETADO' || s === 'DESISTIDO') return 'CERRADO';
-  if (s === 'PENDIENTE ACEPTACION CIFRAS') return 'LIQUIDADO';
   const g = homologarEstadoGestionAlfa(estadoGestion);
-  return g || 'EN GESTIÓN';
+
+  if (
+    s === 'OBJETADO' ||
+    s === 'PENDIENTE ACEPTACION CIFRAS' ||
+    s === 'PROCESO DE PAGO' ||
+    s === 'PAGADO'
+  ) {
+    return 'LIQUIDADO';
+  }
+  if (s === 'DESISTIDO' || s === 'INSPECCIONADO PENDIENTE') {
+    return 'INSPECCIONADO';
+  }
+  if (s === 'CERRADO') {
+    if (g === 'SIN PÓLIZA' || g === 'INSPECCIONADO') return g;
+    return estadosSiniestroPermitidosParaGestionAlfa(g).includes('CERRADO') ? g : 'INSPECCIONADO';
+  }
+  if (s === 'PENDIENTE') {
+    if (
+      g === 'PTE CONTACTO' ||
+      g === 'SOLICITUD DTOS' ||
+      g === 'CONTACTADO Y PROGRAMADO' ||
+      g === 'SIN RESPUESTA EFECTIVA'
+    ) {
+      return g;
+    }
+    // Gestión avanzada incompatible con PENDIENTE: conservar tipificación;
+    // asegurarSiniestroCompatibleConGestionAlfa ajusta el siniestro.
+    if (g === 'INSPECCIONADO' || g === 'LIQUIDADO' || g === 'SIN PÓLIZA') return g;
+    return 'PTE CONTACTO';
+  }
+  return g || 'PTE CONTACTO';
 }
 
 /**
@@ -319,7 +410,7 @@ export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
     caso.fechaUltimoDocumento ||
     (Array.isArray(caso.archivos) && caso.archivos.length > 0);
   const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
-  const gestionOk = ['INSPECCIONADO', 'EN GESTIÓN'].includes(estadoGestion);
+  const gestionOk = ['INSPECCIONADO', 'PTE CONTACTO', 'SOLICITUD DTOS'].includes(estadoGestion);
   if (tieneDoc && gestionOk) return false;
   return ahora.getTime() > limite.getTime();
 }
@@ -327,6 +418,7 @@ export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
 export function contarKpisGestionAlfa(casos = []) {
   const base = {
     enGestion: 0,
+    solicitudDtos: 0,
     contactadoProgramado: 0,
     inspeccionado: 0,
     liquidado: 0,
@@ -338,31 +430,33 @@ export function contarKpisGestionAlfa(casos = []) {
   };
   for (const c of casos) {
     const g = homologarEstadoGestionAlfa(c.estadoGestion || c.estado);
-    if (g === 'EN GESTIÓN') base.enGestion += 1;
-    else if (g === 'CONTACTADO/PROGRAMADO') base.contactadoProgramado += 1;
+    if (g === 'PTE CONTACTO') base.enGestion += 1;
+    else if (g === 'SOLICITUD DTOS') base.solicitudDtos += 1;
+    else if (g === 'CONTACTADO Y PROGRAMADO') base.contactadoProgramado += 1;
     else if (g === 'INSPECCIONADO') base.inspeccionado += 1;
     else if (g === 'LIQUIDADO') base.liquidado += 1;
     else if (g === 'SIN RESPUESTA EFECTIVA') base.sinRespuesta += 1;
-    else if (g === 'CERRADO') base.cerrado += 1;
+    else if (g === 'SIN PÓLIZA') base.cerrado += 1;
     if (homologarEstadoSiniestroAlfa(c.estado, c) !== 'PENDIENTE') base.siniestroDefinido += 1;
     if (casoAlfaVenceSla2Dias(c)) base.slaVencido += 1;
     if (c.fueraDeZona) base.fueraDeZona += 1;
   }
   // Alias legacy (UI/reporte antiguos)
   base.sinContactar = base.enGestion;
-  base.solicitudDocumentos = base.liquidado;
+  base.solicitudDocumentos = base.solicitudDtos;
   base.definidos = base.siniestroDefinido;
   return base;
 }
 
 /** Filas del tablero de gestión (etiquetas oficiales actuales). */
 export const KPI_GESTION_ALFA_FILAS = [
-  { key: 'enGestion', label: 'EN GESTIÓN' },
-  { key: 'contactadoProgramado', label: 'CONTACTADO/PROGRAMADO' },
+  { key: 'enGestion', label: 'PTE CONTACTO' },
+  { key: 'solicitudDtos', label: 'SOLICITUD DTOS' },
+  { key: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO' },
   { key: 'inspeccionado', label: 'INSPECCIONADO' },
   { key: 'liquidado', label: 'LIQUIDADO' },
   { key: 'sinRespuesta', label: 'SIN RESPUESTA EFECTIVA' },
-  { key: 'cerrado', label: 'CERRADO' },
+  { key: 'cerrado', label: 'SIN PÓLIZA' },
   { key: 'siniestroDefinido', label: 'SINIESTRO DEFINIDO' },
 ];
 
@@ -530,7 +624,7 @@ export const FORM_VACIO_ALFA = {
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
-  estadoGestion: 'EN GESTIÓN',
+  estadoGestion: 'PTE CONTACTO',
   estado: 'PENDIENTE',
   observacionesGestion: '',
   zonaAsignada: '',
@@ -688,6 +782,11 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
     String(caso.estadoGestion || '').trim()
       ? caso.estadoGestion
       : caso.estado
+  );
+  base.estado = asegurarSiniestroCompatibleConGestionAlfa(
+    base.estadoGestion,
+    base.estado,
+    caso
   );
   base.observacionesGestion = aplicarObservacionAutoCierreAlfa(
     base.estado,

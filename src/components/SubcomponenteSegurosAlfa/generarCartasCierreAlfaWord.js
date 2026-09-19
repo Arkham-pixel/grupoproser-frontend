@@ -304,16 +304,64 @@ function safeNombreArchivo(valor, fallback = 'caso') {
     .slice(0, 50);
 }
 
-function datosCartaDesdeLiquidador(liquidador = {}) {
+function pickTexto(...vals) {
+  for (const v of vals) {
+    const s = String(v ?? '').trim();
+    if (s) return s;
+  }
+  return '';
+}
+
+function datosCartaDesdeLiquidador(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
+  const c = caso && typeof caso === 'object' ? caso : {};
   const asegurado =
-    enc.asegurado || enc.contacto || liquidador.nombreFirmante || enc.tomador || 'XXXXXXXXXX';
-  const ciudad = enc.ciudad || enc.municipio || enc.ciudadFirma || 'Bogotá';
-  const fecha = partesFecha(enc.fechaImpreso || new Date());
-  const cedula = formatearCedula(enc.identificacion || enc.cedula);
-  const poliza = enc.poliza || '_______________';
-  const siniestro = String(enc.siniestro || '');
+    pickTexto(
+      enc.asegurado,
+      enc.contacto,
+      liquidador.nombreFirmante,
+      c.asegurado,
+      c.informacionContacto,
+      enc.tomador,
+      c.tomador
+    ) || 'XXXXXXXXXX';
+  const ciudad = pickTexto(enc.ciudad, enc.municipio, enc.ciudadFirma, c.ciudad) || 'Bogotá';
+  const fecha = partesFecha(enc.fechaImpreso || c.fechaLiquidado || new Date());
+  const cedula = formatearCedula(
+    pickTexto(enc.identificacion, enc.cedula, c.identificacion)
+  );
+  const poliza = pickTexto(enc.poliza, c.numeroPoliza) || '_______________';
+  const siniestro = pickTexto(enc.siniestro, c.siniestro);
   return { enc, asegurado, ciudad, fecha, cedula, poliza, siniestro };
+}
+
+/**
+ * Une encabezado del liquidador con el caso dueño (no pisa datos ya digitados).
+ */
+export function enriquecerLiquidadorConCasoAlfa(liquidador = {}, caso = {}) {
+  const enc = liquidador.encabezado || {};
+  const c = caso && typeof caso === 'object' ? caso : {};
+  return {
+    ...liquidador,
+    encabezado: {
+      ...enc,
+      tomador: pickTexto(enc.tomador, c.tomador),
+      asegurado: pickTexto(
+        enc.asegurado,
+        enc.contacto,
+        c.asegurado,
+        c.informacionContacto,
+        c.tomador
+      ),
+      poliza: pickTexto(enc.poliza, c.numeroPoliza),
+      siniestro: pickTexto(enc.siniestro, c.siniestro),
+      identificacion: pickTexto(enc.identificacion, enc.cedula, c.identificacion),
+      ciudad: pickTexto(enc.ciudad, c.ciudad),
+      departamento: pickTexto(enc.departamento, c.departamento),
+      direccion: pickTexto(enc.direccion, c.direccionPredio),
+      cobertura: pickTexto(enc.cobertura, c.cobertura),
+    },
+  };
 }
 
 async function empaquetarYDescargar(doc, nombre) {
@@ -374,11 +422,12 @@ async function parrafoFirmaAutorizadaHbAlfa() {
 }
 
 /**
- * Carta de objeción: monto de la pérdida inferior al deducible (sin indemnización).
- * Réplica de la plantilla oficial Seguros Alfa (CARTA - INFERIOR AL DEDUCIBLE).
+ * Carta de objeción / inferior al deducible (plantilla oficial Seguros Alfa).
+ * Independiente de la carta de desistimiento.
  */
-export async function descargarCartaInferiorDeducibleAlfaWord(liquidador = {}) {
-  const { asegurado, ciudad, fecha, siniestro } = datosCartaDesdeLiquidador(liquidador);
+export async function descargarCartaInferiorDeducibleAlfaWord(liquidador = {}, _totales, caso = {}) {
+  const liq = enriquecerLiquidadorConCasoAlfa(liquidador, caso);
+  const { asegurado, ciudad, fecha, siniestro } = datosCartaDesdeLiquidador(liq, caso);
   const headerTable = await buildHeaderObjecionAlfa();
   const footer = buildFooterObjecionAlfa();
   const firmaHb = await parrafoFirmaAutorizadaHbAlfa();
@@ -438,67 +487,87 @@ export async function descargarCartaInferiorDeducibleAlfaWord(liquidador = {}) {
     { footer }
   );
 
-  const nombre = `Carta_Objecion_Inferior_Deducible_Alfa_${safeNombreArchivo(asegurado || siniestro)}.docx`;
+  const nombre = `Carta_Objecion_Alfa_${safeNombreArchivo(asegurado || siniestro)}.docx`;
   return empaquetarYDescargar(doc, nombre);
 }
 
 /**
- * Carta / constancia de desistimiento de reclamación por terremoto.
+ * Carta de desistimiento (plantilla oficial Seguros Alfa) — independiente de la de objeción.
+ * Rellena asegurado, cédula y póliza del dueño del liquidador/caso.
  */
-export async function descargarCartaDesistimientoAlfaWord(liquidador = {}) {
-  const { asegurado, fecha, cedula, poliza, siniestro } =
-    datosCartaDesdeLiquidador(liquidador);
-  const logosTable = await buildLogosHeader();
-  const firmaClienteParrafo = await parrafoSoloImagenFirmaClienteAlfa(liquidador);
+export async function descargarCartaDesistimientoAlfaWord(liquidador = {}, _totales, caso = {}) {
+  const liq = enriquecerLiquidadorConCasoAlfa(liquidador, caso);
+  const { asegurado, ciudad, fecha, cedula, poliza, siniestro } = datosCartaDesdeLiquidador(
+    liq,
+    caso
+  );
+  const headerTable = await buildHeaderObjecionAlfa();
+  const footer = buildFooterObjecionAlfa();
+  const firmaClienteParrafo = await parrafoSoloImagenFirmaClienteAlfa(liq);
 
-  const doc = documentoBase(logosTable, [
-    p(`Bogotá D.C., ${fecha.dia} de ${fecha.mes} de ${fecha.anio}`, {
-      alignment: AlignmentType.LEFT,
-      after: 240,
-    }),
-    p('Señores:', { alignment: AlignmentType.LEFT, after: 40 }),
-    p('SEGUROS ALFA S.A.', { alignment: AlignmentType.LEFT, bold: true, after: 40 }),
-    p('Bogotá D.C., Colombia', { alignment: AlignmentType.LEFT, after: 200 }),
-    p(
-      [
-        { text: 'Asunto: ', bold: true },
-        { text: 'Desistimiento reclamación terremoto', bold: true },
-      ],
-      { alignment: AlignmentType.LEFT, after: 200 }
-    ),
-    p('Reciba un cordial saludo.', { after: 160 }),
-    p(
-      [
-        { text: 'Yo ' },
-        { text: asegurado, bold: true },
-        { text: ', identificado(a) con cédula No. ' },
-        { text: cedula, bold: true },
-        { text: ', titular de la póliza No. ' },
-        { text: String(poliza), bold: true },
-        {
-          text:
-            ', manifiesto mi decisión voluntaria de desistir de la reclamación presentada por los daños reportados con ocasión del terremoto ocurrido en Colombia el 10 de agosto de 2026.',
-        },
-      ],
-      { after: 280 }
-    ),
-    p('Atentamente,', { alignment: AlignmentType.LEFT, after: 280 }),
-    p(
-      [
-        { text: 'Nombre completo: ', bold: true },
-        { text: asegurado },
-      ],
-      { alignment: AlignmentType.LEFT, after: 80 }
-    ),
-    p(
-      [
-        { text: 'C.C. No. ', bold: true },
-        { text: cedula },
-      ],
-      { alignment: AlignmentType.LEFT, after: 80 }
-    ),
-    firmaClienteParrafo,
-  ]);
+  const doc = documentoBase(
+    headerTable,
+    [
+      p(`Bogotá D.C., ${fecha.dia} de ${fecha.mes} de ${fecha.anio}`, {
+        alignment: AlignmentType.BOTH,
+        italics: true,
+        after: 200,
+        before: 80,
+      }),
+      p('', { after: 80 }),
+      p('Estimado:', { alignment: AlignmentType.BOTH, after: 40 }),
+      p(asegurado, { alignment: AlignmentType.BOTH, bold: true, after: 40 }),
+      p(`${ciudad}, Colombia`, { alignment: AlignmentType.BOTH, after: 160 }),
+      p('', { after: 80 }),
+      p(
+        [
+          { text: 'Asunto: ', bold: true },
+          { text: 'Desistimiento reclamación terremoto', bold: true },
+        ],
+        { alignment: AlignmentType.BOTH, after: 200 }
+      ),
+      p('', { after: 40 }),
+      p('Reciba un cordial saludo.', { alignment: AlignmentType.BOTH, after: 160 }),
+      p(
+        [
+          { text: 'Yo ' },
+          { text: asegurado, bold: true },
+          { text: ', identificado(a) con cédula No. ' },
+          { text: cedula, bold: true },
+          { text: ', titular de la póliza No. ' },
+          { text: String(poliza), bold: true },
+          {
+            text:
+              ', manifiesto mi decisión voluntaria de desistir de la reclamación presentada por los daños reportados con ocasión del terremoto ocurrido en Colombia el 10 de agosto de 2026.',
+          },
+        ],
+        { alignment: AlignmentType.BOTH, after: 280 }
+      ),
+      p('Atentamente,', { alignment: AlignmentType.BOTH, after: 200 }),
+      p(
+        [
+          { text: 'Nombre completo: ', bold: true },
+          { text: asegurado },
+        ],
+        { alignment: AlignmentType.BOTH, after: 80 }
+      ),
+      p(
+        [
+          { text: 'C.C. No. ', bold: true },
+          { text: cedula },
+        ],
+        { alignment: AlignmentType.BOTH, after: 120 }
+      ),
+      p(
+        [
+          { text: 'Firma:', bold: true },
+        ],
+        { alignment: AlignmentType.BOTH, after: 40 }
+      ),
+      firmaClienteParrafo,
+    ],
+    { footer }
+  );
 
   const nombre = `Carta_Desistimiento_Alfa_${safeNombreArchivo(asegurado || siniestro)}.docx`;
   return empaquetarYDescargar(doc, nombre);

@@ -223,9 +223,9 @@ export default function BoletinSemanalSegurosAlfa() {
 
         {/* KPIs lineamiento gestión Alfa (catálogo oficial) */}
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
-          <ExpressMetricCard label="EN GESTIÓN" value={String(kpisGestion.enGestion)} />
+          <ExpressMetricCard label="PTE CONTACTO" value={String(kpisGestion.enGestion)} />
           <ExpressMetricCard
-            label="CONTACTADO/PROGRAMADO"
+            label="CONTACTADO Y PROGRAMADO"
             value={String(kpisGestion.contactadoProgramado)}
           />
           <ExpressMetricCard label="INSPECCIONADO" value={String(kpisGestion.inspeccionado)} />
@@ -234,11 +234,11 @@ export default function BoletinSemanalSegurosAlfa() {
             label="SIN RESPUESTA EFECTIVA"
             value={String(kpisGestion.sinRespuesta)}
           />
-          <ExpressMetricCard label="CERRADO" value={String(kpisGestion.cerrado || 0)} />
+          <ExpressMetricCard label="SIN PÓLIZA" value={String(kpisGestion.cerrado || 0)} />
           <ExpressMetricCard
             label="SINIESTRO DEFINIDO"
             value={String(kpisGestion.siniestroDefinido)}
-            hint="Cerrado, objetado, desistido, proceso de pago o pend. aceptación cifras"
+            hint="Cerrado, objetado, desistido, proceso de pago, pte aceptación cifras o pagado"
           />
         </section>
 

@@ -29,6 +29,7 @@ import { descargarFiniquitoArrendamientoAlfaWord } from './generarFiniquitoArren
 import {
   descargarCartaDesistimientoAlfaWord,
   descargarCartaInferiorDeducibleAlfaWord,
+  enriquecerLiquidadorConCasoAlfa,
 } from './generarCartasCierreAlfaWord.js';
 import {
   descargarInformeCatAlfaExcel,
@@ -566,16 +567,20 @@ export default function LiquidadorSegurosAlfa({
     setMensaje('');
     setExportando(tipo);
     try {
-      const liquidadorExport = {
-        ...liquidador,
-        detalleLiquidacionCat: itemsDetalle,
-        otrosAmparos: Array.isArray(liquidador.otrosAmparos)
-          ? liquidador.otrosAmparos
-          : defaultOtrosAmparosAlfa(),
-      };
+      const casoExport = { ...(casoAlfa || {}), ...(casoLocal || {}) };
+      const liquidadorExport = enriquecerLiquidadorConCasoAlfa(
+        {
+          ...liquidador,
+          detalleLiquidacionCat: itemsDetalle,
+          otrosAmparos: Array.isArray(liquidador.otrosAmparos)
+            ? liquidador.otrosAmparos
+            : defaultOtrosAmparosAlfa(),
+        },
+        casoExport
+      );
       // Totales frescos desde lo que se ve en pantalla (detalle + otros amparos)
       const totalesExport = calcularLiquidacionAlfa(liquidadorExport);
-      const resultado = await fn(liquidadorExport, totalesExport);
+      const resultado = await fn(liquidadorExport, totalesExport, casoExport);
       const blob = resultado?.blob;
       const nombre = resultado?.nombre || resultado?.filename;
       if (blob && nombre) {
@@ -697,6 +702,7 @@ export default function LiquidadorSegurosAlfa({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -759,14 +765,19 @@ export default function LiquidadorSegurosAlfa({
               defaultValue: 'Finiquito arrendamiento',
             })}
           </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {t('segurosAlfa.settlement.cartasGroup', { defaultValue: 'Cartas' })}:
+          </span>
           <button
             type="button"
             className={expressBtnGhost}
             disabled={!!exportando}
-            title="Carta de objeción: pérdida inferior al deducible (sin indemnización)"
+            title="Carta de objeción (pérdida inferior al deducible). Independiente del desistimiento."
             onClick={() =>
               correrExport(
-                'cartaDeducible',
+                'cartaObjecion',
                 descargarCartaInferiorDeducibleAlfaWord,
                 MIME.docx,
                 'OBJECION_DEDUCIBLE'
@@ -774,15 +785,17 @@ export default function LiquidadorSegurosAlfa({
             }
           >
             <FaFileWord />{' '}
-            {t('segurosAlfa.settlement.downloadCartaObjecion', {
-              defaultValue: 'Carta de objeción',
-            })}
+            {exportando === 'cartaObjecion'
+              ? t('common.loading', { defaultValue: 'Generando…' })
+              : t('segurosAlfa.settlement.downloadCartaObjecion', {
+                  defaultValue: 'Carta de objeción',
+                })}
           </button>
           <button
             type="button"
             className={expressBtnGhost}
             disabled={!!exportando}
-            title="Carta / constancia de desistimiento de reclamación"
+            title="Carta de desistimiento de reclamación. Independiente de la objeción."
             onClick={() =>
               correrExport(
                 'cartaDesistimiento',
@@ -793,10 +806,13 @@ export default function LiquidadorSegurosAlfa({
             }
           >
             <FaFileWord />{' '}
-            {t('segurosAlfa.settlement.downloadCartaDesistimiento', {
-              defaultValue: 'Carta desistimiento',
-            })}
+            {exportando === 'cartaDesistimiento'
+              ? t('common.loading', { defaultValue: 'Generando…' })
+              : t('segurosAlfa.settlement.downloadCartaDesistimiento', {
+                  defaultValue: 'Carta de desistimiento',
+                })}
           </button>
+        </div>
         </div>
       </div>
 
