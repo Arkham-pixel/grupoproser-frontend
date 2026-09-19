@@ -736,7 +736,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               baseDeducible: basePctPresupuesto || 'valor_asegurable',
             }
           : liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto,
-        otrosAmparos: simplificarDeducible ? [] : formData.otrosAmparos,
+        otrosAmparos: formData.otrosAmparos,
         deducibleCompartido:
           simplificarDeducible &&
           liquidacion.modoAplicacionDeducible === 'compartido',
@@ -3698,10 +3698,21 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                 ) : null}
                 {Number(diagrama.totalOtrosAmparos) > 0 ? (
-                  <tr className="border-t" style={{ borderColor }}>
-                    <td className="px-4 py-2">(+) Otros amparos (sin deducible)</td>
-                    <td className="px-4 py-2 text-right">{money(diagrama.totalOtrosAmparos || 0)}</td>
-                  </tr>
+                  <>
+                    <tr className="border-t" style={{ borderColor }}>
+                      <td className="px-4 py-2">(+) Gastos / amparos sin deducible</td>
+                      <td className="px-4 py-2 text-right">{money(diagrama.totalOtrosAmparos || 0)}</td>
+                    </tr>
+                    {(Array.isArray(diagrama.otrosAmparos) ? diagrama.otrosAmparos : []).map((it) => (
+                      <tr key={it.id || `${it.tipo}-${it.nombre}`} className="border-t" style={{ borderColor }}>
+                        <td className="px-4 py-2 pl-8 text-xs">
+                          {it.nombre || it.tipo || 'Amparo'}
+                          {it.observacion ? ` — ${it.observacion}` : ''}
+                        </td>
+                        <td className="px-4 py-2 text-right text-xs">{money(Number(it.valor) || 0)}</td>
+                      </tr>
+                    ))}
+                  </>
                 ) : null}
                 {Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0 ? (
                   <tr className="border-t" style={{ borderColor }}>

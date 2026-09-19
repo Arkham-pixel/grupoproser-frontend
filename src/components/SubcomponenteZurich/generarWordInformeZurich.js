@@ -48,6 +48,12 @@ import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
+import {
+  filasOtrosAmparosActivos,
+  nombreTipoOtroAmparo,
+  sumarOtrosAmparos,
+  valorMostrarOtroAmparo,
+} from '../liquidacion/otrosAmparosLiquidacion.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -540,7 +546,14 @@ function construirCuadroPrincipal({
       : [
           [
             'INDEMNIZACIÓN SUGERIDA',
-            money(desgloseReserva.perdida > 0 ? desgloseReserva.reserva : totales.totalIndemnizar),
+            money(
+              desgloseReserva.perdida > 0
+                ? Math.round(
+                    (Number(desgloseReserva.reserva) || 0) +
+                      (Number(totales.totalOtrosAmparos) || 0)
+                  )
+                : totales.totalIndemnizar
+            ),
           ],
         ]),
   ];
@@ -1358,6 +1371,20 @@ function totalesLiquidadorUnicoDesdeFilas(filas = [], aiuPct = 25, imprPct = 0, 
   return { subtotal, aiu, imprevistos, impuestos, total: subtotal + aiu + imprevistos + impuestos };
 }
 
+function desgloseWordOtrosAmparos(lista = []) {
+  const activos = filasOtrosAmparosActivos(lista);
+  if (!activos.length) return { activos: [], total: 0, filas: [] };
+  return {
+    activos,
+    total: sumarOtrosAmparos(lista),
+    filas: activos.map((it) => {
+      const nom = nombreTipoOtroAmparo(it.tipo, it.nombre);
+      const obs = String(it.observacion || '').trim();
+      return { label: obs ? `${nom} — ${obs}` : nom, valor: valorMostrarOtroAmparo(it) };
+    }),
+  };
+}
+
 function tablaLiquidadorUnicoZurich({
   filas = [],
   totalesFooter = {},
@@ -1366,6 +1393,7 @@ function tablaLiquidadorUnicoZurich({
   mostrarImpuestos = false,
   imprPct = 0,
   impPct = 0,
+  otrosAmparos = [],
 } = {}) {
   const w = UNICO_COLS.widths;
   const cellU = (text, colIdx, opts = {}) =>
@@ -1448,6 +1476,11 @@ function tablaLiquidadorUnicoZurich({
     ...(mostrarImpuestos ? [[`IMPUESTOS (${impPct}%)`, money(totalesFooter.impuestos)]] : []),
     ['TOTAL, ESTIMADO', money(totalesFooter.total)],
   ];
+  const otros = desgloseWordOtrosAmparos(otrosAmparos);
+  if (otros.filas.length) {
+    resumen.push(['GASTOS SIN DEDUCIBLE', money(otros.total)]);
+    otros.filas.forEach((f) => resumen.push([f.label, money(f.valor)]));
+  }
   const wLabel = w.slice(0, 6).reduce((a, b) => a + b, 0);
   resumen.forEach(([lab, val]) => {
     rows.push(
@@ -1485,7 +1518,7 @@ function tablaLiquidadorUnicoZurich({
   });
 }
 
-function tablaDiagramaAjusteZurich(desglose = {}) {
+function tablaDiagramaAjusteZurich(desglose = {}, extras = {}) {
   const rows = [
     new TableRow({
       children: [
@@ -1595,6 +1628,63 @@ function tablaDiagramaAjusteZurich(desglose = {}) {
         }),
       ],
     }),
+    ...(() => {
+      const otros = desgloseWordOtrosAmparos(extras.otrosAmparos);
+      if (!otros.filas.length) return [];
+      const extraRows = [
+        ...otros.filas.map(
+          (f) =>
+            new TableRow({
+              children: [
+                cell(f.label, {
+                  width: 7360,
+                  columnSpan: 2,
+                  cuadro: true,
+                  alignment: AlignmentType.RIGHT,
+                }),
+                cell(money(f.valor), {
+                  width: 2000,
+                  cuadro: true,
+                  alignment: AlignmentType.RIGHT,
+                }),
+              ],
+            })
+        ),
+        new TableRow({
+          children: [
+            cell('GASTOS SIN DEDUCIBLE', {
+              width: 7360,
+              columnSpan: 2,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+            cell(money(otros.total), {
+              width: 2000,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            cell('TOTAL A INDEMNIZAR', {
+              bold: true,
+              width: 7360,
+              columnSpan: 2,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+            cell(money(Math.round((Number(desglose.reserva) || 0) + otros.total)), {
+              bold: true,
+              width: 2000,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+          ],
+        }),
+      ];
+      return extraRows;
+    })(),
   ];
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
@@ -2006,7 +2096,9 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     ...(conLiquidador
       ? [
           p('DIAGRAMA DE AJUSTE', { bold: true, before: 40, after: 120 }),
-          tablaDiagramaAjusteZurich(desgloseAjusteUnico),
+          tablaDiagramaAjusteZurich(desgloseAjusteUnico, {
+            otrosAmparos: totales.otrosAmparos || liq.otrosAmparos,
+          }),
         ]
       : tieneCotizacionPdf
         ? [
@@ -2155,6 +2247,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           mostrarImpuestos,
           imprPct,
           impPct,
+          otrosAmparos: totales.otrosAmparos || liq.otrosAmparos,
         }),
       ],
     });

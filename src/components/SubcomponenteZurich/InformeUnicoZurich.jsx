@@ -57,6 +57,8 @@ import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNS
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import { serializarPaginasCotizacion, usaCotizacionComoBasePresupuesto } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
+import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import EditorDeducibleZurich from './EditorDeducibleZurich.jsx';
 
 function extraerLatLng(texto) {
@@ -1051,6 +1053,17 @@ export default function InformeUnicoZurich({
             />
             <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.insuredValueHint')}</p>
           </Campo>
+        </div>
+        <div className="mb-4">
+          <OtrosAmparosLiquidacion
+            otrosAmparos={liquidador.otrosAmparos}
+            onChange={(filas) =>
+              setLiquidador((prev) => ({
+                ...prev,
+                otrosAmparos: Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
+              }))
+            }
+          />
         </div>
         <div className="mb-4">
           <CotizacionPdfLiquidacion
