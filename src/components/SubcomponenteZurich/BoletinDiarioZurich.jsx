@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  FaCalendarAlt,
+  FaCalendarAlt,
   FaCheckCircle,
   FaChevronLeft,
   FaChevronRight,
@@ -20,8 +20,7 @@ import {
   FaArrowUp,
 } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
-import { fetchAllCasosZurich } from '../../services/zurichService.js';
-import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
+import { fetchAllCasosZurichListado } from '../../services/zurichListadoService.js';
 import { calcularBoletinDiarioZurich, diaBogotaDesdeOffset } from './boletinDiarioZurichHelpers.js';
 import { isoDateBogota } from './boletinSemanalZurichHelpers.js';
 import { imprimirBoletinDiarioZurich } from './imprimirBoletinDiarioZurich.js';
@@ -123,9 +122,9 @@ export default function BoletinDiarioZurich() {
       setLoading(true);
       setError(null);
       try {
-        const lista = await fetchAllCasosZurich();
+        const lista = await fetchAllCasosZurichListado();
         if (!cancelado) {
-          setCasos(filtrarCasosPorAsignacionUsuario(lista, { modulo: 'zurich' }));
+          setCasos(Array.isArray(lista) ? lista : []);
         }
       } catch (err) {
         console.error('Error cargando boletín diario Zurich:', err);

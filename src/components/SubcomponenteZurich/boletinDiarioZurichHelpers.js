@@ -11,7 +11,7 @@ import {
 } from './boletinSemanalZurichHelpers.js';
 
 const TZ = 'America/Bogota';
-const CORTES_KEY = 'zurich.boletinDiario.cortes';
+const CORTES_KEY = 'zurich.boletinDiario.listado.cortes.v2';
 
 /** Categorías del tablero «Gestión terremoto» / comparativo (mutuamente excluyentes). */
 export const CATEGORIAS_GESTION_TERREMOTO = [
@@ -151,7 +151,13 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
 
   if (textoLibre && /desist/.test(normTexto(textoLibre))) return 'desistimientos';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
-  if (estado === 'FINALIZADO') return 'pendientesPagoAlfa';
+  if (
+    estado === 'FINALIZADO' ||
+    estado === 'EN PROCESO DE FACTURACIÓN' ||
+    estado === 'FACTURADO'
+  ) {
+    return 'pendientesPagoAlfa';
+  }
   if (estado === 'AUTORIDAD DELEGADA' || estado === 'ACEPTACIÓN CLIENTE') return 'liquidados';
   if (
     estado === 'ANALISIS DEL CASO' ||
@@ -339,9 +345,11 @@ export function getCorteDiario(isoDia) {
 }
 
 export function snapshotDesdeConteo(conteo) {
+  const counts = { ...(conteo.counts || {}) };
+  const total = Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
   return {
-    total: conteo.total,
-    counts: { ...conteo.counts },
+    total,
+    counts,
     porCaso: { ...conteo.porCaso },
     fuente: conteo.fuente || 'live',
   };
@@ -377,15 +385,14 @@ export function casoExistiaAlCorte(caso, isoCorte) {
 export function clasificarCasoAlCorte(caso = {}, isoCorte) {
   if (!casoExistiaAlCorte(caso, isoCorte)) return null;
 
-  const upd = parseFechaCaso(caso.updatedAt);
-  const updIso = upd ? isoDateBogota(upd) : null;
-  const pudoCambiarDespues = Boolean(updIso && updIso > isoCorte);
-
-  if (!pudoCambiarDespues) {
-    return clasificarCasoGestionTerremoto(caso);
+  if (
+    fechaIsoOnOrBefore(caso.fechaFinalizado, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaLiquidado, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaEnProcesoFacturacion, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaFacturado, isoCorte)
+  ) {
+    return 'pendientesPagoAlfa';
   }
-
-  if (fechaIsoOnOrBefore(caso.fechaFinalizado, isoCorte) || fechaIsoOnOrBefore(caso.fechaLiquidado, isoCorte)) return 'pendientesPagoAlfa';
   if (
     fechaIsoOnOrBefore(caso.fechaAutoridadDelegada, isoCorte) ||
     fechaIsoOnOrBefore(caso.fechaAceptacionCliente, isoCorte)
@@ -400,12 +407,14 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
   ) {
     return 'enLiquidacion';
   }
-  if (
-    fechaIsoOnOrBefore(caso.fechaCoordinandoInspeccion, isoCorte) ||
-    fechaIsoOnOrBefore(caso.fechaLlamada, isoCorte)
-  ) {
+  if (fechaIsoOnOrBefore(caso.fechaCoordinandoInspeccion, isoCorte)) {
     return 'enInspeccion';
   }
+
+  const upd = parseFechaCaso(caso.updatedAt);
+  const updIso = upd ? isoDateBogota(upd) : null;
+  const estadoActualEsViejo = !updIso || updIso <= isoCorte;
+  if (estadoActualEsViejo) return clasificarCasoGestionTerremoto(caso);
   return 'verificacion';
 }
 
