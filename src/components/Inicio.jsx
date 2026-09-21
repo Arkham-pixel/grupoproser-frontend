@@ -16,9 +16,11 @@ import {
   FaTrash,
   FaCheck,
   FaTimes,
+  FaVideo,
 } from 'react-icons/fa';
 import { BASE_URL } from '../config/apiConfig.js';
 import { esRolContractor } from '../config/roles.js';
+import { sesionPuedeVideoperitaje } from '../config/videoperitajePermitidos.js';
 
 const API = `${BASE_URL}/api`;
 const MAX_TAREA_CHARS = 20;
@@ -43,6 +45,7 @@ const PRIORIDAD_STYLES = {
 };
 
 const accesosDirectosBase = [
+  { path: '/videoperitaje', icon: FaVideo, labelKey: 'videoperitaje.title', key: 'videoperitaje', accent: true },
   { path: '/formularioinspeccion', icon: FaClipboardList, labelKey: 'home.ui.linkInspeccion', key: 'inspeccion', accent: true },
   { path: '/formulario-maquinaria', icon: FaWrench, labelKey: 'home.ui.linkMaquinaria', key: 'maquinaria', accent: false },
   { path: '/ajuste', icon: FaChartBar, labelKey: 'home.ui.linkAjuste', key: 'ajuste', accent: true },
@@ -110,9 +113,9 @@ export default function Inicio() {
     localStorage.setItem(`acceso_directo_${login}`, JSON.stringify(uso));
   };
 
-  const accesosOrdenados = [...accesosDirectosBase].sort(
-    (a, b) => obtenerContadorUso(b.key) - obtenerContadorUso(a.key)
-  );
+  const accesosOrdenados = [...accesosDirectosBase]
+    .filter((a) => a.key !== 'videoperitaje' || sesionPuedeVideoperitaje())
+    .sort((a, b) => obtenerContadorUso(b.key) - obtenerContadorUso(a.key));
 
   const handleAccesoDirecto = (acceso) => {
     incrementarUso(acceso.key);

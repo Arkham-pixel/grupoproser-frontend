@@ -1,3 +1,5 @@
+import { sesionPuedeVideoperitaje } from './videoperitajePermitidos.js';
+
 export const ROLES_VALIDOS = [
   'admin',
   'soporte',
@@ -62,7 +64,7 @@ export const ROLES_CONTRACTOR = [
 export const CONFIG_CONTRACTOR_TRES = {
   seccionesMenu: ['alfa', 'zurich', 'bbvaCat', 'sura'],
   inicio: '/inicio',
-  prefijosRuta: ['/inicio', '/zurich', '/seguros-alfa', '/sura', '/bbva-cat', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/zurich', '/seguros-alfa', '/sura', '/bbva-cat', '/agenda-catastrofico', '/videoperitaje'],
   incluirHome: true,
   etiqueta: 'Zurich, Alfa, Sura y BBVA',
 };
@@ -70,7 +72,7 @@ export const CONFIG_CONTRACTOR_TRES = {
 export const CONFIG_SOLO_ZURICH = {
   seccionesMenu: ['zurich'],
   inicio: '/inicio',
-  prefijosRuta: ['/inicio', '/zurich', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/zurich', '/agenda-catastrofico', '/videoperitaje'],
   rutasExcluidas: [
     '/zurich/carga',
     '/zurich/bandeja-facturacion',
@@ -88,7 +90,7 @@ export const CONFIG_SOLO_ZURICH = {
 export const CONFIG_SOLO_BBVA = {
   seccionesMenu: ['bbvaCat'],
   inicio: '/inicio',
-  prefijosRuta: ['/inicio', '/bbva-cat', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/bbva-cat', '/agenda-catastrofico', '/videoperitaje'],
   rutasExcluidas: ['/bbva-cat/listado/reporte'],
   incluirHome: true,
   etiqueta: 'BBVA',
@@ -113,7 +115,7 @@ export const CONFIG_SOLO_EQUIDAD = {
 export const CONFIG_SOLO_EQUIDAD_CAT = {
   seccionesMenu: ['equidadCat', 'allianz'],
   inicio: '/inicio',
-  prefijosRuta: ['/inicio', '/equidad-cat', '/allianz', '/allias', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/equidad-cat', '/allianz', '/allias', '/agenda-catastrofico', '/videoperitaje'],
   incluirHome: true,
   etiqueta: 'Equidad CAT',
 };
@@ -130,7 +132,7 @@ export const CONFIG_SOLO_PREVISORA = {
   /** Home + módulo Previsora completo. */
   seccionesMenu: ['previsora'],
   inicio: '/inicio',
-  prefijosRuta: ['/inicio', '/previsora', '/agenda-catastrofico'],
+  prefijosRuta: ['/inicio', '/previsora', '/agenda-catastrofico', '/videoperitaje'],
   incluirHome: true,
   etiqueta: 'Previsora',
 };
@@ -150,6 +152,7 @@ export const CONFIG_CATASTROFICOS = {
     '/equidad-cat',
     '/catastrofico',
     '/agenda-catastrofico',
+    '/videoperitaje',
   ],
   incluirHome: true,
   etiqueta: 'Catastróficos',
@@ -268,6 +271,11 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
 
   if (r === 'externo') {
     return path.startsWith('/ajuste') || path.startsWith('/complex/subtarea');
+  }
+
+  // En prueba: solo logins de videoperitajePermitidos.js
+  if (path === '/videoperitaje' || path.startsWith('/videoperitaje/')) {
+    return sesionPuedeVideoperitaje();
   }
 
   // Todos los usuarios autenticados (salvo externo) pueden reportar tickets

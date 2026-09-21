@@ -2,8 +2,25 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+function arnaldVersionPlugin() {
+  return {
+    name: "arnald-version-json",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: JSON.stringify({
+          build: String(Date.now()),
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
+    arnaldVersionPlugin(),
     react(),
     VitePWA({
       registerType: "autoUpdate",
@@ -37,11 +54,23 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff}"],
-        globIgnores: ["**/error404-arnald.png", "**/Captura de pantalla*"],
+        navigateFallback: null,
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2,woff}"],
+        globIgnores: [
+          "**/error404-arnald.png",
+          "**/Captura de pantalla*",
+          "**/version.json",
+          "**/arnald-cache-bust.js",
+          "**/*.html",
+        ],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.endsWith("/version.json") ||
+              url.pathname.endsWith("/arnald-cache-bust.js"),
+            handler: "NetworkOnly",
+          },
           {
             // HTML: red primero para que Mac/Safari no se queden en el shell viejo
             urlPattern: ({ request }) => request.mode === "navigate",
@@ -137,6 +166,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true,
     proxy: {
       "/api": {
         target: "http://localhost:3000",

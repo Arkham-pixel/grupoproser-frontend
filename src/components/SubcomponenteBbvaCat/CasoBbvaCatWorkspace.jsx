@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaFolderOpen, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaFolderOpen, FaSave, FaVideo } from 'react-icons/fa';
 import LiquidadorBbvaCat from './LiquidadorBbvaCat.jsx';
 import InspeccionCatBbvaCat from './InspeccionCatBbvaCat.jsx';
 import InformeUnicoBbvaCat from './InformeUnicoBbvaCat.jsx';
@@ -39,6 +39,8 @@ import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { STORAGE_ORIGEN_LISTADO_BBVA_CAT } from './bbvaCatHelpers.js';
 import { esRolSoloBbva } from '../../config/roles.js';
+import VideoperitajeIniciarModal from '../SubcomponenteVideoperitaje/VideoperitajeIniciarModal.jsx';
+import { sesionPuedeVideoperitaje } from '../../config/videoperitajePermitidos.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -170,6 +172,8 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const [archiveroAbierto, setArchiveroAbierto] = useState(false);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
+  const [videoModal, setVideoModal] = useState(false);
+  const puedeVideoperitaje = sesionPuedeVideoperitaje();
 
   const casoId = casoBbvaCat?._id || casoIdFromQuery || null;
 
@@ -458,6 +462,15 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {casoId && puedeVideoperitaje && (
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => setVideoModal(true)}
+              >
+                <FaVideo /> {t('videoperitaje.startTitle')}
+              </button>
+            )}
             {casoId && (
               <button
                 type="button"
@@ -667,6 +680,23 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
           setDraftToRestore(null);
         }}
         onCancel={() => setShowDraftRestore(false)}
+      />
+      <VideoperitajeIniciarModal
+        open={puedeVideoperitaje && videoModal}
+        onClose={() => setVideoModal(false)}
+        casoId={casoId}
+        modulo={esModuloListado ? 'bbva-cat-listado' : 'bbva-cat'}
+        defaults={{
+          expediente: casoBbvaCat?.consecutivo || casoBbvaCat?.siniestro || '',
+          celular: casoBbvaCat?.celular || casoBbvaCat?.telefonoAsegurado || '',
+          email: casoBbvaCat?.correoAsegurado || casoBbvaCat?.correo || '',
+          aseguradoNombre: casoBbvaCat?.asegurado || '',
+        }}
+        onCreated={(r) => {
+          if (r?.data?._id && r.data.tipo === 'live') {
+            navigate(`/videoperitaje/sala/${r.data._id}`);
+          }
+        }}
       />
       <Outlet />
     </div>

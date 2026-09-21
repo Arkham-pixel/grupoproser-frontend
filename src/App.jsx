@@ -54,6 +54,10 @@ import ProtocoloTiemposComplex from './components/SubcomponenteCompex/ProtocoloT
 import PortalSubtareaExterna from './components/SubcomponenteCompex/PortalSubtareaExterna';
 import PortalAjusteExternoBridge from './components/SubcomponenteCompex/PortalAjusteExternoBridge';
 import PortalOnboarding from './components/Onboarding/PortalOnboarding';
+import VideoperitajeHistorial from './components/SubcomponenteVideoperitaje/VideoperitajeHistorial.jsx';
+import VideoperitajeSala from './components/SubcomponenteVideoperitaje/VideoperitajeSala.jsx';
+import VideoperitajePlantillas from './components/SubcomponenteVideoperitaje/VideoperitajePlantillas.jsx';
+import PortalVideoperitajeUnirse from './components/SubcomponenteVideoperitaje/PortalVideoperitajeUnirse.jsx';
 import MisSubtareasComplex from './components/SubcomponenteCompex/MisSubtareasComplex';
 import SubcomponenteExpress from './components/SubcomponenteExpress/SubcomponenteExpress';
 import ReporteExpress from './components/SubcomponenteExpress/ReporteExpress';
@@ -534,6 +538,7 @@ export default function App() {
         <Route path="/complex/subtarea/:token" element={<PortalSubtareaExterna />} />
         <Route path="/complex/subtarea/:token/ajuste" element={<PortalAjusteExternoBridge />} />
         <Route path="/onboarding/:token" element={<PortalOnboarding />} />
+        <Route path="/videoperitaje/unirse/:token" element={<PortalVideoperitajeUnirse />} />
 
         {/* Reporte ejecutivo de matriz — pantalla completa sin Layout */}
         <Route
@@ -558,6 +563,9 @@ export default function App() {
           <Route path="inicio" element={<InicioOrRedirectPorRol />} />
           <Route path="ayuda" element={<HelpCenterPage />} />
           <Route path="tickets" element={<TicketsPage />} />
+          <Route path="videoperitaje" element={<VideoperitajeHistorial />} />
+          <Route path="videoperitaje/plantillas" element={<VideoperitajePlantillas />} />
+          <Route path="videoperitaje/sala/:id" element={<VideoperitajeSala />} />
           <Route path="agenda-catastrofico" element={<AgendaCatastroficoPage />} />
           <Route
             path="complex/formulario"

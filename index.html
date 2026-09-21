@@ -16,6 +16,22 @@
     connect-src 'self' data: blob:
                 http://localhost:3000
                 http://127.0.0.1:3000
+                http://localhost:7880
+                http://127.0.0.1:7880
+                http://localhost:7881
+                http://127.0.0.1:7881
+                ws://localhost:7880
+                ws://127.0.0.1:7880
+                wss://localhost:7880
+                wss://127.0.0.1:7880
+                https://*.livekit.cloud
+                wss://*.livekit.cloud
+                https://livekit.cloud
+                wss://livekit.cloud
+                https://*.trycloudflare.com
+                wss://*.trycloudflare.com
+                http://*.trycloudflare.com
+                ws://*.trycloudflare.com
                 https://arnaldbackend.grupoproser.com.co
                 https://aplicacion.grupoproser.com.co
                 https://arnald.grupoproser.com.co
@@ -78,6 +94,7 @@
                 https://accounts.google.com
                 https://www.gstatic.com
                 https://*.gstatic.com;
+    media-src 'self' blob: mediastream: data:;
     worker-src 'self' blob:;
     child-src 'self' blob:;
     font-src 'self' data:
@@ -93,6 +110,7 @@
 
 
     <title>Arnald DataFlow - Panel de Control</title>
+    <script src="/arnald-cache-bust.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <!-- Script para aplicar el tema antes de que React cargue (evita flash) -->
     <script>

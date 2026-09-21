@@ -57,6 +57,7 @@ import {
   FaCalendarAlt,
   FaUserPlus,
   FaSyncAlt,
+  FaVideo,
 } from 'react-icons/fa';
 import {
   esUsuarioGerenteFacturacion,
@@ -78,6 +79,7 @@ import NotificacionesOperativasMenu from './NotificacionesOperativasMenu';
 import AgendaCatastroficoMenu from './AgendaCatastrofico/AgendaCatastroficoMenu';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
+import { sesionPuedeVideoperitaje } from '../config/videoperitajePermitidos.js';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
 import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado, puedeVerAgendaCatastrofico } from '../config/roles';
 import { useIsMobileShell } from '../hooks/useMediaQuery';
@@ -139,6 +141,7 @@ function seccionMenuDesdeRuta(path) {
   if (path.startsWith('/seguros-alfa')) return 'alfa';
   if (path.startsWith('/zurich')) return 'zurich';
   if (path.startsWith('/bbva-cat')) return 'bbvaCat';
+  if (path.startsWith('/videoperitaje')) return 'videoperitaje';
   if (path.startsWith('/previsora')) return 'previsora';
   if (path.startsWith('/allianz') || path.startsWith('/allias')) return 'allianz';
   if (path.startsWith('/sura')) return 'sura';
@@ -423,6 +426,7 @@ export default function Layout() {
   const configContractor = obtenerConfigContractor(rolNorm);
   const esContractor = Boolean(configContractor);
   const accesoRestringido = esVisualizador || esPuertos || esContractor || rolNorm === 'externo';
+  const puedeVideoperitaje = sesionPuedeVideoperitaje();
   const puedeCatalogosExpress = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),
@@ -461,6 +465,9 @@ export default function Layout() {
     '/inicio': t('nav.pageTitles.home'),
     '/ayuda': t('nav.pageTitles.help'),
     '/tickets': t('nav.pageTitles.tickets'),
+    '/videoperitaje': t('nav.pageTitles.videoperitaje'),
+    '/videoperitaje/plantillas': t('nav.pageTitles.videoperitajeTemplates'),
+    '/videoperitaje/sala': t('nav.pageTitles.videoperitaje'),
     '/agenda-catastrofico': t('nav.pageTitles.agendaCatastrofico', { defaultValue: 'Agenda catastrófica' }),
     '/formularioinspeccion': t('nav.pageTitles.inspectionForm'),
     '/formulario-inspeccion-propiedades': t('nav.pageTitles.propertiesInspectionForm'),
@@ -816,6 +823,9 @@ export default function Layout() {
     tickets: [
       { path: '/tickets', icon: FaTicketAlt, label: t('nav.tickets') },
     ],
+    videoperitaje: puedeVideoperitaje
+      ? [{ path: '/videoperitaje', icon: FaVideo, label: t('nav.sections.videoperitaje') }]
+      : [],
     matrices: esPuertos
       ? []
       : [
@@ -1096,10 +1106,14 @@ export default function Layout() {
 
   const sections = [
     { key: 'principal', title: t('nav.sections.principal'), icon: FaHome, items: menuItems.principal },
+    ...(puedeVideoperitaje
+      ? [{ key: 'videoperitaje', title: t('nav.sections.videoperitaje'), icon: FaVideo, items: menuItems.videoperitaje }]
+      : []),
     ...(esPuertos
       ? [{ key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos }]
       : esContractor && configContractor
-        ? (configContractor.seccionesMenu || []).map((key) => ({
+        ? [
+            ...(configContractor.seccionesMenu || []).map((key) => ({
             key,
             title: t(`nav.sections.${key}`),
             icon: ICONOS_ASEGURADORA[key] || (key === 'equidadFdm' || key === 'equidadCat' ? FaHandHoldingHeart : FaFileAlt),
@@ -1107,7 +1121,8 @@ export default function Layout() {
               const excluidas = configContractor.rutasExcluidas || [];
               return !excluidas.some((ex) => item.path === ex || item.path.startsWith(`${ex}/`));
             }),
-          }))
+          })),
+          ]
       : !esVisualizador
         ? [
             { key: 'complex', title: t('nav.sections.complex'), icon: FaFileAlt, items: menuItems.complex },
@@ -1147,7 +1162,9 @@ export default function Layout() {
 
     const expanded = expandedSection === key;
     const active = sectionHasActiveChild(items);
-    const singleItem = items.length === 1 && (key === 'principal' || key === 'tickets');
+    const singleItem =
+      (items.length === 1 && (key === 'principal' || key === 'tickets' || key === 'videoperitaje')) ||
+      key === 'videoperitaje';
 
     const activeClasses =
       'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-900/30';
@@ -1394,6 +1411,37 @@ export default function Layout() {
           }}
           className="sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-3"
         >
+          {puedeVideoperitaje ? (
+            menuCollapsed ? (
+              <div className="relative mb-2 flex justify-center">
+                <Link
+                  to="/videoperitaje"
+                  title="Videoperitaje"
+                  onClick={closeMobileNav}
+                  className={`rounded-lg p-2.5 transition-all ${
+                    location.pathname.startsWith('/videoperitaje')
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-900/30'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
+                >
+                  <FaVideo className="text-lg" />
+                </Link>
+              </div>
+            ) : (
+              <Link
+                to="/videoperitaje"
+                onClick={closeMobileNav}
+                className={`mb-2 flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
+                  location.pathname.startsWith('/videoperitaje')
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-900/30'
+                    : 'bg-gray-800 text-white hover:bg-gray-700'
+                }`}
+              >
+                <FaVideo className="text-base shrink-0" />
+                <span className="flex-1 text-left">Videoperitaje</span>
+              </Link>
+            )
+          ) : null}
           {sections.map((section) => (
             <NavSection key={section.key} section={section} />
           ))}
@@ -1500,6 +1548,18 @@ export default function Layout() {
             {puedeVerAgendaCatastrofico(rolNorm) && <AgendaCatastroficoMenu />}
             {!esVisualizador && !esPuertos && rolNorm !== 'externo' && (
               <NotificacionesOperativasMenu />
+            )}
+
+            {puedeVideoperitaje && (
+              <button
+                type="button"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
+                title={t('nav.pageTitles.videoperitaje', { defaultValue: 'Videoperitaje' })}
+                aria-label={t('nav.pageTitles.videoperitaje', { defaultValue: 'Videoperitaje' })}
+                onClick={() => navigate('/videoperitaje')}
+              >
+                <FaVideo className="text-lg" />
+              </button>
             )}
 
             <button
