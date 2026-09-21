@@ -64,6 +64,7 @@ import { serializarPaginasCotizacion, usaCotizacionComoBasePresupuesto } from '.
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import EditorDeducibleZurich from './EditorDeducibleZurich.jsx';
+import ResumenLiquidacionZurich from './ResumenLiquidacionZurich.jsx';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -767,7 +768,7 @@ export default function InformeUnicoZurich({
             />
           </Campo>
 
-          <div className="mt-3 min-h-[320px] overflow-hidden rounded-lg">
+          <div className="mt-3 overflow-hidden rounded-lg">
             <MapaGoogleEarth
               apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               coordenadasIniciales={informe.coordenadasRiesgo}
@@ -1092,7 +1093,8 @@ export default function InformeUnicoZurich({
             disabled={guardandoCaso}
           />
         </div>
-        {usaCotizBase ? (
+        {(usaCotizBase || tieneCotizacionPdf) ? (
+        <>
         <div className="mb-4 max-w-xl">
           <EditorDeducibleZurich
             cfg={configDeducibleCotizacionPdfZurich(liquidador)}
@@ -1120,6 +1122,10 @@ export default function InformeUnicoZurich({
             disabled={guardandoCaso}
           />
         </div>
+        <div className="mb-4 max-w-2xl">
+          <ResumenLiquidacionZurich liquidador={liquidador} totales={totales} />
+        </div>
+        </>
         ) : null}
         <SeccionModoLiquidadorCat
           modulo="zurich"
@@ -1138,7 +1144,7 @@ export default function InformeUnicoZurich({
           modoLiquidador
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
           ocultarPresupuestoEscrito={false}
-          ocultarLiquidacionPresupuesto={false}
+          ocultarLiquidacionPresupuesto={usaCotizBase}
           simplificarDeducible
           totalPresupuestoOverride={null}
           omitirSincronizarIndemnizacion={usaCotizBase}

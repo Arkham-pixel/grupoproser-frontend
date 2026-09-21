@@ -567,7 +567,7 @@ export function filasResumenLiquidacionZurich(liquidador = {}, totales = {}) {
   }
 
   const deducibleContenidos = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
-  if (deducibleContenidos > 0) {
+  if (contenidos > 0 && deducibleContenidos > 0) {
     filas.push({ label: 'Deducible contenidos', value: deducibleContenidos });
   }
 

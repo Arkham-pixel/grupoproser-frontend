@@ -46,6 +46,7 @@ import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
 import { serializarPaginasCotizacion, usaCotizacionComoBasePresupuesto } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import EditorDeducibleZurich from './EditorDeducibleZurich.jsx';
+import ResumenLiquidacionZurich from './ResumenLiquidacionZurich.jsx';
 import { formatMiles } from './zurichHelpers.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
@@ -114,6 +115,10 @@ export default function LiquidadorZurich({
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
   const enc = liquidador.encabezado || {};
   const usaCotizBase = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
+  const tieneCotizacionPdf = Boolean(
+    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+      liquidador.cotizacionPdf?.archivoPdf
+  );
 
   useEffect(() => {
     if (!usaCotizBase) return;
@@ -401,7 +406,8 @@ export default function LiquidadorZurich({
             disabled={!!exportando || guardandoCaso}
           />
         </div>
-        {usaCotizBase ? (
+        {(usaCotizBase || tieneCotizacionPdf) ? (
+        <>
         <div className="mt-4 max-w-xl">
           <EditorDeducibleZurich
             cfg={configDeducibleCotizacionPdfZurich(liquidador)}
@@ -429,6 +435,10 @@ export default function LiquidadorZurich({
             disabled={!!exportando || guardandoCaso}
           />
         </div>
+        <div className="mt-4 max-w-2xl">
+          <ResumenLiquidacionZurich liquidador={liquidador} totales={totales} />
+        </div>
+        </>
         ) : null}
         {totales.origenPresupuesto === 'cotizacion' && (
           <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.quoteDeductibleNote')}</p>
@@ -460,7 +470,7 @@ export default function LiquidadorZurich({
           modoLiquidador={embeberEnInforme}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
           ocultarPresupuestoEscrito={false}
-          ocultarLiquidacionPresupuesto={false}
+          ocultarLiquidacionPresupuesto={usaCotizBase}
           simplificarDeducible
           totalPresupuestoOverride={null}
           omitirSincronizarIndemnizacion={usaCotizBase}
