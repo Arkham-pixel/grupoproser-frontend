@@ -11,6 +11,8 @@ export const ESTADOS_SURA = [
   'INFORME DEL INSPECTOR',
   'INFORME PRELIMINAR Y/O ACTUALIZACIÓN',
   'INFORME ÚNICO O FINAL',
+  'EN PROCESO DE FACTURACIÓN',
+  'FACTURADO',
   'ANULADO',
   'DESISTIDO',
   'OBJETADO',
@@ -39,6 +41,11 @@ export const ESTADOS_SURA_CERRADOS = [
   'OBJETADO',
   'CANCELADO SURA',
 ];
+
+export const FECHA_ACCION_POR_ESTADO_SURA = {
+  'EN PROCESO DE FACTURACIÓN': 'fchaEnProcesoFacturacion',
+  FACTURADO: 'fchaFacturado',
+};
 
 /** Etiqueta para textos de estado que no encajan en el catálogo. */
 export const ESTADO_SURA_OTROS = 'OTROS';
@@ -173,6 +180,9 @@ export function estadoSuraPorTipoInforme(tipoInforme, estadoActual) {
   const tipo = tipoInformeSuraClave(tipoInforme);
   const actual = normalizarEstadoSura(estadoActual);
   if (actual === 'ANULADO' || actual === 'DESISTIDO' || actual === 'OBJETADO' || actual === 'CANCELADO SURA') {
+    return actual;
+  }
+  if (actual === 'EN PROCESO DE FACTURACIÓN' || actual === 'FACTURADO') {
     return actual;
   }
   if (tipo === 'unico' || tipo === 'final') return ESTADO_SURA_INFORME_UNICO;

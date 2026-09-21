@@ -26,7 +26,8 @@ import { getCasoComplex, updateCasoComplex, moverCasoComplexASura } from '../../
 import { getCasoSuraById, actualizarCasoSura } from '../../services/segurosSuraService.js';
 import { esSesionUltimoComentarioSura, esSesionBarraEstadosSura } from '../../utils/permisosCasoPorRol.js';
 import { puedeVerFacturacionSura } from '../../config/gerentesFacturacion.js';
-import { ESTADOS_SURA_OPERATIVOS, ESTADOS_SURA_RESTRINGIDOS, normalizarEstadoSura } from '../SubcomponenteSura/segurosSuraHelpers.js';
+import { ESTADOS_SURA_OPERATIVOS, ESTADOS_SURA_RESTRINGIDOS, FECHA_ACCION_POR_ESTADO_SURA, normalizarEstadoSura } from '../SubcomponenteSura/segurosSuraHelpers.js';
+import { ESTADOS_FACILITADOR } from '../SubcomponenteSura/suraFacilitadoresHelpers.js';
 import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { enriquecerPlantillaContactoInicial } from '../../utils/contactoInicialPlantillaCorreo.js';
@@ -171,6 +172,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     descSinstro: '',
     causa_siniestro: '',
     estado: '',
+    estadoFacilitador: '',
     descripcionEstado: '',
     observacionesPendientes: '',
     fchaAsgncion: '',
@@ -356,6 +358,8 @@ if (initialData && initialData._id) {
         fchaAceptacionCifrasAseguradora: ['fchaAceptacionCifrasAseguradora', 'fcha_aceptacion_cifras_aseguradora'],
         fchaReconsideracion: ['fchaReconsideracion', 'fcha_reconsideracion'],
         fchaEnvioFiniquito: ['fchaEnvioFiniquito', 'fcha_envio_finiquito'],
+        fchaEnProcesoFacturacion: ['fchaEnProcesoFacturacion', 'fcha_en_proceso_facturacion'],
+        fchaFacturado: ['fchaFacturado', 'fcha_facturado'],
         // Mapear campos de coordinación de inspección
         fchaCoordInspeccion: ['fchaCoordInspeccion', 'fcha_coord_inspeccion'],
         fchaProgInspeccion: ['fchaProgInspeccion', 'fcha_prog_inspeccion'],
@@ -464,6 +468,16 @@ const nuevoFormData = {
           fchaAceptacionCifrasAseguradora: fchaAceptacionCifrasAseguradoraFormateada,
           fchaReconsideracion: fchaReconsideracionFormateada,
           fchaEnvioFiniquito: fchaEnvioFiniquitoFormateada,
+          fchaEnProcesoFacturacion: formatearCampoParaInput(
+            'fchaEnProcesoFacturacion',
+            initialData.fchaEnProcesoFacturacion ||
+              initialData.fcha_en_proceso_facturacion ||
+              normalizados.fchaEnProcesoFacturacion
+          ),
+          fchaFacturado: formatearCampoParaInput(
+            'fchaFacturado',
+            initialData.fchaFacturado || initialData.fcha_facturado || normalizados.fchaFacturado
+          ),
           fchaCoordInspeccion: fchaCoordInspeccionFormateada,
           fchaProgInspeccion: fchaProgInspeccionFormateada,
           fchaControlHoras: fchaControlHorasFormateada,
@@ -486,6 +500,7 @@ const nuevoFormData = {
           obseCoordInspeccion: normalizados.obseCoordInspeccion || initialData.obseCoordInspeccion || initialData.obse_coord_inspeccion || '',
           // Cargar descripcionEstado y observacionesPendientes desde initialData
           descripcionEstado: initialData.descripcionEstado || normalizados.descripcionEstado || '',
+          estadoFacilitador: initialData.estadoFacilitador || normalizados.estadoFacilitador || '',
           observacionesPendientes: initialData.observacionesPendientes || normalizados.observacionesPendientes || '',
           plantillaContactoInicial: initialData.plantillaContactoInicial || normalizados.plantillaContactoInicial || null,
           // Campos de facturación - asegurar que se carguen desde initialData
@@ -777,6 +792,8 @@ if (casoData && casoData._id) {
               fchaAceptacionCifrasAseguradora: ['fchaAceptacionCifrasAseguradora', 'fcha_aceptacion_cifras_aseguradora'],
               fchaReconsideracion: ['fchaReconsideracion', 'fcha_reconsideracion'],
               fchaEnvioFiniquito: ['fchaEnvioFiniquito', 'fcha_envio_finiquito'],
+              fchaEnProcesoFacturacion: ['fchaEnProcesoFacturacion', 'fcha_en_proceso_facturacion'],
+              fchaFacturado: ['fchaFacturado', 'fcha_facturado'],
               fchaCoordInspeccion: ['fchaCoordInspeccion', 'fcha_coord_inspeccion'],
               fchaProgInspeccion: ['fchaProgInspeccion', 'fcha_prog_inspeccion'],
               obseCoordInspeccion: ['obseCoordInspeccion', 'obse_coord_inspeccion'],
@@ -854,6 +871,14 @@ if (casoData && casoData._id) {
               fchaAceptacionCifrasAseguradora: fchaAceptacionCifrasAseguradoraFormateada,
               fchaReconsideracion: fchaReconsideracionFormateada,
               fchaEnvioFiniquito: fchaEnvioFiniquitoFormateada,
+              fchaEnProcesoFacturacion: formatearCampoParaInput(
+                'fchaEnProcesoFacturacion',
+                normalizados.fchaEnProcesoFacturacion || casoData.fcha_en_proceso_facturacion
+              ),
+              fchaFacturado: formatearCampoParaInput(
+                'fchaFacturado',
+                normalizados.fchaFacturado || casoData.fcha_facturado
+              ),
               fchaCoordInspeccion: fchaCoordInspeccionFormateada,
               fchaProgInspeccion: fchaProgInspeccionFormateada,
               fechaInspeccion: formatearFechaParaInput(
@@ -890,6 +915,7 @@ if (casoData && casoData._id) {
               })(),
               obseCoordInspeccion: normalizados.obseCoordInspeccion || casoData.obse_coord_inspeccion || '',
               descripcionEstado: casoData.descripcionEstado || normalizados.descripcionEstado || '',
+              estadoFacilitador: casoData.estadoFacilitador || normalizados.estadoFacilitador || '',
               observacionesPendientes: casoData.observacionesPendientes || normalizados.observacionesPendientes || '',
               // Campos de facturación - asegurar que se carguen desde casoData
               numero_factura: casoData.numero_factura || casoData.nmroFactra || normalizados.nmroFactra || '',
@@ -1082,6 +1108,9 @@ localStorage.removeItem(storageKey);
     ) {
       return;
     }
+    if (esSura && name === 'estadoFacilitador' && !esSesionBarraEstadosSura()) {
+      return;
+    }
     if (CAMPOS_FECHA_HITOS_TRAZABILIDAD.includes(name)) {
       fechasHitoEditadasRef.current.add(name);
     }
@@ -1089,12 +1118,20 @@ localStorage.removeItem(storageKey);
       const nuevoValor = name === 'estado' ? String(value) : value;
       if (name === 'estado') {
         const opcion = estados.find((est) => String(est.value) === String(nuevoValor));
-        return {
+        const siguiente = {
           ...prev,
           estado: nuevoValor,
           codiEstdo: nuevoValor,
           descripcionEstado: opcion?.label || nuevoValor || prev.descripcionEstado,
         };
+        if (esSura) {
+          const campoFecha = FECHA_ACCION_POR_ESTADO_SURA[normalizarEstadoSura(nuevoValor)];
+          if (campoFecha && !String(siguiente[campoFecha] || '').trim()) {
+            siguiente[campoFecha] = formatearFechaHoraParaInput(new Date());
+            fechasHitoEditadasRef.current.add(campoFecha);
+          }
+        }
+        return siguiente;
       }
       if (name === 'departamento') {
         return {
@@ -2917,7 +2954,7 @@ return;
   const puedeEstadosFacilitadorSura = esSura && esSesionBarraEstadosSura();
   const estadosFacilitadorParaSelect = useMemo(() => {
     if (!puedeEstadosFacilitadorSura) return null;
-    return ESTADOS_SURA_RESTRINGIDOS.map((e) => ({ value: e, label: e }));
+    return ESTADOS_FACILITADOR.map((e) => ({ value: e, label: e }));
   }, [puedeEstadosFacilitadorSura]);
   const estadosParaSelect = estados;
 
@@ -3021,6 +3058,7 @@ return;
       causa_siniestro: formData.causa_siniestro,
       codiEstdo: extraerCodiEstdoParaGuardar(formData),
       descripcionEstado: formData.descripcionEstado || '',
+      ...(esSura ? { estadoFacilitador: formData.estadoFacilitador || '' } : {}),
       observacionesPendientes: formData.observacionesPendientes || '',
       fchaAsgncion: formData.fchaAsgncion,
       fchaSinstro: formData.fchaSinstro,
@@ -3066,6 +3104,8 @@ return;
       obsePresentacionCifras: pick('obsePresentacionCifras', 'obse_presentacion_cifras'),
       anxoPresentacionCifras: pick('anxoPresentacionCifras', 'adjunto_presentacion_cifras'),
       fchaEnvioFiniquito: formData.fchaEnvioFiniquito !== undefined && formData.fchaEnvioFiniquito !== null && formData.fchaEnvioFiniquito !== '' ? formData.fchaEnvioFiniquito : undefined,
+      fchaEnProcesoFacturacion: formData.fchaEnProcesoFacturacion !== undefined && formData.fchaEnProcesoFacturacion !== null && formData.fchaEnProcesoFacturacion !== '' ? formData.fchaEnProcesoFacturacion : undefined,
+      fchaFacturado: formData.fchaFacturado !== undefined && formData.fchaFacturado !== null && formData.fchaFacturado !== '' ? formData.fchaFacturado : undefined,
       obseEnvioFiniquito: pick('obseEnvioFiniquito', 'obse_envio_finiquito'),
       anxoEnvioFiniquito: pick('anxoEnvioFiniquito', 'adjunto_envio_finiquito'),
       obseSegmnto: pick('obseSegmnto', 'obse_segmnto'),
@@ -3421,6 +3461,8 @@ if (!onSave) {
       'obsePresentacionCifras',
       'anxoPresentacionCifras',
       'fchaEnvioFiniquito',
+      'fchaEnProcesoFacturacion',
+      'fchaFacturado',
       'obseEnvioFiniquito',
       'anxoEnvioFiniquito',
       'fchaUltSegui',
