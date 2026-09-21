@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
       includeAssets: ["arnald-icon.png", "ArnaldDataFlow.png"],
       manifest: {
         name: "Arnald DataFlow - Grupo Proser",
@@ -33,11 +34,23 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff}"],
         globIgnores: ["**/error404-arnald.png", "**/Captura de pantalla*"],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         runtimeCaching: [
+          {
+            // HTML: red primero para que Mac/Safari no se queden en el shell viejo
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-pages",
+              networkTimeoutSeconds: 4,
+            },
+          },
           {
             // App shell / estáticos — stale-while-revalidate
             urlPattern: ({ request }) =>

@@ -339,6 +339,10 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   }, []);
 
   useEffect(() => {
+    cargarCasos?.();
+  }, [cargarCasos]);
+
+  useEffect(() => {
 axios.get('/api/estados/estados-riesgos')
       .then(res => {
 const lista = Array.isArray(res.data) ? res.data : [];

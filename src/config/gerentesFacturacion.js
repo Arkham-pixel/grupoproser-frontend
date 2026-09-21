@@ -51,6 +51,59 @@ export function nombreGerente(clave) {
 
 export const LOGIN_LIDER_ZURICH_FACTURACION = '1041899782';
 
+/** Previsora: solo estas personas ven Facturación / control de horas. */
+export const LOGINS_FACTURACION_PREVISORA = [
+  '1065012991', // Oscar Atencia
+  '72287602', // Elkin Tapia Gutiérrez
+  '1143263277', // Adriana Angulo Funes
+  '72007205', // Iskharly José Tapia Gutierrez
+  '45765743', // Yaneth Del Carmen Vitola Suarez
+];
+
+export function puedeVerFacturacionPrevisora(login) {
+  return LOGINS_FACTURACION_PREVISORA.includes(String(login || '').trim());
+}
+
+/** Zurich: solo estas personas ven Facturación / control de horas y la bandeja. */
+export const LOGINS_FACTURACION_ZURICH = [
+  '1065012991', // Oscar Atencia
+  '72287602', // Elkin Tapia Gutiérrez
+  '1143263277', // Adriana Angulo Funes
+  '1130615470', // Sindy Marcela Gomez Gomez
+  '1041899782', // Ladys Andrea Escalante Bossio
+];
+
+export function puedeVerFacturacionZurich(login) {
+  return LOGINS_FACTURACION_ZURICH.includes(String(login || '').trim());
+}
+
+/** Sura: solo estas personas ven Facturación / control de horas. */
+export const LOGINS_FACTURACION_SURA = [
+  '1065012991', // Oscar Atencia
+  '72287602', // Elkin Tapia Gutiérrez
+  '1143263277', // Adriana Angulo Funes
+  '72134505', // Bernardo Sojo Guzmán
+  '66901947', // Ligia Garcia (Catastróficos)
+];
+
+export function puedeVerFacturacionSura(login) {
+  return LOGINS_FACTURACION_SURA.includes(String(login || '').trim());
+}
+
+/** Allianz: solo estas personas ven Facturación / control de horas. */
+export const LOGINS_FACTURACION_ALLIANZ = [
+  '1065012991', // Oscar Atencia
+  '72287602', // Elkin Tapia Gutiérrez
+  '1143263277', // Adriana Angulo Funes
+  '72288319', // Mario Alberto Pinilla de la Torre
+  '1140829957', // Arnaldo Andrés Tapia Gutierrez
+  '1088828255', // Juana Maria Hincapie (Catastróficos)
+];
+
+export function puedeVerFacturacionAllianz(login) {
+  return LOGINS_FACTURACION_ALLIANZ.includes(String(login || '').trim());
+}
+
 function haystackNombre(valor) {
   return String(valor ?? '')
     .normalize('NFD')
@@ -66,12 +119,9 @@ export function esLiderZurichFacturacion(login, nombre) {
   return hay.includes('LADYS') && hay.includes('ESCALANTE');
 }
 
-/** Líder Zurich, jefes de facturación y supervisores. */
-export function puedeVerBandejaFacturacionZurich(login, nombre) {
-  if (esLiderZurichFacturacion(login, nombre)) return true;
-  if (esSupervisorBandeja(login)) return true;
-  const gerente = gerenteDesdeLogin(login);
-  return Boolean(gerente && gerente !== 'test');
+/** Solo la lista autorizada de Facturación Zurich. */
+export function puedeVerBandejaFacturacionZurich(login) {
+  return puedeVerFacturacionZurich(login);
 }
 
 export const TIPO_ENVIO_LABELS = {

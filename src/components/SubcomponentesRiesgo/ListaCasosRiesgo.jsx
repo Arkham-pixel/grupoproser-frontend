@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCasosRiesgo } from '../../context/CasosRiesgoContext';
 import { FaEdit } from 'react-icons/fa';
@@ -28,11 +28,15 @@ const getEstadoNombre = (codigo, estados) => getEstadoRiesgoNombre(codigo, estad
 
 const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
   const { t } = useTranslation();
-  const { casos } = useCasosRiesgo();
+  const { casos, cargarCasos } = useCasosRiesgo();
   const [pagina, setPagina] = useState(1);
   const casosPorPagina = 10;
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+
+  useEffect(() => {
+    cargarCasos?.();
+  }, [cargarCasos]);
 
   const filtrarPorFecha = (caso) => {
     if (!fechaDesde && !fechaHasta) return true;

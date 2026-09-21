@@ -21,6 +21,7 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, nombreTipoOtroAmparo, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import {
   montoCotizacionPdf,
   serializarCotizacionPdf,
@@ -1046,6 +1047,8 @@ export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosSura(liquidador = {}) {
+  const express = payloadExpressParaInforme(liquidador, { modulo: 'sura' });
+  if (express?.itemsPlanos?.length) return express.itemsPlanos;
   if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
     const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
     const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();

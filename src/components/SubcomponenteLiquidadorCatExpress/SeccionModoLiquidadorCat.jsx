@@ -5,9 +5,12 @@ import {
   asegurarModoExpress,
   construirFilasExpress,
   esLiquidadorExpress,
+  liquidacionExpressConDeducible,
   marcarModoRobusto,
   tipoExpressDeLiquidador,
 } from './liquidadorCatExpressHelpers.js';
+import { patchDeducibleExpress } from './reglasDeducibleCatExpress.js';
+import { patchDeducibleDesdeTomadorAlfa } from '../SubcomponenteSegurosAlfa/tomadoresAlfaCatalogo.js';
 
 const pill = (activo) =>
   `rounded-lg px-3 py-1.5 font-body text-sm font-semibold transition ${
@@ -24,10 +27,15 @@ const pill = (activo) =>
 export default function SeccionModoLiquidadorCat({
   liquidador,
   onLiquidadorChange,
+  modulo = '',
+  tomador: tomadorProp,
+  onTomadorCasoChange,
   aiuPorcentaje = 0.25,
   disabled = false,
   ocultarToggle = false,
   onAfterChange,
+  onGuardar,
+  guardando = false,
   children,
 }) {
   const express = esLiquidadorExpress(liquidador);
@@ -35,6 +43,13 @@ export default function SeccionModoLiquidadorCat({
   const filas = useMemo(
     () => (express ? construirFilasExpress(liquidador, tipo) : []),
     [express, liquidador, tipo]
+  );
+  const liquidacion = useMemo(
+    () =>
+      express
+        ? liquidacionExpressConDeducible(liquidador, { aiuPorcentaje, modulo })
+        : null,
+    [express, liquidador, aiuPorcentaje, modulo]
   );
 
   const emitir = (next, { sync = false } = {}) => {
@@ -45,7 +60,7 @@ export default function SeccionModoLiquidadorCat({
 
   const irExpress = () => {
     if (disabled || express) return;
-    emitir(asegurarModoExpress(liquidador, { tipo, aiuPorcentaje }), { sync: true });
+    emitir(asegurarModoExpress(liquidador, { tipo, aiuPorcentaje, modulo }), { sync: true });
   };
 
   const irRobusto = () => {
@@ -80,14 +95,48 @@ export default function SeccionModoLiquidadorCat({
         </div>
       )}
       {express ? (
+        <div className="space-y-4">
         <LiquidadorCatExpress
           filas={filas}
           tipo={tipo}
           aiuPorcentaje={aiuPorcentaje}
+          modulo={modulo}
+          liquidacion={liquidacion}
           onFilasChange={handleFilas}
           onTipoChange={handleTipo}
+          tomador={tomadorProp || liquidador?.encabezado?.tomador || ''}
+          onDeducibleChange={(patch) =>
+            emitir(patchDeducibleExpress(liquidador, patch, modulo), { sync: true })
+          }
+          onTomadorChange={(tomador) => {
+            const poliza = liquidador?.encabezado?.poliza || '';
+            const conTomador = {
+              ...liquidador,
+              encabezado: { ...(liquidador.encabezado || {}), tomador },
+            };
+            const cfgAlfa = patchDeducibleDesdeTomadorAlfa(
+              tomador,
+              { ...(conTomador.liquidacionCatastrofico?.deducibleConfigPresupuesto || {}), opcionDeducibleId: '' },
+              poliza
+            );
+            onTomadorCasoChange?.(tomador);
+            emitir(patchDeducibleExpress(conTomador, cfgAlfa, modulo), { sync: true });
+          }}
           disabled={disabled}
         />
+        {onGuardar ? (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="rounded-lg bg-fenix-primario px-4 py-2 font-body text-sm font-semibold text-white disabled:opacity-60"
+              disabled={disabled || guardando}
+              onClick={onGuardar}
+            >
+              {guardando ? 'Guardando…' : 'Guardar liquidador express'}
+            </button>
+          </div>
+        ) : null}
+        </div>
       ) : (
         children
       )}

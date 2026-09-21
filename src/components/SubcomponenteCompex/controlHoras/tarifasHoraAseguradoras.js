@@ -1,3 +1,5 @@
+import { resolverTarifaHonorariosPrevisora } from './tarifaHonorariosPrevisora.js';
+
 /**
  * Tarifas por hora — Control de Horas Complex (cuadro oficial).
  *
@@ -11,7 +13,7 @@
  * | BBVA COLOMBIA          | 90.000     | BBVA SEGUROS COLOMBIA S.A.                |
  * | BBVA-ZURICH            | 80.000     | automático                                |
  * | EQUIDAD                | 85.000     | automático                                |
- * | PREVISORA              | manual     | Por rangos de valor reclamado             |
+ * | PREVISORA              | 119.645    | 2,05 SMDLV; tope de horas por reserva     |
  */
 
 export const TARIFAS_HORA_ASEGURADORAS = [
@@ -102,9 +104,9 @@ export const TARIFAS_HORA_ASEGURADORAS = [
   {
     id: 'PREVISORA',
     etiqueta: 'PREVISORA',
-    valorHora: null,
-    modo: 'manual',
-    nota: 'Es por rangos de valores reclamados',
+    valorHora: 119645,
+    modo: 'previsora_reserva',
+    nota: 'Tarifa No. 1: tope de horas según reserva. Hora = 2,05 SMDLV.',
     aliases: ['PREVISORA', 'LA PREVISORA', 'LA PREVISORA S.A.'],
   },
 ];
@@ -217,6 +219,7 @@ export const resolverTarifaHora = ({
   nombreAseguradora = '',
   nombreCliente = '',
   fchaAsgncion = '',
+  reserva = '',
 } = {}) => {
   const candidatos = [nombreAseguradora, nombreCliente, codiAsgrdra]
     .map(normalizarTexto)
@@ -233,6 +236,23 @@ export const resolverTarifaHora = ({
 
   for (const tarifa of TARIFAS_HORA_ASEGURADORAS) {
     if (!candidatoCoincideTarifa(candidatos, tarifa)) continue;
+
+    if (tarifa.modo === 'previsora_reserva') {
+      const prev = resolverTarifaHonorariosPrevisora(reserva);
+      return {
+        valorHora: prev.valorHora,
+        origen: 'tarifa',
+        tarifaId: tarifa.id,
+        maxHoras: prev.maxHoras,
+        maxHonorarios: prev.maxHonorarios,
+        inspeccion: prev.inspeccion,
+        tieneReserva: prev.tieneReserva,
+        valorReserva: prev.valorReserva,
+        mensaje: prev.tieneReserva
+          ? `Previsora Tarifa No. 1 — reserva ${formatearValorHora(prev.valorReserva)}: máximo ${prev.maxHoras} h (${formatearValorHora(prev.maxHonorarios)}). Hora ${formatearValorHora(prev.valorHora)} (2,05 SMDLV). Inspección única $370.000.`
+          : 'Previsora Tarifa No. 1: indique la reserva del caso. Mientras tanto se aplica el rango de hasta $100.000.000 (12,5 h). Hora $119.645 (2,05 SMDLV).',
+      };
+    }
 
     if (tarifa.modo === 'manual') {
       return {

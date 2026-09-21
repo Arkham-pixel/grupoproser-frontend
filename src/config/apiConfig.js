@@ -27,6 +27,10 @@ function resolveBaseUrl() {
   if (API_BY_FRONTEND_HOST[hostname]) {
     return API_BY_FRONTEND_HOST[hostname];
   }
+  // Vite (5173–5175): same-origin + proxy a :3000. Evita CORS ERR_NETWORK en Chrome.
+  if (/^51(73|74|75)$/.test(window.location.port)) {
+    return '';
+  }
   if (envApiBase) return envApiBase;
   return isDevelopment ? DEFAULT_DEV : DEFAULT_PROD;
 }

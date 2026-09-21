@@ -30,6 +30,7 @@ import {
   normalizarLiquidadorFdm,
 } from './capturarLiquidadorFdmInforme.js';
 import { calcularLiquidacionFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
+import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import { urlDescargaArchivoEquidadCat } from '../../services/equidadCatService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
@@ -1039,17 +1040,35 @@ export async function descargarWordInformeEquidadCat({
   paginasLiquidador = null,
 } = {}) {
   const info = informe || defaultInformeUnicoEquidadCat(caso);
-  const liq = normalizarLiquidadorFdm(
-    mapCasoEquidadCatALiquidadorFdm({
-      ...caso,
-      liquidador: liquidador || caso.liquidador,
-    })
-  );
-  const totales = calcularLiquidacionFdm(liq);
+  const liquidadorOrigen = liquidador || caso.liquidador || {};
+  const expressWord = payloadExpressParaInforme(liquidadorOrigen, { modulo: 'equidad' });
+  const liq = expressWord
+    ? liquidadorOrigen
+    : normalizarLiquidadorFdm(
+        mapCasoEquidadCatALiquidadorFdm({
+          ...caso,
+          liquidador: liquidadorOrigen,
+        })
+      );
+  const totales = expressWord
+    ? {
+        totalPerdida: expressWord.total,
+        deducibleAplicado: expressWord.deducibleAplicado,
+        totalIndemnizar: expressWord.totalIndemnizar,
+        subsidio: 0,
+        usaSMMLV: false,
+        porcentaje: expressWord.cfg?.porcentaje,
+        cantidadSMMLV: expressWord.cfg?.cantidadSMMLV,
+      }
+    : calcularLiquidacionFdm(liq);
   const enc = liq.encabezado || {};
-  const items = itemsPlanosLiquidadorFdm(liq);
-  let paginasFdm = Array.isArray(paginasLiquidador) ? paginasLiquidador.filter((p) => p?.dataUrl) : [];
-  if (!paginasFdm.length) {
+  const items = expressWord ? expressWord.itemsPlanos : itemsPlanosLiquidadorFdm(liq);
+  let paginasFdm = expressWord
+    ? []
+    : Array.isArray(paginasLiquidador)
+      ? paginasLiquidador.filter((p) => p?.dataUrl)
+      : [];
+  if (!expressWord && !paginasFdm.length) {
     try {
       paginasFdm = await capturarPaginasLiquidadorFdm(liq, totales);
     } catch (err) {
@@ -1058,9 +1077,11 @@ export async function descargarWordInformeEquidadCat({
     }
   }
   const capturaParrafos = parrafosCapturaLiquidadorFdm(paginasFdm);
-  const etiquetaDed = totales.usaSMMLV
-    ? `Deducible aplicado (${totales.cantidadSMMLV} SMMLV)`
-    : `Deducible aplicado (${totales.porcentaje}% de la pérdida)`;
+  const etiquetaDed = expressWord
+    ? `Deducible aplicado (${expressWord.textoDeducible})`
+    : totales.usaSMMLV
+      ? `Deducible aplicado (${totales.cantidadSMMLV} SMMLV)`
+      : `Deducible aplicado (${totales.porcentaje}% de la pérdida)`;
   const diferenciaFdm =
     (Number(totales.totalPerdida) || 0) - (Number(totales.totalIndemnizar) || 0);
 

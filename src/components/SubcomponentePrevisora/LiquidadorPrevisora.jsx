@@ -430,6 +430,7 @@ export default function LiquidadorPrevisora({
           </h3>
         )}
         <SeccionModoLiquidadorCat
+          modulo="previsora"
           liquidador={liquidador}
           onLiquidadorChange={setLiquidador}
           aiuPorcentaje={

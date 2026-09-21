@@ -28,6 +28,10 @@ import {
   montoCotizacionPdf,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import {
+  esLiquidadorExpress,
+  payloadExpressParaInforme,
+} from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
+import {
   configDeduciblePresupuestoParaCalculoAllianz,
   configDeducibleTerremotoCat,
   desgloseDeducibleTerremoto,
@@ -501,6 +505,10 @@ export function itemPresupuestoNsrTieneDatoAllianz(it = {}) {
 }
 
 export function presupuestoNsrTieneDatosAllianz(liquidador = {}) {
+  if (esLiquidadorExpress(liquidador)) {
+    const express = payloadExpressParaInforme(liquidador, { modulo: 'allianz' });
+    if (express?.filasConCantidad?.length) return true;
+  }
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   return (Array.isArray(items) ? items : []).some(itemPresupuestoNsrTieneDatoAllianz);
 }
@@ -1022,6 +1030,8 @@ export function armarInformeLiquidacionAllianz(liquidador = {}, totales = null, 
 
 /** Filas planas del presupuesto NSR; la cotización PDF queda como reclamado de referencia. */
 export function itemsPlanosAllianz(liquidador = {}) {
+  const express = payloadExpressParaInforme(liquidador, { modulo: 'allianz' });
+  if (express?.itemsPlanos?.length) return express.itemsPlanos;
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   const nsr = (Array.isArray(items) ? items : [])
     .filter((it) => String(it?.actividad || it?.componente || '').trim())

@@ -56,8 +56,15 @@ import {
   FaBalanceScale,
   FaCalendarAlt,
   FaUserPlus,
+  FaSyncAlt,
 } from 'react-icons/fa';
-import { esUsuarioGerenteFacturacion, puedeVerBandejaFacturacionZurich } from '../config/gerentesFacturacion';
+import {
+  esUsuarioGerenteFacturacion,
+  puedeVerBandejaFacturacionZurich,
+  puedeVerFacturacionAllianz,
+  puedeVerFacturacionPrevisora,
+  puedeVerFacturacionSura,
+} from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
 import { arnaldLogo, arnaldIcon } from '../config/brandAssets.js';
 import { registrarNavegacionArnald } from '../services/arnaldPlataformaService.js';
@@ -77,6 +84,7 @@ import { useIsMobileShell } from '../hooks/useMediaQuery';
 import { apiRequest } from '../config/apiConfig.js';
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
 import { esSesionReporteInformesAllianz, esSesionFacilitadoresSura } from '../utils/permisosCasoPorRol.js';
+import { forzarActualizacionApp } from '../utils/forzarActualizacionApp.js';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 /** Aviso interno (modal de plataforma) 30 minutos antes del cierre automático */
@@ -426,6 +434,9 @@ export default function Layout() {
     usuarioActual.login,
     usuarioActual.nombre
   );
+  const puedeBandejaFacturacionAllianz = puedeVerFacturacionAllianz(usuarioActual.login);
+  const puedeBandejaFacturacionPrevisora = puedeVerFacturacionPrevisora(usuarioActual.login);
+  const puedeBandejaFacturacionSura = puedeVerFacturacionSura(usuarioActual.login);
 
   useEffect(() => {
     if (accesoRestringido) return undefined;
@@ -539,6 +550,7 @@ export default function Layout() {
     '/bbva-cat/informe-unico': t('nav.pageTitles.bbvaCatCase'),
     '/bbva-cat/archivero': t('nav.pageTitles.bbvaCatArchive'),
     '/bbva-cat/bloques': t('nav.pageTitles.bbvaCatBlocks'),
+    '/previsora/bandeja-facturacion': t('nav.pageTitles.previsoraBillingTray'),
     '/previsora/carga': t('nav.pageTitles.previsoraAdd'),
     '/previsora/listado/reporte': t('nav.pageTitles.previsoraListadoReport'),
     '/previsora/listado/mis-casos': t('nav.pageTitles.previsoraMyCases'),
@@ -552,6 +564,7 @@ export default function Layout() {
     '/previsora/liquidador': t('nav.pageTitles.previsoraCase'),
     '/previsora/informe-unico': t('nav.pageTitles.previsoraCase'),
     '/previsora/archivero': t('nav.pageTitles.previsoraArchive'),
+    '/allianz/bandeja-facturacion': t('nav.pageTitles.allianzBillingTray'),
     '/allianz/carga': t('nav.pageTitles.allianzAdd'),
     '/allianz/listado/reporte': t('nav.pageTitles.allianzListadoReport'),
     '/allianz/listado/informes': t('nav.pageTitles.allianzInformesReport'),
@@ -567,6 +580,7 @@ export default function Layout() {
     '/allianz/informe-agil': t('nav.pageTitles.allianzCase'),
     '/allianz/informe-unico': t('nav.pageTitles.allianzCase'),
     '/allianz/archivero': t('nav.pageTitles.allianzArchive'),
+    '/sura/bandeja-facturacion': t('nav.pageTitles.suraBillingTray'),
     '/sura/carga': t('nav.pageTitles.suraAdd'),
     '/sura/editar': t('nav.pageTitles.suraAdd'),
     '/sura/reporte': t('nav.pageTitles.suraReport'),
@@ -948,6 +962,9 @@ export default function Layout() {
     previsora: !accesoRestringido || configContractor?.seccionesMenu?.includes('previsora')
       ? [
           { path: '/previsora/carga', icon: FaPlus, label: t('nav.previsoraAddCase') },
+          ...(puedeBandejaFacturacionPrevisora
+            ? [{ path: '/previsora/bandeja-facturacion', icon: FaInbox, label: t('nav.previsoraBillingTray') }]
+            : []),
           { path: '/previsora/listado/dashboard', icon: FaChartBar, label: t('nav.previsoraListadoDashboard') },
           { path: '/previsora/listado/reporte', icon: FaTable, label: t('nav.previsoraListadoReport') },
           { path: '/previsora/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
@@ -958,6 +975,9 @@ export default function Layout() {
     allianz: !accesoRestringido || configContractor?.seccionesMenu?.includes('allianz') || configContractor?.seccionesMenu?.includes('allias')
       ? [
           { path: '/allianz/carga', icon: FaPlus, label: t('nav.allianzAddCase') },
+          ...(puedeBandejaFacturacionAllianz
+            ? [{ path: '/allianz/bandeja-facturacion', icon: FaInbox, label: t('nav.allianzBillingTray') }]
+            : []),
           { path: '/allianz/listado/dashboard', icon: FaChartBar, label: t('nav.allianzListadoDashboard') },
           { path: '/allianz/listado/reporte', icon: FaTable, label: t('nav.allianzListadoReport') },
           ...(esSesionReporteInformesAllianz()
@@ -971,6 +991,9 @@ export default function Layout() {
     sura: !accesoRestringido || configContractor?.seccionesMenu?.includes('sura')
       ? [
           { path: '/sura/carga', icon: FaPlus, label: t('nav.suraAddCase') },
+          ...(puedeBandejaFacturacionSura
+            ? [{ path: '/sura/bandeja-facturacion', icon: FaInbox, label: t('nav.suraBillingTray') }]
+            : []),
           { path: '/sura/caso', icon: FaFileAlt, label: t('nav.suraCase') },
           { path: '/sura/dashboard', icon: FaChartBar, label: t('nav.suraDashboard') },
           { path: '/sura/reporte', icon: FaTable, label: t('nav.suraReport') },
@@ -1379,12 +1402,23 @@ export default function Layout() {
         {/* Pie: versión, sesión y logout */}
         <div className="shrink-0 border-t border-gray-800 p-3 space-y-3">
           {!menuCollapsed && (
-            <div className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/80 px-3 py-2 text-[11px] text-gray-500">
-              <FaShieldAlt className="shrink-0 text-fenix-primario" />
-              <span className="leading-tight">
-                ARNALD Data Flow
-                <span className="block font-mono text-gray-400">V 2.5.0</span>
-              </span>
+            <div className="rounded-lg border border-gray-800 bg-gray-900/80 px-3 py-2 text-[11px] text-gray-500">
+              <div className="flex items-center gap-2">
+                <FaShieldAlt className="shrink-0 text-fenix-primario" />
+                <span className="leading-tight">
+                  ARNALD Data Flow
+                  <span className="block font-mono text-gray-400">V 2.5.0</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => forzarActualizacionApp()}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-700 px-2 py-1.5 text-[11px] font-medium text-gray-300 transition hover:bg-gray-800 hover:text-white"
+                title={t('novedades.refreshNow')}
+              >
+                <FaSyncAlt className="text-[10px]" />
+                {t('novedades.refreshNowShort')}
+              </button>
             </div>
           )}
           <SessionTimerSidebar compact={menuCollapsed} />

@@ -18,6 +18,7 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
 import {
   serializarCotizacionPdf,
@@ -293,6 +294,8 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
 
 /** Filas planas del presupuesto NSR o de la cotización PDF (para resúmenes). */
 export function itemsPlanosPrevisora(liquidador = {}) {
+  const express = payloadExpressParaInforme(liquidador, { modulo: 'previsora' });
+  if (express?.itemsPlanos?.length) return express.itemsPlanos;
   if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
     const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
     const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();

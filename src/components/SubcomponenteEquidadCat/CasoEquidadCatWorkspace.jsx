@@ -22,6 +22,12 @@ import {
   subirArchivoEquidadCat,
 } from '../../services/equidadCatService.js';
 import { calcularLiquidacionFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
+import { AIU_PORCENTAJE_DEFAULT_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
+import {
+  esLiquidadorExpress,
+  totalesGuardadoExpress,
+} from '../SubcomponenteLiquidadorCatExpress/liquidadorCatExpressHelpers.js';
 import { casoEquidadCatComoFdm } from './equidadCatLiquidadorAdapter.js';
 import { generarLiquidadorFdmExcelBlob } from '../SubcomponenteEquidadFdm/generarLiquidadorFdmExcel.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
@@ -261,7 +267,12 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
       return;
     }
     const liquidador = liqArg || liquidadorState;
-    const totales = totArg || totalesState || calcularLiquidacionFdm(liquidador || {});
+    const totales =
+      totArg ||
+      totalesState ||
+      (esLiquidadorExpress(liquidador)
+        ? totalesGuardadoExpress(liquidador, AIU_PORCENTAJE_DEFAULT_NSR10_CAT, 'equidad')
+        : calcularLiquidacionFdm(liquidador || {}));
     if (!liquidador) {
       setError(t('equidadCat.settlement.noData'));
       return;
@@ -277,6 +288,7 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
         casoBase: casoConSecciones(),
       });
       try {
+        if (!esLiquidadorExpress(liquidador)) {
         const { blob, nombre } = await generarLiquidadorFdmExcelBlob(liquidador, totales);
         const file = new File([blob], nombre, {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -285,6 +297,7 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
           reemplazarMismaEtiqueta: true,
           descripcion: 'Modelo de liquidación generado desde el liquidador FDM',
         });
+        }
         const conArchivos = await getCasoEquidadCatById(casoId);
         setCasoEquidadCat(conArchivos);
       } catch (archErr) {
@@ -517,6 +530,15 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
                 casoEquidadCat={casoEquidadCat}
                 informeInicial={informeState}
                 liquidadorFdm={liquidadorState || casoEquidadCat?.liquidador}
+                liquidadorInicial={liquidadorState || casoEquidadCat?.liquidador}
+                onLiquidadorChange={(liq) => {
+                  setLiquidadorState(liq);
+                  setTotalesState(
+                    esLiquidadorExpress(liq)
+                      ? totalesGuardadoExpress(liq, AIU_PORCENTAJE_DEFAULT_NSR10_CAT, 'equidad')
+                      : calcularLiquidacionFdm(liq || {})
+                  );
+                }}
                 onEstadoChange={setInformeState}
                 onIrLiquidador={() => setTab(TABS_EQUIDAD_CAT.LIQUIDADOR)}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
@@ -524,6 +546,22 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
                 guardandoCaso={guardando}
               />
             ) : (
+              <SeccionModoLiquidadorCat
+                modulo="equidad"
+                liquidador={liquidadorState || casoEquidadCat?.liquidador || {}}
+                onLiquidadorChange={(liq) => {
+                  setLiquidadorState(liq);
+                  setTotalesState(
+                    esLiquidadorExpress(liq)
+                      ? totalesGuardadoExpress(liq, AIU_PORCENTAJE_DEFAULT_NSR10_CAT, 'equidad')
+                      : calcularLiquidacionFdm(liq || {})
+                  );
+                }}
+                aiuPorcentaje={AIU_PORCENTAJE_DEFAULT_NSR10_CAT}
+                disabled={guardando}
+                onGuardar={casoId ? () => handleGuardarLiquidador() : undefined}
+                guardando={guardando}
+              >
               <LiquidadorEquidadFdm
                 key={`liq-${casoId}-${restoreNonce}`}
                 casoFdm={casoFdm}
@@ -535,6 +573,7 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
                 guardandoCaso={guardando}
                 tieneLiquidadorGuardado={Boolean(casoEquidadCat?.liquidador)}
               />
+              </SeccionModoLiquidadorCat>
             )}
           </div>
         </div>

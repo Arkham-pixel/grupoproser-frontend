@@ -1,85 +1,75 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import axios from "axios";
 import { BASE_URL } from "../config/apiConfig.js";
 import { sanitizeUploadFileName } from "../utils/sanitizeUploadFileName.js";
 
-// Configurar axios con timeouts más largos para Firebase -> AWS
 const api = axios.create({
-  timeout: 60000, // 60 segundos (aumentado para evitar timeouts con muchos registros)
-  headers: {
-    'Content-Type': 'application/json',
-  }
+  timeout: 60000,
 });
 
 const CasosRiesgoContext = createContext();
 
+function esAbortado(err) {
+  return (
+    err?.code === 'ERR_CANCELED' ||
+    err?.name === 'CanceledError' ||
+    err?.name === 'AbortError' ||
+    axios.isCancel?.(err)
+  );
+}
+
 // eslint-disable-next-line react-refresh/only-export-components -- El hook debe compartirse con consumidores del proveedor.
-export const useCasosRiesgo = () => useContext(CasosRiesgoContext); 
+export const useCasosRiesgo = () => useContext(CasosRiesgoContext);
 
 export const CasosRiesgoProvider = ({ children }) => {
   const [casos, setCasos] = useState([]);
+  const abortRef = useRef(null);
 
-  // Cargar casos desde el backend al iniciar
-  useEffect(() => {
-    cargarCasos();
-  }, []);
+  const cargarCasos = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-  const cargarCasos = async () => {
-    try {
-      // Paginación para no "perder" registros por el límite (por defecto el backend limita a 1000-2000)
-      const pageLimit = 1000;
-      const maxTotal = 5000; // safety cap
+    const pedir = async (pageLimit, timeout) => {
+      const maxTotal = 5000;
       let skip = 0;
       let acumulado = [];
-
       while (acumulado.length < maxTotal) {
         const res = await api.get(`${BASE_URL}/api/riesgos?limit=${pageLimit}&skip=${skip}`, {
-          timeout: 90000 // 90 segundos de timeout
+          timeout,
+          signal: controller.signal,
         });
-
         const pagina = Array.isArray(res.data) ? res.data : [];
         acumulado = acumulado.concat(pagina);
-
         if (pagina.length < pageLimit) break;
         skip += pageLimit;
       }
+      return acumulado;
+    };
 
-      setCasos(acumulado);
-} catch (err) {
-      console.error("Error al cargar casos de riesgo:", err);
-      // Si hay error, intentar con menos registros
-      if (err.code === 'ECONNABORTED') {
-try {
-          const pageLimit = 500;
-          const maxTotal = 5000;
-          let skip = 0;
-          let acumulado = [];
-
-          while (acumulado.length < maxTotal) {
-            const res = await api.get(`${BASE_URL}/api/riesgos?limit=${pageLimit}&skip=${skip}`, {
-              timeout: 60000
-            });
-            const pagina = Array.isArray(res.data) ? res.data : [];
-            acumulado = acumulado.concat(pagina);
-            if (pagina.length < pageLimit) break;
-            skip += pageLimit;
-          }
-
-          setCasos(acumulado);
-} catch (err2) {
+    try {
+      setCasos(await pedir(1000, 90000));
+    } catch (err) {
+      if (esAbortado(err)) return;
+      if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') {
+        try {
+          setCasos(await pedir(500, 60000));
+          return;
+        } catch (err2) {
+          if (esAbortado(err2)) return;
           console.error("Error al cargar casos de riesgo (intento reducido):", err2);
           setCasos([]);
+          return;
         }
-      } else {
-        setCasos([]);
       }
+      console.error("Error al cargar casos de riesgo:", err);
+      setCasos([]);
     }
-  };
+  }, []);
 
   const agregarCaso = async (nuevoCaso) => {
     try {
-let dataToSend = nuevoCaso;
-      // Si hay archivos adjuntos, usar FormData
+      let dataToSend = nuevoCaso;
       const formData = new FormData();
       let hasFile = false;
       Object.entries(nuevoCaso).forEach(([key, value]) => {
@@ -93,20 +83,17 @@ let dataToSend = nuevoCaso;
       if (hasFile) {
         dataToSend = formData;
       }
-      
-const response = await api.post(`${BASE_URL}/api/riesgos`, dataToSend);
-      
-// Mostrar notificación de éxito
+
+      const response = await api.post(`${BASE_URL}/api/riesgos`, dataToSend);
+
       if (response.data.success) {
         alert(`✅ ${response.data.message}`);
       }
-      
+
       await cargarCasos();
     } catch (err) {
       console.error('❌ Error al agregar caso de riesgo:', err);
       console.error('❌ Detalles del error:', err.response?.data);
-      
-      // Mostrar error al usuario
       const errorMessage = err.response?.data?.message || err.message || 'Error al crear el caso de riesgo';
       alert(`❌ ${errorMessage}`);
     }

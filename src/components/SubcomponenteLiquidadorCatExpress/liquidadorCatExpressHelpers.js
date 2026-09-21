@@ -8,10 +8,20 @@ import {
   totalFilaPresupuesto,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
+  aplicarMayorEntreSmmlvYPctOVa,
+  calcularDeducibleSobreBaseConfig,
+} from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
+import {
   FUENTE_EXPRESS,
   esIdExpress,
   idsExpressPorTipo,
 } from './catalogoLiquidadorCatExpress.js';
+import {
+  configDeducibleExpress,
+  patchDeducibleExpress,
+  valorAseguradoParaExpress,
+} from './reglasDeducibleCatExpress.js';
+import { patchDeducibleDesdeTomadorAlfa } from '../SubcomponenteSegurosAlfa/tomadoresAlfaCatalogo.js';
 
 const ORDEN_CAPITULO = [
   'Demoliciones',
@@ -109,18 +119,83 @@ export function totalesExpress(filas = [], aiuPorcentaje = 0.25) {
   });
 }
 
-export function totalesGuardadoExpress(liquidador = {}, aiuPorcentaje = 0.25) {
+export function liquidacionExpressConDeducible(
+  liquidador = {},
+  { aiuPorcentaje = 0.25, modulo = '' } = {}
+) {
   const tipo = tipoExpressDeLiquidador(liquidador);
   const aiu =
     aiuPorcentaje ??
     Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ??
     0.25;
-  const t = totalesExpress(construirFilasExpress(liquidador, tipo), aiu);
+  const filas = construirFilasExpress(liquidador, tipo);
+  const t = totalesExpress(filas, aiu);
+  const cfg = configDeducibleExpress(liquidador, modulo);
+  const va = valorAseguradoParaExpress(liquidador, modulo);
+  const calc = calcularDeducibleSobreBaseConfig(cfg, {
+    perdida: t.total,
+    valorAsegurado: va,
+  });
+  const modo = String(cfg.modo || 'max_pct_minimo');
+  let mayor;
+  let deducibleAplicado;
+  if (modo === 'no_aplica') {
+    deducibleAplicado = 0;
+    mayor = {
+      aplicado: 0,
+      montoPctOVa: 0,
+      montoSmmlv: 0,
+      tipoGanadorLabel: 'No aplica',
+    };
+  } else if (modo === 'valor_fijo') {
+    deducibleAplicado = Math.min(t.total, Math.max(0, parseMontoNsr10(cfg.valorFijo) || 0));
+    mayor = {
+      aplicado: deducibleAplicado,
+      montoPctOVa: 0,
+      montoSmmlv: 0,
+      tipoGanadorLabel: 'Valor fijo',
+    };
+  } else {
+    mayor = aplicarMayorEntreSmmlvYPctOVa({
+      calcGeneral: calc,
+      topePerdida: t.total,
+    });
+    deducibleAplicado = Number(mayor.aplicado) || 0;
+  }
   return {
     ...t,
-    totalPerdida: t.subtotal,
-    totalIndemnizar: t.total,
+    filas,
+    cfg,
+    valorAsegurado: va,
+    desgloseDeducible: mayor,
+    calc,
+    deducibleAplicado,
+    totalPerdida: t.total,
+    totalIndemnizar: Math.max(0, Math.round((t.total - deducibleAplicado) * 100) / 100),
   };
+}
+
+export function totalesGuardadoExpress(liquidador = {}, aiuPorcentaje = 0.25, modulo = '') {
+  return liquidacionExpressConDeducible(liquidador, { aiuPorcentaje, modulo });
+}
+
+export function asegurarModoExpress(
+  liquidador = {},
+  { tipo, aiuPorcentaje, modulo = '' } = {}
+) {
+  const tipoResuelto = tipo || tipoExpressDeLiquidador(liquidador);
+  const filas = construirFilasExpress(liquidador, tipoResuelto);
+  const conItems = aplicarFilasExpress(liquidador, filas, { tipo: tipoResuelto, aiuPorcentaje });
+  if (!modulo) return conItems;
+  let next = patchDeducibleExpress(conItems, {}, modulo);
+  if (String(modulo).toLowerCase() === 'alfa') {
+    const tomador = next.encabezado?.tomador || '';
+    const poliza = next.encabezado?.poliza || '';
+    const cfg = next.liquidacionCatastrofico?.deducibleConfigPresupuesto || {};
+    const cfgAlfa = patchDeducibleDesdeTomadorAlfa(tomador, cfg, poliza);
+    next = patchDeducibleExpress(next, cfgAlfa, modulo);
+  }
+  return next;
 }
 
 /**
@@ -169,12 +244,6 @@ export function aplicarFilasExpress(liquidador = {}, filas = [], { tipo = 'casa'
 
 export function marcarModoRobusto(liquidador = {}) {
   return { ...liquidador, modoLiquidacion: 'robusto' };
-}
-
-export function asegurarModoExpress(liquidador = {}, { tipo, aiuPorcentaje } = {}) {
-  const tipoResuelto = tipo || tipoExpressDeLiquidador(liquidador);
-  const filas = construirFilasExpress(liquidador, tipoResuelto);
-  return aplicarFilasExpress(liquidador, filas, { tipo: tipoResuelto, aiuPorcentaje });
 }
 
 export function filasDetalleAlfaDesdeExpress(filas = []) {

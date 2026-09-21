@@ -847,7 +847,13 @@ export default function LiquidadorSegurosAlfa({
       />
 
       <SeccionModoLiquidadorCat
+        modulo="alfa"
         liquidador={liquidador}
+        tomador={enc.tomador || casoLocal.tomador || ''}
+        onTomadorCasoChange={(tomador) => {
+          setCasoLocal((c) => ({ ...c, tomador }));
+          onCasoChange?.((casoPrev) => (casoPrev ? { ...casoPrev, tomador } : casoPrev));
+        }}
         onLiquidadorChange={setLiquidador}
         aiuPorcentaje={
           Number(liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||

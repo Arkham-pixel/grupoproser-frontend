@@ -1,5 +1,6 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 import { homologarCiudadCatastrofico, resolverUbicacionCatastrofico } from '../../utils/catalogosAsignacionCatastrofico.js';
+import { hidratarCamposFacturacion } from '../shared/camposFacturacionAseguradora.js';
 
 export const ALLIANZ_REPORTE_PAGE_SIZE = 25;
 
@@ -841,6 +842,23 @@ export const FORM_VACIO_ALLIANZ = {
   accesoPredio: '',
   observacionesCat: '',
   evidenciaCat: { ...EVIDENCIA_CAT_VACIA },
+  control_horas: null,
+  historialDocs: [],
+  fecha_control_horas: '',
+  fecha_envio_control_horas: '',
+  fecha_recibido_control_horas: '',
+  fecha_seguimiento_envio_control_horas: '',
+  observacion_seguimiento_envio_control_horas: '',
+  adjunto_control_horas: '',
+  adjunto_evidencia: '',
+  adjunto_seguimiento_envio_control_horas: '',
+  adjunto_factura: '',
+  numero_factura: '',
+  valor_servicio: '',
+  valor_gastos: '',
+  fecha_factura: '',
+  fecha_ultima_revision: '',
+  observacion_compromisos: '',
 };
 
 export const TIPOS_NEGOCIO_HOMOLOGADO_ALLIANZ = [
@@ -915,7 +933,13 @@ export const construirFormDesdecasoAllianz = (caso = {}) => {
     ...FORM_VACIO_ALLIANZ,
     ...Object.fromEntries(
       Object.keys(FORM_VACIO_ALLIANZ)
-        .filter((clave) => clave !== 'evidenciaCat' && clave !== 'severidadCatNiveles')
+        .filter(
+          (clave) =>
+            clave !== 'evidenciaCat' &&
+            clave !== 'severidadCatNiveles' &&
+            clave !== 'control_horas' &&
+            clave !== 'historialDocs'
+        )
         .map((clave) => {
           const valor = caso[clave];
           if (valor === null || valor === undefined) return [clave, ''];
@@ -967,7 +991,7 @@ export const construirFormDesdecasoAllianz = (caso = {}) => {
   const ub = resolverUbicacionAllianz(base.ciudad, base.departamento);
   if (ub.ciudad) base.ciudad = ub.ciudad;
   if (ub.departamento) base.departamento = ub.departamento;
-  return base;
+  return hidratarCamposFacturacion(base, caso);
 };
 
 const TIPOS_INFORME_REPORTE_ALLIANZ = new Set(['unico', 'final', 'preliminar']);

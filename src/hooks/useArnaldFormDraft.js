@@ -127,6 +127,13 @@ export default function useArnaldFormDraft({
               '⚠️ Borrador Arnald solo en local (sesión vencida o sin permiso de sync).'
             );
           }
+        } else if (
+          error?.name === 'AbortError' ||
+          error?.message === 'Failed to fetch' ||
+          error?.code === 'ERR_NETWORK'
+        ) {
+          setDraftStatus(localOk ? 'saved' : 'error');
+          return localOk ? { ok: true, local: true } : null;
         } else {
           console.error('❌ Error sincronizando borrador Arnald:', error);
         }

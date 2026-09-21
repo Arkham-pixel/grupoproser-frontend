@@ -500,6 +500,26 @@ function redondearCopDeducible(n) {
 }
 
 /**
+ * Deducible aplicado = el mayor entre el % mostrado y el mínimo SMMLV/SMDLV,
+ * con tope en el presupuesto. No usa el % sobre VA si la pantalla muestra pérdida.
+ */
+export function resolverDeducibleAplicadoVisible({
+  montoPct = 0,
+  montoSmmlv = 0,
+  tope = 0,
+} = {}) {
+  const mayor = Math.max(Number(montoPct) || 0, Number(montoSmmlv) || 0);
+  const cap = Math.max(0, Number(tope) || 0);
+  if (!(cap > 0)) return redondearCopDeducible(mayor);
+  return redondearCopDeducible(Math.min(mayor, cap));
+}
+
+function basePctUsadaEsValorAsegurado(basePctUsada) {
+  const raw = String(basePctUsada || '').trim();
+  return raw === 'valor_asegurable' || raw === 'valor_asegurado';
+}
+
+/**
  * Elección explícita del ajustador: el % va sobre pérdida o sobre valor asegurado.
  * Vacío = aún no eligió (se resuelve con baseDeducible o con el VA).
  */
@@ -554,10 +574,9 @@ export function aplicarMayorEntreSmmlvYPctOVa({
     noAplica || tieneArticulos ? 0 : Number(calcGeneral.montoPctVa) || 0;
   const montoPctPerdida =
     noAplica || tieneArticulos ? 0 : Number(calcGeneral.montoPctPerdida) || 0;
-  const basePct =
-    calcGeneral.basePctUsada === 'perdida' || calcGeneral.basePctUsada === 'perdida_total'
-      ? 'perdida'
-      : 'valor_asegurado';
+  const basePct = basePctUsadaEsValorAsegurado(calcGeneral.basePctUsada)
+    ? 'valor_asegurado'
+    : 'perdida';
   const pctElegido = basePct === 'perdida' ? montoPctPerdida : montoPctVa;
   const pctGeneral =
     noAplica || tieneArticulos ? 0 : Number(calcGeneral.deduciblePorcentaje) || 0;
@@ -568,13 +587,14 @@ export function aplicarMayorEntreSmmlvYPctOVa({
     : pctElegido > 0
       ? pctElegido
       : pctGeneral;
-  const bruto = Math.max(smmlv, montoPctOVa);
   const tope = Math.max(0, Number(topePerdida) || 0);
-  // Por artículo: mostrar el deducible de la tabla/cálculo completo.
-  // El tope en la pérdida solo afecta el neto (no oculta el deducible si la pérdida aún es 0).
-  const aplicado = redondearCopDeducible(
-    tieneArticulos ? (Number.isFinite(artN) ? Math.max(0, artN) : 0) : Math.min(bruto, tope)
-  );
+  const aplicado = tieneArticulos
+    ? redondearCopDeducible(Number.isFinite(artN) ? Math.max(0, artN) : 0)
+    : resolverDeducibleAplicadoVisible({
+        montoPct: montoPctOVa,
+        montoSmmlv: smmlv,
+        tope,
+      });
   const ganaSmmlv = !tieneArticulos && smmlv > montoPctOVa;
   const tipoMinimo = calcGeneral.tipoMinimo || 'SMMLV';
   let tipoGanador = '%';
@@ -788,9 +808,16 @@ export function calcularDiagramaLiquidacion({
    * cuando el presupuesto aún no tiene cantidades). El neto sí se topea en 0.
    * No usar (totalConAIU − netoSinAIU): eso metía el AIU dentro del «deducible aplicado».
    */
+  const montoPctLineaPres = basePctUsadaEsValorAsegurado(calcPres.basePctUsada)
+    ? Number(mayorPres.montoPctVa) || 0
+    : Number(mayorPres.montoPctPerdida) || 0;
   const deduciblePresupuestoAplicado = usarSumaArticulosPres
     ? redondearCopDeducible(dedArtPresN)
-    : mayorPres.aplicado;
+    : resolverDeducibleAplicadoVisible({
+        montoPct: montoPctLineaPres,
+        montoSmmlv: Number(mayorPres.montoSmmlv) || 0,
+        tope: basePresupuesto,
+      });
   const presupuestoNeto = Math.max(
     0,
     Math.round((basePresupuesto - deduciblePresupuestoAplicado) * 100) / 100
@@ -858,9 +885,17 @@ export function calcularDiagramaLiquidacion({
       ...calcPres,
       ...mayorPres,
       aplicado: deduciblePresupuestoAplicado,
+      deducibleAplicado: deduciblePresupuestoAplicado,
       neto: presupuestoNeto,
       porArticulos: usaDeduciblePresupuestoPorArticulo,
       usaMinimo: mayorPres.ganaSmmlv,
+      tipoGanadorLabel: usaDeduciblePresupuestoPorArticulo
+        ? 'por artículo'
+        : (Number(mayorPres.montoSmmlv) || 0) > montoPctLineaPres
+          ? calcPres.tipoMinimo || 'SMMLV'
+          : calcPres.basePctUsada === 'perdida' || calcPres.basePctUsada === 'perdida_total'
+            ? '% pérdida'
+            : '% valor asegurado',
       texto: mayorPres.texto,
     },
     deducibleCompartido: deducibleCompartido

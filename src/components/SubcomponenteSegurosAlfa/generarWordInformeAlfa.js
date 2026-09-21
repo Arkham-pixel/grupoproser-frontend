@@ -19,6 +19,7 @@ import { saveAs } from 'file-saver';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { filasPresupuestoParaWord } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionAlfa,
@@ -929,9 +930,11 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   const totales = calcularLiquidacionAlfa(liq);
   const enc = liq.encabezado || {};
   const items = itemsPlanosAlfa(liq);
-  const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
-    ? liq.evaluacionSismicaNSR10.presupuesto.items
-    : [];
+  const filasPresupuesto = filasPresupuestoParaWord(
+    liq,
+    liq?.evaluacionSismicaNSR10?.presupuesto?.items,
+    { modulo: 'alfa' }
+  );
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(

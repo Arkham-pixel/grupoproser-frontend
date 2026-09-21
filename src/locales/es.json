@@ -8,9 +8,13 @@
     "title": "Novedades de la plataforma",
     "versionLabel": "Versión {{version}}",
     "dismiss": "Cerrar aviso",
-    "refreshIntro": "Para ver los cambios al instante, fuerza una recarga sin caché:",
+    "refreshIntro": "Si no ve los cambios (sobre todo en Mac), actualice sin caché:",
     "refreshWindows": "Ctrl + Shift + R",
-    "refreshMac": "Cmd + Shift + R (⌘ + ⇧ + R)"
+    "refreshMac": "Chrome o Edge: Cmd + Shift + R (⌘ + ⇧ + R)",
+    "refreshSafari": "Cmd + Option + E (vaciar caché) y luego Cmd + R. O use el botón de abajo.",
+    "refreshNow": "Actualizar ahora (limpia caché)",
+    "refreshNowShort": "Actualizar app",
+    "refreshing": "Actualizando…"
   },
   "common": {
     "loading": "Cargando…",
@@ -329,6 +333,10 @@
     "assignedCases": "Mis Casos Asignados",
     "myTasks": "Mis Subtareas",
     "billingTray": "Bandeja Facturación",
+    "allianzBillingTray": "Bandeja Facturación",
+    "previsoraBillingTray": "Bandeja Facturación",
+    "suraBillingTray": "Bandeja Facturación",
+    "bandejaModuloSubtitle": "Controles de horas y envíos a gerencia de {{modulo}}. Destino: {{destino}}.",
     "myCases": "Mis casos",
     "exportExcel": "Exportar Excel",
     "newCase": "Nuevo caso",
@@ -467,6 +475,9 @@
       "alfaUniqueReport": "Informe único Seguros Alfa",
       "zurichAdd": "Agregar caso Zurich",
       "zurichBillingTray": "Bandeja control de horas Zurich",
+      "allianzBillingTray": "Bandeja Facturación Allianz",
+      "previsoraBillingTray": "Bandeja Facturación Previsora",
+      "suraBillingTray": "Bandeja Facturación SURA",
       "zurichListadoReport": "Reporte listado Zurich",
       "zurichMyCases": "Mis casos Zurich",
       "zurichListadoDashboard": "Torre de control CAT Zurich",
@@ -5359,7 +5370,18 @@
         "fechas_pendientes": "Fechas pendientes",
         "no_generar_excel": "No se pudo generar el Excel.",
         "error": "Error",
-        "la_aseguradora": "la aseguradora"
+        "la_aseguradora": "la aseguradora",
+        "tipo_liquidador": "Tipo de liquidador",
+        "tipo_preliminar": "Liquidador preliminar",
+        "tipo_unico": "Liquidador único",
+        "nota_items_fijos": "Amarillo: actividades y horas fijas (todos los siniestros). Azul: se pueden modificar o eliminar. La tarifa hora es la de cada compañía.",
+        "nota_agregar_items": "NOTA: se puede agregar otra actividad si el siniestro lo requiere (estudio estructuralista, avalúo u otros).",
+        "no_eliminar_fija": "Las actividades en amarillo son fijas y no se pueden eliminar.",
+        "actividad_fija": "Actividad fija",
+        "tarifa_previsora": "Tarifa Previsora",
+        "tope_horas_previsora": "La reserva de este caso permite máximo {{max}} horas (Tarifa No. 1). Baje horas o marque autorización de gerencia para horas adicionales.",
+        "horas_usadas_previsora": "Horas usadas: {{usadas}} / {{max}} h máximas según reserva.",
+        "horas_extra_gerencia": "Horas adicionales autorizadas por gerencia (2,05 SMDLV)."
       },
       "importar_control_horas": {
         "no_archivo": "No se seleccionó ningún archivo.",
@@ -12978,6 +13000,10 @@
       "generalInfo": "Información general de personas / póliza",
       "generalInfoHint": "Despliegue para completar identificación, contacto, póliza, valores y fechas adicionales."
     },
+    "tabs": {
+      "datosGenerales": "Datos del caso",
+      "facturacion": "Facturación"
+    },
     "fields": {
       "siniestro": "Siniestro",
       "zc": "ZC",
@@ -13923,6 +13949,10 @@
       "catAllianzHint": "Datos de inspección CAT Allianz: ubicación, afectación y referencias.",
       "generalInfo": "Información general de personas / póliza",
       "generalInfoHint": "Despliegue para completar identificación, contacto, póliza, valores y fechas adicionales."
+    },
+    "tabs": {
+      "datosGenerales": "Datos del caso",
+      "facturacion": "Facturación"
     },
     "fields": {
       "siniestro": "Siniestro",

@@ -19,6 +19,7 @@ import {
   patchDeducibleDesdeTomadorAlfa,
   resolverReglaDeducibleTomadorAlfa,
 } from './tomadoresAlfaCatalogo.js';
+import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import {
   defaultOtrosAmparos as defaultOtrosAmparosAlfa,
   filasOtrosAmparosActivos as filasOtrosAmparosActivosAlfa,
@@ -796,6 +797,8 @@ export function camposControlLiquidacionDesdeLiquidadorAlfa(liquidador = {}) {
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosAlfa(liquidador = {}) {
+  const express = payloadExpressParaInforme(liquidador, { modulo: 'alfa' });
+  if (express?.itemsPlanos?.length) return express.itemsPlanos;
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   if (!Array.isArray(items) || !items.length) return [];
   return items

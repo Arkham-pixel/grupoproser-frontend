@@ -8,9 +8,13 @@
     "title": "What's new",
     "versionLabel": "Version {{version}}",
     "dismiss": "Dismiss notice",
-    "refreshIntro": "To see the changes right away, hard-refresh and bypass the cache:",
+    "refreshIntro": "If you do not see the changes (especially on Mac), hard-refresh:",
     "refreshWindows": "Ctrl + Shift + R",
-    "refreshMac": "Cmd + Shift + R (⌘ + ⇧ + R)"
+    "refreshMac": "Chrome or Edge: Cmd + Shift + R (⌘ + ⇧ + R)",
+    "refreshSafari": "Cmd + Option + E (empty caches) then Cmd + R. Or use the button below.",
+    "refreshNow": "Update now (clear cache)",
+    "refreshNowShort": "Update app",
+    "refreshing": "Updating…"
   },
   "common": {
     "loading": "Loading…",
@@ -329,6 +333,10 @@
     "assignedCases": "My assigned cases",
     "myTasks": "My tasks",
     "billingTray": "Billing inbox",
+    "allianzBillingTray": "Billing inbox",
+    "previsoraBillingTray": "Billing inbox",
+    "suraBillingTray": "Billing inbox",
+    "bandejaModuloSubtitle": "Hours-control and billing submissions for {{modulo}}. Destination: {{destino}}.",
     "myCases": "My cases",
     "exportExcel": "Export Excel",
     "newCase": "New case",
@@ -466,6 +474,9 @@
       "alfaUniqueReport": "Seguros Alfa unique report",
       "zurichAdd": "Add Zurich case",
       "zurichBillingTray": "Zurich hours-control inbox",
+      "allianzBillingTray": "Allianz billing inbox",
+      "previsoraBillingTray": "Previsora billing inbox",
+      "suraBillingTray": "SURA billing inbox",
       "zurichListadoReport": "Zurich list report",
       "zurichMyCases": "My Zurich cases",
       "zurichListadoDashboard": "Zurich CAT control tower",
@@ -5311,7 +5322,18 @@
         "fechas_pendientes": "Dates pending",
         "no_generar_excel": "Could not generate the Excel file.",
         "error": "Error",
-        "la_aseguradora": "the insurance company"
+        "la_aseguradora": "the insurance company",
+        "tipo_liquidador": "Settlement type",
+        "tipo_preliminar": "Preliminary settlement",
+        "tipo_unico": "Single settlement",
+        "nota_items_fijos": "Yellow: fixed activities and hours (every claim). Blue: can be edited or removed. The hourly rate is specific to each company.",
+        "nota_agregar_items": "NOTE: you can add another activity if the claim requires it (structural study, appraisal, or others).",
+        "no_eliminar_fija": "Yellow activities are fixed and cannot be deleted.",
+        "actividad_fija": "Fixed activity",
+        "tarifa_previsora": "Previsora rate",
+        "tope_horas_previsora": "This case reserve allows a maximum of {{max}} hours (Rate table 1). Reduce hours or mark manager authorization for extra hours.",
+        "horas_usadas_previsora": "Hours used: {{usadas}} / {{max}} h maximum by reserve.",
+        "horas_extra_gerencia": "Extra hours authorized by management (2.05 SMDLV)."
       },
       "importar_control_horas": {
         "no_archivo": "No file was selected.",
@@ -12897,6 +12919,10 @@
       "generalInfo": "General person / policy information",
       "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates."
     },
+    "tabs": {
+      "datosGenerales": "Case data",
+      "facturacion": "Billing"
+    },
     "fields": {
       "siniestro": "Claim",
       "zc": "ZC",
@@ -13842,6 +13868,10 @@
       "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates.",
       "actionDates": "Action dates",
       "actionDatesHint": "Date of each CAT workflow status. Changing status stamps the matching date when it is still empty."
+    },
+    "tabs": {
+      "datosGenerales": "Case data",
+      "facturacion": "Billing"
     },
     "fields": {
       "siniestro": "Claim",

@@ -49,7 +49,11 @@ import { allianzArchivosApi } from './allianzArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SelectorTipoInformeAllianz from './SelectorTipoInformeAllianz.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
-import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
@@ -1023,6 +1027,17 @@ export default function InformeUnicoAllianz({
                 </p>
               }
             >
+              <SeccionModoLiquidadorCat
+                modulo="allianz"
+                liquidador={liquidador}
+                onLiquidadorChange={setLiquidador}
+                aiuPorcentaje={
+                  Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+                  AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+                }
+                disabled={guardandoCaso}
+                ocultarToggle
+              >
               <ChecklistEvaluacionSismicaNSR10
                 formData={formDataNsr}
                 onInputChange={handleNsrChange}
@@ -1030,6 +1045,7 @@ export default function InformeUnicoAllianz({
                 recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
                 simplificarDeducible
               />
+              </SeccionModoLiquidadorCat>
             </Suspense>
           </section>
 

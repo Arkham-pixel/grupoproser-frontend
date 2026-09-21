@@ -28,6 +28,7 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
   resolverBasePctElegida,
+  resolverDeducibleAplicadoVisible,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import {
@@ -37,6 +38,7 @@ import {
   usaCotizacionComoBasePresupuesto,
   montoCotizacionPdf,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 
 export { parsearNumero };
 
@@ -411,14 +413,27 @@ export function desgloseDeducibleTerremotoZurich(liquidador = {}, diagrama = nul
   const montoPctVa = Number(pres.montoPctVa) || 0;
   const montoPctPerdida = Number(pres.montoPctPerdida) || 0;
   const montoPct =
-    Number(pres.montoPctOVa) ||
-    (basePct === 'perdida' ? montoPctPerdida : montoPctVa);
+    basePct === 'perdida'
+      ? montoPctPerdida
+      : montoPctVa || Number(pres.montoPctOVa) || 0;
   const montoSmmlv = Number(pres.montoSmmlv) || 0;
-  const aplicado = Number(pres.aplicado) || 0;
-  const neto = Number(pres.neto);
+  const topeNeto =
+    Number(diag.baseDeduciblePresupuesto) ||
+    Number(diag.totalPresupuesto) ||
+    Number(pres.totalBase) ||
+    0;
+  const aplicado = resolverDeducibleAplicadoVisible({
+    montoPct,
+    montoSmmlv,
+    tope: topeNeto,
+  });
+  const neto = Math.max(0, Math.round((topeNeto - aplicado) * 100) / 100);
   const tipoGanador =
-    pres.tipoGanadorLabel ||
-    (pres.ganaSmmlv ? tipoMinimo : pres.tipoGanador || '%');
+    montoSmmlv > montoPct
+      ? tipoMinimo
+      : basePct === 'perdida'
+        ? '% pérdida'
+        : '% valor asegurado';
   const tieneArticulos = Boolean(pres.tieneArticulos);
   const etiquetaPct =
     basePct === 'perdida'
@@ -1591,6 +1606,8 @@ export function calcularLiquidacionZurich(liquidadorCrudo = {}) {
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosZurich(liquidador = {}) {
+  const express = payloadExpressParaInforme(liquidador, { modulo: 'zurich' });
+  if (express?.itemsPlanos?.length) return express.itemsPlanos;
   if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
     const cotiz = totalesCotizacionPdfZurich(liquidador);
     const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
@@ -1611,7 +1628,7 @@ export function itemsPlanosZurich(liquidador = {}) {
       id: it.id,
       concepto: it.actividad || it.componente || 'Ítem',
       valorReclamado: '',
-      valorIndemnizable: it.total ?? '',
+      valorIndemnizable: it.total ?? totalFilaPresupuesto(it) ?? '',
       cantidad: it.cantidad,
       valorUnitario: it.valorUnitario,
     }));

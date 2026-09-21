@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBullhorn, FaTimes, FaSyncAlt } from 'react-icons/fa';
 import { NOVEDADES, NOVEDADES_STORAGE_KEY } from '../config/novedades.js';
+import { forzarActualizacionApp } from '../utils/forzarActualizacionApp.js';
 
 function idiomaDe(i18nLang) {
   return String(i18nLang || 'es').toLowerCase().startsWith('en') ? 'en' : 'es';
@@ -30,6 +31,7 @@ export default function NovedadesBanner() {
     }
     return !fueDescartada(version);
   });
+  const [actualizando, setActualizando] = useState(false);
 
   const titulo = useMemo(() => {
     const custom = NOVEDADES.titulo?.[lang] || NOVEDADES.titulo?.es;
@@ -53,6 +55,12 @@ export default function NovedadesBanner() {
       /* ignore quota / private mode */
     }
     setVisible(false);
+  };
+
+  const actualizarAhora = async () => {
+    if (actualizando) return;
+    setActualizando(true);
+    await forzarActualizacionApp();
   };
 
   return (
@@ -90,7 +98,7 @@ export default function NovedadesBanner() {
 
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-sky-200/80 bg-white/70 px-3 py-2 text-xs text-sky-900 sm:text-sm dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100">
             <FaSyncAlt className="mt-0.5 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
-            <div className="min-w-0 space-y-1 leading-relaxed">
+            <div className="min-w-0 space-y-2 leading-relaxed">
               <p className="font-medium">{t('novedades.refreshIntro')}</p>
               <p>
                 <span className="font-semibold">Windows:</span>{' '}
@@ -99,6 +107,18 @@ export default function NovedadesBanner() {
               <p>
                 <span className="font-semibold">Mac:</span> {t('novedades.refreshMac')}
               </p>
+              <p>
+                <span className="font-semibold">Safari:</span> {t('novedades.refreshSafari')}
+              </p>
+              <button
+                type="button"
+                onClick={actualizarAhora}
+                disabled={actualizando}
+                className="mt-1 inline-flex items-center gap-2 rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-800 disabled:opacity-60 dark:bg-sky-600 dark:hover:bg-sky-500"
+              >
+                <FaSyncAlt className={actualizando ? 'animate-spin' : ''} aria-hidden />
+                {actualizando ? t('novedades.refreshing') : t('novedades.refreshNow')}
+              </button>
             </div>
           </div>
         </div>

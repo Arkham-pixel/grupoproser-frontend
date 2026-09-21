@@ -25,6 +25,7 @@ import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
 import { getCasoComplex, updateCasoComplex, moverCasoComplexASura } from '../../services/complexService.js';
 import { getCasoSuraById, actualizarCasoSura } from '../../services/segurosSuraService.js';
 import { esSesionUltimoComentarioSura, esSesionBarraEstadosSura } from '../../utils/permisosCasoPorRol.js';
+import { puedeVerFacturacionSura } from '../../config/gerentesFacturacion.js';
 import { ESTADOS_SURA_OPERATIVOS, ESTADOS_SURA_RESTRINGIDOS, normalizarEstadoSura } from '../SubcomponenteSura/segurosSuraHelpers.js';
 import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
@@ -86,6 +87,8 @@ function mapearOpcionFuncionarioAseguradora(f) {
 export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false, variant = 'complex' }) {
   const { t } = useTranslation();
   const esSura = variant === 'sura';
+  const loginActual = String(localStorage.getItem('login') || '').trim();
+  const puedeFacturacionSura = !esSura || puedeVerFacturacionSura(loginActual);
   const storageKey = esSura ? 'formularioSura' : 'formularioComplex';
   const apiModulo = esSura ? 'sura' : 'complex';
   const cargarCasoPorServicio = esSura ? getCasoSuraById : getCasoComplex;
@@ -114,10 +117,11 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
         'seguimiento',
         'observacionesPendientes',
         'observaciones',
+        ...(!puedeFacturacionSura ? ['facturacion'] : []),
       ]);
       return esSura ? tabs.filter((tab) => !tabsOcultasSura.has(tab.id)) : tabs;
     },
-    [t, esSura]
+    [t, esSura, puedeFacturacionSura]
   );
 
   useEffect(() => {
@@ -126,11 +130,12 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
       'seguimiento',
       'observacionesPendientes',
       'observaciones',
+      ...(!puedeFacturacionSura ? ['facturacion'] : []),
     ]);
     if (esSura && tabsOcultasSura.has(tabActiva)) {
       setTabActiva('datosGenerales');
     }
-  }, [esSura, tabActiva]);
+  }, [esSura, tabActiva, puedeFacturacionSura]);
   const [formData, setFormData] = useState({
     nmroAjste: '',
     nmroSinstro: '',
@@ -3781,7 +3786,7 @@ if (!onSave) {
             errorAdjuntos={errorAdjuntos}
           />
         )}
-        {tabActiva === 'facturacion' && (
+        {tabActiva === 'facturacion' && puedeFacturacionSura && (
           <Facturacion
             formData={formData}
             setFormData={setFormData}

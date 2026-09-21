@@ -165,10 +165,19 @@ export const guardarLiquidadorEnCasoEquidadCat = async ({
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso debe estar guardado antes de adjuntar el liquidador.');
-  const { calcularLiquidacionFdm } = await import(
-    '../components/SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js'
-  );
-  const t = calcularLiquidacionFdm(liquidador || {});
+  const esExpress = String(liquidador?.modoLiquidacion || '') === 'express';
+  let t = totales || {};
+  if (esExpress) {
+    const { totalesGuardadoExpress } = await import(
+      '../components/SubcomponenteLiquidadorCatExpress/liquidadorCatExpressHelpers.js'
+    );
+    t = totalesGuardadoExpress(liquidador || {}, undefined, 'equidad');
+  } else {
+    const { calcularLiquidacionFdm } = await import(
+      '../components/SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js'
+    );
+    t = calcularLiquidacionFdm(liquidador || {});
+  }
   return actualizarCasoEquidadCat(casoId, {
     ...omitirMeta(casoBase),
     liquidador: liquidador && typeof liquidador === 'object' ? liquidador : {},

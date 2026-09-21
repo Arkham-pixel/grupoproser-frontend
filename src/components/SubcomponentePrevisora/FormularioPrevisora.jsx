@@ -56,12 +56,17 @@ import {
   normalizeEvidenciaCat,
 } from './previsoraHelpers.js';
 import CampoTomadorPrevisora from './CampoTomadorPrevisora.jsx';
+import FacturacionPrevisoraPanel from './FacturacionPrevisoraPanel.jsx';
+import { camposFacturacionDesdeForm } from '../shared/camposFacturacionAseguradora.js';
+import { controlHorasTieneDatos } from '../SubcomponenteCompex/controlHoras/controlHorasUtils.js';
+import { ComplexFormTabs } from '../SubcomponenteCompex/FacturacionHelpers.jsx';
 import ModalImportarExcelPrevisora, {
   esAdminOSoportePrevisora,
 } from './ModalImportarExcelPrevisora.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
+import { puedeVerFacturacionPrevisora } from '../../config/gerentesFacturacion.js';
 import {
   attrsCampoCaso,
   esRolInspector,
@@ -99,6 +104,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
   const rolUsuario = obtenerRolAlmacenado();
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('previsora'), []);
   const soloInspector = esRolInspector(rolUsuario);
+  const loginActual = String(localStorage.getItem('login') || '').trim();
+  const puedeFacturacion = puedeVerFacturacionPrevisora(loginActual) && !soloInspector;
   const esEdicion = Boolean(initialData?._id);
   const esModuloListado = origen === 'listado';
   const puedeImportarExcel = esAdminOSoportePrevisora();
@@ -123,6 +130,12 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
+  const [tabActiva, setTabActiva] = useState('datosGenerales');
+  const formTabs = useMemo(() => {
+    const tabs = [{ id: 'datosGenerales', label: t('previsora.tabs.datosGenerales') }];
+    if (puedeFacturacion) tabs.push({ id: 'facturacion', label: t('previsora.tabs.facturacion') });
+    return tabs;
+  }, [t, puedeFacturacion]);
   const formKey = esEdicion
     ? `previsora:${origen}:${initialData._id}`
     : `previsora:${origen}:nuevo`;
@@ -329,6 +342,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
       if (!String(payload.identificacion || '').trim()) {
         if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       }
+      Object.assign(payload, camposFacturacionDesdeForm(form));
+      if (!controlHorasTieneDatos(payload.control_horas)) delete payload.control_horas;
       return payload;
     }
     const payload = { ...form };
@@ -371,6 +386,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
       if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
     }
+    if (!controlHorasTieneDatos(payload.control_horas)) delete payload.control_horas;
     return payload;
   };
 
@@ -472,6 +488,12 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
+      {puedeFacturacion && (
+        <ComplexFormTabs tabs={formTabs} activeId={tabActiva} onChange={setTabActiva} />
+      )}
+
+      {(!puedeFacturacion || tabActiva === 'datosGenerales') && (
+      <>
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('previsora.sections.listadoCliente')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
@@ -1078,6 +1100,17 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
       </>
       )}
       </fieldset>
+      </>
+      )}
+
+      {tabActiva === 'facturacion' && puedeFacturacion && (
+        <FacturacionPrevisoraPanel
+          form={form}
+          setForm={setForm}
+          initialData={initialData}
+          origen={origen}
+        />
+      )}
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         {embed && onClose && (

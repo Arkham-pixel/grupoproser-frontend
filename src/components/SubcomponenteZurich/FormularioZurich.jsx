@@ -67,6 +67,7 @@ import ModalImportarExcelZurich, {
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { obtenerRolAlmacenado, esRolContractorZurich } from '../../config/roles.js';
+import { puedeVerFacturacionZurich } from '../../config/gerentesFacturacion.js';
 import {
   attrsCampoCaso,
   esRolInspector,
@@ -113,6 +114,9 @@ const FormularioZurich = ({
   const esClienteZurich = esRolContractorZurich(rolUsuario);
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('zurich'), []);
   const soloInspector = esRolInspector(rolUsuario);
+  const loginActual = String(localStorage.getItem('login') || '').trim();
+  const puedeFacturacion =
+    puedeVerFacturacionZurich(loginActual) && !esClienteZurich && !soloInspector;
   const esEdicion = Boolean(initialData?._id);
   const esModuloListado = origen === 'listado';
   const puedeImportarExcel = esAdminOSoporteZurich();
@@ -144,11 +148,11 @@ const FormularioZurich = ({
     const tabs = [
       { id: 'datosGenerales', label: t('zurich.tabs.datosGenerales') },
     ];
-    if (!esClienteZurich && !soloInspector) {
+    if (puedeFacturacion) {
       tabs.push({ id: 'facturacion', label: t('zurich.tabs.facturacion') });
     }
     return tabs;
-  }, [t, esClienteZurich, soloInspector]);
+  }, [t, puedeFacturacion]);
   const formKey = esEdicion
     ? `zurich:${origen}:${initialData._id}`
     : `zurich:${origen}:nuevo`;
@@ -541,9 +545,11 @@ const FormularioZurich = ({
         </div>
       )}
 
-      <ComplexFormTabs tabs={formTabs} activeId={tabActiva} onChange={setTabActiva} />
+      {puedeFacturacion && (
+        <ComplexFormTabs tabs={formTabs} activeId={tabActiva} onChange={setTabActiva} />
+      )}
 
-      {tabActiva === 'datosGenerales' && (
+      {(!puedeFacturacion || tabActiva === 'datosGenerales') && (
       <>
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.sections.listadoCliente')}</h3>
@@ -1207,7 +1213,7 @@ const FormularioZurich = ({
       </>
       )}
 
-      {tabActiva === 'facturacion' && !esClienteZurich && !soloInspector && (
+      {tabActiva === 'facturacion' && puedeFacturacion && (
         <FacturacionZurichPanel
           form={form}
           setForm={setForm}

@@ -54,6 +54,10 @@ import {
   sumarOtrosAmparos,
   valorMostrarOtroAmparo,
 } from '../liquidacion/otrosAmparosLiquidacion.js';
+import {
+  footerExpressParaWord,
+  payloadExpressParaInforme,
+} from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -1476,6 +1480,17 @@ function tablaLiquidadorUnicoZurich({
     ...(mostrarImpuestos ? [[`IMPUESTOS (${impPct}%)`, money(totalesFooter.impuestos)]] : []),
     ['TOTAL, ESTIMADO', money(totalesFooter.total)],
   ];
+  if (Number(totalesFooter.deducibleAplicado) > 0) {
+    resumen.push([
+      totalesFooter.textoDeducible
+        ? `DEDUCIBLE (${totalesFooter.textoDeducible})`
+        : 'DEDUCIBLE',
+      `− ${money(totalesFooter.deducibleAplicado)}`,
+    ]);
+    if (totalesFooter.totalIndemnizar != null) {
+      resumen.push(['A INDEMNIZAR', money(totalesFooter.totalIndemnizar)]);
+    }
+  }
   const otros = desgloseWordOtrosAmparos(otrosAmparos);
   if (otros.filas.length) {
     resumen.push(['GASTOS SIN DEDUCIBLE', money(otros.total)]);
@@ -1715,9 +1730,12 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   );
   const totales = calcularLiquidacionZurich(liq);
   const enc = liq.encabezado || {};
-  const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
-    ? liq.evaluacionSismicaNSR10.presupuesto.items
-    : [];
+  const expressWord = payloadExpressParaInforme(liq, { modulo: 'zurich' });
+  const filasPresupuesto = expressWord?.filasConCantidad?.length
+    ? expressWord.filasConCantidad
+    : Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
+      ? liq.evaluacionSismicaNSR10.presupuesto.items
+      : [];
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const tieneContenidosDiligenciados = (Array.isArray(contenidosNsr.items) ? contenidosNsr.items : []).some(
     (it) =>
@@ -2229,7 +2247,10 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   ];
 
   if (conLiquidador) {
-    const totalesFooterUnico = filasConDatos.length
+    const footerExpress = footerExpressParaWord(expressWord);
+    const totalesFooterUnico = footerExpress
+      ? footerExpress
+      : filasConDatos.length
       ? totalesUnicoNsr
       : {
           subtotal: totales.subtotal,
@@ -2246,7 +2267,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
         tablaLiquidadorUnicoZurich({
           filas: filasPresupuesto,
           totalesFooter: totalesFooterUnico,
-          aiuPct: aiuPctLiquidadorUnico,
+          aiuPct: footerExpress?.aiuPct ?? aiuPctLiquidadorUnico,
           mostrarImprevistos,
           mostrarImpuestos,
           imprPct,

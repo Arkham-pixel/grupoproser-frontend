@@ -49,6 +49,7 @@ import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
+import { filasPresupuestoParaWord } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import {
   enriquecerFotosConDescripcion,
   fusionarFotosAgilEnInforme,
@@ -1341,9 +1342,11 @@ export async function descargarWordInformeSura({
   const totales = calcularLiquidacionSura(liq);
   const enc = liq.encabezado || {};
   const items = itemsPlanosSura(liq);
-  const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
-    ? liq.evaluacionSismicaNSR10.presupuesto.items
-    : [];
+  const filasPresupuesto = filasPresupuestoParaWord(
+    liq,
+    liq?.evaluacionSismicaNSR10?.presupuesto?.items,
+    { modulo: 'sura' }
+  );
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const formLikeCalculoVA = {

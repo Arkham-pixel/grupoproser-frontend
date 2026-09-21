@@ -14,6 +14,7 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
+  AIU_PORCENTAJE_DEFAULT_ALFA,
   calcularLiquidacionAlfa,
   defaultInformeUnicoAlfa,
   mapCasoAlfaALiquidador,
@@ -32,6 +33,8 @@ import {
 } from './parsearInformeCatAlfaExcel.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import AnalisisCoberturaCriteriaAlfa from './AnalisisCoberturaCriteriaAlfa.jsx';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
+import { esLiquidadorExpress } from '../SubcomponenteLiquidadorCatExpress/liquidadorCatExpressHelpers.js';
 
 export default function InformeUnicoSegurosAlfa({
   casoAlfa = null,
@@ -376,6 +379,30 @@ export default function InformeUnicoSegurosAlfa({
           />
         </Campo>
       </div>
+
+      {esLiquidadorExpress(liquidador) ? (
+        <section className={expressFormSection}>
+          <h3 className={expressSectionTitle}>Liquidador express</h3>
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            El presupuesto y el deducible del liquidador express se incluyen en el informe y en el Excel CAT.
+          </p>
+          <SeccionModoLiquidadorCat
+            modulo="alfa"
+            liquidador={liquidador}
+            onLiquidadorChange={setLiquidador}
+            tomador={liquidador?.encabezado?.tomador || casoAlfa?.tomador || ''}
+            onTomadorCasoChange={(tomador) => {
+              onCasoChange?.((prev) => (prev ? { ...prev, tomador } : prev));
+            }}
+            aiuPorcentaje={
+              Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+              AIU_PORCENTAJE_DEFAULT_ALFA
+            }
+            disabled={guardandoCaso}
+            ocultarToggle
+          />
+        </section>
+      ) : null}
 
       <AnalisisCoberturaCriteriaAlfa
         analisis={informe.analisisGeneral || {}}

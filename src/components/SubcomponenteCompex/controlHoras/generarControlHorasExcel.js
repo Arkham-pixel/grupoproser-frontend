@@ -5,6 +5,7 @@ import {
   calcularTotalesControlHoras,
   formatearFechaDisplay,
 } from './controlHorasUtils';
+import { esFilaFijaControlHoras } from './catalogoControlHoras';
 
 const FUENTE = 'Arial';
 const COLOR_PROSER = 'FFDC2626';
@@ -103,6 +104,11 @@ const anchoColumna = (texto, min = 10, max = 55) => {
   const len = String(texto ?? '').length;
   return Math.min(max, Math.max(min, Math.ceil(len * 1.15)));
 };
+
+function setFormula(cell, formula, result, style) {
+  cell.value = { formula, result: Number.isFinite(Number(result)) ? Number(result) : 0 };
+  if (style) cell.style = style;
+}
 
 function aplicarParMeta(sheet, rowIndex, [label1, valor1, label2, valor2], esFilaFirma = false) {
   const row = sheet.getRow(rowIndex);
@@ -257,6 +263,10 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     const largoNombre = String(fila.nombre_funcionario || '').length;
     const maxLen = Math.max(largoDesc, largoNombre);
     row.height = maxLen > 80 ? 48 : maxLen > 45 ? 36 : 26;
+    const esFija = esFilaFijaControlHoras(fila);
+    const esVariable = !esFija && fila.tipo_item === 'variable';
+    const fillFijo = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+    const fillVariable = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
 
     const valoresTexto = [
       formatearFechaDisplay(fila.fecha),
@@ -267,7 +277,10 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     valoresTexto.forEach((val, i) => {
       const cell = row.getCell(i + 1);
       cell.value = val ?? '';
-      cell.style = estiloCeldaTabla;
+      cell.style = {
+        ...estiloCeldaTabla,
+        ...(esFija ? { fill: fillFijo } : esVariable ? { fill: fillVariable } : {}),
+      };
     });
 
     const horas = [
@@ -279,13 +292,22 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     horas.forEach((val, i) => {
       const cell = row.getCell(5 + i);
       cell.value = val;
-      cell.style = estiloCeldaNumero;
+      cell.style = {
+        ...estiloCeldaNumero,
+        ...(esFija ? { fill: fillFijo } : esVariable ? { fill: fillVariable } : {}),
+      };
     });
 
-    // I = E+F+G+H (formulado)
-    const totalCell = row.getCell(9);
-    totalCell.value = { formula: `E${rowIdx}+F${rowIdx}+G${rowIdx}+H${rowIdx}` };
-    totalCell.style = estiloCeldaNumero;
+    const totalFilaExcel = horas.reduce((acc, n) => acc + n, 0);
+    setFormula(
+      row.getCell(9),
+      `SUM(E${rowIdx}:H${rowIdx})`,
+      totalFilaExcel,
+      {
+        ...estiloCeldaNumero,
+        ...(esFija ? { fill: fillFijo } : esVariable ? { fill: fillVariable } : {}),
+      }
+    );
 
     rowIdx += 1;
   });
@@ -302,13 +324,21 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
   };
 
   if (ultimaFilaDatos >= primeraFilaDatos) {
-    [5, 6, 7, 8, 9].forEach((col) => {
-      const colLetter = String.fromCharCode(64 + col); // E..I
-      const cell = totalRow.getCell(col);
-      cell.value = {
-        formula: `SUM(${colLetter}${primeraFilaDatos}:${colLetter}${ultimaFilaDatos})`,
-      };
-      cell.style = estiloTotalFila;
+    const totalesCol = [
+      totales.viaje,
+      totales.campo,
+      totales.oficina,
+      totales.secretaria,
+      totales.total_horas,
+    ];
+    [5, 6, 7, 8, 9].forEach((col, i) => {
+      const colLetter = String.fromCharCode(64 + col);
+      setFormula(
+        totalRow.getCell(col),
+        `SUM(${colLetter}${primeraFilaDatos}:${colLetter}${ultimaFilaDatos})`,
+        totalesCol[i],
+        estiloTotalFila
+      );
     });
   } else {
     [5, 6, 7, 8, 9].forEach((c) => {
@@ -322,16 +352,22 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
   const filaHonorarios = sheet.getRow(rowIdx);
   filaHonorarios.getCell(1).value = 'HONORARIOS $';
   filaHonorarios.getCell(1).style = estiloResumenLabel;
-  // Horas totales (referencia a I de totales)
-  filaHonorarios.getCell(2).value = { formula: `I${filaTotalesHoras}` };
-  filaHonorarios.getCell(2).style = { ...estiloResumenMoneda, numFmt: '#,##0.00' };
+  setFormula(
+    filaHonorarios.getCell(2),
+    `I${filaTotalesHoras}`,
+    totales.total_horas,
+    { ...estiloResumenMoneda, numFmt: '#,##0.00' }
+  );
   filaHonorarios.getCell(4).value = 'VALOR HORA';
   filaHonorarios.getCell(4).style = estiloResumenLabel;
   filaHonorarios.getCell(5).value = totales.valor_hora;
   filaHonorarios.getCell(5).style = estiloResumenMoneda;
-  // Subtotal honorarios = horas × valor hora
-  filaHonorarios.getCell(7).value = { formula: `B${rowIdx}*E${rowIdx}` };
-  filaHonorarios.getCell(7).style = estiloResumenMoneda;
+  setFormula(
+    filaHonorarios.getCell(7),
+    `B${rowIdx}*E${rowIdx}`,
+    Number(totales.total_horas || 0) * Number(totales.valor_hora || 0),
+    estiloResumenMoneda
+  );
   const filaHonorariosIdx = rowIdx;
   rowIdx += 1;
 
@@ -346,10 +382,35 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
   const filaTotal = sheet.getRow(rowIdx);
   filaTotal.getCell(1).value = 'TOTAL';
   filaTotal.getCell(1).style = estiloResumenLabel;
-  filaTotal.getCell(7).value = {
-    formula: `G${filaHonorariosIdx}+G${filaGastosIdx}`,
-  };
-  filaTotal.getCell(7).style = estiloTotalFinal;
+  setFormula(
+    filaTotal.getCell(7),
+    `G${filaHonorariosIdx}+G${filaGastosIdx}`,
+    Number(totales.total || 0),
+    estiloTotalFinal
+  );
+  rowIdx += 2;
+
+  const notaFijas = sheet.getRow(rowIdx);
+  notaFijas.getCell(3).value = 'ACTIVIDADES EN COLOR AMARILLO SON FIJAS Y LAS HORAS TAMBIÉN SON FIJAS';
+  notaFijas.getCell(3).font = { name: FUENTE, size: 9, italic: true };
+  notaFijas.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+  notaFijas.getCell(5).value = 'TODOS LOS SINIESTROS DEBEN TENERLAS POR DEFECTO';
+  notaFijas.getCell(5).font = { name: FUENTE, size: 9 };
+  rowIdx += 2;
+
+  const notaVar = sheet.getRow(rowIdx);
+  notaVar.getCell(3).value = 'Pueden variar actividades y horas';
+  notaVar.getCell(3).font = { name: FUENTE, size: 9, italic: true };
+  notaVar.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
+  rowIdx += 2;
+
+  const notaExtra = sheet.getRow(rowIdx);
+  notaExtra.getCell(3).value = 'NOTA';
+  notaExtra.getCell(3).font = { name: FUENTE, size: 9, bold: true };
+  notaExtra.getCell(4).value = 'SE PUEDE AGREGAR OTRA ACTIVIDAD SI EL SINIESTRO LO REQUIERE';
+  notaExtra.getCell(5).value = 'EJEMPLO: ESTUDIO ESTRUCTURALISTA, AVALÚO U OTROS';
+  notaExtra.getCell(4).font = { name: FUENTE, size: 9 };
+  notaExtra.getCell(5).font = { name: FUENTE, size: 9 };
 
   ajustarAnchosColumnas(sheet, filas, meta);
 

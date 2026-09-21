@@ -391,6 +391,7 @@ export default function LiquidadorAllianz({
           </h3>
         )}
         <SeccionModoLiquidadorCat
+          modulo="allianz"
           liquidador={liquidador}
           onLiquidadorChange={setLiquidador}
           aiuPorcentaje={

@@ -13,6 +13,7 @@ import {
 } from './complexFenixUi';
 import { ComplexAvisoModal } from './ComplexUiBlocks';
 import {
+  aplicarPlantillaTipoLiquidador,
   buildCabeceraControlHoras,
   calcularTotalesControlHoras,
   crearControlHorasInicial,
@@ -23,6 +24,14 @@ import {
   resolverEmailAnalistaAseguradora,
   totalFila,
 } from './controlHoras/controlHorasUtils';
+import {
+  TIPOS_LIQUIDADOR_CONTROL_HORAS,
+  TIPO_ITEM_EXTRA,
+  esFilaFijaControlHoras,
+  limitarHorasCampoLiquidador,
+  minimoHorasCampoLiquidador,
+  normalizarTipoLiquidadorControlHoras,
+} from './controlHoras/catalogoControlHoras';
 import { generarControlHorasExcel, descargarBlob } from './controlHoras/generarControlHorasExcel';
 import { resolverTarifaHora } from './controlHoras/tarifasHoraAseguradoras';
 
@@ -50,6 +59,14 @@ export default function ControlHorasEditor({
   const nombreAseguradoraResuelto =
     nombreAseguradora || formData.nombreCliente || formData.codiAsgrdra || '';
 
+  const argsTarifa = {
+    codiAsgrdra: formData.codiAsgrdra,
+    nombreAseguradora: nombreAseguradoraResuelto,
+    nombreCliente: formData.nombreCliente,
+    fchaAsgncion: formData.fchaAsgncion,
+    reserva: formData.reserva,
+  };
+
   useEffect(() => {
     if (!abierto) return;
     const inicial = crearControlHorasInicial(formData, nombreAseguradoraResuelto, controlHorasGuardado);
@@ -57,10 +74,9 @@ export default function ControlHorasEditor({
     const { _mensajeTarifa, ...resto } = inicial;
     if (tarifaBloqueada) {
       const tarifa = resolverTarifaHora({
-        codiAsgrdra: formData.codiAsgrdra,
+        ...argsTarifa,
         nombreAseguradora: nombreAseguradoraResuelto || 'SURA',
         nombreCliente: formData.nombreCliente || 'SURA',
-        fchaAsgncion: formData.fchaAsgncion,
       });
       resto.valor_hora = tarifa.valorHora ?? 187400;
       resto.valor_hora_origen = 'tarifa';
@@ -92,12 +108,9 @@ export default function ControlHorasEditor({
 
   const valorHoraPorTarifa =
     tarifaBloqueada || (datos.valor_hora_origen === 'tarifa' && !edicionManualValorHora);
-  const tarifaCatalogo = resolverTarifaHora({
-    codiAsgrdra: formData.codiAsgrdra,
-    nombreAseguradora: nombreAseguradoraResuelto,
-    nombreCliente: formData.nombreCliente,
-    fchaAsgncion: formData.fchaAsgncion,
-  });
+  const tarifaCatalogo = resolverTarifaHora(argsTarifa);
+  const esTarifaPrevisora = tarifaCatalogo.tarifaId === 'PREVISORA';
+  const topeHorasPrevisora = esTarifaPrevisora ? Number(tarifaCatalogo.maxHoras) || 12.5 : null;
   const puedeRestaurarTarifa = tarifaCatalogo.origen === 'tarifa';
 
   const actualizarCampo = (campo, valor) => {
@@ -114,21 +127,81 @@ export default function ControlHorasEditor({
   };
 
   const actualizarFila = (id, campo, valor) => {
-    setDatos((prev) => ({
-      ...prev,
-      filas: prev.filas.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)),
-    }));
+    let excedeTope = false;
+    setDatos((prev) => {
+      const filas = prev.filas.map((f) => {
+        if (f.id !== id) return f;
+        if (esFilaFijaControlHoras(f) && (campo === 'descripcion' || String(campo).startsWith('horas_'))) {
+          return f;
+        }
+        const siguiente = String(campo).startsWith('horas_')
+          ? limitarHorasCampoLiquidador(f, campo, valor)
+          : valor;
+        return { ...f, [campo]: siguiente };
+      });
+      const next = { ...prev, filas };
+      if (
+        String(campo).startsWith('horas_') &&
+        topeHorasPrevisora &&
+        !prev.horas_extra_autorizadas
+      ) {
+        const nuevoTotal = calcularTotalesControlHoras(next).total_horas;
+        if (nuevoTotal > topeHorasPrevisora + 0.001) {
+          excedeTope = true;
+          return prev;
+        }
+      }
+      return next;
+    });
+    if (excedeTope) {
+      mostrarAviso(
+        t('complex.ui.control_horas_editor.tope_horas_previsora', {
+          max: topeHorasPrevisora,
+        }),
+        t('complex.ui.control_horas_editor.tarifa_previsora'),
+        'warning'
+      );
+    }
   };
 
   const agregarFila = () => {
     const responsable = formData.nombreResponsable || formData.responsable || '';
     setDatos((prev) => ({
       ...prev,
-      filas: [...prev.filas, crearFilaVacia({ nombre_funcionario: responsable, cargo: t('complex.ui.control_horas_editor.ajustador') })],
+      filas: [
+        ...prev.filas,
+        crearFilaVacia({
+          nombre_funcionario: responsable,
+          cargo: t('complex.ui.control_horas_editor.ajustador'),
+          tipo_item: TIPO_ITEM_EXTRA,
+          fijo: false,
+        }),
+      ],
     }));
   };
 
+  const cambiarTipoLiquidador = (tipoNuevo) => {
+    const tipo = normalizarTipoLiquidadorControlHoras(tipoNuevo);
+    setDatos((prev) => {
+      if (normalizarTipoLiquidadorControlHoras(prev.tipo_liquidador) === tipo) return prev;
+      return {
+        ...prev,
+        tipo_liquidador: tipo,
+        filas: aplicarPlantillaTipoLiquidador(prev.filas, tipo, formData),
+      };
+    });
+  };
+
   const eliminarFila = (id) => {
+    const fila = datos.filas.find((f) => f.id === id);
+    if (fila && esFilaFijaControlHoras(fila)) {
+      mostrarAviso(
+        t('complex.ui.control_horas_editor.no_eliminar_fija'),
+        t('complex.ui.control_horas_editor.actividad_fija'),
+        'warning'
+      );
+      return;
+    }
     if (datos.filas.length <= 1) {
       mostrarAviso(t('complex.ui.control_horas_editor.debe_conservar_fila'), t('complex.ui.control_horas_editor.no_se_puede_eliminar'), 'warning');
       return;
@@ -140,12 +213,7 @@ export default function ControlHorasEditor({
   };
 
   const reaplicarTarifa = () => {
-    const tarifa = resolverTarifaHora({
-      codiAsgrdra: formData.codiAsgrdra,
-      nombreAseguradora: nombreAseguradoraResuelto,
-      nombreCliente: formData.nombreCliente,
-      fchaAsgncion: formData.fchaAsgncion,
-    });
+    const tarifa = resolverTarifaHora(argsTarifa);
     setMensajeTarifa(tarifa.mensaje);
     setEdicionManualValorHora(tarifa.origen !== 'tarifa');
     setDatos((prev) => ({
@@ -212,6 +280,21 @@ export default function ControlHorasEditor({
       mostrarAviso(
         t('complex.ui.control_horas_editor.correo_analista_obligatorio'),
         t('complex.ui.control_horas_editor.correo_del_analista'),
+        'warning'
+      );
+      return false;
+    }
+
+    if (
+      topeHorasPrevisora &&
+      !datos.horas_extra_autorizadas &&
+      totales.total_horas > topeHorasPrevisora + 0.001
+    ) {
+      mostrarAviso(
+        t('complex.ui.control_horas_editor.tope_horas_previsora', {
+          max: topeHorasPrevisora,
+        }),
+        t('complex.ui.control_horas_editor.tarifa_previsora'),
         'warning'
       );
       return false;
@@ -377,6 +460,7 @@ export default function ControlHorasEditor({
                 <span className="text-sm text-gray-500">{t("complex.ui.control_horas_editor.total_horas")}</span>
                 <p className="font-heading text-xl font-bold text-fenix-primario">
                   {totales?.total_horas?.toFixed(2) ?? '0.00'}
+                  {esTarifaPrevisora && topeHorasPrevisora ? ` / ${topeHorasPrevisora}` : ''}
                 </p>
               </div>
               <div className="rounded-lg bg-red-50/50 px-3 py-2 dark:bg-red-950/20">
@@ -388,16 +472,59 @@ export default function ControlHorasEditor({
             </div>
             <p className="mt-2 font-body text-sm text-gray-500">{t("complex.ui.control_horas_editor.subtotal_honorarios")}{formatearMoneda(totales?.subtotal_honorarios)}
             </p>
+            {esTarifaPrevisora && (
+              <div className="mt-3 space-y-2">
+                <p className="font-body text-sm text-gray-700 dark:text-gray-300">
+                  {t('complex.ui.control_horas_editor.horas_usadas_previsora', {
+                    usadas: (totales?.total_horas ?? 0).toFixed(2),
+                    max: topeHorasPrevisora,
+                  })}
+                </p>
+                <label className="flex items-start gap-2 font-body text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={Boolean(datos.horas_extra_autorizadas)}
+                    onChange={(e) =>
+                      setDatos((prev) => ({
+                        ...prev,
+                        horas_extra_autorizadas: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>{t('complex.ui.control_horas_editor.horas_extra_gerencia')}</span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Tabla actividades */}
           <div className={complexCard}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.relacion_del_tiempo_empleado")}</h3>
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.relacion_del_tiempo_empleado")}</h3>
+                <label className={`${complexLabel} mt-2`}>
+                  {t('complex.ui.control_horas_editor.tipo_liquidador')}
+                </label>
+                <select
+                  className={`${complexInput} mt-1 max-w-xs`}
+                  value={normalizarTipoLiquidadorControlHoras(datos.tipo_liquidador)}
+                  onChange={(e) => cambiarTipoLiquidador(e.target.value)}
+                >
+                  {TIPOS_LIQUIDADOR_CONTROL_HORAS.map((op) => (
+                    <option key={op.id} value={op.id}>
+                      {t(`complex.ui.control_horas_editor.tipo_${op.id}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button type="button" onClick={agregarFila} className={complexBtnSecondary}>
                 <FaPlus />{t("complex.ui.control_horas_editor.agregar_actividad")}</button>
             </div>
-            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.control_horas_editor.fecha_y_descripcion_son_obligatorias_en_cada_actividad_c")}</p>
+            <p className="mb-2 font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.control_horas_editor.fecha_y_descripcion_son_obligatorias_en_cada_actividad_c")}</p>
+            <p className="mb-3 font-body text-sm text-amber-800 dark:text-amber-300">
+              {t('complex.ui.control_horas_editor.nota_items_fijos')}
+            </p>
             <div className={complexTableWrap}>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-base">
@@ -416,8 +543,17 @@ export default function ControlHorasEditor({
                     </tr>
                   </thead>
                   <tbody>
-                    {datos.filas.map((fila) => (
-                      <tr key={fila.id} className="border-t border-gray-100 dark:border-gray-800">
+                    {datos.filas.map((fila) => {
+                      const esFija = esFilaFijaControlHoras(fila);
+                      const esExtra = fila.tipo_item === TIPO_ITEM_EXTRA && !esFija;
+                      const filaClass = esFija
+                        ? 'border-t border-amber-200 bg-yellow-100 dark:border-yellow-900/40 dark:bg-yellow-950/40'
+                        : esExtra
+                          ? 'border-t border-gray-100 dark:border-gray-800'
+                          : 'border-t border-sky-100 bg-sky-50/80 dark:border-sky-900/40 dark:bg-sky-950/30';
+                      const inputBloqueado = `${complexInput} cursor-default bg-yellow-50/80 dark:bg-yellow-950/20`;
+                      return (
+                      <tr key={fila.id} className={filaClass}>
                         <td className="px-1 py-1">
                           <input
                             type="date"
@@ -428,9 +564,10 @@ export default function ControlHorasEditor({
                         </td>
                         <td className="px-1 py-1">
                           <textarea
-                            className={`${complexInput} min-h-[2.5rem]`}
+                            className={`${esFija ? inputBloqueado : complexInput} min-h-[2.5rem]`}
                             rows={2}
                             value={fila.descripcion}
+                            readOnly={esFija}
                             onChange={(e) => actualizarFila(fila.id, 'descripcion', e.target.value)}
                           />
                         </td>
@@ -448,33 +585,40 @@ export default function ControlHorasEditor({
                             onChange={(e) => actualizarFila(fila.id, 'cargo', e.target.value)}
                           />
                         </td>
-                        {['horas_viaje', 'horas_campo', 'horas_oficina', 'horas_secretaria'].map((campo) => (
+                        {['horas_viaje', 'horas_campo', 'horas_oficina', 'horas_secretaria'].map((campo) => {
+                          const minHoras = esFija ? 0 : minimoHorasCampoLiquidador(fila, campo);
+                          return (
                           <td key={campo} className="px-1 py-1">
                             <input
                               type="number"
-                              min="0"
+                              min={minHoras}
                               step="0.25"
-                              className={inputHorasClass}
+                              className={esFija ? `${inputHorasClass} cursor-default bg-yellow-50/80 dark:bg-yellow-950/20` : inputHorasClass}
                               value={fila[campo]}
+                              readOnly={esFija}
                               onChange={(e) => actualizarFila(fila.id, campo, e.target.value)}
                             />
                           </td>
-                        ))}
+                          );
+                        })}
                         <td className="px-2 py-1 font-semibold text-fenix-primario">
                           {totalFila(fila).toFixed(2)}
                         </td>
                         <td className="px-1 py-1">
-                          <button
-                            type="button"
-                            onClick={() => eliminarFila(fila.id)}
-                            className="rounded p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                            title={t("complex.ui.control_horas_editor.eliminar_fila")}
-                          >
-                            <FaTrash />
-                          </button>
+                          {!esFija && (
+                            <button
+                              type="button"
+                              onClick={() => eliminarFila(fila.id)}
+                              className="rounded p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              title={t("complex.ui.control_horas_editor.eliminar_fila")}
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold dark:border-gray-700 dark:bg-gray-900/50">
                       <td colSpan={4} className="px-2 py-2">{t("complex.ui.control_horas_editor.total_2")}</td>
                       <td className="px-2 py-2">{totales?.viaje?.toFixed(2)}</td>
@@ -488,6 +632,9 @@ export default function ControlHorasEditor({
                 </table>
               </div>
             </div>
+            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-300">
+              {t('complex.ui.control_horas_editor.nota_agregar_items')}
+            </p>
           </div>
         </div>
 

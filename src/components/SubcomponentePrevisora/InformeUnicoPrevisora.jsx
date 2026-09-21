@@ -33,7 +33,11 @@ import { descargarWordInformePrevisora } from './generarWordInformePrevisora.js'
 import { previsoraArchivosApi } from './previsoraArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
-import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { contarItemsPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import SelectorTipoInformePrevisora from './SelectorTipoInformePrevisora.jsx';
@@ -769,6 +773,17 @@ export default function InformeUnicoPrevisora({
             <p className="font-body text-sm text-gray-500">Cargando liquidador NSR-10…</p>
           }
         >
+          <SeccionModoLiquidadorCat
+            modulo="previsora"
+            liquidador={liquidador}
+            onLiquidadorChange={setLiquidador}
+            aiuPorcentaje={
+              Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+              AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+            }
+            disabled={guardandoCaso}
+            ocultarToggle
+          >
           <ChecklistEvaluacionSismicaNSR10
             formData={formDataNsr}
             onInputChange={handleNsrChange}
@@ -781,6 +796,7 @@ export default function InformeUnicoPrevisora({
                 : null
             }
           />
+          </SeccionModoLiquidadorCat>
         </Suspense>
       </section>
 

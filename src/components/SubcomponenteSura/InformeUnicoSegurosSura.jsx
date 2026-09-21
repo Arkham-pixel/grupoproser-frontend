@@ -36,10 +36,12 @@ import { importarFotosArchiveroAlInformeCaso } from './syncFotosNsrAlInformeSura
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import {
+  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
   REGLAS_DEDUCIBLE_SURA,
   OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import FotosInspeccionSura from './FotosInspeccionSura.jsx';
 
@@ -1116,6 +1118,17 @@ export default function InformeUnicoSegurosSura({
               </div>
             </div>
 
+            <SeccionModoLiquidadorCat
+              modulo="sura"
+              liquidador={liquidador}
+              onLiquidadorChange={setLiquidador}
+              aiuPorcentaje={
+                Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+                AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+              }
+              disabled={guardandoCaso}
+              ocultarToggle
+            >
             <ChecklistEvaluacionSismicaNSR10
               formData={formDataNsr}
               onInputChange={handleNsrChange}
@@ -1123,6 +1136,7 @@ export default function InformeUnicoSegurosSura({
               recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
               reglasDeduciblePorCobertura={REGLAS_DEDUCIBLE_SURA}
             />
+            </SeccionModoLiquidadorCat>
           </section>
 
           <section className={expressFormSection}>

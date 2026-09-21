@@ -344,6 +344,7 @@ export default function LiquidadorSegurosSura({
               })}
         </h3>
         <SeccionModoLiquidadorCat
+          modulo="sura"
           liquidador={liquidador}
           onLiquidadorChange={setLiquidador}
           aiuPorcentaje={

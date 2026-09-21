@@ -9,7 +9,35 @@ import './i18n'
 import './index.css'
 
 if (import.meta.env.PROD) {
-  registerSW({ immediate: true })
+  let recargandoPorSw = false
+  const recargarPorSw = () => {
+    if (recargandoPorSw) return
+    recargandoPorSw = true
+    window.location.reload()
+  }
+
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      updateSW(true)
+    },
+    onRegisteredSW(_url, registration) {
+      if (!registration) return
+      const chequear = () => {
+        registration.update().catch(() => {})
+      }
+      // Safari en Mac revisa el SW ~cada 24 h si no se fuerza.
+      setInterval(chequear, 60 * 1000)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') chequear()
+      })
+      window.addEventListener('focus', chequear)
+    },
+  })
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', recargarPorSw)
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

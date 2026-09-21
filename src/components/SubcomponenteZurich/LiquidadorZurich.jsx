@@ -444,6 +444,7 @@ export default function LiquidadorZurich({
           </h3>
         )}
         <SeccionModoLiquidadorCat
+          modulo="zurich"
           liquidador={liquidador}
           onLiquidadorChange={setLiquidador}
           aiuPorcentaje={

@@ -53,6 +53,7 @@ import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
+import { filasPresupuestoParaWord } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -1342,9 +1343,11 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const totales = calcularLiquidacionAllianz(liq);
   const enc = fusionarEncabezadoAllianz(encabezadoDesdecasoAllianz(caso), liq.encabezado);
   const items = itemsPlanosAllianz(liq);
-  const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
-    ? liq.evaluacionSismicaNSR10.presupuesto.items
-    : [];
+  const filasPresupuesto = filasPresupuestoParaWord(
+    liq,
+    liq?.evaluacionSismicaNSR10?.presupuesto?.items,
+    { modulo: 'allianz' }
+  );
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const tieneContenidosDiligenciados = (Array.isArray(contenidosNsr.items) ? contenidosNsr.items : []).some(
     (it) =>

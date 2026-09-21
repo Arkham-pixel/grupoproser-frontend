@@ -8,13 +8,13 @@ class FuncionarioService {
     return localStorage.getItem('token');
   }
 
-  // Headers con autenticación
-  getHeaders() {
+  // Headers con autenticación. En GET no mandar Content-Type (evita preflight CORS).
+  getHeaders(incluirJson = true) {
     const token = this.getAuthToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
+    const headers = {};
+    if (incluirJson) headers['Content-Type'] = 'application/json';
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
   }
 
   /** Acepta array plano o envoltorios típicos { data, funcionarios } */
@@ -58,7 +58,7 @@ class FuncionarioService {
     try {
       const response = await fetch(`${API_BASE_URL}/funcionarios/${encodeURIComponent(id)}`, {
         method: 'GET',
-        headers: this.getHeaders()
+        headers: this.getHeaders(false)
       });
       if (!response.ok) return null;
       const body = await response.json();
@@ -78,7 +78,7 @@ class FuncionarioService {
     try {
       const response = await fetch(`${API_BASE_URL}/funcionarios`, {
         method: 'GET',
-        headers: this.getHeaders()
+        headers: this.getHeaders(false)
       });
 
       if (!response.ok) {
@@ -90,7 +90,12 @@ class FuncionarioService {
       const merged = this.fusionarFuncionarios(desdeApi, desdeLocal);
 return merged;
     } catch (error) {
-      console.error('❌ Error al obtener funcionarios:', error);
+      const abortado =
+        error?.name === 'AbortError' ||
+        error?.message === 'Failed to fetch';
+      if (!abortado) {
+        console.error('❌ Error al obtener funcionarios:', error);
+      }
       if (desdeLocal.length > 0) {
 return desdeLocal;
       }

@@ -91,6 +91,7 @@ import BoletinDiarioZurich from './components/SubcomponenteZurich/BoletinDiarioZ
 import ReporteZurichListado from './components/SubcomponenteZurich/ReporteZurichListado';
 import DashboardZurichListado from './components/SubcomponenteZurich/DashboardZurichListado';
 import BandejaFacturacionZurich from './components/SubcomponenteZurich/BandejaFacturacionZurich';
+import BandejaFacturacionModulo from './components/shared/BandejaFacturacionModulo';
 import CasoZurichWorkspace, {
   RedirectZurichInforme,
   RedirectZurichLiquidador,
@@ -668,6 +669,7 @@ export default function App() {
           <Route path="bbva-cat/bloques" element={<BloquesCercaniaBbvaCat />} />
           <Route path="bbva-cat" element={<Navigate to="/bbva-cat/liquidador" replace />} />
 
+          <Route path="previsora/bandeja-facturacion" element={<BandejaFacturacionModulo modulo="previsora" />} />
           <Route path="previsora/carga" element={<FormularioPrevisora origen="listado" />} />
           <Route path="previsora/listado/reporte" element={<ReportePrevisoraListado />} />
           <Route path="previsora/listado/mis-casos" element={<ReportePrevisoraListado modoAsignados />} />
@@ -685,6 +687,7 @@ export default function App() {
           <Route path="previsora/archivero" element={<ArchiveroPrevisoraPage />} />
           <Route path="previsora" element={<Navigate to="/previsora/liquidador" replace />} />
 
+          <Route path="allianz/bandeja-facturacion" element={<BandejaFacturacionModulo modulo="allianz" />} />
           <Route path="allianz/carga" element={<FormularioAllianz origen="listado" />} />
           <Route path="allianz/listado/reporte" element={<ReporteAllianzListado />} />
           <Route path="allianz/listado/informes" element={<ReporteAllianzListado soloInformes />} />
@@ -706,6 +709,7 @@ export default function App() {
           <Route path="allias/*" element={<RedirectAlliasToAllianz />} />
           <Route path="allias" element={<Navigate to="/allianz/liquidador" replace />} />
 
+          <Route path="sura/bandeja-facturacion" element={<BandejaFacturacionModulo modulo="sura" />} />
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
           <Route path="sura/reporte" element={<ReporteSegurosSura />} />

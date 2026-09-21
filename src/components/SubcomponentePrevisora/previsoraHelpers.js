@@ -1,4 +1,5 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
+import { hidratarCamposFacturacion } from '../shared/camposFacturacionAseguradora.js';
 
 export const PREVISORA_REPORTE_PAGE_SIZE = 25;
 
@@ -602,6 +603,23 @@ export const FORM_VACIO_PREVISORA = {
   accesoPredio: '',
   observacionesCat: '',
   evidenciaCat: { ...EVIDENCIA_CAT_VACIA },
+  control_horas: null,
+  historialDocs: [],
+  fecha_control_horas: '',
+  fecha_envio_control_horas: '',
+  fecha_recibido_control_horas: '',
+  fecha_seguimiento_envio_control_horas: '',
+  observacion_seguimiento_envio_control_horas: '',
+  adjunto_control_horas: '',
+  adjunto_evidencia: '',
+  adjunto_seguimiento_envio_control_horas: '',
+  adjunto_factura: '',
+  numero_factura: '',
+  valor_servicio: '',
+  valor_gastos: '',
+  fecha_factura: '',
+  fecha_ultima_revision: '',
+  observacion_compromisos: '',
 };
 
 export const TIPOS_NEGOCIO_HOMOLOGADO_PREVISORA = [
@@ -754,7 +772,13 @@ export const construirFormDesdecasoPrevisora = (caso = {}) => {
     ...FORM_VACIO_PREVISORA,
     ...Object.fromEntries(
       Object.keys(FORM_VACIO_PREVISORA)
-        .filter((clave) => clave !== 'evidenciaCat' && clave !== 'severidadCatNiveles')
+        .filter(
+          (clave) =>
+            clave !== 'evidenciaCat' &&
+            clave !== 'severidadCatNiveles' &&
+            clave !== 'control_horas' &&
+            clave !== 'historialDocs'
+        )
         .map((clave) => {
           const valor = caso[clave];
           if (valor === null || valor === undefined) return [clave, ''];
@@ -813,5 +837,5 @@ export const construirFormDesdecasoPrevisora = (caso = {}) => {
     base.fechaCasoCerrado = fechaParaInput(caso.fechaCasoCerrado || caso.fechaCasoParaPago);
   }
   base.solicitudAnticipo = normalizarSiNoPrevisora(base.solicitudAnticipo);
-  return base;
+  return hidratarCamposFacturacion(base, caso);
 };

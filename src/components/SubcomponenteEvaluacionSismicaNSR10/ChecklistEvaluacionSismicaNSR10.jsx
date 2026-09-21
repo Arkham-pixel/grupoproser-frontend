@@ -69,6 +69,7 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
   normalizarDeducibleCatastrofico,
   resolverBasePctElegida,
+  resolverDeducibleAplicadoVisible,
   valorSmdlvDesdeSmmlv,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
@@ -785,10 +786,21 @@ export default function ChecklistEvaluacionSismicaNSR10({
   const totalPresupuestoLiquidacion = usaTotalPresupuestoOverride
     ? totalPresupuestoDiagrama
     : Number(totales.total) || 0;
-  /** Por artículo: solo trae lo ya calculado arriba (filas o panel valor asegurado). */
+  const montoPctPresupuestoMostrado = esPctSobrePerdida
+    ? Number(diagrama.deduciblePresupuesto?.montoPctPerdida) || 0
+    : Number(diagrama.deduciblePresupuesto?.montoPctVa) ||
+      Number(diagrama.deduciblePresupuesto?.montoPctOVa) ||
+      0;
+  const montoSmmlvPresupuestoMostrado =
+    Number(diagrama.deduciblePresupuesto?.montoSmmlv) || 0;
+  /** El aplicado es el mayor de las dos líneas visibles, nunca el presupuesto entero. */
   const deduciblePresupuestoLiquidacion = (() => {
     if (!usaPorArticuloPresupuesto) {
-      return Number(diagrama.deduciblePresupuesto?.aplicado) || 0;
+      return resolverDeducibleAplicadoVisible({
+        montoPct: montoPctPresupuestoMostrado,
+        montoSmmlv: montoSmmlvPresupuestoMostrado,
+        tope: totalPresupuestoLiquidacion,
+      });
     }
     const deFilas = Number(totales.deduciblePorArticulos) || 0;
     if (deFilas > 0) return deFilas;
@@ -797,8 +809,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
         presupuesto?.calculoValorAsegurado?.valorDeducible
     );
     if (Number.isFinite(deCalc) && deCalc > 0) return Math.round(deCalc);
-    return Number(diagrama.deduciblePresupuesto?.aplicado) || 0;
+    return resolverDeducibleAplicadoVisible({
+      montoPct: montoPctPresupuestoMostrado,
+      montoSmmlv: montoSmmlvPresupuestoMostrado,
+      tope: totalPresupuestoLiquidacion,
+    });
   })();
+  const tipoGanadorPresupuestoLiquidacion = usaPorArticuloPresupuesto
+    ? 'por artículo'
+    : montoSmmlvPresupuestoMostrado > montoPctPresupuestoMostrado
+      ? tipoMinimoPresupuesto
+      : esPctSobrePerdida
+        ? '% pérdida'
+        : '% valor asegurado';
   const valorIndemnizarPresupuestoLiquidacion = Math.max(
     0,
     Math.round((totalPresupuestoLiquidacion - deduciblePresupuestoLiquidacion) * 100) / 100
@@ -2667,9 +2690,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       DEDUCIBLE APLICADO
                       {usaPorArticuloPresupuesto
                         ? ' (por artículo)'
-                        : ` (el mayor: ${
-                            diagrama.deduciblePresupuesto?.tipoGanadorLabel || 'SMMLV'
-                          })`}
+                        : ` (el mayor: ${tipoGanadorPresupuestoLiquidacion})`}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">
                       {money(deduciblePresupuestoLiquidacion)}

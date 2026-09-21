@@ -58,12 +58,17 @@ import {
   normalizeEvidenciaCat,
 } from './allianzHelpers.js';
 import CampoTomadorAllianz from './CampoTomadorAllianz.jsx';
+import FacturacionAllianzPanel from './FacturacionAllianzPanel.jsx';
+import { camposFacturacionDesdeForm } from '../shared/camposFacturacionAseguradora.js';
+import { controlHorasTieneDatos } from '../SubcomponenteCompex/controlHoras/controlHorasUtils.js';
+import { ComplexFormTabs } from '../SubcomponenteCompex/FacturacionHelpers.jsx';
 import ModalImportarExcelAllianz, {
   esAdminOSoporteAllianz,
 } from './ModalImportarExcelAllianz.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
+import { puedeVerFacturacionAllianz } from '../../config/gerentesFacturacion.js';
 import {
   attrsCampoCaso,
   esRolInspector,
@@ -101,6 +106,8 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   const rolUsuario = obtenerRolAlmacenado();
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('allianz'), []);
   const soloInspector = esRolInspector(rolUsuario);
+  const loginActual = String(localStorage.getItem('login') || '').trim();
+  const puedeFacturacion = puedeVerFacturacionAllianz(loginActual) && !soloInspector;
   const esEdicion = Boolean(initialData?._id);
   const esModuloListado = origen === 'listado';
   const puedeImportarExcel = esAdminOSoporteAllianz();
@@ -125,6 +132,12 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
+  const [tabActiva, setTabActiva] = useState('datosGenerales');
+  const formTabs = useMemo(() => {
+    const tabs = [{ id: 'datosGenerales', label: t('allianz.tabs.datosGenerales') }];
+    if (puedeFacturacion) tabs.push({ id: 'facturacion', label: t('allianz.tabs.facturacion') });
+    return tabs;
+  }, [t, puedeFacturacion]);
   const formKey = esEdicion
     ? `allianz:${origen}:${initialData._id}`
     : `allianz:${origen}:nuevo`;
@@ -340,6 +353,8 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
       if (!String(payload.identificacion || '').trim()) {
         if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       }
+      Object.assign(payload, camposFacturacionDesdeForm(form));
+      if (!controlHorasTieneDatos(payload.control_horas)) delete payload.control_horas;
       return payload;
     }
     const payload = { ...form };
@@ -370,6 +385,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
       if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
     }
+    if (!controlHorasTieneDatos(payload.control_horas)) delete payload.control_horas;
     return payload;
   };
 
@@ -471,6 +487,10 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
+      <ComplexFormTabs tabs={formTabs} activeId={tabActiva} onChange={setTabActiva} />
+
+      {tabActiva === 'datosGenerales' && (
+      <>
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('allianz.sections.listadoCliente')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
@@ -1090,6 +1110,17 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
       </>
       )}
       </fieldset>
+      </>
+      )}
+
+      {tabActiva === 'facturacion' && puedeFacturacion && (
+        <FacturacionAllianzPanel
+          form={form}
+          setForm={setForm}
+          initialData={initialData}
+          origen={origen}
+        />
+      )}
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         {embed && onClose && (

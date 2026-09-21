@@ -3,20 +3,20 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { FaInbox, FaSearch, FaSync, FaEdit, FaTrash } from 'react-icons/fa';
 import {
-  obtenerBandejaFacturacionZurich,
-  corregirEnvioBandejaFacturacionZurich,
-  eliminarEnvioBandejaFacturacionZurich,
-} from '../../services/zurichService.js';
+  obtenerBandejaFacturacionModulo,
+  corregirEnvioBandejaFacturacionModulo,
+  eliminarEnvioBandejaFacturacionModulo,
+} from '../../services/facturacionBandejaModuloService.js';
 import { formatearFechaUI } from '../../utils/fechaUtils';
 import {
   GERENTES_FACTURACION_OPCIONES,
   labelTipoEnvio,
   puedeElegirGerenteEnBandeja,
   puedeAdministrarBandejaFacturacion,
-  gerenteDesdeLogin,
   nombreGerente,
-  esLiderZurichFacturacion,
-  puedeVerBandejaFacturacionZurich,
+  puedeVerFacturacionAllianz,
+  puedeVerFacturacionPrevisora,
+  puedeVerFacturacionSura,
 } from '../../config/gerentesFacturacion';
 import {
   expressBtnPrimary,
@@ -31,23 +31,52 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, InputFenix, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 
-const RUTA_BANDEJA = '/zurich/bandeja-facturacion';
+const CONFIG_MODULO = {
+  allianz: {
+    nombre: 'Allianz',
+    ruta: '/allianz/bandeja-facturacion',
+    tituloKey: 'nav.allianzBillingTray',
+    puedeVer: puedeVerFacturacionAllianz,
+    tieneOrigen: true,
+    abrirCaso: (fila) =>
+      fila.origen === 'listado'
+        ? `/allianz/listado/caso?casoId=${fila.casoId}`
+        : `/allianz/liquidador?casoId=${fila.casoId}`,
+    links: [{ to: '/allianz/listado/reporte', labelKey: 'nav.allianzListadoReport' }],
+  },
+  previsora: {
+    nombre: 'Previsora',
+    ruta: '/previsora/bandeja-facturacion',
+    tituloKey: 'nav.previsoraBillingTray',
+    puedeVer: puedeVerFacturacionPrevisora,
+    tieneOrigen: true,
+    abrirCaso: (fila) =>
+      fila.origen === 'listado'
+        ? `/previsora/listado/caso?casoId=${fila.casoId}`
+        : `/previsora/liquidador?casoId=${fila.casoId}`,
+    links: [{ to: '/previsora/listado/reporte', labelKey: 'nav.previsoraListadoReport' }],
+  },
+  sura: {
+    nombre: 'SURA',
+    ruta: '/sura/bandeja-facturacion',
+    tituloKey: 'nav.suraBillingTray',
+    puedeVer: puedeVerFacturacionSura,
+    tieneOrigen: false,
+    abrirCaso: (fila) => `/sura/caso?casoId=${fila.casoId}`,
+    links: [{ to: '/sura/reporte', labelKey: 'nav.suraReport' }],
+  },
+};
 
-export default function BandejaFacturacionZurich() {
+export default function BandejaFacturacionModulo({ modulo }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const cfg = CONFIG_MODULO[modulo];
   const login = localStorage.getItem('login') || '';
-  const nombre = localStorage.getItem('nombre') || '';
   const esSupervisor = puedeElegirGerenteEnBandeja(login);
-  const esLider = esLiderZurichFacturacion(login, nombre);
   const puedeAdministrar = puedeAdministrarBandejaFacturacion(login);
-  const gerentePropio = gerenteDesdeLogin(login);
-  const puedeAcceder = puedeVerBandejaFacturacionZurich(login, nombre);
-  const veTodosPorDefecto = puedeAcceder;
+  const puedeAcceder = Boolean(cfg && cfg.puedeVer(login));
 
-  const [gerenteFiltro, setGerenteFiltro] = useState(
-    veTodosPorDefecto ? 'todos' : gerentePropio || ''
-  );
+  const [gerenteFiltro, setGerenteFiltro] = useState('todos');
   const [tipoFiltro, setTipoFiltro] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
   const [desde, setDesde] = useState('');
@@ -60,12 +89,12 @@ export default function BandejaFacturacionZurich() {
   const [guardandoAdmin, setGuardandoAdmin] = useState(false);
 
   const cargar = useCallback(async () => {
-    if (!puedeAcceder) return;
+    if (!puedeAcceder || !cfg) return;
     setCargando(true);
     setError('');
     try {
-      const verTodos = gerenteFiltro === 'todos' || (!gerenteFiltro && veTodosPorDefecto);
-      const data = await obtenerBandejaFacturacionZurich({
+      const verTodos = gerenteFiltro === 'todos' || !gerenteFiltro;
+      const data = await obtenerBandejaFacturacionModulo(modulo, {
         gerente: verTodos ? undefined : gerenteFiltro,
         tipo: tipoFiltro,
         desde: desde || undefined,
@@ -80,18 +109,15 @@ export default function BandejaFacturacionZurich() {
     } finally {
       setCargando(false);
     }
-  }, [puedeAcceder, gerenteFiltro, tipoFiltro, desde, hasta, busqueda, veTodosPorDefecto, t]);
+  }, [puedeAcceder, cfg, modulo, gerenteFiltro, tipoFiltro, desde, hasta, busqueda, t]);
 
   useEffect(() => {
     cargar();
   }, [cargar]);
 
   const abrirCaso = (fila) => {
-    if (!fila?.casoId) return;
-    const path = fila.origen === 'listado' ? '/zurich/listado/caso' : '/zurich/caso';
-    navigate(`${path}?casoId=${fila.casoId}`, {
-      state: { returnPath: RUTA_BANDEJA },
-    });
+    if (!fila?.casoId || !cfg) return;
+    navigate(cfg.abrirCaso(fila), { state: { returnPath: cfg.ruta } });
   };
 
   const payloadEnvio = (fila) => ({
@@ -108,7 +134,7 @@ export default function BandejaFacturacionZurich() {
     if (!filaEditando || !nuevoGerenteCorreccion) return;
     setGuardandoAdmin(true);
     try {
-      await corregirEnvioBandejaFacturacionZurich({
+      await corregirEnvioBandejaFacturacionModulo(modulo, {
         ...payloadEnvio(filaEditando),
         nuevoGerente: nuevoGerenteCorreccion,
       });
@@ -131,7 +157,7 @@ export default function BandejaFacturacionZurich() {
     if (!ok) return;
     setGuardandoAdmin(true);
     try {
-      await eliminarEnvioBandejaFacturacionZurich(payloadEnvio(fila));
+      await eliminarEnvioBandejaFacturacionModulo(modulo, payloadEnvio(fila));
       await cargar();
     } catch (e) {
       alert(e.message || t('complex.ui.bandeja_facturacion.error_quitar'));
@@ -156,42 +182,41 @@ export default function BandejaFacturacionZurich() {
     return <Navigate to="/inicio" replace />;
   }
 
+  const colSpan = (cfg.tieneOrigen ? 11 : 10) + (puedeAdministrar ? 1 : 0);
+
   return (
     <div className={`${expressScope} p-4 sm:p-6`}>
       <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className={`${expressPageTitle} flex items-center gap-2`}>
             <FaInbox className="text-fenix-primario" />
-            {t('nav.zurichBillingTray')}
+            {t(cfg.tituloKey)}
           </h1>
           <p className={expressPageSubtitle}>
-            {t('zurich.bandejaFacturacion.subtitle', { destino: tituloGerente })}
+            {t('nav.bandejaModuloSubtitle', {
+              modulo: cfg.nombre,
+              destino: tituloGerente,
+            })}
           </p>
         </div>
         <nav className="flex flex-wrap gap-2">
-          <Link
-            to="/zurich/listado/reporte"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-          >
-            {t('nav.zurichListadoReport')}
-          </Link>
-          <Link
-            to="/zurich/reporte"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-          >
-            {t('nav.zurichReport')}
-          </Link>
+          {cfg.links.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+            >
+              {t(link.labelKey)}
+            </Link>
+          ))}
         </nav>
       </header>
 
       <div className={`${expressCard} mb-6 space-y-4 p-4`}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {(esSupervisor || esLider) && (
+          {esSupervisor && (
             <Campo label={t('complex.ui.bandeja_facturacion.jefe_gerente')}>
-              <SelectFenix
-                value={gerenteFiltro}
-                onChange={(e) => setGerenteFiltro(e.target.value)}
-              >
+              <SelectFenix value={gerenteFiltro} onChange={(e) => setGerenteFiltro(e.target.value)}>
                 <option value="todos">{t('complex.ui.bandeja_facturacion.todos')}</option>
                 {GERENTES_FACTURACION_OPCIONES.map((g) => (
                   <option key={g.clave} value={g.clave}>
@@ -268,7 +293,9 @@ export default function BandejaFacturacionZurich() {
           <table className="min-w-[1280px] w-full table-auto divide-y divide-gray-200 dark:divide-gray-800">
             <thead className={expressTableHead}>
               <tr>
-                <th className="px-3 py-3 text-left">{t('zurich.bandejaFacturacion.modulo')}</th>
+                {cfg.tieneOrigen && (
+                  <th className="px-3 py-3 text-left">{t('zurich.bandejaFacturacion.modulo')}</th>
+                )}
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.no_ajuste')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.siniestro')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.asegurado')}</th>
@@ -287,23 +314,31 @@ export default function BandejaFacturacionZurich() {
             <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
               {!cargando && items.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={puedeAdministrar ? 12 : 11}
-                    className="px-4 py-10 text-center text-gray-500"
-                  >
+                  <td colSpan={colSpan} className="px-4 py-10 text-center text-gray-500">
                     {t('complex.ui.bandeja_facturacion.no_hay_casos_en_la_bandeja_con_los_filtros_actuales')}
                   </td>
                 </tr>
               )}
               {items.map((fila, idx) => (
-                <tr key={`${fila.casoId}-${fila.fechaEnvio}-${idx}`} className="hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
-                  <td className="whitespace-nowrap px-3 py-3 text-sm">{etiquetaOrigen(fila.origen)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-sm font-medium">{fila.nmroAjste || '—'}</td>
+                <tr
+                  key={`${fila.casoId}-${fila.fechaEnvio}-${idx}`}
+                  className="hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
+                >
+                  {cfg.tieneOrigen && (
+                    <td className="whitespace-nowrap px-3 py-3 text-sm">{etiquetaOrigen(fila.origen)}</td>
+                  )}
+                  <td className="whitespace-nowrap px-3 py-3 text-sm font-medium">
+                    {fila.nmroAjste || '—'}
+                  </td>
                   <td className="whitespace-nowrap px-3 py-3 text-sm">{fila.nmroSinstro || '—'}</td>
                   <td className="px-3 py-3 text-sm">{fila.asgrBenfcro || '—'}</td>
                   <td className="px-3 py-3 text-sm">{fila.nombreResponsable || '—'}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-sm">{labelTipoEnvio(fila.tipoEnvio, t)}</td>
-                  <td className="px-3 py-3 text-sm">{fila.nombreGerente || nombreGerente(fila.gerente)}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-sm">
+                    {labelTipoEnvio(fila.tipoEnvio, t)}
+                  </td>
+                  <td className="px-3 py-3 text-sm">
+                    {fila.nombreGerente || nombreGerente(fila.gerente)}
+                  </td>
                   <td className="break-all px-3 py-3 text-xs">{fila.emailDestinatario || '—'}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-sm">
                     {formatearFechaUI(fila.fechaEnvio) || '—'}

@@ -30,6 +30,9 @@ import {
 import { mapCasoEquidadCatALiquidadorFdm } from './equidadCatLiquidadorAdapter.js';
 import { calcularLiquidacionFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
 import { descargarWordInformeEquidadCat } from './generarWordInformeEquidadCat.js';
+import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
+import { AIU_PORCENTAJE_DEFAULT_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import { equidadCatArchivosApi } from './equidadCatArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
@@ -58,6 +61,7 @@ export default function InformeUnicoEquidadCat({
   onGuardarEnCaso,
   onCasoChange,
   onIrLiquidador,
+  onLiquidadorChange,
   guardandoCaso = false,
   origen = 'cat',
   liquidadorFdm: liquidadorFdmProp = null,
@@ -79,18 +83,50 @@ export default function InformeUnicoEquidadCat({
   const [capturandoFdm, setCapturandoFdm] = useState(false);
   const [errorCapturaFdm, setErrorCapturaFdm] = useState('');
 
+  const liquidadorOrigen =
+    liquidadorFdmProp || liquidadorInicial || casoEquidadCat?.liquidador || null;
+  const [liquidadorLocal, setLiquidadorLocal] = useState(() => liquidadorOrigen || {});
+  useEffect(() => {
+    if (liquidadorOrigen) setLiquidadorLocal(liquidadorOrigen);
+  }, [liquidadorOrigen]);
+  const expressPayload = useMemo(
+    () => payloadExpressParaInforme(liquidadorLocal, { modulo: 'equidad' }),
+    [liquidadorLocal]
+  );
+  const esExpress = Boolean(expressPayload);
   const liquidadorFdm = useMemo(
     () =>
-      normalizarLiquidadorFdm(
-        mapCasoEquidadCatALiquidadorFdm({
-          ...(casoEquidadCat || {}),
-          liquidador: liquidadorFdmProp || liquidadorInicial || casoEquidadCat?.liquidador,
-        })
-      ),
-    [casoEquidadCat, liquidadorFdmProp, liquidadorInicial]
+      esExpress
+        ? null
+        : normalizarLiquidadorFdm(
+            mapCasoEquidadCatALiquidadorFdm({
+              ...(casoEquidadCat || {}),
+              liquidador: liquidadorLocal,
+            })
+          ),
+    [casoEquidadCat, liquidadorLocal, esExpress]
   );
-  const totales = useMemo(() => calcularLiquidacionFdm(liquidadorFdm || {}), [liquidadorFdm]);
-  const itemsFdm = useMemo(() => itemsPlanosLiquidadorFdm(liquidadorFdm || {}), [liquidadorFdm]);
+  const totales = useMemo(
+    () =>
+      expressPayload
+        ? {
+            subtotalContenidos: 0,
+            subtotalEdificios: expressPayload.subtotal,
+            totalPerdida: expressPayload.total,
+            deducibleAplicado: expressPayload.deducibleAplicado,
+            subsidio: 0,
+            totalIndemnizar: expressPayload.totalIndemnizar,
+          }
+        : calcularLiquidacionFdm(liquidadorFdm || {}),
+    [expressPayload, liquidadorFdm]
+  );
+  const itemsFdm = useMemo(
+    () =>
+      expressPayload
+        ? expressPayload.itemsPlanos
+        : itemsPlanosLiquidadorFdm(liquidadorFdm || {}),
+    [expressPayload, liquidadorFdm]
+  );
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
     [informe.coordenadasRiesgo]
@@ -209,7 +245,7 @@ export default function InformeUnicoEquidadCat({
       const resultado = await descargarWordInformeEquidadCat({
         caso: casoEquidadCat || {},
         informe: informeUnico,
-        liquidador: liquidadorFdm,
+        liquidador: esExpress ? liquidadorLocal : liquidadorFdm,
         paginasLiquidador: paginasFdm,
       });
       const blob = resultado?.blob;
@@ -461,6 +497,7 @@ export default function InformeUnicoEquidadCat({
                 {t('equidadCat.reportUnique.goSettlement')}
               </button>
             ) : null}
+            {!esExpress ? (
             <button
               type="button"
               className={expressBtnGhost}
@@ -469,11 +506,32 @@ export default function InformeUnicoEquidadCat({
             >
               <FaRedo /> {t('equidadCat.reportUnique.updateFdmCapture')}
             </button>
+            ) : null}
           </div>
         </div>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('equidadCat.reportUnique.settlementFdmHint')}
+          {esExpress
+            ? 'El liquidador express se copia al informe (ítems, AIU, deducible e indemnización).'
+            : t('equidadCat.reportUnique.settlementFdmHint')}
         </p>
+        {esExpress ? (
+          <div className="mb-4">
+            <SeccionModoLiquidadorCat
+              modulo="equidad"
+              liquidador={liquidadorLocal}
+              onLiquidadorChange={(liq) => {
+                setLiquidadorLocal(liq);
+                onLiquidadorChange?.(liq);
+              }}
+              aiuPorcentaje={
+                Number(liquidadorLocal?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
+                AIU_PORCENTAJE_DEFAULT_NSR10_CAT
+              }
+              disabled={guardandoCaso}
+              ocultarToggle
+            />
+          </div>
+        ) : null}
 
         <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
@@ -502,11 +560,11 @@ export default function InformeUnicoEquidadCat({
           </div>
         </div>
 
-        {capturandoFdm ? (
+        {!esExpress && capturandoFdm ? (
           <p className="font-body text-sm text-gray-500">{t('equidadCat.reportUnique.fdmCapturing')}</p>
         ) : null}
-        {errorCapturaFdm ? <p className={expressAlertError}>{errorCapturaFdm}</p> : null}
-        {!capturandoFdm && paginasFdm.length ? (
+        {!esExpress && errorCapturaFdm ? <p className={expressAlertError}>{errorCapturaFdm}</p> : null}
+        {!esExpress && !capturandoFdm && paginasFdm.length ? (
           <div className="space-y-3">
             {paginasFdm.map((pag, idx) => (
               <figure
@@ -528,7 +586,7 @@ export default function InformeUnicoEquidadCat({
             </p>
           </div>
         ) : null}
-        {!capturandoFdm && !paginasFdm.length && !errorCapturaFdm ? (
+        {!esExpress && !capturandoFdm && !paginasFdm.length && !errorCapturaFdm ? (
           <p className="font-body text-sm text-gray-500">
             {t('equidadCat.reportUnique.goFillSettlement')}
           </p>

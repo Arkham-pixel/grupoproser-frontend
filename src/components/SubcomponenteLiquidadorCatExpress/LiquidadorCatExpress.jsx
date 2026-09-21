@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { TIPOS_RIESGO_EXPRESS } from './catalogoLiquidadorCatExpress.js';
+import EditorDeducibleCatExpress from './EditorDeducibleCatExpress.jsx';
 import {
   parseMontoNsr10,
-  totalesExpress,
   totalFilaPresupuesto,
 } from './liquidadorCatExpressHelpers.js';
 
@@ -58,12 +58,17 @@ export default function LiquidadorCatExpress({
   filas = [],
   tipo = 'casa',
   aiuPorcentaje = 0.25,
+  modulo = '',
+  liquidacion = null,
+  tomador = '',
   onFilasChange,
   onTipoChange,
+  onDeducibleChange,
+  onTomadorChange,
   disabled = false,
 }) {
   const grupos = useMemo(() => agruparPorCapitulo(filas), [filas]);
-  const tot = useMemo(() => totalesExpress(filas, aiuPorcentaje), [filas, aiuPorcentaje]);
+  const tot = liquidacion || {};
   const aiuPct = Math.round(Number(aiuPorcentaje || 0) * 1000) / 10;
 
   const patchFila = (catalogoId, campo, valor) => {
@@ -161,6 +166,18 @@ export default function LiquidadorCatExpress({
         </table>
       </div>
 
+      <EditorDeducibleCatExpress
+        modulo={modulo}
+        cfg={tot.cfg || {}}
+        valorAsegurado={tot.valorAsegurado || 0}
+        desglose={tot.desgloseDeducible || {}}
+        calc={tot.calc || {}}
+        tomador={tomador}
+        onChange={onDeducibleChange}
+        onTomadorChange={onTomadorChange}
+        disabled={disabled}
+      />
+
       <div className="ml-auto max-w-sm space-y-1 rounded-lg border border-gray-200 px-4 py-3 font-body text-sm dark:border-gray-700">
         <div className="flex justify-between text-gray-600 dark:text-gray-300">
           <span>Costo directo</span>
@@ -170,9 +187,17 @@ export default function LiquidadorCatExpress({
           <span>AIU ({aiuPct}%)</span>
           <span>{COP(tot.aiu)}</span>
         </div>
-        <div className="flex justify-between font-semibold text-gray-900 dark:text-gray-50">
+        <div className="flex justify-between text-gray-600 dark:text-gray-300">
           <span>Total presupuesto</span>
           <span>{COP(tot.total)}</span>
+        </div>
+        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+          <span>Deducible</span>
+          <span>− {COP(tot.deducibleAplicado)}</span>
+        </div>
+        <div className="flex justify-between font-semibold text-gray-900 dark:text-gray-50">
+          <span>A indemnizar</span>
+          <span>{COP(tot.totalIndemnizar)}</span>
         </div>
       </div>
     </div>

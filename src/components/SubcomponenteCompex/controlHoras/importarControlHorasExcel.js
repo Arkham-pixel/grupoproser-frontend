@@ -7,6 +7,11 @@ import {
   normalizarControlHorasParaGuardar,
 } from './controlHorasUtils';
 import { resolverTarifaHora } from './tarifasHoraAseguradoras';
+import {
+  TIPO_ITEM_EXTRA,
+  buscarItemCatalogoControlHoras,
+  inferirTipoLiquidadorDesdeFilas,
+} from './catalogoControlHoras';
 
 const tr = (key, opts) => i18n.t(`complex.ui.importar_control_horas.${key}`, opts);
 
@@ -470,16 +475,21 @@ export async function importarControlHorasDesdeArchivo(
 
     if (!filaTieneDatos(row, mapa)) continue;
 
+    const descripcion = textoCelda(row.getCell(mapa.descripcion));
+    const cat = buscarItemCatalogoControlHoras({ descripcion });
     filas.push({
       ...crearFilaVacia({ nombre_funcionario: responsable, cargo: 'Ajustador' }),
       fecha: parseFecha(valorCelda(row.getCell(mapa.fecha))),
-      descripcion: textoCelda(row.getCell(mapa.descripcion)),
+      descripcion,
       nombre_funcionario: textoCelda(row.getCell(mapa.funcionario)) || responsable,
       cargo: textoCelda(row.getCell(mapa.cargo)) || 'Ajustador',
       horas_viaje: parseHorasDesdeCelda(row.getCell(mapa.viaje)),
       horas_campo: parseHorasDesdeCelda(row.getCell(mapa.campo)),
       horas_oficina: parseHorasDesdeCelda(row.getCell(mapa.oficina)),
       horas_secretaria: parseHorasDesdeCelda(row.getCell(mapa.secretaria)),
+      catalogo_id: cat?.id || '',
+      tipo_item: cat?.tipo_item || TIPO_ITEM_EXTRA,
+      fijo: cat?.tipo_item === 'fijo',
     });
   }
 
@@ -527,6 +537,7 @@ export async function importarControlHorasDesdeArchivo(
       nombreAseguradora: nombreTarifa,
       nombreCliente: formData.nombreCliente || companiaExcel,
       fchaAsgncion: fchaAsignacionTarifa,
+      reserva: formData.reserva,
     });
     if (tarifa.origen === 'tarifa' && Math.abs(tarifa.valorHora - valorHora) < 2) {
       valor_hora_origen = 'tarifa';
@@ -539,6 +550,7 @@ export async function importarControlHorasDesdeArchivo(
   const borrador = {
     valor_hora: tieneValorHora ? valorHora : '',
     valor_hora_origen,
+    tipo_liquidador: inferirTipoLiquidadorDesdeFilas(filas),
     gastos: gastos === '' ? 0 : gastos,
     filas,
   };
