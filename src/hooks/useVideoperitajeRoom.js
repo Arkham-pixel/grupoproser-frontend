@@ -64,7 +64,7 @@ export default function useVideoperitajeRoom({
   const [facing, setFacing] = useState(facingMode);
   const resolucionDe = () =>
     portraitRef.current
-      ? { width: 1080, height: 1920, frameRate: 30, aspectRatio: 9 / 16 }
+      ? { width: 720, height: 1280, frameRate: 30 }
       : VideoPresets.h1080.resolution;
 
   const attachRemote = useCallback((track) => {

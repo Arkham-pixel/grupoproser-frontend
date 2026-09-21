@@ -201,9 +201,10 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'aspect-video w-full bg-black object-contain'
+                ? 'mx-auto max-h-[70vh] w-full max-w-md bg-black object-contain'
                 : 'pointer-events-none absolute h-px w-px opacity-0'
             }
+            style={room.remotePresent ? { aspectRatio: '9 / 16' } : undefined}
           />
           <video
             ref={room.localVideoRef}
@@ -212,7 +213,7 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg'
+                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-contain shadow-lg'
                 : 'aspect-video w-full bg-black object-contain'
             }
             style={room.remotePresent ? { aspectRatio: '4 / 3' } : undefined}
