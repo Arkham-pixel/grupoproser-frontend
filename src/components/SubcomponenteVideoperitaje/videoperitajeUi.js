@@ -2,6 +2,34 @@ function trimOrigin(url) {
   return typeof url === 'string' ? url.trim().replace(/\/+$/, '') : '';
 }
 
+export function hostEsPrivado(hostname) {
+  const h = String(hostname || '').toLowerCase();
+  if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return true;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  return false;
+}
+
+export function urlLivekitEsPrivada(url) {
+  try {
+    return hostEsPrivado(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+export function paginaEsArnaldPublico() {
+  return typeof window !== 'undefined' && /\.grupoproser\.com\.co$/i.test(window.location.hostname);
+}
+
+/** En Arnald no se conecta a LiveKit de localhost/LAN: Chrome pide “red local”. */
+export function livekitUsableEnEstaPagina(url) {
+  if (!url) return false;
+  if (paginaEsArnaldPublico() && urlLivekitEsPrivada(url)) return false;
+  return true;
+}
+
 export const vpPage = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 export const vpWrap = 'mx-auto w-full max-w-6xl';
 export const vpCard =

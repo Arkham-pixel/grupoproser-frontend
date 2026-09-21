@@ -16,6 +16,7 @@ import { descargarBloqueVideoperitaje } from '../../utils/videoperitajeDescargaB
 import VideoperitajeGaleria from './VideoperitajeGaleria.jsx';
 import {
   etiquetaEstado,
+  livekitUsableEnEstaPagina,
   urlPortalAsegurado,
   vpBtnGhost,
   vpBtnPrimary,
@@ -44,6 +45,10 @@ function SalaLivePerito({ sesion, onRefresh }) {
     setLkError('');
     try {
       const r = await tokenLivekitPerito(sesion._id);
+      if (!livekitUsableEnEstaPagina(r?.url)) {
+        setLk(null);
+        return;
+      }
       setLk(r);
     } catch (err) {
       setLkError(err.message);

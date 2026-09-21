@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { livekitUsableEnEstaPagina } from '../components/SubcomponenteVideoperitaje/videoperitajeUi.js';
 import {
   DisconnectReason,
   Room,
@@ -126,6 +127,7 @@ export default function useVideoperitajeRoom({
   const connect = useCallback(async () => {
     await mostrarPreviewLocal();
     if (!token || !url) return;
+    if (!livekitUsableEnEstaPagina(url)) return;
     setError('');
     const room = new Room({
       adaptiveStream: false,
