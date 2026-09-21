@@ -63,14 +63,19 @@ export default function useVideoperitajeRoom({
   portraitRef.current = portrait;
   const [facing, setFacing] = useState(facingMode);
   const resolucionDe = () =>
-    portraitRef.current
-      ? { width: 720, height: 1280, frameRate: 30 }
-      : VideoPresets.h1080.resolution;
+    portraitRef.current ? undefined : VideoPresets.h1080.resolution;
+
+  const forzarContain = (el) => {
+    if (!el) return;
+    el.style.objectFit = 'contain';
+    el.style.objectPosition = 'center';
+  };
 
   const attachRemote = useCallback((track) => {
     const el = remoteVideoRef.current;
     if (!el || !track) return;
     track.attach(el);
+    forzarContain(el);
   }, []);
 
   const mediaDisponible = () =>
@@ -96,14 +101,17 @@ export default function useVideoperitajeRoom({
       return previewStreamRef.current;
     }
     try {
+      const res = resolucionDe();
       const stream = await navigator.mediaDevices.getUserMedia({
         video: publishVideo
-          ? {
-              facingMode: facingRef.current,
-              width: { ideal: resolucionDe().width },
-              height: { ideal: resolucionDe().height },
-              frameRate: { ideal: 30 },
-            }
+          ? res
+            ? {
+                facingMode: facingRef.current,
+                width: { ideal: res.width },
+                height: { ideal: res.height },
+                frameRate: { ideal: 30 },
+              }
+            : { facingMode: { ideal: facingRef.current } }
           : false,
         audio: publishAudio,
       });
@@ -113,6 +121,7 @@ export default function useVideoperitajeRoom({
         el.srcObject = stream;
         el.muted = true;
         el.setAttribute('playsinline', '');
+        forzarContain(el);
         el.play?.().catch(() => {});
       }
       setCameraOn(Boolean(stream.getVideoTracks().find((t) => t.readyState === 'live')));
@@ -129,6 +138,7 @@ export default function useVideoperitajeRoom({
     if (!token || !url) return;
     if (!livekitUsableEnEstaPagina(url)) return;
     setError('');
+    const res = resolucionDe();
     const room = new Room({
       adaptiveStream: false,
       dynacast: true,
@@ -137,12 +147,12 @@ export default function useVideoperitajeRoom({
       reconnectPolicy: SIN_RECONEXION,
       videoCaptureDefaults: {
         facingMode,
-        resolution: resolucionDe(),
+        ...(res ? { resolution: res } : {}),
       },
       videoPublishDefaults: {
         videoEncoding: {
-          maxBitrate: portraitRef.current ? 6_000_000 : 4_500_000,
-          maxFramerate: 30,
+          maxBitrate: portraitRef.current ? 2_500_000 : 4_500_000,
+          maxFramerate: portraitRef.current ? 24 : 30,
         },
       },
     });
@@ -196,10 +206,13 @@ export default function useVideoperitajeRoom({
             await room.localParticipant.publishTrack(track);
           }
           const el = localVideoRef.current;
-          if (el && !el.srcObject) {
-            el.srcObject = preview;
-            el.muted = true;
-            el.play?.().catch(() => {});
+          if (el) {
+            if (!el.srcObject) {
+              el.srcObject = preview;
+              el.muted = true;
+              el.play?.().catch(() => {});
+            }
+            forzarContain(el);
           }
           setCameraOn(Boolean(preview.getVideoTracks().find((t) => t.readyState === 'live')));
         } catch (pubErr) {
@@ -283,22 +296,28 @@ export default function useVideoperitajeRoom({
       const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
       const current = pubs.find((p) => p.track)?.track;
       if (current && typeof current.restartTrack === 'function') {
+        const res = resolucionDe();
         await current.restartTrack({
           facingMode: next,
-          resolution: resolucionDe(),
+          ...(res ? { resolution: res } : {}),
         });
       } else {
         if (current) {
           await room.localParticipant.unpublishTrack(current);
           current.stop();
         }
+        const res = resolucionDe();
         const videoTrack = await createLocalVideoTrack({
           facingMode: next,
-          resolution: resolucionDe(),
+          ...(res ? { resolution: res } : {}),
         });
         await room.localParticipant.publishTrack(videoTrack);
-        if (localVideoRef.current) videoTrack.attach(localVideoRef.current);
+        if (localVideoRef.current) {
+          videoTrack.attach(localVideoRef.current);
+          forzarContain(localVideoRef.current);
+        }
       }
+      forzarContain(localVideoRef.current);
       facingRef.current = next;
       setFacing(next);
     } catch (err) {

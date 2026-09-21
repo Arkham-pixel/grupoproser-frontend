@@ -104,13 +104,14 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         muted
         playsInline
         className="h-full w-full bg-black object-contain"
+        style={{ objectFit: 'contain', objectPosition: 'center' }}
       />
       <video
         ref={room.remoteVideoRef}
         autoPlay
         playsInline
         className="absolute right-3 top-10 z-10 w-[26%] max-w-[140px] rounded-lg border border-white/80 bg-black object-contain shadow-lg"
-        style={{ aspectRatio: '4 / 3' }}
+        style={{ aspectRatio: '4 / 3', objectFit: 'contain', objectPosition: 'center' }}
       />
       <p className="pointer-events-none absolute left-3 top-3 z-20 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/80">
         Grupo Proser · Videoperitaje
