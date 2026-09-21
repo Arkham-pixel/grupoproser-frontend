@@ -28,7 +28,8 @@ export function livekitUsableEnEstaPagina(url) {
   if (!url) return false;
   try {
     const host = new URL(url).hostname.toLowerCase();
-    if (host === 'livekit.grupoproser.com.co') return false;
+    // Bloquear solo LAN/localhost (Chrome “red local”). livekit.grupoproser.com.co sí se usa.
+    if (hostEsPrivado(host)) return false;
     if (paginaEsArnaldPublico() && hostEsPrivado(host)) return false;
   } catch {
     return false;
