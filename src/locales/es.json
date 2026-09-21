@@ -71,7 +71,7 @@
     "savingRecording": "Guardando la grabación en S3…",
     "playRecording": "Ver grabación",
     "waitToRecord": "Espere a que el asegurado entre con cámara para grabar.",
-    "livekitHint": "No hay servidor de videollamada. En este PC debe estar LiveKit en el puerto 7880. Las fotos sí se pueden guardar.",
+    "livekitHint": "La videollamada pública aún no tiene servidor de video en internet. La cámara local y las fotos sí funcionan.",
     "session": "Sesión",
     "finish": "Finalizar y adjuntar al caso",
     "sessionClosed": "Esta sesión ya no está en vivo.",

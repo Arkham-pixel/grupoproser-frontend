@@ -71,7 +71,7 @@
     "savingRecording": "Saving the recording to S3…",
     "playRecording": "Play recording",
     "waitToRecord": "Wait until the insured joins with camera before recording.",
-    "livekitHint": "Start local LiveKit (docker compose -f docker-compose.livekit.yml up) for the call. Photos still save.",
+    "livekitHint": "The public video call has no internet video server yet. The local camera and photos still work.",
     "session": "Session",
     "finish": "Finish and attach to case",
     "sessionClosed": "This session is no longer live.",

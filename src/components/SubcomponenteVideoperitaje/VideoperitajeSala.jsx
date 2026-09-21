@@ -247,7 +247,9 @@ function SalaLivePerito({ sesion, onRefresh }) {
             {lkError}. {t('videoperitaje.livekitHint')}
           </p>
         )}
-        {room.error && <p className="mt-2 text-sm text-red-600">{room.error}</p>}
+        {room.error && !/signal|timed out|websocket|failed to fetch|establish/i.test(room.error) && (
+          <p className="mt-2 text-sm text-red-600">{room.error}</p>
+        )}
     </div>
   );
 }
