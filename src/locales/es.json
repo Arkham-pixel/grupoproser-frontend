@@ -1623,6 +1623,8 @@
     },
     "charts": {
       "byStatus": "Casos por estado",
+      "byStatusGestion": "Casos por estado de gestión",
+      "byStatusSiniestro": "Casos por estado de siniestro",
       "byCity": "Casos por ciudad",
       "monthlyTrend": "Tendencia mensual · casos, reclamado y liquidado",
       "claimed": "Reclamado",
@@ -1702,6 +1704,8 @@
       "fechaAceptacionLiquidacion": "Fecha aceptación liquidación",
       "fechaEnvioAseguradora": "Fecha envío a la aseguradora",
       "estado": "Estado",
+      "estadoGestion": "Estado de gestión",
+      "estadoSiniestro": "Estado de siniestro",
       "descripcionEstado": "Último comentario",
       "ajustadorLider": "Ajustador líder (quien asigna)",
       "inspector": "Inspector",
@@ -1752,6 +1756,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
@@ -2350,6 +2356,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
@@ -11441,6 +11449,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
@@ -12362,6 +12372,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
@@ -13237,6 +13249,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
@@ -13386,7 +13400,7 @@
       },
       "policyTypes": {
         "title": "Casos por tipo de póliza",
-        "hint": "Los seis ramos Allianz. Toque uno para filtrar."
+        "hint": "Los seis ramos Allianz; si faltan datos aparecen Sin tipo u Otros. Toque uno para filtrar."
       },
       "kpis": {
         "cases": "Casos",
@@ -14190,6 +14204,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
@@ -14841,6 +14857,8 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "funnelGestion": "Embudo · estado de gestión (AI)",
+      "funnelSiniestro": "Embudo · estado de siniestro (AJ)",
       "callComments": {
         "title": "Observaciones de llamada",
         "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",

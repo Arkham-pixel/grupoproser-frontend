@@ -341,6 +341,8 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
         fechaPresentacionCifras: form.fechaPresentacionCifras,
         fechaCasoParaPago: form.fechaCasoParaPago,
+        fechaEnProcesoFacturacion: form.fechaEnProcesoFacturacion,
+        fechaFacturado: form.fechaFacturado,
         fechaCasoPagado: form.fechaCasoPagado,
         fechaDesistido: form.fechaDesistido,
         fechaAnulado: form.fechaAnulado,
@@ -777,6 +779,20 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               type="date"
               value={form.fechaCasoParaPago}
               onChange={setCampo('fechaCasoParaPago')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaEnProcesoFacturacion')}>
+            <InputFenix
+              type="date"
+              value={form.fechaEnProcesoFacturacion}
+              onChange={setCampo('fechaEnProcesoFacturacion')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaFacturado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFacturado}
+              onChange={setCampo('fechaFacturado')}
             />
           </Campo>
           <Campo label={t('allianz.fields.fechaDesistido')}>

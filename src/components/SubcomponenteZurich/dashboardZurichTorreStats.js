@@ -570,7 +570,7 @@ export function construirTorreZurich(
       }
     }
     if (estado === ESTADO_ZURICH_DEFAULT) nuevosEstado += 1;
-    if (estado === ESTADO_ZURICH_FINALIZADO) finalizados += 1;
+    if (esEstadoCerradoZurich(estado)) finalizados += 1;
 
     const asegurado = montoCargadoZurich(caso.valorAseguradoInmueble);
     if (asegurado != null && asegurado > 0) {
@@ -726,7 +726,7 @@ export function construirTorreZurich(
   ];
 
   const reservaPorEstado = porEstado
-    .filter((f) => f.estado !== ESTADO_ZURICH_FINALIZADO && f.reserva > 0)
+    .filter((f) => !esEstadoCerradoZurich(f.estado) && f.reserva > 0)
     .map((f) => ({ nombre: f.estado, valor: f.reserva, cantidad: f.cantidad }))
     .sort((a, b) => b.valor - a.valor);
 

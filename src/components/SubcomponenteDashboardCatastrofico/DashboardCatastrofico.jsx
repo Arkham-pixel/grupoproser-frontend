@@ -91,6 +91,7 @@ export default function DashboardCatastrofico({
   coincideFiltroCiudad,
   buildOpcionesFiltro,
   estados = ESTADOS_EMBUDO_CATASTROFICO,
+  estadosGestion = null,
   i18nNs,
   boletinPath,
   extras = {},
@@ -99,6 +100,7 @@ export default function DashboardCatastrofico({
   subtitle,
   modulo = '',
   normalizarEstadoFn,
+  normalizarEstadoGestionFn,
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -189,7 +191,13 @@ export default function DashboardCatastrofico({
         if (filtroCiudad && !coincideCiudad(item.ciudad, filtroCiudad)) return false;
         if (filtroEstado) {
           const estado = typeof normalizarEstadoFn === 'function'
-            ? normalizarEstadoFn(item.estado)
+            ? (() => {
+                try {
+                  return normalizarEstadoFn(item.estado, item);
+                } catch {
+                  return normalizarEstadoFn(item.estado);
+                }
+              })()
             : item.estado;
           if (!coincideFiltroTexto(estado, filtroEstado)) return false;
         }
@@ -240,9 +248,13 @@ export default function DashboardCatastrofico({
         estadosOrden: estados,
         mapaNombres,
         normalizarEstadoFn,
+        estadosGestionOrden: estadosGestion,
+        normalizarEstadoGestionFn,
       }),
-    [casosFiltrados, estados, mapaNombres, normalizarEstadoFn]
+    [casosFiltrados, estados, estadosGestion, mapaNombres, normalizarEstadoFn, normalizarEstadoGestionFn]
   );
+
+  const dualEstados = Array.isArray(stats.porEstadoGestion);
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos, buildOpcionesFiltro]);
   const ajustadores = useMemo(() => {
@@ -444,7 +456,96 @@ export default function DashboardCatastrofico({
         )}
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-          <ChartCard title={td('charts.byStatus')} empty={stats.porEstado.length === 0}>
+          {dualEstados ? (
+            <>
+              <ChartCard
+                title={td('charts.byStatusGestion')}
+                empty={!stats.porEstadoGestion?.length}
+              >
+                <ExpressChartPlot height={320}>
+                  <PieChart>
+                    <Pie
+                      data={stats.porEstadoGestion}
+                      dataKey="cantidad"
+                      nameKey="estado"
+                      cx="42%"
+                      cy="50%"
+                      innerRadius={68}
+                      outerRadius={108}
+                      paddingAngle={2}
+                      stroke={pieStroke}
+                      strokeWidth={2}
+                    >
+                      {(stats.porEstadoGestion || []).map((entry, index) => (
+                        <Cell key={`g-${entry.estado}`} fill={getFenixChartColor(index, isDark)} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(value, name) => [value, name]}
+                    />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      wrapperStyle={{
+                        fontSize: 11,
+                        color: tickColor,
+                        maxHeight: 280,
+                        overflowY: 'auto',
+                        paddingLeft: 8,
+                      }}
+                      formatter={(value) => truncar(value, 28)}
+                    />
+                  </PieChart>
+                </ExpressChartPlot>
+              </ChartCard>
+
+              <ChartCard
+                title={td('charts.byStatusSiniestro')}
+                empty={stats.porEstado.length === 0}
+              >
+                <ExpressChartPlot height={320}>
+                  <PieChart>
+                    <Pie
+                      data={stats.porEstado}
+                      dataKey="cantidad"
+                      nameKey="estado"
+                      cx="42%"
+                      cy="50%"
+                      innerRadius={68}
+                      outerRadius={108}
+                      paddingAngle={2}
+                      stroke={pieStroke}
+                      strokeWidth={2}
+                    >
+                      {stats.porEstado.map((entry, index) => (
+                        <Cell key={`s-${entry.estado}`} fill={getFenixChartColor(index, isDark)} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(value, name) => [value, name]}
+                    />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      wrapperStyle={{
+                        fontSize: 11,
+                        color: tickColor,
+                        maxHeight: 280,
+                        overflowY: 'auto',
+                        paddingLeft: 8,
+                      }}
+                      formatter={(value) => truncar(value, 28)}
+                    />
+                  </PieChart>
+                </ExpressChartPlot>
+              </ChartCard>
+            </>
+          ) : (
+            <ChartCard title={td('charts.byStatus')} empty={stats.porEstado.length === 0}>
               <ExpressChartPlot height={320}>
                 <PieChart>
                   <Pie
@@ -482,8 +583,10 @@ export default function DashboardCatastrofico({
                   />
                 </PieChart>
               </ExpressChartPlot>
-          </ChartCard>
+            </ChartCard>
+          )}
 
+          {!dualEstados ? (
           <ChartCard title={td('charts.byCity')} empty={stats.porCiudad.length === 0}>
             <ExpressChartPlot height={Math.max(320, stats.porCiudad.length * 34)}>
               <BarChart data={stats.porCiudad} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
@@ -505,7 +608,32 @@ export default function DashboardCatastrofico({
               </BarChart>
             </ExpressChartPlot>
           </ChartCard>
+          ) : null}
         </section>
+
+        {dualEstados ? (
+          <ChartCard title={td('charts.byCity')} empty={stats.porCiudad.length === 0}>
+            <ExpressChartPlot height={Math.max(320, Math.min(480, stats.porCiudad.length * 34))}>
+              <BarChart data={stats.porCiudad} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="nombre"
+                  width={128}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  tickFormatter={(v) => truncar(v, 22)}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="cantidad" name={td('kpis.cases')} radius={[0, 4, 4, 0]}>
+                  {stats.porCiudad.map((entry, index) => (
+                    <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ExpressChartPlot>
+          </ChartCard>
+        ) : null}
 
         <ChartCard title={td('charts.monthlyTrend')} empty={stats.tendenciaMensual.length === 0}>
           <ExpressChartPlot height={360}>

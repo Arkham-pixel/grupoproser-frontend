@@ -108,13 +108,13 @@ export const getCasosAlfaPaginado = async ({
   return payload;
 };
 
-export const fetchAllCasosAlfa = async (batchSize = 2500, { incluirExcluidos = false } = {}) => {
+export const fetchAllCasosAlfa = async (batchSize = 800, { incluirExcluidos = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
-  const size = Math.min(Math.max(Number(batchSize) || 2500, 1), 3000);
+  const size = Math.min(Math.max(Number(batchSize) || 800, 1), 1500);
   // Defensa: no cortar la base aunque crezca (páginas hasta completar `total`)
-  const maxPages = 50;
+  const maxPages = 80;
 
   while (page <= maxPages) {
     const respuesta = await getCasosAlfaPaginado({

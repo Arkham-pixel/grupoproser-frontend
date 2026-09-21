@@ -10,6 +10,8 @@ import {
   ESTADO_ZURICH_AUTORIDAD_DELEGADA,
   ESTADO_ZURICH_ACEPTACION_CLIENTE,
   ESTADO_ZURICH_FINALIZADO,
+  ESTADO_ZURICH_EN_PROCESO_FACTURACION,
+  ESTADO_ZURICH_FACTURADO,
   diasEnEstadoZurich,
   etiquetaTipoPolizaZurich,
   esEstadoCerradoZurich,
@@ -33,7 +35,9 @@ const CORTES_ABIERTOS_ZURICH = [CORTE_PROSER_ZURICH, CORTE_ASEGURADO_ZURICH, COR
 /** Quién tiene la pelota: Proser (ajuste), asegurado/intermediario (docs) o Zurich (autoridad / aceptación). */
 export function corteCarteraZurich(estado) {
   const e = claveEstado(estado);
-  if (e === ESTADO_ZURICH_FINALIZADO) return CORTE_CERRADO_ZURICH;
+  if (e === ESTADO_ZURICH_FINALIZADO || e === ESTADO_ZURICH_EN_PROCESO_FACTURACION || e === ESTADO_ZURICH_FACTURADO) {
+    return CORTE_CERRADO_ZURICH;
+  }
   if (esEstadoPendienteDocsZurich(e)) return CORTE_ASEGURADO_ZURICH;
   if (e === ESTADO_ZURICH_AUTORIDAD_DELEGADA || e === ESTADO_ZURICH_ACEPTACION_CLIENTE) {
     return CORTE_ZURICH_ZURICH;
@@ -212,7 +216,7 @@ export function construirDashboardZurichListado(casos = []) {
     if (estado === ESTADO_ZURICH_AUTORIDAD_DELEGADA) enAutoridadDelegada += 1;
     if (estado === ESTADO_ZURICH_ACEPTACION_CLIENTE) enAceptacionCliente += 1;
     if (estado === ESTADO_ZURICH_ANALISIS) enAnalisis += 1;
-    if (estado === ESTADO_ZURICH_FINALIZADO) finalizados += 1;
+    if (esEstadoCerradoZurich(estado)) finalizados += 1;
 
     const aseguradoInmueble = Number(caso.valorAseguradoInmueble);
     if (Number.isFinite(aseguradoInmueble) && aseguradoInmueble > 0) {

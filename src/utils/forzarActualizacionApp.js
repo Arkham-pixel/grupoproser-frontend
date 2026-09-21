@@ -1,8 +1,7 @@
-/**
- * Quita el Service Worker y la caché de la PWA, luego recarga.
- * Safari / Mac suelen seguir sirviendo el build viejo si no se hace esto.
- */
-export async function forzarActualizacionApp() {
+export const ARNALD_BUILD_STORAGE_KEY = 'arnald_build_id';
+
+/** Borra Service Worker y Cache Storage (Safari/Mac no lo hacen solos). */
+export async function limpiarCachePwa() {
   try {
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -19,6 +18,14 @@ export async function forzarActualizacionApp() {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Quita el Service Worker y la caché de la PWA, luego recarga.
+ * Safari / Mac suelen seguir sirviendo el build viejo si no se hace esto.
+ */
+export async function forzarActualizacionApp() {
+  await limpiarCachePwa();
   const url = new URL(window.location.href);
   url.searchParams.set('_r', String(Date.now()));
   window.location.replace(url.toString());

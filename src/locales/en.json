@@ -1623,6 +1623,8 @@
     },
     "charts": {
       "byStatus": "Cases by status",
+      "byStatusGestion": "Cases by management status",
+      "byStatusSiniestro": "Cases by claim status",
       "byCity": "Cases by city",
       "monthlyTrend": "Monthly trend · cases, claimed and settled",
       "claimed": "Claimed",
@@ -1697,6 +1699,8 @@
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
       "estado": "Status",
+      "estadoGestion": "Management status",
+      "estadoSiniestro": "Claim status",
       "descripcionEstado": "Last comment",
       "ajustadorLider": "Lead adjuster (assigns cases)",
       "inspector": "Inspector"
@@ -1742,6 +1746,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
@@ -2303,6 +2309,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
@@ -11380,6 +11388,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
@@ -12301,6 +12311,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
@@ -13156,6 +13168,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
@@ -13305,7 +13319,7 @@
       },
       "policyTypes": {
         "title": "Cases by policy type",
-        "hint": "The six Allianz lines. Tap one to filter."
+        "hint": "The six Allianz lines; missing data shows as No type or Other. Tap one to filter."
       },
       "kpis": {
         "cases": "Cases",
@@ -14109,6 +14123,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
@@ -14760,6 +14776,8 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "funnelGestion": "Pipeline · management status (AI)",
+      "funnelSiniestro": "Pipeline · claim status (AJ)",
       "callComments": {
         "title": "Call observations",
         "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",

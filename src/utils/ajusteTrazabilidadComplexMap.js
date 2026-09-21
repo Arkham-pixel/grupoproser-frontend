@@ -21,6 +21,8 @@ export const CAMPOS_FECHA_HITOS_TRAZABILIDAD = [
   'fchaAceptacionCifrasAseguradora',
   'fchaReconsideracion',
   'fchaEnvioFiniquito',
+  'fchaEnProcesoFacturacion',
+  'fchaFacturado',
 ];
 
 export const MAPEO_TIPO_HISTORIAL_A_COMPLEX = {

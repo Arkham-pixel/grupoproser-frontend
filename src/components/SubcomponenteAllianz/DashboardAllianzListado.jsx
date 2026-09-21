@@ -31,6 +31,7 @@ import {
   ESTADOS_CIERRE_ALLIANZ,
   TIPOS_POLIZA_ALLIANZ,
   buildOpcionesFiltro,
+  coincideFiltroTexto,
   etiquetaTipoPolizaAllianz,
   formatCurrency,
   formatCurrencyMm,
@@ -153,15 +154,14 @@ export default function DashboardAllianzListado() {
 
   const barrasPoliza = useMemo(
     () =>
-      stats.porTipoPoliza
-        .filter((fila) => TIPOS_POLIZA_ALLIANZ.includes(fila.nombre))
-        .map((fila) => ({
-          clave: fila.nombre,
-          nombre: fila.nombre,
-          cantidad: fila.cantidad,
-          reserva: fila.reserva,
-          activo: !filtros.tipoPoliza || filtros.tipoPoliza === fila.nombre,
-        })),
+      // Incluye los 6 ramos + "Sin tipo" / "Otros" cuando hay casos, para que la suma cuadre con el total.
+      (stats.porTipoPoliza || []).map((fila) => ({
+        clave: fila.nombre,
+        nombre: fila.nombre,
+        cantidad: fila.cantidad,
+        reserva: fila.reserva,
+        activo: !filtros.tipoPoliza || coincideFiltroTexto(fila.nombre, filtros.tipoPoliza),
+      })),
     [stats.porTipoPoliza, filtros.tipoPoliza]
   );
 
@@ -172,7 +172,7 @@ export default function DashboardAllianzListado() {
         nombre: fila.nombre,
         cantidad: fila.cantidad,
         reserva: fila.reserva,
-        activo: !filtros.ajustador || filtros.ajustador === fila.nombre,
+        activo: !filtros.ajustador || coincideFiltroTexto(fila.nombre, filtros.ajustador),
       })),
     [stats.porAjustador, filtros.ajustador]
   );
@@ -184,7 +184,7 @@ export default function DashboardAllianzListado() {
         nombre: fila.nombre,
         cantidad: fila.cantidad,
         reserva: fila.reserva,
-        activo: !filtros.inspector || filtros.inspector === fila.nombre,
+        activo: !filtros.inspector || coincideFiltroTexto(fila.nombre, filtros.inspector),
       })),
     [stats.porInspector, filtros.inspector]
   );
@@ -206,15 +206,21 @@ export default function DashboardAllianzListado() {
   const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
   const tiposPoliza = useMemo(() => {
     const extras = opcionesDesdeGetter(casos, etiquetaTipoPolizaAllianz);
-    const seen = new Set(TIPOS_POLIZA_ALLIANZ);
+    const seen = new Set(TIPOS_POLIZA_ALLIANZ.map((t) => t));
     const canon = TIPOS_POLIZA_ALLIANZ.map((valor) => ({ value: valor, label: valor }));
     extras.forEach((op) => {
-      if (op.value && !seen.has(op.value)) {
-        seen.add(op.value);
-        canon.push(op);
-      }
+      const label = op.label || op.value;
+      if (!label || TIPOS_POLIZA_ALLIANZ.includes(label) || seen.has(label)) return;
+      // Extras no canónicos se agrupan en el chart como "Otros"; no duplicar ramos.
+      if (TIPOS_POLIZA_ALLIANZ.some((t) => coincideFiltroTexto(t, label))) return;
+      seen.add(label);
+      canon.push({ value: label, label });
     });
-    return canon;
+    return [
+      ...canon,
+      { value: 'Sin tipo de póliza', label: 'Sin tipo de póliza' },
+      { value: 'Otros', label: 'Otros' },
+    ];
   }, [casos]);
 
   const etiquetaChip = (clave, valor) => {
@@ -370,8 +376,9 @@ export default function DashboardAllianzListado() {
               <Campo label={t('allianz.fields.ajustador')}>
                 <SelectFenix value={filtros.ajustador} onChange={(e) => patchFiltro('ajustador', e.target.value)}>
                   <option value="">{td('all')}</option>
+                  <option value="Sin ajustador">Sin ajustador</option>
                   {ajustadores.map((op) => (
-                    <option key={op.value} value={op.value}>
+                    <option key={`${op.value}-${op.label}`} value={op.label}>
                       {op.label}
                     </option>
                   ))}
@@ -380,8 +387,9 @@ export default function DashboardAllianzListado() {
               <Campo label={t('allianz.fields.inspector')}>
                 <SelectFenix value={filtros.inspector} onChange={(e) => patchFiltro('inspector', e.target.value)}>
                   <option value="">{td('all')}</option>
+                  <option value="Sin inspector">Sin inspector</option>
                   {inspectores.map((op) => (
-                    <option key={op.value} value={op.value}>
+                    <option key={`${op.value}-${op.label}`} value={op.label}>
                       {op.label}
                     </option>
                   ))}
@@ -405,7 +413,7 @@ export default function DashboardAllianzListado() {
                 <SelectFenix value={filtros.ciudad} onChange={(e) => patchFiltro('ciudad', e.target.value)}>
                   <option value="">{td('all')}</option>
                   {ciudades.map((op) => (
-                    <option key={op.value} value={op.value}>
+                    <option key={`${op.value}-${op.label}`} value={op.label}>
                       {op.label}
                     </option>
                   ))}

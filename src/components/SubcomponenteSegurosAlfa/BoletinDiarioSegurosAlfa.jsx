@@ -38,6 +38,10 @@ import {
   FaMoneyBillWave,
   FaExclamationTriangle,
   FaPen,
+  FaFolderOpen,
+  FaUserClock,
+  FaShieldAlt,
+  FaClipboardList,
 } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
 import { fetchAllCasosAlfa } from '../../services/segurosAlfaService.js';
@@ -82,16 +86,21 @@ const ICONS_TERREMOTO = {
 
 const ICONS_GESTION_ACTUAL = {
   enGestion: FaThumbtack,
+  pteContacto: FaUserClock,
+  solicitudDtos: FaFolderOpen,
   contactadoProgramado: FaPhoneAlt,
   inspeccionado: FaSearch,
   liquidado: FaCalendarAlt,
   sinRespuesta: FaPhoneSlash,
+  cerrado: FaShieldAlt,
 };
 
 const ICONS_SINIESTRO_ACTUAL = {
   pendientes: FaHourglassHalf,
+  inspeccionadoPendiente: FaClipboardList,
   pendienteAceptacion: FaChartBar,
   procesoPago: FaMoneyBillWave,
+  pagados: FaCheckCircle,
   cerrados: FaCheckCircle,
   objetados: FaExclamationTriangle,
   desistidos: FaBan,

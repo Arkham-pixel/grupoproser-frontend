@@ -2,6 +2,13 @@
  * Helpers del boletín semanal Seguros Alfa (semana lun–dom, America/Bogota).
  */
 
+import {
+  ESTADOS_GESTION_ALFA,
+  ESTADOS_SINIESTRO_ALFA,
+  homologarEstadoSiniestroAlfa,
+  sincronizarGestionConCierreSiniestroAlfa,
+} from './segurosAlfaHelpers.js';
+
 const TZ = 'America/Bogota';
 
 export const DIAS_ANS_INSPECCION = 15;
@@ -72,12 +79,28 @@ export function normEstado(estado) {
 
 export function esLiquidadoEstado(estado) {
   const e = normEstado(estado);
-  return e === 'LIQUIDADO' || e === 'ENVIADO ASEGURADORA' || e === 'CERRADO';
+  return (
+    e === 'LIQUIDADO' ||
+    e === 'ENVIADO ASEGURADORA' ||
+    e === 'PROCESO DE PAGO' ||
+    e === 'PENDIENTE ACEPTACION CIFRAS' ||
+    e === 'PAGADO'
+  );
 }
 
 export function esActivo(estado) {
   const e = normEstado(estado);
-  return e !== 'CERRADO' && e !== 'OBJETADO' && e !== 'DESISTIDO';
+  return (
+    e !== 'CERRADO' &&
+    e !== 'OBJETADO' &&
+    e !== 'DESISTIDO' &&
+    e !== 'PAGADO' &&
+    e !== 'SIN POLIZA' &&
+    e !== 'PROCESO DE PAGO' &&
+    e !== 'PENDIENTE ACEPTACION CIFRAS' &&
+    e !== 'LIQUIDADO' &&
+    e !== 'ENVIADO ASEGURADORA'
+  );
 }
 
 export function num(v) {
@@ -171,6 +194,7 @@ export function calcularBoletinSemanalAlfa(casos = [], alertasPayload = null, ra
   let sumaReclamadoSemana = 0;
 
   const porEstado = {};
+  const porEstadoGestion = {};
   const diasInspeccion = [];
   const diasLiquidacion = [];
   let ansInspeccionOk = 0;
@@ -179,8 +203,10 @@ export function calcularBoletinSemanalAlfa(casos = [], alertasPayload = null, ra
   let ansLiquidacionTotal = 0;
 
   for (const c of lista) {
-    const est = String(c.estado || 'PENDIENTE');
+    const est = homologarEstadoSiniestroAlfa(c.estado, c);
     porEstado[est] = (porEstado[est] || 0) + 1;
+    const gest = sincronizarGestionConCierreSiniestroAlfa(est, c.estadoGestion || c.estado);
+    porEstadoGestion[gest] = (porEstadoGestion[gest] || 0) + 1;
 
     const created = parseFechaCaso(c.createdAt);
     const fInsp = parseFechaCaso(c.fechaInspeccion);
@@ -287,11 +313,26 @@ export function calcularBoletinSemanalAlfa(casos = [], alertasPayload = null, ra
       valorReclamadoSemana: sumaReclamadoSemana,
       valorAjustadoSemana: sumaLiquidadoSemana,
       totalCasos: lista.length,
-      casosActivos: lista.filter((c) => esActivo(c.estado)).length,
+      casosActivos: lista.filter((c) => esActivo(homologarEstadoSiniestroAlfa(c.estado, c))).length,
     },
-    embudo: Object.entries(porEstado)
-      .map(([estado, cantidad]) => ({ estado, cantidad }))
-      .sort((a, b) => b.cantidad - a.cantidad),
+    embudo: (() => {
+      const orden = ESTADOS_SINIESTRO_ALFA;
+      const known = orden.map((estado) => ({ estado, cantidad: porEstado[estado] || 0 }));
+      const extras = Object.entries(porEstado)
+        .filter(([estado]) => !orden.includes(estado))
+        .map(([estado, cantidad]) => ({ estado, cantidad }))
+        .sort((a, b) => b.cantidad - a.cantidad);
+      return [...known, ...extras];
+    })(),
+    embudoGestion: (() => {
+      const orden = ESTADOS_GESTION_ALFA;
+      const known = orden.map((estado) => ({ estado, cantidad: porEstadoGestion[estado] || 0 }));
+      const extras = Object.entries(porEstadoGestion)
+        .filter(([estado]) => !orden.includes(estado))
+        .map(([estado, cantidad]) => ({ estado, cantidad }))
+        .sort((a, b) => b.cantidad - a.cantidad);
+      return [...known, ...extras];
+    })(),
     ans: {
       inspeccion: {
         ok: ansInspeccionOk,

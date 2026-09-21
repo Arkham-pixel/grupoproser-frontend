@@ -1,4 +1,4 @@
-import { ESTADOS_CIERRE_ALLIANZ, ESTADO_ALLIANZ_PAGO } from './allianzHelpers.js';
+import { ESTADOS_CIERRE_ALLIANZ, ESTADO_ALLIANZ_PAGO, normTexto } from './allianzHelpers.js';
 
 const INK = '#1E1E1E';
 const INK_DARK = '#C4C4C4';
@@ -34,7 +34,9 @@ export function truncarAllianz(valor, max = 28) {
 }
 
 export function alternarFiltroAllianz(actual, siguiente) {
-  return actual === siguiente ? '' : siguiente;
+  if (!siguiente) return '';
+  // Comparar normalizado: el select puede guardar mayúsculas y la barra el nombre display.
+  return normTexto(actual) === normTexto(siguiente) ? '' : siguiente;
 }
 
 export function colorEjeAllianz(isDark) {

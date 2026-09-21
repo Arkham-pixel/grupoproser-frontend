@@ -133,9 +133,13 @@ export default function BoletinSemanalSegurosAlfa() {
     saveNotas(semanaKey, next);
   };
 
-  const chartColors = useMemo(
-    () => boletin.embudo.map((_, i) => getFenixChartColor(i, isDark)),
+  const chartColorsSiniestro = useMemo(
+    () => (boletin.embudo || []).map((_, i) => getFenixChartColor(i, isDark)),
     [boletin.embudo, isDark]
+  );
+  const chartColorsGestion = useMemo(
+    () => (boletin.embudoGestion || []).map((_, i) => getFenixChartColor(i, isDark)),
+    [boletin.embudoGestion, isDark]
   );
 
   const observacionesLlamada = boletin.observacionesLlamada || {
@@ -222,9 +226,13 @@ export default function BoletinSemanalSegurosAlfa() {
         )}
 
         {/* KPIs lineamiento gestión Alfa (catálogo oficial) */}
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-9">
           <ExpressMetricCard label="EN GESTIÓN" value={String(kpisGestion.enGestion)} />
           <ExpressMetricCard label="PTE CONTACTO" value={String(kpisGestion.pteContacto || 0)} />
+          <ExpressMetricCard
+            label="SOLICITUD DTOS"
+            value={String(kpisGestion.solicitudDtos || 0)}
+          />
           <ExpressMetricCard
             label="CONTACTADO Y PROGRAMADO"
             value={String(kpisGestion.contactadoProgramado)}
@@ -239,7 +247,7 @@ export default function BoletinSemanalSegurosAlfa() {
           <ExpressMetricCard
             label="SINIESTRO DEFINIDO"
             value={String(kpisGestion.siniestroDefinido)}
-            hint="Cerrado, objetado, desistido, proceso de pago, pte aceptación cifras o pagado"
+            hint="Todo excepto PENDIENTE (incluye inspeccionado pendiente, pago, objetado, desistido, etc.)"
           />
         </section>
 
@@ -291,8 +299,8 @@ export default function BoletinSemanalSegurosAlfa() {
           />
         </section>
 
-        {/* ANS + embudo */}
-        <section className="grid gap-4 lg:grid-cols-2">
+        {/* ANS */}
+        <section className="grid gap-4 lg:grid-cols-1">
           <div className={expressCard}>
             <div className={expressCardHeader}>
               <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
@@ -331,28 +339,71 @@ export default function BoletinSemanalSegurosAlfa() {
               </div>
             </div>
           </div>
+        </section>
 
+        {/* Embudos duales: gestión (AI) + siniestro (AJ) */}
+        <section className="grid gap-4 lg:grid-cols-2">
           <div className={expressChartCard}>
             <h2 className="mb-4 font-heading text-lg font-bold text-gray-900 dark:text-white">
-              {t('segurosAlfa.boletin.funnel')}
+              {t('segurosAlfa.boletin.funnelGestion')}
             </h2>
-            <div className="h-64 w-full min-w-0">
+            <div className="h-72 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={boletin.embudo} margin={{ top: 8, right: 8, left: 0, bottom: 40 }}>
+                <BarChart
+                  data={boletin.embudoGestion || []}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 56 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis
                     dataKey="estado"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 10 }}
                     interval={0}
-                    angle={-25}
+                    angle={-28}
                     textAnchor="end"
-                    height={60}
+                    height={72}
                   />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Bar dataKey="cantidad" radius={[6, 6, 0, 0]}>
-                    {boletin.embudo.map((_, i) => (
-                      <Cell key={boletin.embudo[i].estado} fill={chartColors[i]} />
+                    {(boletin.embudoGestion || []).map((_, i) => (
+                      <Cell
+                        key={(boletin.embudoGestion || [])[i]?.estado || i}
+                        fill={chartColorsGestion[i]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className={expressChartCard}>
+            <h2 className="mb-4 font-heading text-lg font-bold text-gray-900 dark:text-white">
+              {t('segurosAlfa.boletin.funnelSiniestro')}
+            </h2>
+            <div className="h-72 w-full min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={boletin.embudo || []}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 56 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis
+                    dataKey="estado"
+                    tick={{ fontSize: 10 }}
+                    interval={0}
+                    angle={-28}
+                    textAnchor="end"
+                    height={72}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="cantidad" radius={[6, 6, 0, 0]}>
+                    {(boletin.embudo || []).map((_, i) => (
+                      <Cell
+                        key={(boletin.embudo || [])[i]?.estado || i}
+                        fill={chartColorsSiniestro[i]}
+                      />
                     ))}
                   </Bar>
                 </BarChart>

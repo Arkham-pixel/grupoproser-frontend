@@ -13,6 +13,8 @@ export const ESTADOS_PREVISORA = [
   'OBJECIÓN',
   'DESISTIMIENTO',
   'CASO CERRADO',
+  'EN PROCESO DE FACTURACIÓN',
+  'FACTURADO',
 ];
 
 export const MODALIDADES_PREVISORA = ['CAMPO', 'VIDEOPERITAJE'];
@@ -27,6 +29,8 @@ export const FECHA_ACCION_POR_ESTADO_PREVISORA = {
   OBJECIÓN: 'fechaObjecion',
   DESISTIMIENTO: 'fechaDesistimiento',
   'CASO CERRADO': 'fechaCasoCerrado',
+  'EN PROCESO DE FACTURACIÓN': 'fechaEnProcesoFacturacion',
+  FACTURADO: 'fechaFacturado',
 };
 
 export const CAMPOS_FECHA_ACCION_PREVISORA = [
@@ -42,6 +46,8 @@ export const CAMPOS_FECHA_ACCION_PREVISORA = [
   'fechaDesistimiento',
   'fechaCasoCerrado',
   'fechaCasoParaPago',
+  'fechaEnProcesoFacturacion',
+  'fechaFacturado',
 ];
 
 const ESTADOS_PREVISORA_LEGACY = {
@@ -551,6 +557,8 @@ export const FORM_VACIO_PREVISORA = {
   fechaDesistimiento: '',
   fechaCasoCerrado: '',
   fechaCasoParaPago: '',
+  fechaEnProcesoFacturacion: '',
+  fechaFacturado: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',

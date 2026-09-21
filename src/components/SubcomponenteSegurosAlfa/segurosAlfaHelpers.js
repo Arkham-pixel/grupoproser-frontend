@@ -437,7 +437,8 @@ export function contarKpisGestionAlfa(casos = []) {
     fueraDeZona: 0,
   };
   for (const c of casos) {
-    const g = homologarEstadoGestionAlfa(c.estadoGestion || c.estado);
+    const s = homologarEstadoSiniestroAlfa(c.estado, c);
+    const g = sincronizarGestionConCierreSiniestroAlfa(s, c.estadoGestion || c.estado);
     if (g === 'EN GESTIÓN') base.enGestion += 1;
     else if (g === 'PTE CONTACTO') base.pteContacto += 1;
     else if (g === 'SOLICITUD DTOS') base.solicitudDtos += 1;
@@ -446,7 +447,7 @@ export function contarKpisGestionAlfa(casos = []) {
     else if (g === 'LIQUIDADO') base.liquidado += 1;
     else if (g === 'SIN RESPUESTA EFECTIVA') base.sinRespuesta += 1;
     else if (g === 'SIN PÓLIZA') base.cerrado += 1;
-    if (homologarEstadoSiniestroAlfa(c.estado, c) !== 'PENDIENTE') base.siniestroDefinido += 1;
+    if (s !== 'PENDIENTE') base.siniestroDefinido += 1;
     if (casoAlfaVenceSla2Dias(c)) base.slaVencido += 1;
     if (c.fueraDeZona) base.fueraDeZona += 1;
   }
@@ -815,6 +816,7 @@ export const FILTROS_REPORTE_ALFA_DEFAULT = {
   filtroCiudad: '',
   filtroDepto: '',
   filtroEstado: '',
+  filtroEstadoGestion: '',
   filtroSla: '',
   filtroAjustadorLider: '',
   filtroAjustador: '',
@@ -844,10 +846,19 @@ export function cargarFiltrosReporteAlfa() {
         ? filtroEstadoRaw
         : homologarEstadoAlfa(filtroEstadoRaw)
       : '';
+    const filtroEstadoGestionRaw = String(parsed?.filtroEstadoGestion || '').trim();
+    const filtroEstadoGestion = filtroEstadoGestionRaw
+      ? ESTADOS_GESTION_ALFA_SET.has(filtroEstadoGestionRaw)
+        ? filtroEstadoGestionRaw
+        : homologarEstadoGestionAlfa(filtroEstadoGestionRaw)
+      : '';
     return {
       ...FILTROS_REPORTE_ALFA_DEFAULT,
       ...parsed,
       filtroEstado: ESTADOS_ALFA_SET.has(filtroEstado) ? filtroEstado : '',
+      filtroEstadoGestion: ESTADOS_GESTION_ALFA_SET.has(filtroEstadoGestion)
+        ? filtroEstadoGestion
+        : '',
       pagina: Math.max(1, Number(parsed?.pagina) || 1),
       soloMisCasos: Boolean(parsed?.soloMisCasos),
     };

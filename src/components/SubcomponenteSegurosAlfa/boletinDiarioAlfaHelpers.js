@@ -7,6 +7,7 @@ import {
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
   homologarTipoPerdidaAlfa,
+  sincronizarGestionConCierreSiniestroAlfa,
 } from './segurosAlfaHelpers.js';
 import {
   isoDateBogota,
@@ -53,9 +54,9 @@ export const CATEGORIAS_GESTION_TERREMOTO = [
   },
   {
     id: 'pendientesPagoAlfa',
-    label: 'CERRADO / PROCESO DE PAGO',
+    label: 'CERRADO / PAGO / SIN PÓLIZA',
     labelCorto: 'Cerrados',
-    descripcion: 'CERRADO o PROCESO DE PAGO',
+    descripcion: 'CERRADO, PROCESO DE PAGO, PAGADO o SIN PÓLIZA',
   },
   {
     id: 'objetados',
@@ -77,24 +78,28 @@ export const CATEGORIAS_GESTION_TERREMOTO = [
   },
 ];
 
-/** 2. Estado de gestión actual (conteo exacto Excel AI). */
+/** 2. Estado de gestión actual (conteo exacto Excel AI — catálogo oficial). */
 export const FILAS_ESTADO_GESTION_ACTUAL = [
-  { id: 'enGestion', label: 'En gestión' },
-  { id: 'contactadoProgramado', label: 'Contactado - Programado' },
-  { id: 'inspeccionado', label: 'Inspeccionado' },
-  { id: 'liquidado', label: 'Liquidado' },
-  { id: 'sinRespuesta', label: 'Sin respuesta efectiva' },
-  { id: 'cerrado', label: 'Cerrado' },
+  { id: 'enGestion', label: 'EN GESTIÓN' },
+  { id: 'pteContacto', label: 'PTE CONTACTO' },
+  { id: 'solicitudDtos', label: 'SOLICITUD DTOS' },
+  { id: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO' },
+  { id: 'inspeccionado', label: 'INSPECCIONADO' },
+  { id: 'liquidado', label: 'LIQUIDADO' },
+  { id: 'sinRespuesta', label: 'SIN RESPUESTA EFECTIVA' },
+  { id: 'cerrado', label: 'SIN PÓLIZA' },
 ];
 
-/** 3. Estado del siniestro (conteo exacto Excel AJ). */
+/** 3. Estado del siniestro (conteo exacto Excel AJ — catálogo oficial). */
 export const FILAS_ESTADO_SINIESTRO_ACTUAL = [
-  { id: 'pendientes', label: 'Pendientes' },
-  { id: 'pendienteAceptacion', label: 'Pendientes aceptación cifras' },
-  { id: 'procesoPago', label: 'Proceso de pago' },
-  { id: 'cerrados', label: 'Cerrados' },
-  { id: 'objetados', label: 'Objetados' },
-  { id: 'desistidos', label: 'Desistidos' },
+  { id: 'pendientes', label: 'PENDIENTE' },
+  { id: 'inspeccionadoPendiente', label: 'INSPECCIONADO PENDIENTE' },
+  { id: 'pendienteAceptacion', label: 'PENDIENTE ACEPTACION CIFRAS' },
+  { id: 'procesoPago', label: 'PROCESO DE PAGO' },
+  { id: 'pagados', label: 'PAGADO' },
+  { id: 'cerrados', label: 'CERRADO' },
+  { id: 'objetados', label: 'OBJETADO' },
+  { id: 'desistidos', label: 'DESISTIDO' },
 ];
 
 /** 4. Cierres del día (movimientos del día de corte). */
@@ -200,7 +205,10 @@ export function esPerdidaTotalTexto(...textos) {
  */
 export function clasificarCasoGestionTerremoto(caso = {}) {
   const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
-  const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
+  const estadoGestion = sincronizarGestionConCierreSiniestroAlfa(
+    estadoSiniestro,
+    caso.estadoGestion || caso.estado
+  );
   const tipoPerdida = homologarTipoPerdidaAlfa(caso.tipoPerdida);
   const textoLibre = [caso.observacionLlamada, caso.observacionesGestion, caso.cobertura]
     .filter(Boolean)
@@ -209,24 +217,34 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   if (estadoSiniestro === 'DESISTIDO') return 'desistimientos';
   if (estadoSiniestro === 'OBJETADO') return 'objetados';
   if (tipoPerdida === 'TOTAL' || esPerdidaTotalTexto(textoLibre)) return 'perdidasTotales';
-  if (estadoSiniestro === 'CERRADO' || estadoSiniestro === 'PROCESO DE PAGO') {
+  if (
+    estadoSiniestro === 'PAGADO' ||
+    estadoSiniestro === 'CERRADO' ||
+    estadoSiniestro === 'PROCESO DE PAGO'
+  ) {
     return 'pendientesPagoAlfa';
   }
+  if (estadoGestion === 'SIN PÓLIZA') return 'pendientesPagoAlfa';
   if (
     estadoSiniestro === 'PENDIENTE ACEPTACION CIFRAS' ||
     estadoGestion === 'LIQUIDADO'
   ) {
     return 'liquidados';
   }
-  if (estadoGestion === 'INSPECCIONADO') return 'enLiquidacion';
+  if (estadoGestion === 'INSPECCIONADO' || estadoSiniestro === 'INSPECCIONADO PENDIENTE') {
+    return 'enLiquidacion';
+  }
   if (estadoGestion === 'CONTACTADO Y PROGRAMADO') return 'enInspeccion';
-  // PTE CONTACTO / SOLICITUD DTOS / SIN RESPUESTA EFECTIVA → misma tarjeta
+  // EN GESTIÓN / PTE CONTACTO / SOLICITUD DTOS / SIN RESPUESTA → verificación
   return 'enGestion';
 }
 
 function desgloseCasoTerremoto(caso = {}, cat) {
   const estadoSiniestro = homologarEstadoSiniestroAlfa(caso.estado, caso);
-  const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
+  const estadoGestion = sincronizarGestionConCierreSiniestroAlfa(
+    estadoSiniestro,
+    caso.estadoGestion || caso.estado
+  );
   if (cat === 'enGestion') {
     if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'SIN RESPUESTA EFECTIVA';
     if (estadoGestion === 'SOLICITUD DTOS') return 'SOLICITUD DTOS';
@@ -242,7 +260,10 @@ function desgloseCasoTerremoto(caso = {}, cat) {
     return 'LIQUIDADO';
   }
   if (cat === 'pendientesPagoAlfa') {
-    return estadoSiniestro === 'PROCESO DE PAGO' ? 'PROCESO DE PAGO' : 'CERRADO';
+    if (estadoSiniestro === 'PAGADO') return 'PAGADO';
+    if (estadoSiniestro === 'PROCESO DE PAGO') return 'PROCESO DE PAGO';
+    if (estadoGestion === 'SIN PÓLIZA') return 'SIN PÓLIZA';
+    return 'CERRADO';
   }
   if (cat === 'objetados') return 'OBJETADO';
   if (cat === 'perdidasTotales') return 'PÉRDIDA TOTAL';
@@ -285,13 +306,15 @@ export function casosConGestionEfectiva(counts = {}) {
 
 /** Bucket exacto ESTADO GESTION (AI). */
 export function clasificarBucketGestionExacto(caso = {}) {
-  const g = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
+  const s = homologarEstadoSiniestroAlfa(caso.estado, caso);
+  const g = sincronizarGestionConCierreSiniestroAlfa(s, caso.estadoGestion || caso.estado);
+  if (g === 'PTE CONTACTO') return 'pteContacto';
+  if (g === 'SOLICITUD DTOS') return 'solicitudDtos';
   if (g === 'CONTACTADO Y PROGRAMADO') return 'contactadoProgramado';
   if (g === 'INSPECCIONADO') return 'inspeccionado';
   if (g === 'LIQUIDADO') return 'liquidado';
   if (g === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
   if (g === 'SIN PÓLIZA') return 'cerrado';
-  if (g === 'SOLICITUD DTOS') return 'solicitudDtos';
   return 'enGestion';
 }
 
@@ -301,8 +324,10 @@ export function clasificarBucketSiniestroExacto(caso = {}) {
   if (s === 'DESISTIDO') return 'desistidos';
   if (s === 'OBJETADO') return 'objetados';
   if (s === 'CERRADO') return 'cerrados';
+  if (s === 'PAGADO') return 'pagados';
   if (s === 'PROCESO DE PAGO') return 'procesoPago';
   if (s === 'PENDIENTE ACEPTACION CIFRAS') return 'pendienteAceptacion';
+  if (s === 'INSPECCIONADO PENDIENTE') return 'inspeccionadoPendiente';
   return 'pendientes';
 }
 

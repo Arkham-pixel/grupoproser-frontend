@@ -22,6 +22,7 @@ import {
 import {
   ALFA_REPORTE_PAGE_SIZE,
   ESTADOS_ALFA,
+  ESTADOS_GESTION_ALFA,
   buildOpcionesFiltro,
   cargarColumnasReporteAlfa,
   FILTROS_REPORTE_ALFA_DEFAULT,
@@ -38,6 +39,7 @@ import {
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
   etiquetaEstadoAlfaReporte,
+  sincronizarGestionConCierreSiniestroAlfa,
   limpiarFiltrosReporteAlfaStorage,
   normTexto,
 } from './segurosAlfaHelpers.js';
@@ -367,6 +369,9 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const [filtroCiudad, setFiltroCiudad] = useState(filtrosIniciales.filtroCiudad);
   const [filtroDepto, setFiltroDepto] = useState(filtrosIniciales.filtroDepto);
   const [filtroEstado, setFiltroEstado] = useState(filtrosIniciales.filtroEstado);
+  const [filtroEstadoGestion, setFiltroEstadoGestion] = useState(
+    filtrosIniciales.filtroEstadoGestion || ''
+  );
   const [filtroAjustadorLider, setFiltroAjustadorLider] = useState(
     filtrosIniciales.filtroAjustadorLider
   );
@@ -470,6 +475,23 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       label: `${o.label} (${o.n})`,
     }));
   }, [casos]);
+  const estadosGestion = useMemo(() => {
+    const porNorm = new Map();
+    for (const e of ESTADOS_GESTION_ALFA) {
+      porNorm.set(normTexto(e), { value: e, label: e, n: 0 });
+    }
+    for (const c of casos) {
+      const s = homologarEstadoSiniestroAlfa(c.estado, c);
+      const h = sincronizarGestionConCierreSiniestroAlfa(s, c.estadoGestion || c.estado);
+      const k = normTexto(h);
+      if (!porNorm.has(k)) porNorm.set(k, { value: h, label: h, n: 0 });
+      porNorm.get(k).n += 1;
+    }
+    return [...porNorm.values()].map((o) => ({
+      value: o.value,
+      label: `${o.label} (${o.n})`,
+    }));
+  }, [casos]);
   const lideres = useMemo(() => buildOpcionesFiltro(casos, 'ajustadorLider'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
@@ -520,8 +542,13 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
-      if (!coincideFiltroTexto(homologarEstadoSiniestroAlfa(c.estado, c), filtroEstado))
-        return false;
+      const estadoSiniestro = homologarEstadoSiniestroAlfa(c.estado, c);
+      if (!coincideFiltroTexto(estadoSiniestro, filtroEstado)) return false;
+      const estadoGestion = sincronizarGestionConCierreSiniestroAlfa(
+        estadoSiniestro,
+        c.estadoGestion || c.estado
+      );
+      if (!coincideFiltroTexto(estadoGestion, filtroEstadoGestion)) return false;
       if (!coincideFiltroTexto(c.ajustadorLider, filtroAjustadorLider)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
@@ -585,6 +612,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroEstadoGestion,
     filtroAjustadorLider,
     filtroAjustador,
     filtroInspector,
@@ -627,6 +655,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroEstadoGestion,
     filtroAjustadorLider,
     filtroAjustador,
     filtroInspector,
@@ -654,6 +683,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       filtroCiudad,
       filtroDepto,
       filtroEstado,
+      filtroEstadoGestion,
       filtroSla,
       filtroAjustadorLider,
       filtroAjustador,
@@ -675,6 +705,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroEstadoGestion,
     filtroSla,
     filtroAjustadorLider,
     filtroAjustador,
@@ -698,6 +729,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     setFiltroCiudad('');
     setFiltroDepto('');
     setFiltroEstado('');
+    setFiltroEstadoGestion('');
     setFiltroSla('');
     setFiltroAjustadorLider('');
     setFiltroAjustador('');
@@ -826,6 +858,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       filtroCiudad ||
       filtroDepto ||
       filtroEstado ||
+      filtroEstadoGestion ||
       filtroSla ||
       filtroAjustadorLider ||
       filtroAjustador ||
@@ -924,10 +957,11 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
           }}
         />
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-8">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-9">
           {[
             ['EN GESTIÓN', kpisGestion.enGestion],
             ['PTE CONTACTO', kpisGestion.pteContacto || 0],
+            ['SOLICITUD DTOS', kpisGestion.solicitudDtos || 0],
             ['CONTACTADO Y PROGRAMADO', kpisGestion.contactadoProgramado],
             ['INSPECCIONADO', kpisGestion.inspeccionado],
             ['LIQUIDADO', kpisGestion.liquidado],
@@ -988,14 +1022,33 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label={t('segurosAlfa.fields.estado')}>
+            <Campo
+              label={t('segurosAlfa.fields.estadoGestion', {
+                defaultValue: 'Estado de gestión',
+              })}
+            >
+              <SelectBuscable
+                options={estadosGestion}
+                value={filtroEstadoGestion}
+                onChange={(v) => setFiltroEstadoGestion(v || '')}
+                placeholder={t('segurosAlfa.report.all')}
+                emptyLabel={t('segurosAlfa.report.all')}
+                searchPlaceholder="Buscar estado de gestión…"
+                noResultsText="Sin estados"
+              />
+            </Campo>
+            <Campo
+              label={t('segurosAlfa.fields.estadoSiniestro', {
+                defaultValue: 'Estado de siniestro',
+              })}
+            >
               <SelectBuscable
                 options={estados}
                 value={filtroEstado}
                 onChange={(v) => setFiltroEstado(v || '')}
                 placeholder={t('segurosAlfa.report.all')}
                 emptyLabel={t('segurosAlfa.report.all')}
-                searchPlaceholder="Buscar estado…"
+                searchPlaceholder="Buscar estado de siniestro…"
                 noResultsText="Sin estados"
               />
             </Campo>

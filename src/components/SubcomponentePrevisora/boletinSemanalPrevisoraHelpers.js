@@ -77,13 +77,15 @@ export function esLiquidadoEstado(estado) {
     e === 'ENVIADO ASEGURADORA' ||
     e === 'CERRADO' ||
     e === 'CASO CERRADO' ||
+    e === 'EN PROCESO DE FACTURACION' ||
+    e === 'FACTURADO' ||
     e === 'DESISTIMIENTO'
   );
 }
 
 export function esActivo(estado) {
   const e = normEstado(estado);
-  return e !== 'CERRADO' && e !== 'CASO CERRADO' && e !== 'DESISTIMIENTO' && e !== 'DESISTIDO';
+  return e !== 'CERRADO' && e !== 'CASO CERRADO' && e !== 'EN PROCESO DE FACTURACION' && e !== 'FACTURADO' && e !== 'DESISTIMIENTO' && e !== 'DESISTIDO';
 }
 
 export function num(v) {

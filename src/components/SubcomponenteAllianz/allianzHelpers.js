@@ -14,6 +14,8 @@ export const ESTADO_ALLIANZ_OBJECION = 'OBJECIÓN';
 export const ESTADO_ALLIANZ_AUTORIZACION = 'PENDIENTE APROBACIÓN ANALISTA';
 export const ESTADO_ALLIANZ_CIFRAS = 'PRESENTACIÓN DE CIFRAS';
 export const ESTADO_ALLIANZ_PAGO = 'CASO PARA PAGO';
+export const ESTADO_ALLIANZ_EN_PROCESO_FACTURACION = 'EN PROCESO DE FACTURACIÓN';
+export const ESTADO_ALLIANZ_FACTURADO = 'FACTURADO';
 export const ESTADO_ALLIANZ_DESISTIDO = 'DESISTIDO';
 export const ESTADO_ALLIANZ_ANULADO = 'ANULADO/CANCELADO';
 /** Alias de cierre histórico; el selector ya no los muestra. */
@@ -31,6 +33,8 @@ export const ESTADOS_ALLIANZ = [
   ESTADO_ALLIANZ_AUTORIZACION,
   ESTADO_ALLIANZ_CIFRAS,
   ESTADO_ALLIANZ_PAGO,
+  ESTADO_ALLIANZ_EN_PROCESO_FACTURACION,
+  ESTADO_ALLIANZ_FACTURADO,
   ESTADO_ALLIANZ_DESISTIDO,
   ESTADO_ALLIANZ_ANULADO,
 ];
@@ -59,6 +63,8 @@ export const FECHA_ACCION_POR_ESTADO_ALLIANZ = {
   'PENDIENTE APROBACIÓN ANALISTA': 'fechaAutorizacionAnalista',
   'PRESENTACIÓN DE CIFRAS': 'fechaPresentacionCifras',
   'CASO PARA PAGO': 'fechaCasoParaPago',
+  'EN PROCESO DE FACTURACIÓN': 'fechaEnProcesoFacturacion',
+  FACTURADO: 'fechaFacturado',
   DESISTIDO: 'fechaDesistido',
   'ANULADO/CANCELADO': 'fechaAnulado',
 };
@@ -76,6 +82,8 @@ export const CAMPOS_FECHA_ACCION_ALLIANZ = [
   'fechaAutorizacionAnalista',
   'fechaPresentacionCifras',
   'fechaCasoParaPago',
+  'fechaEnProcesoFacturacion',
+  'fechaFacturado',
   'fechaCasoPagado',
   'fechaDesistido',
   'fechaAnulado',
@@ -695,6 +703,8 @@ export const OPCIONES_FECHA_FILTRO_ALLIANZ_LISTADO = [
   { value: 'fechaAutorizacionAnalista', labelKey: 'allianz.fields.fechaAutorizacionAnalista' },
   { value: 'fechaPresentacionCifras', labelKey: 'allianz.fields.fechaPresentacionCifras' },
   { value: 'fechaCasoParaPago', labelKey: 'allianz.fields.fechaCasoParaPago' },
+  { value: 'fechaEnProcesoFacturacion', labelKey: 'allianz.fields.fechaEnProcesoFacturacion' },
+  { value: 'fechaFacturado', labelKey: 'allianz.fields.fechaFacturado' },
   { value: 'fechaCasoPagado', labelKey: 'allianz.fields.fechaCasoPagado' },
 ];
 
@@ -786,6 +796,8 @@ export const FORM_VACIO_ALLIANZ = {
   fechaAutorizacionAnalista: '',
   fechaPresentacionCifras: '',
   fechaCasoParaPago: '',
+  fechaEnProcesoFacturacion: '',
+  fechaFacturado: '',
   fechaCasoPagado: '',
   fechaDesistido: '',
   fechaAnulado: '',

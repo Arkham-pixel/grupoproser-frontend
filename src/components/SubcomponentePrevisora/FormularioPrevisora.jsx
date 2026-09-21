@@ -334,6 +334,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         fechaDesistimiento: form.fechaDesistimiento,
         fechaCasoCerrado: form.fechaCasoCerrado || form.fechaCasoParaPago,
         fechaCasoParaPago: form.fechaCasoCerrado || form.fechaCasoParaPago,
+        fechaEnProcesoFacturacion: form.fechaEnProcesoFacturacion,
+        fechaFacturado: form.fechaFacturado,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -779,6 +781,20 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               type="date"
               value={form.fechaCasoCerrado}
               onChange={setCampo('fechaCasoCerrado')}
+            />
+          </Campo>
+          <Campo label={t('previsora.fields.fechaEnProcesoFacturacion')}>
+            <InputFenix
+              type="date"
+              value={form.fechaEnProcesoFacturacion}
+              onChange={setCampo('fechaEnProcesoFacturacion')}
+            />
+          </Campo>
+          <Campo label={t('previsora.fields.fechaFacturado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFacturado}
+              onChange={setCampo('fechaFacturado')}
             />
           </Campo>
           <Campo label={t('previsora.fields.diasEnEstado')}>

@@ -289,8 +289,12 @@ export function aplicarFiltrosTorreAllianz(
     }
     if (f.estado && homologarEstadoAllianz(item.estado) !== f.estado) return false;
     if (f.tipoPoliza) {
-      if (normTexto(f.tipoPoliza) === 'SIN TIPO DE POLIZA') {
+      const tipoNorm = normTexto(f.tipoPoliza);
+      if (tipoNorm === 'SIN TIPO DE POLIZA') {
         if (String(etiquetaTipoPolizaAllianz(item) || '').trim()) return false;
+      } else if (tipoNorm === 'OTROS') {
+        const tipo = tipoPolizaTorreAllianz(item);
+        if (tipo !== 'Otros') return false;
       } else if (!coincideFiltroTexto(etiquetaTipoPolizaAllianz(item), f.tipoPoliza)) return false;
     }
     if (f.causa && !coincideFiltroTexto(item.causa, f.causa)) return false;
@@ -413,8 +417,9 @@ function agruparConteoYReserva(casos, getter, { vacio = 'Sin dato', limite = 0 }
     if (!map.has(key)) map.set(key, { nombre: key, cantidad: 0, reserva: 0, conReserva: 0 });
     const fila = map.get(key);
     fila.cantidad += 1;
+    // Misma regla que porEstado / KPI: solo reserva de casos abiertos.
     const reserva = reservaPositivaAllianz(caso);
-    if (reserva > 0) {
+    if (!esEstadoCerradoAllianz(caso.estado) && reserva > 0) {
       fila.reserva += reserva;
       fila.conReserva += 1;
     }
@@ -426,7 +431,7 @@ function agruparConteoYReserva(casos, getter, { vacio = 'Sin dato', limite = 0 }
       promedio: fila.conReserva ? fila.reserva / fila.conReserva : 0,
       pct: pct(fila.reserva, totalReserva),
     }))
-    .sort((a, b) => b.reserva - a.reserva || b.cantidad - a.cantidad || a.nombre.localeCompare(b.nombre, 'es'));
+    .sort((a, b) => b.cantidad - a.cantidad || b.reserva - a.reserva || a.nombre.localeCompare(b.nombre, 'es'));
   if (!limite || limite <= 0 || ordenado.length <= limite) return ordenado;
   const cabeza = ordenado.slice(0, limite);
   const resto = ordenado.slice(limite);

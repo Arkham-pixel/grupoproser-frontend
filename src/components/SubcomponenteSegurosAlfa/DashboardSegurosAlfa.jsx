@@ -3,12 +3,15 @@ import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/Dashboa
 import { fetchAllCasosAlfa } from '../../services/segurosAlfaService.js';
 import {
   ESTADOS_ALFA,
+  ESTADOS_GESTION_ALFA,
   KPI_GESTION_ALFA_FILAS,
   buildOpcionesFiltro,
   coincideFiltroTexto,
   contarKpisGestionAlfa,
   fechaEnRango,
   formatCurrency,
+  homologarEstadoSiniestroAlfa,
+  sincronizarGestionConCierreSiniestroAlfa,
 } from './segurosAlfaHelpers.js';
 
 function AlfaKpisGestionStrip({ casos = [] }) {
@@ -18,7 +21,7 @@ function AlfaKpisGestionStrip({ casos = [] }) {
       <h2 className="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200">
         Tablero gestión (lineamiento Alfa)
       </h2>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
         {KPI_GESTION_ALFA_FILAS.map(({ key, label }) => (
           <div
             key={key}
@@ -61,6 +64,14 @@ export default function DashboardSegurosAlfa() {
         coincideFiltroTexto={coincideFiltroTexto}
         buildOpcionesFiltro={buildOpcionesFiltro}
         estados={ESTADOS_ALFA}
+        estadosGestion={ESTADOS_GESTION_ALFA}
+        normalizarEstadoFn={(estado, caso) => homologarEstadoSiniestroAlfa(estado, caso)}
+        normalizarEstadoGestionFn={(_estadoGestion, caso = {}) =>
+          sincronizarGestionConCierreSiniestroAlfa(
+            homologarEstadoSiniestroAlfa(caso.estado, caso),
+            caso.estadoGestion || caso.estado
+          )
+        }
         i18nNs="segurosAlfa"
         boletinPath="/seguros-alfa/boletin"
       />

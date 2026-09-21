@@ -159,7 +159,7 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   if (estado === 'OBJETADO') return 'objetados';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
   if (estado === 'CERRADO') return 'pendientesPagoAlfa';
-  if (estado === 'INFORME ÚNICO O FINAL') return 'liquidados';
+  if (estado === 'INFORME ÚNICO O FINAL' || estado === 'EN PROCESO DE FACTURACIÓN' || estado === 'FACTURADO') return 'liquidados';
   if (
     estado === 'INSPECCIONADO' ||
     estado === 'INFORME DEL INSPECTOR' ||

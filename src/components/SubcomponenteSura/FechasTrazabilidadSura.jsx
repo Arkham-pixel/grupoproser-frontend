@@ -25,6 +25,8 @@ const FECHAS_SURA_DESPUES = [
   { name: 'fchaAceptacionCifrasAseguradora', label: 'Cifras aceptadas' },
   { name: 'fchaReconsideracion', label: 'Fecha de reconsideración' },
   { name: 'fchaEnvioFiniquito', label: 'Envío de finiquito' },
+  { name: 'fchaEnProcesoFacturacion', label: 'En proceso de facturación' },
+  { name: 'fchaFacturado', label: 'Facturado' },
 ];
 
 function soloFecha(valor) {

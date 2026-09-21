@@ -70,8 +70,14 @@ export function esLiquidadoEstado(estado) {
     e === 'LIQUIDADO' ||
     e === 'FINALIZADO' ||
     e === 'ENVIADO ASEGURADORA' ||
+    e === 'PROCESO DE PAGO' ||
+    e === 'PENDIENTE ACEPTACION CIFRAS' ||
+    e === 'PAGADO' ||
     e === 'CERRADO' ||
     e === 'CASO CERRADO' ||
+    e === 'SIN POLIZA' ||
+    e === 'EN PROCESO DE FACTURACION' ||
+    e === 'FACTURADO' ||
     e === 'ANULADO' ||
     e === 'ANULADO/CANCELADO' ||
     e === 'CANCELADO' ||
@@ -92,6 +98,12 @@ export function esActivo(estado) {
   return (
     e !== 'CERRADO' &&
     e !== 'CASO CERRADO' &&
+    e !== 'SIN POLIZA' &&
+    e !== 'PAGADO' &&
+    e !== 'PROCESO DE PAGO' &&
+    e !== 'PENDIENTE ACEPTACION CIFRAS' &&
+    e !== 'EN PROCESO DE FACTURACION' &&
+    e !== 'FACTURADO' &&
     e !== 'ANULADO' &&
     e !== 'ANULADO/CANCELADO' &&
     e !== 'CANCELADO' &&
@@ -237,16 +249,38 @@ function pct(ok, total) {
 
 /**
  * Agrega KPIs y series de gráficas para Alfa / Sura / Zurich.
+ * Si se pasan estadosGestionOrden + normalizarEstadoGestionFn, genera también porEstadoGestion.
  */
 export function construirDashboardCatastrofico(
   casos = [],
-  { estadosOrden = ESTADOS_EMBUDO_CATASTROFICO, mapaNombres = new Map(), normalizarEstadoFn } = {}
+  {
+    estadosOrden = ESTADOS_EMBUDO_CATASTROFICO,
+    mapaNombres = new Map(),
+    normalizarEstadoFn,
+    estadosGestionOrden = null,
+    normalizarEstadoGestionFn = null,
+  } = {}
 ) {
   const lista = Array.isArray(casos) ? casos : [];
   const estadoDe = (c) => {
     const raw = String(c?.estado || '').trim();
-    if (typeof normalizarEstadoFn === 'function') return normalizarEstadoFn(raw);
+    if (typeof normalizarEstadoFn === 'function') {
+      try {
+        return normalizarEstadoFn(raw, c) || raw || 'PENDIENTE';
+      } catch {
+        return normalizarEstadoFn(raw) || raw || 'PENDIENTE';
+      }
+    }
     return raw || 'PENDIENTE';
+  };
+  const estadoGestionDe = (c) => {
+    if (typeof normalizarEstadoGestionFn !== 'function') return null;
+    const raw = String(c?.estadoGestion || c?.estado || '').trim();
+    try {
+      return normalizarEstadoGestionFn(raw, c) || raw || 'EN GESTIÓN';
+    } catch {
+      return normalizarEstadoGestionFn(raw) || raw || 'EN GESTIÓN';
+    }
   };
   const totalCasos = lista.length;
   const casosActivos = lista.filter((c) => esCasoActivo(c, estadoDe(c))).length;
@@ -259,6 +293,13 @@ export function construirDashboardCatastrofico(
   let reservaActivos = 0;
 
   const porEstadoMap = new Map(estadosOrden.map((e) => [e, 0]));
+  const tieneGestion =
+    Array.isArray(estadosGestionOrden) &&
+    estadosGestionOrden.length > 0 &&
+    typeof normalizarEstadoGestionFn === 'function';
+  const porEstadoGestionMap = tieneGestion
+    ? new Map(estadosGestionOrden.map((e) => [e, 0]))
+    : null;
   const mensual = new Map();
   const diasInspeccion = [];
   const diasLiquidacion = [];
@@ -294,6 +335,11 @@ export function construirDashboardCatastrofico(
 
     const estado = estadoDe(c);
     porEstadoMap.set(estado, (porEstadoMap.get(estado) || 0) + 1);
+
+    if (porEstadoGestionMap) {
+      const g = estadoGestionDe(c);
+      porEstadoGestionMap.set(g, (porEstadoGestionMap.get(g) || 0) + 1);
+    }
 
     const fSin = parseFecha(c.fechaSiniestro) || parseFecha(c.fechaAviso);
     const fInsp = parseFecha(c.fechaInspeccion) || parseFecha(c.fechaVisita);
@@ -374,14 +420,20 @@ export function construirDashboardCatastrofico(
   const ordenCubetas = ['0-7 d', '8-15 d', '16-30 d', '31-45 d', '46+ d'];
   const tendenciaMensual = [...mensual.values()].sort((a, b) => (a.mes > b.mes ? 1 : -1)).slice(-12);
 
-  const porEstado = [
-    ...estadosOrden
-      .filter((e) => porEstadoMap.has(e))
-      .map((estado) => ({ estado, cantidad: porEstadoMap.get(estado) || 0 })),
-    ...[...porEstadoMap.entries()]
-      .filter(([estado]) => !estadosOrden.includes(estado))
-      .map(([estado, cantidad]) => ({ estado, cantidad })),
-  ].filter((row) => row.cantidad > 0);
+  const mapASerieEstado = (map, orden) =>
+    [
+      ...orden
+        .filter((e) => map.has(e))
+        .map((estado) => ({ estado, cantidad: map.get(estado) || 0 })),
+      ...[...map.entries()]
+        .filter(([estado]) => !orden.includes(estado))
+        .map(([estado, cantidad]) => ({ estado, cantidad })),
+    ].filter((row) => row.cantidad > 0);
+
+  const porEstado = mapASerieEstado(porEstadoMap, estadosOrden);
+  const porEstadoGestion = porEstadoGestionMap
+    ? mapASerieEstado(porEstadoGestionMap, estadosGestionOrden)
+    : null;
 
   return {
     kpis: {
@@ -414,6 +466,7 @@ export function construirDashboardCatastrofico(
       },
     },
     porEstado,
+    porEstadoGestion,
     porCiudad: agruparConteo(lista, 'ciudad', { vacio: 'Sin ciudad' }),
     porAjustador: agruparConteo(lista, (c) => etiquetaAjustadorCaso(c, mapaNombres), {
       vacio: 'Sin ajustador',

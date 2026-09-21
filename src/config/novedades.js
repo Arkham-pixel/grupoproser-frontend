@@ -6,7 +6,7 @@
  * 2. Reemplaza `items` con lo que cambió (es / en).
  * 3. Despliega. Quienes ya cerraron una versión anterior verán el letrero de nuevo.
  */
-export const NOVEDADES_VERSION = '2026-09-19-a';
+export const NOVEDADES_VERSION = '2026-09-21-a';
 
 export const NOVEDADES = {
   version: NOVEDADES_VERSION,
@@ -17,8 +17,8 @@ export const NOVEDADES = {
   },
   items: [
     {
-      es: 'En Mac/Safari las actualizaciones a veces no se veían por la caché. La app ahora se actualiza sola y hay un botón “Actualizar ahora” para limpiar caché.',
-      en: 'On Mac/Safari updates sometimes stayed cached. The app now refreshes itself, and there is an “Update now” button to clear cache.',
+      es: 'En Mac/Safari la caché se limpia sola al haber un deploy nuevo. Ya no hay que vaciar caché a mano; el botón “Actualizar app” sigue por si acaso.',
+      en: 'On Mac/Safari the cache now clears itself when a new deploy is live. No need to empty caches by hand; “Update app” remains as a fallback.',
     },
   ],
 };

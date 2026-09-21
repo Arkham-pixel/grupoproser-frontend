@@ -18,6 +18,8 @@ export const CAMPOS_FECHA_HORA_PROTOCOLO = new Set([
   'fchaAceptacionCifrasAseguradora',
   'fchaReconsideracion',
   'fchaEnvioFiniquito',
+  'fchaEnProcesoFacturacion',
+  'fchaFacturado',
 ]);
 
 export function esCampoFechaHoraProtocolo(campo) {
