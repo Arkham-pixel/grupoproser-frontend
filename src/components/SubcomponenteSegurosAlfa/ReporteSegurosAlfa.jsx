@@ -924,9 +924,10 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
           }}
         />
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-8">
           {[
-            ['PTE CONTACTO', kpisGestion.enGestion],
+            ['EN GESTIÓN', kpisGestion.enGestion],
+            ['PTE CONTACTO', kpisGestion.pteContacto || 0],
             ['CONTACTADO Y PROGRAMADO', kpisGestion.contactadoProgramado],
             ['INSPECCIONADO', kpisGestion.inspeccionado],
             ['LIQUIDADO', kpisGestion.liquidado],

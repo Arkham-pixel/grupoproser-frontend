@@ -3,6 +3,7 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 export const ALFA_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_GESTION_ALFA = [
+  'EN GESTIÓN',
   'PTE CONTACTO',
   'SOLICITUD DTOS',
   'CONTACTADO Y PROGRAMADO',
@@ -25,6 +26,7 @@ export const ESTADOS_SINIESTRO_ALFA = [
 
 /** Relación oficial: gestión → siniestros permitidos. */
 export const RELACION_GESTION_SINIESTRO_ALFA = Object.freeze({
+  'EN GESTIÓN': ['PENDIENTE'],
   'PTE CONTACTO': ['PENDIENTE'],
   'SOLICITUD DTOS': ['PENDIENTE'],
   'CONTACTADO Y PROGRAMADO': ['PENDIENTE'],
@@ -48,6 +50,7 @@ export const GRUPOS_BARRA_ESTADOS_ALFA = [
     label: 'Estado gestión',
     tone: 'gestion',
     estados: [
+      { id: 'EN GESTIÓN', label: 'En gestión' },
       { id: 'PTE CONTACTO', label: 'Pte contacto' },
       { id: 'SOLICITUD DTOS', label: 'Solicitud dtos' },
       { id: 'CONTACTADO Y PROGRAMADO', label: 'Contactado y programado' },
@@ -113,13 +116,15 @@ const ESTADOS_GESTION_ALFA_SET = new Set(ESTADOS_GESTION_ALFA);
 const ESTADOS_SINIESTRO_ALFA_SET = new Set(ESTADOS_SINIESTRO_ALFA);
 
 const LEGACY_ESTADO_A_GESTION = {
-  'SIN CONTACTAR': 'PTE CONTACTO',
+  // EN GESTIÓN se conserva (no se mezcla con PTE CONTACTO).
+  'EN GESTION': 'EN GESTIÓN',
+  'EN GESTIÓN': 'EN GESTIÓN',
+  'SIN CONTACTAR': 'EN GESTIÓN',
+  PENDIENTE: 'EN GESTIÓN',
+  // Solo tipificación explícita de contacto → PTE CONTACTO
   'PTE CONTACTO': 'PTE CONTACTO',
   'PENDIENTE DE CONTACTO': 'PTE CONTACTO',
   'PENDIENTE DE CONTACTO Y SOLICITUD DE DOCUMENTOS': 'PTE CONTACTO',
-  'EN GESTION': 'PTE CONTACTO',
-  'EN GESTIÓN': 'PTE CONTACTO',
-  PENDIENTE: 'PTE CONTACTO',
   'SOLICITUD DE DOCUMENTOS': 'SOLICITUD DTOS',
   'SOLICITUD DTOS': 'SOLICITUD DTOS',
   'SOLICITUD DOCUMENTOS': 'SOLICITUD DTOS',
@@ -204,7 +209,8 @@ export function homologarEstadoGestionAlfa(valor) {
   if (ESTADOS_GESTION_ALFA_SET.has(raw)) return raw;
   const key = normKeyEstado(raw);
   if (LEGACY_ESTADO_A_GESTION[key]) return LEGACY_ESTADO_A_GESTION[key];
-  return 'PTE CONTACTO';
+  // Desconocido / vacío → EN GESTIÓN (no inflar PTE CONTACTO).
+  return 'EN GESTIÓN';
 }
 
 export function homologarEstadoSiniestroAlfa(valor, extras = {}) {
@@ -278,6 +284,7 @@ export function sincronizarGestionConCierreSiniestroAlfa(estadoSiniestro, estado
   }
   if (s === 'PENDIENTE') {
     if (
+      g === 'EN GESTIÓN' ||
       g === 'PTE CONTACTO' ||
       g === 'SOLICITUD DTOS' ||
       g === 'CONTACTADO Y PROGRAMADO' ||
@@ -288,9 +295,9 @@ export function sincronizarGestionConCierreSiniestroAlfa(estadoSiniestro, estado
     // Gestión avanzada incompatible con PENDIENTE: conservar tipificación;
     // asegurarSiniestroCompatibleConGestionAlfa ajusta el siniestro.
     if (g === 'INSPECCIONADO' || g === 'LIQUIDADO' || g === 'SIN PÓLIZA') return g;
-    return 'PTE CONTACTO';
+    return 'EN GESTIÓN';
   }
-  return g || 'PTE CONTACTO';
+  return g || 'EN GESTIÓN';
 }
 
 /**
@@ -418,6 +425,7 @@ export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
 export function contarKpisGestionAlfa(casos = []) {
   const base = {
     enGestion: 0,
+    pteContacto: 0,
     solicitudDtos: 0,
     contactadoProgramado: 0,
     inspeccionado: 0,
@@ -430,7 +438,8 @@ export function contarKpisGestionAlfa(casos = []) {
   };
   for (const c of casos) {
     const g = homologarEstadoGestionAlfa(c.estadoGestion || c.estado);
-    if (g === 'PTE CONTACTO') base.enGestion += 1;
+    if (g === 'EN GESTIÓN') base.enGestion += 1;
+    else if (g === 'PTE CONTACTO') base.pteContacto += 1;
     else if (g === 'SOLICITUD DTOS') base.solicitudDtos += 1;
     else if (g === 'CONTACTADO Y PROGRAMADO') base.contactadoProgramado += 1;
     else if (g === 'INSPECCIONADO') base.inspeccionado += 1;
@@ -442,15 +451,16 @@ export function contarKpisGestionAlfa(casos = []) {
     if (c.fueraDeZona) base.fueraDeZona += 1;
   }
   // Alias legacy (UI/reporte antiguos)
-  base.sinContactar = base.enGestion;
+  base.sinContactar = base.pteContacto;
   base.solicitudDocumentos = base.solicitudDtos;
   base.definidos = base.siniestroDefinido;
   return base;
 }
 
-/** Filas del tablero de gestión (etiquetas oficiales actuales). */
+/** Filas del tablero de gestión (EN GESTIÓN ≠ PTE CONTACTO). */
 export const KPI_GESTION_ALFA_FILAS = [
-  { key: 'enGestion', label: 'PTE CONTACTO' },
+  { key: 'enGestion', label: 'EN GESTIÓN' },
+  { key: 'pteContacto', label: 'PTE CONTACTO' },
   { key: 'solicitudDtos', label: 'SOLICITUD DTOS' },
   { key: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO' },
   { key: 'inspeccionado', label: 'INSPECCIONADO' },

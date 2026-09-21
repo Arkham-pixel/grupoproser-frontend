@@ -28,10 +28,10 @@ const CORTES_KEY = 'segurosAlfa.boletinDiario.cortes.v6';
 export const CATEGORIAS_GESTION_TERREMOTO = [
   {
     id: 'enGestion',
-    label: 'PTE CONTACTO / SIN RESPUESTA',
-    labelCorto: 'Pte contacto',
+    label: 'EN GESTIÓN / SIN RESPUESTA',
+    labelCorto: 'En gestión',
     descripcion:
-      'PTE CONTACTO, SOLICITUD DTOS y SIN RESPUESTA EFECTIVA — verificación de pérdidas mediante llamadas',
+      'EN GESTIÓN, PTE CONTACTO, SOLICITUD DTOS y SIN RESPUESTA EFECTIVA — verificación de pérdidas mediante llamadas',
   },
   {
     id: 'enInspeccion',
@@ -230,7 +230,8 @@ function desgloseCasoTerremoto(caso = {}, cat) {
   if (cat === 'enGestion') {
     if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'SIN RESPUESTA EFECTIVA';
     if (estadoGestion === 'SOLICITUD DTOS') return 'SOLICITUD DTOS';
-    return 'PTE CONTACTO';
+    if (estadoGestion === 'PTE CONTACTO') return 'PTE CONTACTO';
+    return 'EN GESTIÓN';
   }
   if (cat === 'enInspeccion') return 'CONTACTADO Y PROGRAMADO';
   if (cat === 'enLiquidacion') return 'INSPECCIONADO';
