@@ -1,4 +1,6 @@
-import { DEFAULT_PROD_FRONTEND } from '../../config/platformUrls.js';
+function trimOrigin(url) {
+  return typeof url === 'string' ? url.trim().replace(/\/+$/, '') : '';
+}
 
 export const vpPage = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 export const vpWrap = 'mx-auto w-full max-w-6xl';
@@ -38,19 +40,17 @@ function tokenDesdeUrlOValor(urlOToken) {
   }
 }
 
-/** Enlace que se copia, envía y abre en el celular: siempre Arnald. */
+/** Enlace que se copia: el que armó el backend (.env), sin reescribir a producción. */
 export function urlPortalAsegurado(urlPublica, tokenRaw) {
-  const token = tokenDesdeUrlOValor(tokenRaw) || tokenDesdeUrlOValor(urlPublica);
-  if (token) return `${DEFAULT_PROD_FRONTEND}/videoperitaje/unirse/${encodeURIComponent(token)}`;
   const raw = String(urlPublica || '').trim();
-  if (!raw) return '';
-  try {
-    const u = new URL(raw);
-    if (u.hostname.endsWith('grupoproser.com.co')) return raw.replace(/\/+$/, '');
-    return `${DEFAULT_PROD_FRONTEND}${u.pathname}`;
-  } catch {
-    return raw;
-  }
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/, '');
+  const token = tokenDesdeUrlOValor(tokenRaw) || tokenDesdeUrlOValor(urlPublica);
+  const base =
+    trimOrigin(import.meta.env.VITE_VIDEOPERITAJE_PUBLIC_URL) ||
+    trimOrigin(import.meta.env.VITE_API_BASE_URL);
+  if (token && base) return `${base}/videoperitaje/unirse/${encodeURIComponent(token)}`;
+  if (token) return `/videoperitaje/unirse/${encodeURIComponent(token)}`;
+  return raw;
 }
 
 /** Prueba en este navegador (Vite / backend local), sin ir a producción. */

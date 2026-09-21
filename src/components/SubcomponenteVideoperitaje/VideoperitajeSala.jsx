@@ -184,15 +184,23 @@ function SalaLivePerito({ sesion, onRefresh }) {
             ref={room.remoteVideoRef}
             autoPlay
             playsInline
-            className="aspect-video w-full bg-black object-contain"
+            className={
+              room.remotePresent
+                ? 'aspect-video w-full bg-black object-contain'
+                : 'pointer-events-none absolute h-px w-px opacity-0'
+            }
           />
           <video
             ref={room.localVideoRef}
             muted
             autoPlay
             playsInline
-            className="absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg"
-            style={{ aspectRatio: '4 / 3' }}
+            className={
+              room.remotePresent
+                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg'
+                : 'aspect-video w-full bg-black object-contain'
+            }
+            style={room.remotePresent ? { aspectRatio: '4 / 3' } : undefined}
           />
           {grabando && (
             <p className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white">
@@ -207,7 +215,7 @@ function SalaLivePerito({ sesion, onRefresh }) {
             </p>
           )}
           {!room.remotePresent && (
-            <p className="absolute inset-0 flex items-center justify-center text-sm text-white/80">
+            <p className="pointer-events-none absolute inset-x-0 bottom-3 z-10 text-center text-sm text-white/80">
               {t('videoperitaje.waitingClient')}
             </p>
           )}

@@ -51,10 +51,11 @@ export default function useVideoperitajeRoom({
   const roomRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const previewStreamRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
   const [remotePresent, setRemotePresent] = useState(false);
-  const [cameraOn, setCameraOn] = useState(publishVideo);
+  const [cameraOn, setCameraOn] = useState(false);
 
   const facingRef = useRef(facingMode);
   const portraitRef = useRef(portrait);
@@ -71,7 +72,59 @@ export default function useVideoperitajeRoom({
     track.attach(el);
   }, []);
 
+  const mediaDisponible = () =>
+    typeof navigator !== 'undefined' &&
+    navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === 'function';
+
+  const mostrarPreviewLocal = useCallback(async () => {
+    if (!publishVideo && !publishAudio) return null;
+    if (!mediaDisponible()) {
+      setError(
+        'El navegador bloquea la cámara. Use Chrome o Safari en https:// (no Gmail).'
+      );
+      return null;
+    }
+    if (previewStreamRef.current) {
+      const el = localVideoRef.current;
+      if (el && !el.srcObject) {
+        el.srcObject = previewStreamRef.current;
+        el.muted = true;
+        el.play?.().catch(() => {});
+      }
+      return previewStreamRef.current;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: publishVideo
+          ? {
+              facingMode: facingRef.current,
+              width: { ideal: resolucionDe().width },
+              height: { ideal: resolucionDe().height },
+              frameRate: { ideal: 30 },
+            }
+          : false,
+        audio: publishAudio,
+      });
+      previewStreamRef.current = stream;
+      const el = localVideoRef.current;
+      if (el && publishVideo) {
+        el.srcObject = stream;
+        el.muted = true;
+        el.setAttribute('playsinline', '');
+        el.play?.().catch(() => {});
+      }
+      setCameraOn(Boolean(stream.getVideoTracks().find((t) => t.readyState === 'live')));
+      return stream;
+    } catch (err) {
+      setError(err.message || 'No se pudo abrir la cámara. Permita el acceso en el navegador.');
+      setCameraOn(false);
+      return null;
+    }
+  }, [publishAudio, publishVideo]);
+
   const connect = useCallback(async () => {
+    await mostrarPreviewLocal();
     if (!token || !url) return;
     setError('');
     const room = new Room({
@@ -127,44 +180,40 @@ export default function useVideoperitajeRoom({
       room.on(RoomEvent.SignalReconnecting, cortarReintento);
     }
     room.on(RoomEvent.Disconnected, (reason) => {
-      soltarMediosLocales(room);
       setConnected(false);
       setRemotePresent(false);
-      setCameraOn(false);
+      const preview = previewStreamRef.current;
+      const el = localVideoRef.current;
+      if (preview && el) {
+        el.srcObject = preview;
+        el.muted = true;
+        el.play?.().catch(() => {});
+        setCameraOn(Boolean(preview.getVideoTracks().find((t) => t.readyState === 'live')));
+      }
       if (reason === DisconnectReason.CLIENT_INITIATED) return;
       onDisconnectedRef.current?.();
     });
 
     try {
       await room.connect(url, token);
-      const mediaOk =
-        typeof navigator !== 'undefined' &&
-        navigator.mediaDevices &&
-        typeof navigator.mediaDevices.getUserMedia === 'function';
-      if (!mediaOk) {
-        setError(
-          'El iPhone bloquea la cámara en Gmail y en http://. Abra el enlace en Safari. Si ya está en Safari, use el enlace HTTPS de prueba.'
-        );
-      } else {
-        if (publishAudio) {
-          try {
-            await room.localParticipant.setMicrophoneEnabled(true);
-          } catch {
-            /* el remoto igual se ve */
+      const preview = previewStreamRef.current || (await mostrarPreviewLocal());
+      if (preview) {
+        try {
+          for (const track of preview.getAudioTracks()) {
+            await room.localParticipant.publishTrack(track);
           }
-        }
-        if (publishVideo) {
-          try {
-            const videoTrack = await createLocalVideoTrack({
-              facingMode: facingRef.current,
-              resolution: resolucionDe(),
-            });
-            await room.localParticipant.publishTrack(videoTrack);
-            if (localVideoRef.current) videoTrack.attach(localVideoRef.current);
-            setCameraOn(true);
-          } catch {
-            setCameraOn(false);
+          for (const track of preview.getVideoTracks()) {
+            await room.localParticipant.publishTrack(track);
           }
+          const el = localVideoRef.current;
+          if (el && !el.srcObject) {
+            el.srcObject = preview;
+            el.muted = true;
+            el.play?.().catch(() => {});
+          }
+          setCameraOn(Boolean(preview.getVideoTracks().find((t) => t.readyState === 'live')));
+        } catch (pubErr) {
+          setError(pubErr.message || 'No se pudo publicar la cámara');
         }
       }
       room.remoteParticipants.forEach((p) => {
@@ -179,19 +228,47 @@ export default function useVideoperitajeRoom({
     } catch (err) {
       setError(err.message || 'No se pudo conectar a la sala');
     }
-  }, [token, url, publishAudio, publishVideo, attachRemote]);
+  }, [token, url, publishAudio, publishVideo, attachRemote, mostrarPreviewLocal]);
 
   useEffect(() => {
     connect();
     return () => {
       const room = roomRef.current;
       if (room) {
-        soltarMediosLocales(room);
-        room.disconnect();
+        try {
+          room.disconnect();
+        } catch {
+          /* ignore */
+        }
         roomRef.current = null;
       }
     };
   }, [connect]);
+
+  useEffect(() => {
+    if (connected) return;
+    const el = localVideoRef.current;
+    const stream = previewStreamRef.current;
+    if (el && stream && el.srcObject !== stream) {
+      el.srcObject = stream;
+      el.muted = true;
+      el.play?.().catch(() => {});
+    }
+  }, [connected, cameraOn]);
+
+  useEffect(
+    () => () => {
+      previewStreamRef.current?.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* ignore */
+        }
+      });
+      previewStreamRef.current = null;
+    },
+    []
+  );
 
   const disconnect = useCallback(() => {
     const room = roomRef.current;
@@ -235,11 +312,20 @@ export default function useVideoperitajeRoom({
   }, []);
 
   const toggleCamera = useCallback(async () => {
-    const room = roomRef.current;
-    if (!room) return;
     const next = !cameraOn;
-    await room.localParticipant.setCameraEnabled(next);
-    setCameraOn(next);
+    const room = roomRef.current;
+    if (room) {
+      await room.localParticipant.setCameraEnabled(next);
+      setCameraOn(next);
+      return;
+    }
+    const preview = previewStreamRef.current;
+    if (preview) {
+      preview.getVideoTracks().forEach((t) => {
+        t.enabled = next;
+      });
+      setCameraOn(next);
+    }
   }, [cameraOn]);
 
   const sendCaptureCommand = useCallback(async () => {
@@ -268,12 +354,13 @@ export default function useVideoperitajeRoom({
   const getLocalVideoTrack = useCallback(() => {
     const room = roomRef.current;
     const pubs = room?.localParticipant?.videoTrackPublications;
-    if (!pubs) return null;
-    for (const pub of pubs.values()) {
-      const t = pub?.track?.mediaStreamTrack;
-      if (t && t.kind === 'video' && t.readyState === 'live') return t;
+    if (pubs) {
+      for (const pub of pubs.values()) {
+        const t = pub?.track?.mediaStreamTrack;
+        if (t && t.kind === 'video' && t.readyState === 'live') return t;
+      }
     }
-    return null;
+    return previewStreamRef.current?.getVideoTracks().find((t) => t.readyState === 'live') || null;
   }, []);
 
   return {
