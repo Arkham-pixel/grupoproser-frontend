@@ -169,18 +169,6 @@ export default function useVideoperitajeRoom({
 
     room.on(RoomEvent.TrackSubscribed, onTrack);
     room.on(RoomEvent.TrackUnsubscribed, onUnpublish);
-    const cortarReintento = () => {
-      soltarMediosLocales(room);
-      try {
-        room.disconnect();
-      } catch {
-        /* ignore */
-      }
-    };
-    room.on(RoomEvent.Reconnecting, cortarReintento);
-    if (RoomEvent.SignalReconnecting) {
-      room.on(RoomEvent.SignalReconnecting, cortarReintento);
-    }
     room.on(RoomEvent.Disconnected, (reason) => {
       setConnected(false);
       setRemotePresent(false);
