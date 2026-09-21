@@ -45,12 +45,16 @@ function SalaLivePerito({ sesion, onRefresh }) {
     setLkError('');
     try {
       const r = await tokenLivekitPerito(sesion._id);
-      if (!livekitUsableEnEstaPagina(r?.url)) {
+      if (!r?.token || !livekitUsableEnEstaPagina(r?.url)) {
         setLk(null);
         return;
       }
       setLk(r);
     } catch (err) {
+      if (err.code === 'LIVEKIT_NOT_CONFIGURED' || err.status === 503) {
+        setLk(null);
+        return;
+      }
       setLkError(err.message);
     }
   }, [sesion._id]);
@@ -242,10 +246,9 @@ function SalaLivePerito({ sesion, onRefresh }) {
             {room.cameraOn ? t('videoperitaje.cameraOff') : t('videoperitaje.cameraOn')}
           </button>
         </div>
-        {lkError && (
-          <p className="mt-2 text-sm text-amber-700">
-            {lkError}. {t('videoperitaje.livekitHint')}
-          </p>
+        {lkError &&
+          !/livekit|7880|coolify|url pública|localhost|videollamada/i.test(lkError) && (
+          <p className="mt-2 text-sm text-amber-700">{lkError}</p>
         )}
         {room.error && !/signal|timed out|websocket|failed to fetch|establish/i.test(room.error) && (
           <p className="mt-2 text-sm text-red-600">{room.error}</p>
