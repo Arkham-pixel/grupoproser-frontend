@@ -71,6 +71,10 @@ function SalaLivePerito({ sesion, onRefresh }) {
     publishAudio: true,
   });
 
+  const aseguradoEnPortal =
+    Boolean(sesion.aseguradoVistaAt) &&
+    Date.now() - new Date(sesion.aseguradoVistaAt).getTime() < 30000;
+
   const detenerGrabacion = useCallback(async () => {
     if (flushPromiseRef.current) return flushPromiseRef.current;
     const rec = grabacionRef.current;
@@ -186,7 +190,9 @@ function SalaLivePerito({ sesion, onRefresh }) {
   return (
     <div>
       <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
-        {t('videoperitaje.clientCamera')}
+        {room.remotePresent
+          ? t('videoperitaje.clientCamera')
+          : t('videoperitaje.adjusterCamera')}
       </p>
         <div className="relative overflow-hidden rounded-2xl bg-black">
           <video
@@ -224,8 +230,13 @@ function SalaLivePerito({ sesion, onRefresh }) {
             </p>
           )}
           {!room.remotePresent && (
-            <p className="pointer-events-none absolute inset-x-0 bottom-3 z-10 text-center text-sm text-white/80">
-              {t('videoperitaje.waitingClient')}
+            <p className="pointer-events-none absolute inset-x-0 bottom-3 z-10 px-3 text-center text-sm text-white/90">
+              {aseguradoEnPortal ? t('videoperitaje.clientNoVideo') : t('videoperitaje.waitingClient')}
+            </p>
+          )}
+          {aseguradoEnPortal && !room.remotePresent && (
+            <p className="absolute left-3 top-3 z-10 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
+              {t('videoperitaje.clientOnLink')}
             </p>
           )}
         </div>
@@ -278,7 +289,7 @@ export default function VideoperitajeSala() {
 
   useEffect(() => {
     cargar();
-    const timer = setInterval(cargar, 8000);
+    const timer = setInterval(cargar, 3000);
     return () => clearInterval(timer);
   }, [cargar]);
 
