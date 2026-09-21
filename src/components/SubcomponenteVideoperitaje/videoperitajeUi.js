@@ -26,7 +26,13 @@ export function paginaEsArnaldPublico() {
 /** En Arnald no se conecta a LiveKit de localhost/LAN: Chrome pide “red local”. */
 export function livekitUsableEnEstaPagina(url) {
   if (!url) return false;
-  if (paginaEsArnaldPublico() && urlLivekitEsPrivada(url)) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host === 'livekit.grupoproser.com.co') return false;
+    if (paginaEsArnaldPublico() && hostEsPrivado(host)) return false;
+  } catch {
+    return false;
+  }
   return true;
 }
 

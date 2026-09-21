@@ -261,9 +261,10 @@ function SalaLivePerito({ sesion, onRefresh }) {
           !/livekit|7880|coolify|url pública|localhost|videollamada/i.test(lkError) && (
           <p className="mt-2 text-sm text-amber-700">{lkError}</p>
         )}
-        {room.error && !/signal|timed out|websocket|failed to fetch|establish/i.test(room.error) && (
-          <p className="mt-2 text-sm text-red-600">{room.error}</p>
-        )}
+        {room.error &&
+          !/signal|timed out|websocket|failed to fetch|establish|servidor de video|content.security.policy/i.test(
+            room.error
+          ) && <p className="mt-2 text-sm text-red-600">{room.error}</p>}
     </div>
   );
 }

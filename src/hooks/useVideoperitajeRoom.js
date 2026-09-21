@@ -229,12 +229,8 @@ export default function useVideoperitajeRoom({
       setConnected(true);
     } catch (err) {
       const raw = String(err.message || '');
-      if (/signal|timed out|websocket|failed to fetch|establish/i.test(raw)) {
-        if (!livekitUsableEnEstaPagina(url)) {
-          setError('');
-          return;
-        }
-        setError('No se pudo conectar a la videollamada. El servidor de video no está disponible.');
+      if (/signal|timed out|websocket|failed to fetch|establish|content.security.policy|refused to connect/i.test(raw)) {
+        setError('');
         return;
       }
       setError(raw || 'No se pudo conectar a la sala');
