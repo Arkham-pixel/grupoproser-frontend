@@ -68,6 +68,22 @@ export async function cancelarSesionVideoperitaje(id) {
   return parseJson(response);
 }
 
+export async function eliminarSesionVideoperitaje(id) {
+  const response = await fetch(`${API}/sesiones/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return parseJson(response);
+}
+
+export async function vaciarHistorialVideoperitaje() {
+  const response = await fetch(`${API}/sesiones`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return parseJson(response);
+}
+
 export async function reenviarInvitacionVideoperitaje(id) {
   const response = await fetch(`${API}/sesiones/${id}/reenviar`, {
     method: 'POST',

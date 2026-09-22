@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FaPlus, FaVideo } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaVideo } from 'react-icons/fa';
 import {
   cancelarSesionVideoperitaje,
+  eliminarSesionVideoperitaje,
   listarSesionesVideoperitaje,
   reenviarInvitacionVideoperitaje,
+  vaciarHistorialVideoperitaje,
 } from '../../services/videoperitajeService.js';
 import VideoperitajeIniciarModal from './VideoperitajeIniciarModal.jsx';
 import {
@@ -76,6 +78,24 @@ export default function VideoperitajeHistorial() {
             <Link to="/videoperitaje/plantillas" className={vpBtnGhost}>
               {t('videoperitaje.templates')}
             </Link>
+            {total > 0 && (
+              <button
+                type="button"
+                className={vpBtnGhost}
+                onClick={async () => {
+                  if (!window.confirm(t('videoperitaje.confirmClearHistory'))) return;
+                  try {
+                    const r = await vaciarHistorialVideoperitaje();
+                    setAviso(t('videoperitaje.historyCleared', { count: r.deleted || 0 }));
+                    cargar();
+                  } catch (err) {
+                    setError(err.message);
+                  }
+                }}
+              >
+                <FaTrash /> {t('videoperitaje.clearHistory')}
+              </button>
+            )}
             <button type="button" className={vpBtnPrimary} onClick={() => setModal(true)}>
               <FaPlus /> {t('videoperitaje.newSession')}
             </button>
@@ -176,6 +196,22 @@ export default function VideoperitajeHistorial() {
                               </button>
                             </>
                           )}
+                          <button
+                            type="button"
+                            className={vpBtnGhost}
+                            onClick={async () => {
+                              if (!window.confirm(t('videoperitaje.confirmDelete'))) return;
+                              try {
+                                await eliminarSesionVideoperitaje(s._id);
+                                setAviso(t('videoperitaje.sessionDeleted'));
+                                cargar();
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                          >
+                            <FaTrash /> {t('videoperitaje.delete')}
+                          </button>
                         </div>
                       </td>
                     </tr>
