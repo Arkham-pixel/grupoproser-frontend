@@ -808,7 +808,8 @@ export function etiquetaGrupoDeducible(id) {
 
 const CATEGORIA_A_ARTICULO_POLIZA = {
   electronicos: 'poliza_eee_fijo',
-  electrodomesticos: 'poliza_eee_fijo',
+  // Residencial: electrodomésticos van con muebles/enseres (no con EEE fijo).
+  electrodomesticos: 'poliza_contenidos',
   'oficina / equipo de computo': 'poliza_eee_fijo',
   'maquinaria / equipo': 'poliza_maquinaria',
   herramientas: 'poliza_maquinaria',

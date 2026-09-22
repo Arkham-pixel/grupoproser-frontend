@@ -29,7 +29,8 @@ import {
   guardarInformeUnicoEnCasoZurichListado,
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
-import { calcularLiquidacionZurich, defaultInformeUnicoZurich, extraerSnapshotPreliminarZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, heredarInformePreliminarZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
+import { calcularLiquidacionZurich, defaultInformeUnicoZurich, desgloseReservaPreliminarZurich, extraerSnapshotPreliminarZurich, filasPresupuestoPreliminarDesdeLiquidadorZurich, aiuPorcentajePreliminarDesdeLiquidadorZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, heredarInformePreliminarZurich, liquidadorTienePresupuestoParaPreliminarZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich, valorAseguradoPresupuestoZurich } from './liquidadorZurichHelpers.js';
+import { esSesionPuedeImportarPptPreliminarZurich } from '../../utils/permisosCasoPorRol.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
@@ -387,6 +388,41 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
     if (casoId) handleGuardarInforme(next);
   };
 
+  const handleEnviarPresupuestoAlPreliminar = useCallback(
+    (liqArg) => {
+      if (!esSesionPuedeImportarPptPreliminarZurich()) return false;
+      const liq = liqArg || liquidadorState;
+      if (!liquidadorTienePresupuestoParaPreliminarZurich(liq)) return false;
+      const filas = filasPresupuestoPreliminarDesdeLiquidadorZurich(liq);
+      const actual = informeState || defaultInformeUnicoZurich(casoZurich || {});
+      const nextBase = {
+        ...actual,
+        tipoInforme: 'preliminar',
+        filasPresupuestoPreliminar: filas,
+        aiuPorcentajePreliminar: aiuPorcentajePreliminarDesdeLiquidadorZurich(liq),
+      };
+      const extras = {
+        caso: casoZurich || {},
+        encabezado: liq?.encabezado || {},
+        liquidador: liq,
+        valorAsegurado:
+          valorAseguradoPresupuestoZurich(liq || {}) ||
+          casoZurich?.valorAseguradoInmueble,
+      };
+      const desglose = desgloseReservaPreliminarZurich(nextBase, extras);
+      if (desglose.perdida > 0) {
+        nextBase.reservaSugerida = String(desglose.reserva);
+      }
+      setInformeState(nextBase);
+      setLiquidadorState(liq);
+      setTab(TABS_ZURICH.INFORME);
+      if (casoId) handleGuardarInforme(nextBase);
+      return true;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liquidadorState, informeState, casoZurich, casoId]
+  );
+
   const etiquetaTabInforme =
     tipoInformeActual === 'preliminar'
       ? t('zurich.reportUnique.typePreliminar')
@@ -608,6 +644,11 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                 casoZurich={casoZurich}
                 origen={esModuloListado ? 'listado' : 'cat'}
                 liquidadorInicial={liquidadorState}
+                onEnviarAlPreliminar={
+                  esSesionPuedeImportarPptPreliminarZurich()
+                    ? handleEnviarPresupuestoAlPreliminar
+                    : null
+                }
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
                   setTotalesState(tot);

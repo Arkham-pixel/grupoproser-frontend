@@ -38,6 +38,37 @@ export const CAMPOS_ASIGNACION_CASO = Object.freeze([
 export const SURA_LOGINS_PERMISO_LIDER = Object.freeze(['72288319']);
 
 /**
+ * Zurich: importar presupuesto del liquidador NSR al informe preliminar.
+ * Lady Andrea Escalante Bossio (1041899782) y Oscar Atencia (1065012991).
+ */
+export const ZURICH_LOGINS_IMPORTAR_PPT_PRELIMINAR = Object.freeze([
+  '1041899782',
+  '1065012991',
+]);
+
+export function esLoginImportarPptPreliminarZurich(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return ZURICH_LOGINS_IMPORTAR_PPT_PRELIMINAR.map(normalizarClaveDocumentoLogin).includes(
+    clave
+  );
+}
+
+export function esSesionPuedeImportarPptPreliminarZurich() {
+  if (typeof localStorage === 'undefined') return false;
+  const candidatos = [
+    localStorage.getItem('login'),
+    localStorage.getItem('cedula'),
+    localStorage.getItem('documento'),
+    localStorage.getItem('usuario'),
+  ];
+  const ctx = obtenerContextoPermisoCaso('zurich');
+  return [...candidatos, ctx.login, ctx.cedula].some((v) =>
+    esLoginImportarPptPreliminarZurich(v)
+  );
+}
+
+/**
  * Excel de verificación SURA (No. de Reclamo, Número Interno Proser, Asegurado, Estado, Inspector).
  * Bernardo Sojo, Oscar Atencia y Ligia García (Catastróficos).
  */

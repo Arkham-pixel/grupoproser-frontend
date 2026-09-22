@@ -21,13 +21,16 @@ import {
   parseMontoNsr10,
   resolverArticuloPolizaId,
   etiquetaGrupoDeducible,
+  totalFilaContenido,
   totalFilaPresupuesto,
   valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
+  calcularDeducibleSobreBaseConfig,
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
+  normalizarDeducibleCatastrofico,
   resolverBasePctElegida,
   resolverDeducibleAplicadoVisible,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
@@ -569,25 +572,19 @@ export function filasResumenLiquidacionZurich(liquidador = {}, totales = {}) {
     destacado: true,
   });
 
-  const gruposContenidos = Array.isArray(totales.contenidos?.gruposDeducible)
-    ? totales.contenidos.gruposDeducible
-    : [];
-  if (gruposContenidos.length) {
-    gruposContenidos.forEach((g) => {
-      const perdida = Number(g.sumaPL ?? g.perdida) || 0;
-      const deducible = Number(g.deducible ?? g.aplicado) || 0;
-      const neto =
-        g.neto != null && g.neto !== ''
-          ? Number(g.neto) || 0
-          : Math.max(0, perdida - deducible);
-      const nombre = etiquetaAmparoZurich(g.grupoId, g.grupoLabel);
-      filas.push({ label: `${nombre} (pérdida)`, value: perdida });
-      if (deducible > 0) {
-        filas.push({ label: `Deducible ${nombre}`, value: deducible });
+  const amparosCont =
+    Array.isArray(totales.contenidosPorAmparo) && totales.contenidosPorAmparo.length
+      ? totales.contenidosPorAmparo
+      : liquidarContenidosPorAmparoZurich(liquidador);
+  if (amparosCont.length) {
+    amparosCont.forEach((g) => {
+      filas.push({ label: `${g.cobertura} (pérdida)`, value: g.perdida });
+      if (Number(g.deducible) > 0) {
+        filas.push({ label: `Deducible ${g.cobertura}`, value: g.deducible });
       }
       filas.push({
-        label: `${nombre} NETO`,
-        value: neto,
+        label: `${g.cobertura} NETO`,
+        value: g.neto,
         bold: true,
         destacado: true,
       });
@@ -704,6 +701,139 @@ export function etiquetaAmparoZurich(grupoId, fallback = '') {
   return fallback || etiquetaGrupoDeducible(id);
 }
 
+/** Campo de VA en encabezado/caso según el amparo de contenidos. */
+export function campoValorAseguradoAmparoZurich(grupoId) {
+  const id = String(grupoId || '');
+  if (id === 'poliza_eee_fijo') return 'valorAseguradoEquipoElectronico';
+  if (id === 'poliza_maquinaria') return 'valorAseguradoMaquinaria';
+  if (id === 'poliza_mercancias') return 'valorAseguradoContenidos';
+  return 'valorAseguradoContenidos';
+}
+
+/** Clasifica un ítem de contenidos en el amparo Zurich (muebles / EEE / maquinaria). */
+export function amparoContenidoZurichId(row = {}) {
+  const id = resolverArticuloPolizaId(row);
+  if (id === 'poliza_eee_fijo' || id === 'poliza_maquinaria' || id === 'poliza_mercancias') {
+    return id;
+  }
+  const cat = String(row.categoria || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  if (cat === 'electronicos' || cat.includes('computo') || cat.includes('electron')) {
+    return 'poliza_eee_fijo';
+  }
+  if (cat.includes('maquinaria') || cat === 'herramientas') {
+    return 'poliza_maquinaria';
+  }
+  return 'poliza_contenidos';
+}
+
+function filaContenidoConDatoZurich(it = {}) {
+  return Boolean(
+    String(it?.articulo || '').trim() ||
+      String(it?.categoria || '').trim() ||
+      Number(it?.cantidad) > 0 ||
+      Number(it?.valorUnitario) > 0 ||
+      Number(it?.valorTotal) > 0
+  );
+}
+
+/**
+ * Parte contenidos por amparo y aplica el deducible de terremoto a cada uno
+ * (mayor entre % sobre VA del amparo y mínimo SMMLV/SMDLV, tope = pérdida).
+ */
+export function liquidarContenidosPorAmparoZurich(liquidador = {}, opts = {}) {
+  const evalData = opts.evalData || liquidador.evaluacionSismicaNSR10 || {};
+  const items = Array.isArray(evalData?.contenidos?.items) ? evalData.contenidos.items : [];
+  const valores = opts.valores || valoresAsegurablesDesdeLiquidador(liquidador);
+  const cfgBase = normalizarDeducibleCatastrofico({
+    deducibleConfig:
+      liquidador.liquidacionCatastrofico?.deducibleConfigContenidos ||
+      liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto ||
+      configDeducibleParaCalculoZurich(liquidador),
+  });
+
+  const buckets = new Map();
+  items.filter(filaContenidoConDatoZurich).forEach((it) => {
+    const id = amparoContenidoZurichId(it);
+    if (!buckets.has(id)) buckets.set(id, []);
+    buckets.get(id).push(it);
+  });
+
+  const vaDe = (id) => {
+    if (id === 'poliza_eee_fijo') return Number(valores.eee) || 0;
+    if (id === 'poliza_maquinaria') return Number(valores.maquinaria) || 0;
+    return Number(valores.contenidos) || 0;
+  };
+
+  const orden = [
+    'poliza_contenidos',
+    'poliza_eee_fijo',
+    'poliza_maquinaria',
+    'poliza_mercancias',
+  ];
+  const ids = [
+    ...orden.filter((id) => buckets.has(id)),
+    ...[...buckets.keys()].filter((id) => !orden.includes(id)),
+  ];
+
+  return ids.map((id) => {
+    const filas = buckets.get(id) || [];
+    const perdida =
+      Math.round(
+        filas.reduce((acc, row) => acc + (Number(totalFilaContenido(row)) || 0), 0) * 100
+      ) / 100;
+    const va = vaDe(id);
+    // Zurich: el % va siempre sobre VA del amparo (como el PDF: «2% del valor asegurable»).
+    // Si no hay VA, el % queda en 0 y gana el mínimo (p. ej. 60 SMDLV).
+    const cfg = {
+      ...cfgBase,
+      baseDeducible: 'valor_asegurable',
+      basePctDeducible: 'valor_asegurable',
+    };
+    const calc = calcularDeducibleSobreBaseConfig(cfg, {
+      perdida,
+      valorAsegurado: va,
+    });
+    const montoPct = Math.round((Number(calc.montoPctVa) || Number(calc.deduciblePorcentaje) || 0) * 100) / 100;
+    const montoMin =
+      Math.round(
+        (Number(
+          calc.tipoMinimo === 'SMDLV' ? calc.deducibleSMDLV : calc.deducibleSMMLV
+        ) || 0) * 100
+      ) / 100;
+    const deducible = Math.min(
+      perdida,
+      Math.round((Number(calc.deducibleAplicado) || 0) * 100) / 100
+    );
+    const neto = Math.max(0, Math.round((perdida - deducible) * 100) / 100);
+    const tipoMin = calc.tipoMinimo || cfgBase.tipoMinimo || 'SMMLV';
+    const cantMin =
+      tipoMin === 'SMDLV'
+        ? Number(calc.cantidadSMDLV) || Number(cfgBase.cantidadSMDLV) || 0
+        : Number(calc.cantidadSMMLV) || Number(cfgBase.cantidadSMMLV) || 0;
+    const pct = Number(calc.porcentaje) || Number(cfgBase.porcentaje) || 0;
+    return {
+      id,
+      cobertura: etiquetaAmparoZurich(id),
+      items: filas,
+      perdida,
+      deducible,
+      neto,
+      valorAsegurado: va,
+      montoPct,
+      montoMin,
+      usaMinimo: Boolean(calc.usaMinimo) || (montoMin > montoPct && montoMin > 0),
+      etiquetaPct: `${pct}% del valor asegurable`,
+      etiquetaMin: `Mínimo ${cantMin} ${tipoMin}`,
+      etiquetaDeducible: `Deducible terremoto (${pct}% VA / mínimo ${cantMin} ${tipoMin})`,
+      calc,
+    };
+  });
+}
+
 export function asegurarFilasCoberturaUnicoZurich(filas = []) {
   const list = Array.isArray(filas) && filas.length
     ? filas.map((f) => ({ ...f }))
@@ -742,39 +872,22 @@ export function filasLiquidacionPorCoberturaZurich(liquidador = {}, totales = {}
       neto: Number(desglose.neto) || 0,
     });
   }
-  const grupos = Array.isArray(totales.contenidos?.gruposDeducible)
-    ? totales.contenidos.gruposDeducible
-    : [];
-  grupos.forEach((g) => {
-    const perdida = Number(g.sumaPL ?? g.perdida) || 0;
-    const deducible = Number(g.deducible ?? g.aplicado) || 0;
-    const neto =
-      g.neto != null && g.neto !== ''
-        ? Number(g.neto) || 0
-        : Math.max(0, perdida - deducible);
-    if (!(perdida > 0 || neto > 0)) return;
-    const nombre = etiquetaAmparoZurich(g.grupoId, g.grupoLabel);
-    const evento = String(g.coberturaLabel || '').trim();
+
+  const amparos =
+    Array.isArray(totales.contenidosPorAmparo) && totales.contenidosPorAmparo.length
+      ? totales.contenidosPorAmparo
+      : liquidarContenidosPorAmparoZurich(liquidador);
+  amparos.forEach((g) => {
+    if (!(Number(g.perdida) > 0 || Number(g.neto) > 0)) return;
     filas.push({
-      id: g.clave || `${g.grupoId}-${evento}`,
-      cobertura: evento ? `${nombre} · ${evento}` : nombre,
-      perdida,
-      deducible,
-      neto,
+      id: g.id,
+      cobertura: g.cobertura,
+      perdida: Number(g.perdida) || 0,
+      deducible: Number(g.deducible) || 0,
+      neto: Number(g.neto) || 0,
     });
   });
-  if (!grupos.length && Number(totales.totalContenidos) > 0) {
-    filas.push({
-      id: 'contenidos',
-      cobertura: 'Muebles y enseres',
-      perdida: Number(totales.totalContenidos) || 0,
-      deducible: Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0,
-      neto:
-        Number(totales.diagrama?.deducibleContenidos?.neto) ||
-        Number(totales.contenidos?.valorAIndemnizar) ||
-        0,
-    });
-  }
+
   const gastos = filasOtrosAmparosActivos(
     totales.otrosAmparos?.length ? totales.otrosAmparos : liquidador.otrosAmparos
   );
@@ -1157,6 +1270,72 @@ export function plantillaFilasPresupuestoPreliminarZurich() {
   return [{ id: 'cap-0', capitulo: '', descripcion: '', valor: '' }];
 }
 
+/**
+ * Convierte ítems del liquidador NSR (o cotización PDF) a filas del
+ * presupuesto preliminar: capítulo / descripción / valor.
+ */
+export function filasPresupuestoPreliminarDesdeLiquidadorZurich(liquidador = {}) {
+  const liq = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  if (usaCotizacionComoBasePresupuesto(liq.cotizacionPdf)) {
+    const monto = Math.round(Number(montoCotizacionPdf(liq.cotizacionPdf)) || 0);
+    if (monto > 0) {
+      return [
+        {
+          id: `cotiz-${Date.now()}`,
+          capitulo: 'Cotización asegurado',
+          descripcion: 'Presupuesto según cotización PDF del liquidador',
+          valor: String(monto),
+        },
+      ];
+    }
+  }
+  const items = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
+    ? liq.evaluacionSismicaNSR10.presupuesto.items
+    : [];
+  const filas = items
+    .map((it, i) => {
+      const tot = totalFilaPresupuesto(it);
+      const tieneTexto = Boolean(
+        String(it?.capitulo || '').trim() ||
+          String(it?.componente || '').trim() ||
+          String(it?.actividad || '').trim()
+      );
+      if (!tieneTexto && !(tot != null && tot > 0)) return null;
+      const partes = [it.componente, it.actividad].map((x) => String(x || '').trim()).filter(Boolean);
+      return {
+        id: `liq-${String(it.id || i)}-${i}`,
+        capitulo: String(it.capitulo || 'Obra civil').trim() || 'Obra civil',
+        descripcion: partes.join(' — ') || String(it.actividad || it.componente || 'Ítem').trim(),
+        valor: tot != null && Number.isFinite(Number(tot)) ? String(Math.round(Number(tot))) : '',
+      };
+    })
+    .filter(Boolean);
+  return filas.length ? filas : plantillaFilasPresupuestoPreliminarZurich();
+}
+
+/** Copia AIU del liquidador al campo del informe preliminar (fracción 0–1). */
+export function aiuPorcentajePreliminarDesdeLiquidadorZurich(liquidador = {}) {
+  return resolverAiuPctZurich(liquidador);
+}
+
+export function liquidadorTienePresupuestoParaPreliminarZurich(liquidador = {}) {
+  const liq = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  if (usaCotizacionComoBasePresupuesto(liq.cotizacionPdf)) {
+    return Number(montoCotizacionPdf(liq.cotizacionPdf)) > 0;
+  }
+  const items = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
+    ? liq.evaluacionSismicaNSR10.presupuesto.items
+    : [];
+  return items.some((it) => {
+    const tot = totalFilaPresupuesto(it);
+    return (
+      (tot != null && tot > 0) ||
+      String(it?.actividad || '').trim() ||
+      String(it?.componente || '').trim()
+    );
+  });
+}
+
 export const TIPOS_INFORME_ZURICH = ['preliminar', 'final', 'unico'];
 
 export function normalizarTipoInformeZurich(valor, fallback = 'preliminar') {
@@ -1337,6 +1516,32 @@ export function totalPresupuestoPreliminarZurich(filas = []) {
   );
 }
 
+/** AIU del preliminar: informe.aiuPorcentajePreliminar o el del liquidador (0.25 = 25%). */
+export function resolverAiuPctPreliminarZurich(info = {}, liquidador = null) {
+  const rawInf = Number(info?.aiuPorcentajePreliminar);
+  if (Number.isFinite(rawInf) && rawInf >= 0) {
+    return rawInf > 1 ? rawInf / 100 : rawInf;
+  }
+  if (liquidador) return resolverAiuPctZurich(liquidador);
+  return AIU_PORCENTAJE_DEFAULT_NSR10_CAT;
+}
+
+/** Subtotal de capítulos + AIU = valor de la pérdida para la reserva. */
+export function totalesPresupuestoPreliminarZurich(filas = [], aiuPct = 0.25) {
+  const subtotal = Math.round(totalPresupuestoPreliminarZurich(filas) || 0);
+  const raw = Number(aiuPct);
+  const pct =
+    Number.isFinite(raw) && raw >= 0 ? (raw > 1 ? raw / 100 : raw) : 0;
+  const aiu = Math.round(subtotal * pct);
+  return {
+    subtotal,
+    aiu,
+    total: subtotal + aiu,
+    aiuPct: pct,
+    aiuPctDisplay: Math.round(pct * 10000) / 100,
+  };
+}
+
 /** Porcentaje libre (admite 3, 3.5, 3,5). No usa parsearNumero: ese quita el punto decimal. */
 export function parsearPorcentajeLibreZurich(valor) {
   if (valor === '' || valor == null) return 0;
@@ -1410,11 +1615,16 @@ export function valorAseguradoReservaZurich(info = {}, extras = {}) {
 }
 
 export function desgloseReservaPreliminarZurich(info = {}, extras = {}) {
+  const aiuPct = resolverAiuPctPreliminarZurich(info, extras.liquidador || null);
+  const totPpto = totalesPresupuestoPreliminarZurich(
+    info?.filasPresupuestoPreliminar,
+    aiuPct
+  );
   const perdidaOverride = extras.perdida;
   const perdida =
     perdidaOverride != null && perdidaOverride !== ''
       ? Math.round(parsearNumero(perdidaOverride) || 0)
-      : Math.round(totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar));
+      : totPpto.total;
   const cfg = configDeducibleReservaZurich(info);
   const cfgLiq = extras.liquidador
     ? configDeduciblePresupuestoParaCalculoZurich(extras.liquidador)
@@ -1460,6 +1670,10 @@ export function desgloseReservaPreliminarZurich(info = {}, extras = {}) {
   else tipoGanador = basePct === 'perdida' ? 'perdida' : 'valor_asegurado';
   return {
     perdida,
+    subtotal: totPpto.subtotal,
+    aiu: totPpto.aiu,
+    aiuPct: totPpto.aiuPct,
+    aiuPctDisplay: totPpto.aiuPctDisplay,
     porcentaje,
     valorAsegurado,
     tipoMinimo,
@@ -1771,8 +1985,22 @@ export function calcularLiquidacionZurich(liquidadorCrudo = {}) {
   const totalPresupuesto = usaCotiz ? cotiz.totalConAiu : resumen.totalPresupuesto;
   const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const hosp = hospedajeParaCalculoZurich(liq);
+  const contenidosPorAmparo = liquidarContenidosPorAmparoZurich(liquidador, {
+    evalData,
+    valores: valoresAsegurablesCaso,
+  });
   const hayContenidos =
-    Number(resumen.totalContenidos) > 0 || itemsContenidosDiligenciadosZurich(evalData);
+    Number(resumen.totalContenidos) > 0 ||
+    contenidosPorAmparo.length > 0 ||
+    itemsContenidosDiligenciadosZurich(evalData);
+  const contenidosNetoAmparos = contenidosPorAmparo.reduce(
+    (acc, g) => acc + (Number(g.neto) || 0),
+    0
+  );
+  const deducibleContenidosAmparos = contenidosPorAmparo.reduce(
+    (acc, g) => acc + (Number(g.deducible) || 0),
+    0
+  );
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: valorAseguradoPresupuestoZurich(liquidador),
     valorAseguradoContenidos: valoresAsegurablesCaso.contenidos,
@@ -1789,11 +2017,9 @@ export function calcularLiquidacionZurich(liquidadorCrudo = {}) {
     otrosAmparos: liquidador.otrosAmparos,
     usaDeduciblePorArticuloContenidos: hayContenidos,
     usaDeduciblePorArticuloPresupuesto: false,
-    deducibleContenidosPorArticulos: resumen.deduciblePorArticulosContenidos || 0,
+    deducibleContenidosPorArticulos: deducibleContenidosAmparos,
     deduciblePresupuestoPorArticulos: 0,
-    contenidosNetoPorArticulo: hayContenidos
-      ? resumen.valorAIndemnizarContenidos
-      : null,
+    contenidosNetoPorArticulo: hayContenidos ? contenidosNetoAmparos : null,
     presupuestoNetoPorArticulo: null,
   });
   const items = normalizarItemsRespuesta(evalData.items);
@@ -1811,6 +2037,7 @@ export function calcularLiquidacionZurich(liquidadorCrudo = {}) {
         }
       : totalesPres,
     contenidos: resumen.contenidos,
+    contenidosPorAmparo,
     totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     sumaCompleta,
@@ -2084,6 +2311,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     analisisCobertura: '',
     reservaSugerida: caso.reserva != null && caso.reserva !== '' ? String(caso.reserva) : '',
     porcentajeDeducibleReserva: '',
+    aiuPorcentajePreliminar: '',
     deducibleConfigReserva: {
       porcentaje: '',
       tipoMinimo: 'SMMLV',
@@ -2129,6 +2357,10 @@ export function defaultInformeUnicoZurich(caso = {}) {
       guardado.porcentajeDeducibleReserva != null && guardado.porcentajeDeducibleReserva !== ''
         ? String(guardado.porcentajeDeducibleReserva)
         : base.porcentajeDeducibleReserva,
+    aiuPorcentajePreliminar:
+      guardado.aiuPorcentajePreliminar != null && guardado.aiuPorcentajePreliminar !== ''
+        ? guardado.aiuPorcentajePreliminar
+        : base.aiuPorcentajePreliminar,
     deducibleConfigReserva:
       guardado.deducibleConfigReserva && typeof guardado.deducibleConfigReserva === 'object'
         ? guardado.deducibleConfigReserva

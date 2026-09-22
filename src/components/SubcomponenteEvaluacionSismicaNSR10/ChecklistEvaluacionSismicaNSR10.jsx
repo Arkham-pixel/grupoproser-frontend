@@ -74,6 +74,10 @@ import {
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos, sumarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import {
+  liquidarContenidosPorAmparoZurich,
+  campoValorAseguradoAmparoZurich,
+} from '../SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -594,6 +598,62 @@ export default function ChecklistEvaluacionSismicaNSR10({
       ),
     [presupuesto, contenidos, valoresAsegurablesCaso]
   );
+  const amparosContenidosZurich = useMemo(() => {
+    if (!simplificarDeducible) return [];
+    return liquidarContenidosPorAmparoZurich(
+      {
+        encabezado: {
+          ...(formData?.encabezado || {}),
+          valorAseguradoInmueble:
+            formData?.valorAseguradoInmueble ||
+            formData?.encabezado?.valorAseguradoInmueble,
+          valorAseguradoContenidos:
+            formData?.valorAseguradoContenidos ||
+            formData?.encabezado?.valorAseguradoContenidos,
+          valorAseguradoEquipoElectronico:
+            formData?.valorAseguradoEquipoElectronico ||
+            formData?.encabezado?.valorAseguradoEquipoElectronico,
+          valorAseguradoMaquinaria:
+            formData?.valorAseguradoMaquinaria ||
+            formData?.encabezado?.valorAseguradoMaquinaria,
+        },
+        liquidacionCatastrofico: formData?.liquidacionCatastrofico || {},
+        evaluacionSismicaNSR10: {
+          presupuesto,
+          contenidos,
+        },
+      },
+      { valores: valoresAsegurablesCaso }
+    );
+  }, [
+    simplificarDeducible,
+    valoresAsegurablesCaso,
+    formData?.valorAseguradoInmueble,
+    formData?.valorAseguradoContenidos,
+    formData?.valorAseguradoEquipoElectronico,
+    formData?.valorAseguradoMaquinaria,
+    formData?.encabezado,
+    formData?.liquidacionCatastrofico,
+    presupuesto,
+    contenidos,
+  ]);
+  const gruposContenidosVista = useMemo(() => {
+    if (!simplificarDeducible || !amparosContenidosZurich.length) {
+      return totalesContenidos.gruposDeducible;
+    }
+    return amparosContenidosZurich.map((a) => ({
+      clave: a.id,
+      grupoId: a.id,
+      grupoLabel: a.cobertura,
+      coberturaLabel: 'Terremoto',
+      filas: Array.isArray(a.items) ? a.items.length : 0,
+      sumaVA: Number(a.valorAsegurado) || 0,
+      sumaPL: Number(a.perdida) || 0,
+      deducible: Number(a.deducible) || 0,
+      aplicado: Number(a.deducible) || 0,
+      neto: Number(a.neto) || 0,
+    }));
+  }, [simplificarDeducible, amparosContenidosZurich, totalesContenidos.gruposDeducible]);
   const tipoInmuebleContenidos = String(
     contenidos.tipoInmueble || portada.tipologiaPrincipal || ''
   ).trim();
@@ -690,6 +750,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
   const usaPorArticuloPresupuesto =
     modoDeduciblePresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
   const usaPorArticulo = usaPorArticuloContenidos;
+  /** Zurich: el deducible lo fija el panel (por amparo), no %/mínimo por fila del catálogo. */
+  const mostrarDeduciblePorFilaContenidos = usaPorArticulo && !simplificarDeducible;
   const calculoValorAsegurado = useMemo(
     () =>
       usaPorArticuloPresupuesto
@@ -747,6 +809,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
           if (simplificarDeducible) {
             const hayContenidos =
               Number(resumenTotales.totalContenidos) > 0 ||
+              amparosContenidosZurich.length > 0 ||
               (Array.isArray(filasContenidos) &&
                 filasContenidos.some(
                   (it) =>
@@ -754,15 +817,20 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     String(it?.categoria || '').trim() ||
                     Number(it?.cantidad) > 0
                 ));
+            const netoAmparos = amparosContenidosZurich.reduce(
+              (acc, g) => acc + (Number(g.neto) || 0),
+              0
+            );
+            const dedAmparos = amparosContenidosZurich.reduce(
+              (acc, g) => acc + (Number(g.deducible) || 0),
+              0
+            );
             return {
               usaDeduciblePorArticuloContenidos: hayContenidos,
               usaDeduciblePorArticuloPresupuesto: false,
-              deducibleContenidosPorArticulos:
-                resumenTotales.deduciblePorArticulosContenidos || 0,
+              deducibleContenidosPorArticulos: dedAmparos,
               deduciblePresupuestoPorArticulos: 0,
-              contenidosNetoPorArticulo: hayContenidos
-                ? resumenTotales.valorAIndemnizarContenidos
-                : null,
+              contenidosNetoPorArticulo: hayContenidos ? netoAmparos : null,
               presupuestoNetoPorArticulo: null,
             };
           }
@@ -793,6 +861,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       totalPresupuestoDiagrama,
       simplificarDeducible,
       filasContenidos,
+      amparosContenidosZurich,
       basePctPresupuesto,
       resultadoCalculoValorAsegurado?.valorDeducible,
       presupuesto?.calculoValorAsegurado?.valorDeducible,
@@ -896,8 +965,17 @@ export default function ChecklistEvaluacionSismicaNSR10({
     };
     actualizarLiquidacion({
       deducibleConfig: nextCfg,
-      ...(simplificarDeducible ? {} : { deducibleConfigContenidos: nextCfg }),
+      deducibleConfigContenidos: nextCfg,
       deducible: nextCfg.texto || '',
+    });
+  };
+
+  const actualizarValorAseguradoAmparo = (campo, raw) => {
+    const fmt = formatMilesInputNsr10(raw);
+    // Solo el campo tocado; el padre debe fusionar encabezado (no reemplazarlo).
+    onInputChange({
+      [campo]: fmt,
+      encabezado: { [campo]: fmt },
     });
   };
 
@@ -1259,13 +1337,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
   useEffect(() => {
     const nextContenidos = {
       ...contenidos,
-      items: aplicarDeduciblesAgrupados(filasContenidos, smmlvFilaContenido, {
-        tipo: 'contenidos',
-        grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
-        coberturaPredeterminada: contenidos.coberturaAfectar,
-        valoresAsegurablesCaso,
-        reglasDeducible: reglasDeduciblePorCobertura,
-      }),
+      items: simplificarDeducible
+        ? filasContenidos
+        : aplicarDeduciblesAgrupados(filasContenidos, smmlvFilaContenido, {
+            tipo: 'contenidos',
+            grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
+            coberturaPredeterminada: contenidos.coberturaAfectar,
+            valoresAsegurablesCaso,
+            reglasDeducible: reglasDeduciblePorCobertura,
+          }),
     };
     const nextPresupuesto = aplicarRecargosPresupuestoNsr10(
       {
@@ -1322,7 +1402,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     let nextItems = filasContenidos.map((row, i) => {
       if (i !== index) return row;
       const mezclado = { ...row, ...patchAplicar };
-      if (!usaPorArticulo) return mezclado;
+      if (!usaPorArticulo || simplificarDeducible) return mezclado;
       const tocaDeducible =
         Object.prototype.hasOwnProperty.call(patchAplicar, 'coberturaAfectar') ||
         Object.prototype.hasOwnProperty.call(patchAplicar, 'tipoCobertura') ||
@@ -1342,7 +1422,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       );
     });
 
-    if (usaPorArticulo && syncPctGrupo) {
+    if (usaPorArticulo && !simplificarDeducible && syncPctGrupo) {
       const fila = nextItems[index];
       const clave = claveGrupoDeducible(fila, GRUPO_DEDUCIBLE_CONTENIDOS);
       if (clave) {
@@ -2946,9 +3026,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
               Metodología de contenidos
             </h4>
             <p className="text-xs" style={{ color: textSecondary }}>
-              Contenidos usa siempre pérdida − deducible por categoría. El valor a indemnizar es
-              la suma de esos totales. La elección de metodología (SMMLV / % o por artículo) solo
-              aplica en Presupuesto.
+              {simplificarDeducible
+                ? 'En Zurich el deducible de contenidos se aplica por amparo de póliza (muebles, equipo eléctrico, maquinaria…): un solo deducible por amparo, no por cada ítem ni el mínimo duplicado.'
+                : 'Contenidos usa siempre pérdida − deducible por categoría. El valor a indemnizar es la suma de esos totales. La elección de metodología (SMMLV / % o por artículo) solo aplica en Presupuesto.'}
             </p>
           </div>
 
@@ -2991,6 +3071,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     if (String(row.coberturaAfectar || row.tipoCobertura || '').trim()) {
                       return row;
                     }
+                    if (simplificarDeducible) {
+                      return { ...row, coberturaAfectar };
+                    }
                     return aplicarDeducibleCoberturaFila(
                       { ...row, coberturaAfectar },
                       smmlvFilaContenido,
@@ -3008,17 +3091,24 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 ))}
               </select>
               <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
-                Cada artículo de póliza que elija (Contenidos, Mercancías, Edificio…) lleva su
-                propio cálculo. La suma asegurada es la de la categoría (no se suma ítem a ítem).
-                El deducible se aplica una sola vez. Terremoto: mayor entre el % de la póliza
-                (editable) y el mínimo en SMMLV (mensual) o SMDLV (diario).
+                {simplificarDeducible
+                  ? 'El artículo de póliza (Contenidos, Equipo eléctrico, Maquinaria…) solo clasifica el ítem. El deducible se calcula abajo en Liquidación contenidos (2% / SMDLV por amparo), no por cada fila.'
+                  : 'Cada artículo de póliza que elija (Contenidos, Mercancías, Edificio…) lleva su propio cálculo. La suma asegurada es la de la categoría (no se suma ítem a ítem). El deducible se aplica una sola vez. Terremoto: mayor entre el % de la póliza (editable) y el mínimo en SMMLV (mensual) o SMDLV (diario).'}
               </p>
             </label>
             ) : null}
           </div>
 
           <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
-            <table className={`${usaPorArticulo ? 'min-w-[1880px]' : 'min-w-[1280px]'} w-full text-left text-xs`}>
+            <table
+              className={`${
+                mostrarDeduciblePorFilaContenidos
+                  ? 'min-w-[1880px]'
+                  : usaPorArticulo
+                    ? 'min-w-[1480px]'
+                    : 'min-w-[1280px]'
+              } w-full text-left text-xs`}
+            >
               <thead style={{ backgroundColor: softBg }}>
                 <tr style={{ color: textSecondary }}>
                   <th className="px-2 py-2">Catálogo</th>
@@ -3031,9 +3121,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <th className="px-2 py-2" title="Suma asegurada de la categoría en la póliza. No se suma entre ítems del mismo artículo.">
                     Suma asegurada
                   </th>
+                  {mostrarDeduciblePorFilaContenidos ? (
+                    <>
                   <th className="px-2 py-2">% deducible</th>
                   <th className="px-2 py-2">Mínimo</th>
                   <th className="px-2 py-2">Deducible</th>
+                    </>
+                  ) : null}
                     </>
                   ) : null}
                   <th className="px-2 py-2">Marca / ref.</th>
@@ -3170,6 +3264,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           />
                         )}
                       </td>
+                      {mostrarDeduciblePorFilaContenidos ? (
+                        <>
                       <td className="px-1 py-1 min-w-[70px]">
                         <input
                           type="number"
@@ -3204,6 +3300,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                             ? '—'
                             : money(row.deducibleCalculado)}
                       </td>
+                        </>
+                      ) : null}
                         </>
                       ) : null}
                       <td className="px-1 py-1 min-w-[100px]">
@@ -3314,9 +3412,315 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </table>
           </div>
 
+          {simplificarDeducible && amparosContenidosZurich.length > 0 ? (
+            <div className="space-y-4">
+              <div
+                className="w-full space-y-3 rounded-lg border p-4 text-sm"
+                style={{ borderColor, backgroundColor: softBg }}
+              >
+                <h4 className="font-semibold" style={{ color: textPrimary }}>
+                  Regla de deducible (aplica a cada amparo)
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      (deducibleCfg.tipoMinimo || 'SMMLV') === 'SMMLV'
+                        ? 'border-blue-500 text-blue-600'
+                        : ''
+                    }`}
+                    style={
+                      (deducibleCfg.tipoMinimo || 'SMMLV') === 'SMMLV'
+                        ? undefined
+                        : { borderColor, color: textSecondary }
+                    }
+                    onClick={() => actualizarDeducibleConfig({ tipoMinimo: 'SMMLV' })}
+                  >
+                    SMMLV
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      deducibleCfg.tipoMinimo === 'SMDLV' ? 'border-blue-500 text-blue-600' : ''
+                    }`}
+                    style={
+                      deducibleCfg.tipoMinimo === 'SMDLV'
+                        ? undefined
+                        : { borderColor, color: textSecondary }
+                    }
+                    onClick={() => actualizarDeducibleConfig({ tipoMinimo: 'SMDLV' })}
+                  >
+                    SMDLV
+                  </button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="block text-xs" style={{ color: textSecondary }}>
+                    % deducible
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={valorInputDeducible(deducibleCfgInput.porcentaje, 2)}
+                      onChange={(e) =>
+                        actualizarDeducibleConfig({
+                          porcentaje: e.target.value === '' ? '' : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs" style={{ color: textSecondary }}>
+                    Año SMMLV
+                    <select
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={deducibleCfg.anioSMMLV}
+                      onChange={(e) => {
+                        const anio = Number(e.target.value);
+                        const valorSMMLV = SMMLV_POR_ANIO[anio];
+                        actualizarDeducibleConfig({
+                          anioSMMLV: anio,
+                          valorSMMLV,
+                          valorSMDLV: valorSmdlvDesdeSmmlv(valorSMMLV),
+                        });
+                      }}
+                    >
+                      {ANIOS_SMMLV.map((anio) => (
+                        <option key={anio} value={anio}>
+                          {anio}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {(deducibleCfg.tipoMinimo || 'SMMLV') === 'SMMLV' ? (
+                    <>
+                      <label className="block text-xs" style={{ color: textSecondary }}>
+                        Cant. SMMLV
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={`${inputClass} mt-1`}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={valorInputDeducible(deducibleCfgInput.cantidadSMMLV, 3)}
+                          onChange={(e) =>
+                            actualizarDeducibleConfig({
+                              cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block text-xs" style={{ color: textSecondary }}>
+                        Valor SMMLV
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={`${inputClass} mt-1`}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={displayMiles(deducibleCfgInput.valorSMMLV)}
+                          onChange={(e) => {
+                            const fmt = formatMilesInputNsr10(e.target.value);
+                            const n = parseMontoNsr10(fmt);
+                            actualizarDeducibleConfig({
+                              valorSMMLV: fmt,
+                              valorSMDLV:
+                                n == null ? deducibleCfg.valorSMDLV : valorSmdlvDesdeSmmlv(n),
+                            });
+                          }}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <label className="block text-xs" style={{ color: textSecondary }}>
+                        Cant. SMDLV
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={`${inputClass} mt-1`}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={valorInputDeducible(deducibleCfgInput.cantidadSMDLV, 60)}
+                          onChange={(e) =>
+                            actualizarDeducibleConfig({
+                              cantidadSMDLV: e.target.value === '' ? '' : Number(e.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block text-xs" style={{ color: textSecondary }}>
+                        Valor SMDLV
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={`${inputClass} mt-1`}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={displayMiles(deducibleCfgInput.valorSMDLV)}
+                          onChange={(e) =>
+                            actualizarDeducibleConfig({
+                              valorSMDLV: formatMilesInputNsr10(e.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs" style={{ color: textSecondary }}>
+                  Cada amparo (muebles, eléctrico, maquinaria…) tiene su propio cuadro: pérdida −
+                  deducible individual (mayor entre % del VA de ese amparo y el mínimo). Como en el
+                  PDF.
+                </p>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {amparosContenidosZurich.map((amparo) => {
+                  const campoVa = campoValorAseguradoAmparoZurich(amparo.id);
+                  const vaRaw =
+                    formData?.[campoVa] ??
+                    formData?.encabezado?.[campoVa] ??
+                    '';
+                  return (
+                    <div
+                      key={amparo.id}
+                      className="space-y-3 rounded-lg border p-4 text-sm"
+                      style={{ borderColor, backgroundColor: softBg }}
+                    >
+                      <h4 className="font-semibold" style={{ color: textPrimary }}>
+                        Liquidación — {amparo.cobertura}
+                      </h4>
+                      <label className="block text-xs" style={{ color: textSecondary }}>
+                        Valor asegurable del amparo
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={`${inputClass} mt-1`}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={displayMiles(vaRaw)}
+                          placeholder="Obligatorio para el 2% sobre VA"
+                          onChange={(e) =>
+                            actualizarValorAseguradoAmparo(campoVa, e.target.value)
+                          }
+                          onBlur={() => {
+                            const n = parseMontoNsr10(
+                              formData?.[campoVa] ?? formData?.encabezado?.[campoVa]
+                            );
+                            if (n != null) {
+                              actualizarValorAseguradoAmparo(campoVa, formatMilesNsr10(n));
+                            }
+                          }}
+                        />
+                      </label>
+                      <div className="overflow-hidden rounded border" style={{ borderColor }}>
+                        <table className="w-full text-sm">
+                          <tbody style={{ color: textPrimary }}>
+                            <tr className="border-b" style={{ borderColor }}>
+                              <td className="px-3 py-2">SUBTOTAL (pérdida)</td>
+                              <td className="px-3 py-2 text-right font-semibold">
+                                {money(amparo.perdida)}
+                              </td>
+                            </tr>
+                            <tr className="border-b" style={{ borderColor }}>
+                              <td className="px-3 py-2" style={{ color: textSecondary }}>
+                                {amparo.etiquetaPct || '% del valor asegurable'}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {money(amparo.montoPct || 0)}
+                              </td>
+                            </tr>
+                            <tr className="border-b" style={{ borderColor }}>
+                              <td className="px-3 py-2" style={{ color: textSecondary }}>
+                                {amparo.etiquetaMin || 'Mínimo'}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {money(amparo.montoMin || 0)}
+                              </td>
+                            </tr>
+                            <tr className="border-b" style={{ borderColor }}>
+                              <td className="px-3 py-2 font-semibold">
+                                {amparo.etiquetaDeducible || 'Deducible aplicado'}
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold">
+                                − {money(amparo.deducible)}
+                              </td>
+                            </tr>
+                            <tr style={{ backgroundColor: softBg }}>
+                              <td className="px-3 py-2.5 font-bold text-emerald-600">
+                                INDEMNIZACIÓN
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
+                                {money(amparo.neto)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[11px]" style={{ color: textSecondary }}>
+                        {Number(amparo.valorAsegurado) > 0
+                          ? amparo.usaMinimo
+                            ? 'Se aplica el mínimo porque supera el % sobre VA.'
+                            : 'Se aplica el % sobre el valor asegurable de este amparo.'
+                          : 'Sin VA del amparo el % queda en $0 y se aplica el mínimo. Digite el valor asegurable arriba (p. ej. muebles → 2% VA = $4.600.000).'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div
+                className="ml-auto w-full max-w-lg overflow-hidden rounded-lg border text-sm"
+                style={{ borderColor, backgroundColor: softBg }}
+              >
+                <table className="w-full">
+                  <tbody style={{ color: textPrimary }}>
+                    <tr className="border-b" style={{ borderColor }}>
+                      <td className="px-3 py-2">TOTAL PÉRDIDA CONTENIDOS</td>
+                      <td className="px-3 py-2 text-right font-semibold">
+                        {money(
+                          amparosContenidosZurich.reduce(
+                            (acc, a) => acc + (Number(a.perdida) || 0),
+                            0
+                          )
+                        )}
+                      </td>
+                    </tr>
+                    <tr className="border-b" style={{ borderColor }}>
+                      <td className="px-3 py-2" style={{ color: textSecondary }}>
+                        SUMA DEDUCIBLES (uno por amparo)
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {money(
+                          amparosContenidosZurich.reduce(
+                            (acc, a) => acc + (Number(a.deducible) || 0),
+                            0
+                          )
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2.5 font-bold text-emerald-600">
+                        VALOR A INDEMNIZAR (contenidos)
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
+                        {money(
+                          amparosContenidosZurich.reduce(
+                            (acc, a) => acc + (Number(a.neto) || 0),
+                            0
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <>
           <ResumenGruposDeducible
-            grupos={totalesContenidos.gruposDeducible}
-            titulo="Deducible por artículo de póliza (cada categoría suma por separado)"
+            grupos={gruposContenidosVista}
+            titulo={
+              simplificarDeducible
+                ? 'Deducible por amparo (muebles, eléctrico, maquinaria…)'
+                : 'Deducible por artículo de póliza (cada categoría suma por separado)'
+            }
             etiquetaIndemnizar="Valor a indemnizar (contenidos)"
             borderColor={borderColor}
             textPrimary={textPrimary}
@@ -3489,7 +3893,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2" style={{ color: textSecondary }}>
-                      DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
+                      {simplificarDeducible && diagrama.deducibleContenidos?.tieneArticulos
+                        ? 'SUMA DEDUCIBLES POR AMPARO'
+                        : 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE'}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {money(diagrama.deducibleContenidos?.montoPctOVa || diagrama.deduciblePorcentaje || 0)}
@@ -3519,7 +3925,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     <td className="px-3 py-2 font-semibold">
                       DEDUCIBLE APLICADO
                       {diagrama.deducibleContenidos?.tieneArticulos
-                        ? ' (por artículo)'
+                        ? simplificarDeducible
+                          ? ' (por amparo)'
+                          : ' (por artículo)'
                         : ` (el mayor: ${
                             diagrama.deducibleContenidos?.tipoGanadorLabel ||
                             (diagrama.deducibleUsaMinimo
@@ -3554,10 +3962,14 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
             <p className="text-xs" style={{ color: textSecondary }}>
               {diagrama.deducibleContenidos?.tieneArticulos
-                ? 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
+                ? simplificarDeducible
+                  ? 'Cada amparo (muebles/contenidos, eléctrico, maquinaria…) resta un solo deducible: el mayor entre % del valor asegurable y el mínimo (SMDLV/SMMLV). No se cobra el mínimo dos veces ni por ítem suelto.'
+                  : 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
                 : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
           </div>
+            </>
+          )}
         </section>
       )}
 

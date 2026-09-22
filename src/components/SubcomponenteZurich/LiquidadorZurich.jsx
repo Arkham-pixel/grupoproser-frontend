@@ -36,7 +36,9 @@ import {
   patchValorAseguradoCampoZurich,
   patchValorAseguradoZurich,
   resolverAiuPctZurich,
+  liquidadorTienePresupuestoParaPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
+import { esSesionPuedeImportarPptPreliminarZurich } from '../../utils/permisosCasoPorRol.js';
 import { descargarFiniquitoZurichWord } from './generarFiniquitoZurichWord.js';
 import { descargarReciboIndemnizacionZurichWord } from './generarReciboIndemnizacionZurichWord.js';
 import { descargarLiquidadorZurichExcel } from './generarLiquidadorZurichExcel.js';
@@ -73,9 +75,11 @@ export default function LiquidadorZurich({
   liquidadorInicial = null,
   embeberEnInforme = false,
   onInformePatch,
+  onEnviarAlPreliminar = null,
 }) {
   const { t } = useTranslation();
   const api = useMemo(() => zurichArchivosApi(origen), [origen]);
+  const puedeEnviarAlPreliminar = Boolean(onEnviarAlPreliminar);
   const [liquidador, setLiquidador] = useState(() =>
     migrarLiquidadorDeducibleTerremotoZurich(
       liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}),
@@ -162,8 +166,28 @@ export default function LiquidadorZurich({
 
   const handleNsrChange = (patch) => {
     setLiquidador((prev) => {
-      const next = { ...prev, ...patch, modelo: 'nsr10' };
-      if (patch.indemnizacionSugerida != null) {
+      const { encabezado: encPatch, ...rest } = patch || {};
+      const next = { ...prev, ...rest, modelo: 'nsr10' };
+      const vaCampos = [
+        'valorAseguradoInmueble',
+        'valorAseguradoContenidos',
+        'valorAseguradoEquipoElectronico',
+        'valorAseguradoMaquinaria',
+      ];
+      let enc = { ...(prev.encabezado || {}) };
+      let tocaEnc = false;
+      if (encPatch && typeof encPatch === 'object') {
+        enc = { ...enc, ...encPatch };
+        tocaEnc = true;
+      }
+      vaCampos.forEach((c) => {
+        if (Object.prototype.hasOwnProperty.call(patch || {}, c)) {
+          enc[c] = patch[c];
+          tocaEnc = true;
+        }
+      });
+      if (tocaEnc) next.encabezado = enc;
+      if (patch?.indemnizacionSugerida != null) {
         next.indemnizacionSugerida = patch.indemnizacionSugerida;
       }
       return next;
@@ -280,6 +304,38 @@ export default function LiquidadorZurich({
 
       {error && <p className={expressAlertError}>{error}</p>}
       {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
+
+      {puedeEnviarAlPreliminar && esSesionPuedeImportarPptPreliminarZurich() ? (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+          <p className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
+            Enviar este presupuesto al informe preliminar
+          </p>
+          <button
+            type="button"
+            className={expressBtnPrimary}
+            disabled={!liquidadorTienePresupuestoParaPreliminarZurich(liquidador)}
+            onClick={() => {
+              const ok = onEnviarAlPreliminar?.(liquidador);
+              if (ok === false) {
+                setError(
+                  'No se pudo enviar. Revise que haya ítems en el presupuesto o cotización PDF.'
+                );
+                setMensaje('');
+                return;
+              }
+              setError('');
+              setMensaje(
+                'Presupuesto enviado al informe preliminar. Abra la pestaña Informe (tipo Preliminar) para revisarlo.'
+              );
+            }}
+          >
+            Enviar al informe preliminar
+          </button>
+          <p className="mt-2 text-xs text-blue-800/80 dark:text-blue-200/80">
+            Solo Lady Andrea Escalante y Oscar Atencia.
+          </p>
+        </div>
+      ) : null}
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.settlement.headerTitle')}</h3>

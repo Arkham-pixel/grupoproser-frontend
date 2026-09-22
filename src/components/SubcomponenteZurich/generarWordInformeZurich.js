@@ -41,6 +41,7 @@ import {
   desgloseReservaPreliminarZurich,
   filasResumenLiquidacionZurich,
   filasLiquidacionPorCoberturaZurich,
+  liquidarContenidosPorAmparoZurich,
   formatearPorcentajeLibreZurich,
   reservaSugeridaZurich,
   valorAseguradoPresupuestoZurich,
@@ -62,8 +63,17 @@ import {
 } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import { fotosCotizacionDesdeLiquidador } from '../liquidacion/cotizacionPdfLiquidacion.js';
 
-/** Bordes estilo informe catastrófico / Puertos */
-const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
+/** Estética informe Zurich: limpia, formal, sin cuadriculado negro grueso */
+const COLOR_ZURICH = '2346A1';
+const COLOR_TEXT = '1E293B';
+const COLOR_MUTED = '64748B';
+const COLOR_BORDER = 'CBD5E1';
+const COLOR_HEADER_BG = 'E8EEF9';
+const COLOR_LABEL_BG = 'F1F5F9';
+const COLOR_TOTAL_BG = 'ECFDF5';
+const COLOR_WHITE = 'FFFFFF';
+
+const borderCuadro = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
 const bordersCuadro = {
   top: borderCuadro,
   bottom: borderCuadro,
@@ -72,25 +82,37 @@ const bordersCuadro = {
   insideHorizontal: borderCuadro,
   insideVertical: borderCuadro,
 };
-const thin = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+const thin = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
-const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+const none = { style: BorderStyle.NONE, size: 0, color: COLOR_WHITE };
 const noBorders = { top: none, bottom: none, left: none, right: none };
 const bordesEncabezado = {
-  top: borderCuadro,
-  bottom: borderCuadro,
-  left: borderCuadro,
-  right: borderCuadro,
-  insideHorizontal: borderCuadro,
-  insideVertical: borderCuadro,
+  top: none,
+  bottom: none,
+  left: none,
+  right: none,
+  insideHorizontal: none,
+  insideVertical: none,
+};
+/** Ficha label|valor: borde exterior + líneas horizontales, sin verticales internas agresivas */
+const borderFicha = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
+const bordersFicha = {
+  top: borderFicha,
+  bottom: borderFicha,
+  left: borderFicha,
+  right: borderFicha,
+  insideHorizontal: borderFicha,
+  insideVertical: none,
 };
 
-const FONT = 'Arial';
-/** Tamaño Word: half-points → 24 = 12 pt */
-const SIZE_12 = 24;
-const SIZE_META = 20;
-const SIZE_NSR = 14; // 7 pt — tabla presupuesto completa en landscape
-const SIZE_UNICO = 16; // 8 pt — liquidador único en vertical (9 columnas)
+const FONT = 'Calibri';
+/** Tamaño Word: half-points → 22 = 11 pt */
+const SIZE_12 = 22;
+const SIZE_TITLE = 32; // 16 pt
+const SIZE_HEADING = 26; // 13 pt
+const SIZE_META = 18; // 9 pt
+const SIZE_NSR = 16; // 8 pt — tabla presupuesto landscape
+const SIZE_UNICO = 18; // 9 pt — liquidador único vertical
 /** Tamaño en página (docx px). El JPEG embebido va a ~2× para impresión nítida. */
 const FOTO_WORD_ANCHO = 400;
 const FOTO_WORD_ALTO = 260;
@@ -117,9 +139,11 @@ const NSR_COLS = {
 };
 const NSR_TABLE_W = NSR_COLS.widths.reduce((a, b) => a + b, 0);
 
-/** Liquidador del informe único: 9 columnas en vertical (sin cubierto ni observación). */
+/** Liquidador del informe único en landscape (9 columnas, sin cubierto ni observación). */
+const PAGE_W_PORTRAIT = 9360;
+const PAGE_W_LANDSCAPE = 15200;
 const UNICO_COLS = {
-  widths: [1300, 1200, 2260, 480, 540, 980, 980, 720, 900],
+  widths: [1800, 1600, 4200, 700, 800, 1400, 1400, 1100, 2200],
   labels: [
     'CAPÍTULO',
     'COMPONENTE',
@@ -184,7 +208,7 @@ function construirTablaPolizaCasoZurich({ caso = {}, enc = {}, info = {} } = {})
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
     columnWidths: [4200, 5160],
-    borders: bordersCuadro,
+    borders: bordersFicha,
     rows: polizaRows,
   });
 }
@@ -205,10 +229,10 @@ async function loadLogoBytes(url) {
 }
 
 /**
- * Encabezado formal (fórmula Catastrófico / Motorysa):
- * Logo Proser | Título + subtítulo + código/versión/fecha | Logo Zurich
+ * Encabezado limpio: Logo Proser | marca + tipo + siniestro/fecha | Logo Zurich
+ * `landscape` usa el ancho de página horizontal para que no se desplace el header.
  */
-async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
+async function crearEncabezadoZurich({ caso = {}, informe = {}, landscape = false } = {}) {
   const base = import.meta.env.BASE_URL || '/';
   let proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
@@ -216,26 +240,16 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
 
   const siniestro = txt(caso.siniestro || caso.consecutivo, '—');
   const fecha = fmtFechaCorta(informe.fechaInforme || new Date());
-
-  const celdaMeta = (texto) =>
-    new TableCell({
-      borders,
-      margins: { top: 40, bottom: 40, left: 60, right: 60 },
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({ text: texto, font: FONT, size: SIZE_META, color: '333333' }),
-          ],
-        }),
-      ],
-    });
+  const pageW = landscape ? PAGE_W_LANDSCAPE : PAGE_W_PORTRAIT;
+  const sideW = landscape ? 2800 : 2200;
+  const midW = pageW - sideW * 2;
 
   const logoCell = (logo, fallbackText, align = AlignmentType.CENTER) =>
     new TableCell({
-      borders: bordesEncabezado,
-      width: { size: 2200, type: WidthType.DXA },
+      borders: noBorders,
+      width: { size: sideW, type: WidthType.DXA },
       verticalAlign: VerticalAlign.CENTER,
-      margins: { top: 80, bottom: 80, left: 80, right: 80 },
+      margins: { top: 40, bottom: 40, left: 40, right: 40 },
       children: [
         new Paragraph({
           alignment: align,
@@ -257,6 +271,7 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
                   bold: true,
                   font: FONT,
                   size: SIZE_12,
+                  color: COLOR_ZURICH,
                 }),
               ],
         }),
@@ -266,51 +281,57 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
   return new Header({
     children: [
       new Table({
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [2200, 4960, 2200],
+        width: { size: pageW, type: WidthType.DXA },
+        columnWidths: [sideW, midW, sideW],
         borders: bordesEncabezado,
         rows: [
           new TableRow({
             children: [
               logoCell(proser, 'GRUPO PROSER', AlignmentType.LEFT),
               new TableCell({
-                borders: bordesEncabezado,
-                width: { size: 4960, type: WidthType.DXA },
+                borders: noBorders,
+                width: { size: midW, type: WidthType.DXA },
                 verticalAlign: VerticalAlign.CENTER,
-                margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                margins: { top: 40, bottom: 40, left: 120, right: 120 },
                 children: [
                   new Paragraph({
-                    spacing: { after: 40 },
+                    spacing: { after: 20 },
                     children: [
                       new TextRun({
                         text: 'Zurich',
                         font: FONT,
-                        size: SIZE_12,
+                        size: SIZE_HEADING,
                         bold: true,
-                        color: '0066CC',
+                        color: COLOR_ZURICH,
                       }),
                     ],
                   }),
                   new Paragraph({
-                    spacing: { after: 60 },
+                    spacing: { after: 40 },
                     children: [
                       new TextRun({
                         text: etiquetaEncabezadoInformeZurich(informe.tipoInforme),
                         font: FONT,
-                        size: SIZE_12,
-                        color: '333333',
+                        size: SIZE_META,
+                        color: COLOR_MUTED,
                       }),
                     ],
                   }),
-                  new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    borders,
-                    rows: [
-                      new TableRow({
-                        children: [
-                          celdaMeta(`SINIESTRO: ${siniestro}`),
-                          celdaMeta(`FECHA: ${fecha}`),
-                        ],
+                  new Paragraph({
+                    spacing: { after: 0 },
+                    children: [
+                      new TextRun({
+                        text: `SINIESTRO ${siniestro}`,
+                        font: FONT,
+                        size: SIZE_META,
+                        bold: true,
+                        color: COLOR_TEXT,
+                      }),
+                      new TextRun({
+                        text: `   ·   FECHA ${fecha}`,
+                        font: FONT,
+                        size: SIZE_META,
+                        color: COLOR_MUTED,
                       }),
                     ],
                   }),
@@ -322,9 +343,9 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
         ],
       }),
       new Paragraph({
-        spacing: { before: 80, after: 0 },
+        spacing: { before: 60, after: 0 },
         border: {
-          bottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 4 },
+          bottom: { style: BorderStyle.SINGLE, size: 18, color: COLOR_ZURICH, space: 1 },
         },
         children: [],
       }),
@@ -332,34 +353,34 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con PRELIMINAR, FINAL o ÚNICO subrayado. */
+/** Título centrado con tipo de informe subrayado. */
 function crearTituloInformeZurich(info = {}) {
   const tipo = etiquetaTituloInformeZurich(info.tipoInforme);
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 120, after: 200 },
+    spacing: { before: 160, after: 200 },
     children: [
       new TextRun({
         text: 'INFORME ',
         bold: true,
-        size: SIZE_12,
+        size: SIZE_TITLE,
         font: FONT,
-        color: '0070C0',
+        color: COLOR_ZURICH,
       }),
       new TextRun({
         text: tipo,
         bold: true,
-        size: SIZE_12,
+        size: SIZE_TITLE,
         font: FONT,
-        color: '0070C0',
+        color: COLOR_ZURICH,
         underline: {},
       }),
       new TextRun({
         text: ' DE SINIESTRO',
         bold: true,
-        size: SIZE_12,
+        size: SIZE_TITLE,
         font: FONT,
-        color: '0070C0',
+        color: COLOR_ZURICH,
       }),
     ],
   });
@@ -368,44 +389,59 @@ function crearTituloInformeZurich(info = {}) {
 const p = (text, opts = {}) =>
   new Paragraph({
     alignment: opts.alignment || AlignmentType.LEFT,
-    spacing: { before: opts.before ?? 0, after: opts.after ?? 80 },
+    spacing: { before: opts.before ?? 0, after: opts.after ?? 100 },
     children: [
       new TextRun({
         text: String(text ?? ''),
         font: FONT,
         size: opts.size || SIZE_12,
         bold: !!opts.bold,
-        color: opts.color || '000000',
+        color: opts.color || COLOR_TEXT,
       }),
     ],
   });
 
 const heading = (text) =>
   new Paragraph({
-    spacing: { before: 160, after: 80 },
+    spacing: { before: 280, after: 120 },
+    border: {
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: COLOR_BORDER, space: 4 },
+    },
     children: [
       new TextRun({
         text: String(text),
         font: FONT,
-        size: SIZE_12,
+        size: SIZE_HEADING,
         bold: true,
-        color: '000000',
+        color: COLOR_ZURICH,
       }),
     ],
   });
 
 const cell = (text, opts = {}) => {
   const lines = String(text ?? '').split(/\n/);
+  const isHeader = Boolean(opts.header);
+  const isTotal = Boolean(opts.total);
+  const fill = opts.shading
+    ? opts.shading
+    : isHeader
+      ? COLOR_HEADER_BG
+      : isTotal
+        ? COLOR_TOTAL_BG
+        : opts.label
+          ? COLOR_LABEL_BG
+          : COLOR_WHITE;
   return new TableCell({
-    borders: opts.cuadro ? bordersCuadro : borders,
+    borders: opts.noBorder ? noBorders : opts.cuadro ? bordersCuadro : borders,
     width: { size: opts.width || 2300, type: WidthType.DXA },
     columnSpan: opts.columnSpan || 1,
     margins: {
-      top: opts.compact ? 40 : 80,
-      bottom: opts.compact ? 40 : 80,
-      left: opts.compact ? 40 : 100,
-      right: opts.compact ? 40 : 100,
+      top: opts.compact ? 36 : 60,
+      bottom: opts.compact ? 36 : 60,
+      left: opts.compact ? 40 : 90,
+      right: opts.compact ? 40 : 90,
     },
+    shading: { fill },
     verticalAlign: opts.verticalAlign || VerticalAlign.CENTER,
     children: lines.map(
       (line) =>
@@ -417,7 +453,8 @@ const cell = (text, opts = {}) => {
               text: line,
               font: FONT,
               size: opts.size || SIZE_12,
-              bold: !!opts.bold,
+              bold: isHeader || isTotal || !!opts.bold,
+              color: opts.color || (isHeader ? COLOR_TEXT : COLOR_TEXT),
             }),
           ],
         })
@@ -425,7 +462,7 @@ const cell = (text, opts = {}) => {
   });
 };
 
-/** Fila etiqueta | valor — cuadro formal negro (sin relleno de color) */
+/** Fila etiqueta | valor — ficha limpia con label sombreado */
 const campoFila = (label, value, opts = {}) =>
   new TableRow({
     children: [
@@ -434,12 +471,16 @@ const campoFila = (label, value, opts = {}) =>
         width: opts.labelW || 4200,
         size: opts.size || SIZE_12,
         cuadro: true,
+        label: true,
+        shading: opts.labelShading || COLOR_LABEL_BG,
       }),
       cell(String(value ?? '—'), {
         width: opts.valueW || 5160,
         size: opts.size || SIZE_12,
         bold: !!opts.boldValue,
         cuadro: true,
+        total: !!opts.total,
+        shading: opts.valueShading,
       }),
     ],
   });
@@ -562,15 +603,30 @@ function construirCuadroPrincipal({
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
     columnWidths: [4200, 5160],
-    borders: bordersCuadro,
-    rows: filas.map(([etiqueta, valor]) =>
-      new TableRow({
+    borders: bordersFicha,
+    rows: filas.map(([etiqueta, valor]) => {
+      const esTotal =
+        /INDEMNIZACIÓN|RESERVA SUGERIDA|VALOR DE LA PÉRDIDA/i.test(String(etiqueta));
+      return new TableRow({
         children: [
-          cell(etiqueta, { bold: true, width: 4200, size: SIZE_12, cuadro: true }),
-          cell(valor, { width: 5160, size: SIZE_12, cuadro: true }),
+          cell(etiqueta, {
+            bold: true,
+            width: 4200,
+            size: SIZE_12,
+            cuadro: true,
+            label: true,
+            total: esTotal,
+          }),
+          cell(valor, {
+            width: 5160,
+            size: SIZE_12,
+            cuadro: true,
+            bold: esTotal,
+            total: esTotal,
+          }),
         ],
-      })
-    ),
+      });
+    }),
   });
 }
 
@@ -921,12 +977,14 @@ async function construirBloqueDaniosUbicacionZurich({ info = {}, caso = {} } = {
             children: [
               cell('ELEMENTO / ZONA', {
                 bold: true,
+                header: true,
                 width: 2200,
                 cuadro: true,
                 alignment: AlignmentType.CENTER,
               }),
               cell('CONDICIÓN OBSERVADA', {
                 bold: true,
+                header: true,
                 width: 5360,
                 cuadro: true,
                 alignment: AlignmentType.CENTER,
@@ -1017,7 +1075,7 @@ async function construirBloqueDaniosUbicacionZurich({ info = {}, caso = {} } = {
       p('Sin captura de mapa. Use «Actualizar captura» en el informe para generarla.', {
         alignment: AlignmentType.CENTER,
         after: 100,
-        color: '666666',
+        color: COLOR_MUTED,
       })
     );
   }
@@ -1030,7 +1088,7 @@ async function construirBloqueDaniosUbicacionZurich({ info = {}, caso = {} } = {
         alignment: AlignmentType.CENTER,
         after: idx === pieMapa.length - 1 ? 80 : 40,
         size: esFuente ? SIZE_META : SIZE_12,
-        color: esFuente ? '666666' : (linea.startsWith('Coordenadas:') ? '0070C0' : undefined),
+        color: esFuente ? COLOR_MUTED : (linea.startsWith('Coordenadas:') ? COLOR_ZURICH : undefined),
       })
     );
   });
@@ -1065,17 +1123,18 @@ async function construirZonaFirmasZurich({ info = {} } = {}) {
 
   return [
     heading('FIRMAS'),
-    new Paragraph({ spacing: { before: 280, after: 80 }, children: [] }),
+    new Paragraph({ spacing: { before: 120, after: 40 }, children: [] }),
     pLeft(
       [
         new TextRun({
           text: 'FIRMA DEL AJUSTADOR',
           font: FONT,
-          size: SIZE_12,
+          size: SIZE_META,
           bold: true,
+          color: COLOR_MUTED,
         }),
       ],
-      { after: 100 }
+      { after: 80 }
     ),
     imgAjustador
       ? pLeft(
@@ -1124,7 +1183,7 @@ async function construirZonaFirmasZurich({ info = {} } = {}) {
         text: emailAjustador,
         font: FONT,
         size: SIZE_12,
-        color: '0066CC',
+        color: COLOR_ZURICH,
       }),
     ]),
     pLeft(
@@ -1134,7 +1193,7 @@ async function construirZonaFirmasZurich({ info = {} } = {}) {
           font: FONT,
           size: SIZE_12,
           bold: true,
-          color: 'C00000',
+          color: 'B91C1C',
         }),
       ],
       { before: 40, after: 40 }
@@ -1154,18 +1213,21 @@ function tablaAnalisisPolizaZurich(filas = []) {
       children: [
         cell('CONCEPTO', {
           bold: true,
+          header: true,
           width: 2000,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('ANÁLISIS', {
           bold: true,
+          header: true,
           width: 5360,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('CONCLUSIÓN', {
           bold: true,
+          header: true,
           width: 2000,
           cuadro: true,
           alignment: AlignmentType.CENTER,
@@ -1235,18 +1297,21 @@ function tablaPresupuestoPreliminarZurich(filas = [], info = {}, extras = {}) {
       children: [
         cell('Capítulo', {
           bold: true,
+          header: true,
           width: 2800,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('Descripción del alcance', {
           bold: true,
+          header: true,
           width: 4560,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('Valor estimado', {
           bold: true,
+          header: true,
           width: 2000,
           cuadro: true,
           alignment: AlignmentType.CENTER,
@@ -1303,16 +1368,48 @@ function tablaPresupuestoPreliminarZurich(filas = [], info = {}, extras = {}) {
   rows.push(
     new TableRow({
       children: [
-        cell('VALOR DE LA PÉRDIDA', {
+        cell('SUBTOTAL (COSTO DIRECTO)', {
           width: 7360,
           columnSpan: 2,
           cuadro: true,
           alignment: AlignmentType.RIGHT,
         }),
+        cell(money(desglose.subtotal ?? desglose.perdida), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell(`AIU (${desglose.aiuPctDisplay ?? Math.round((desglose.aiuPct || 0) * 100)}%)`, {
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(money(desglose.aiu || 0), {
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell('VALOR DE LA PÉRDIDA', {
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+          bold: true,
+        }),
         cell(money(desglose.perdida), {
           width: 2000,
           cuadro: true,
           alignment: AlignmentType.RIGHT,
+          bold: true,
         }),
       ],
     }),
@@ -1342,12 +1439,14 @@ function tablaPresupuestoPreliminarZurich(filas = [], info = {}, extras = {}) {
           columnSpan: 2,
           cuadro: true,
           alignment: AlignmentType.RIGHT,
+          total: true,
         }),
         cell(money(desglose.reserva), {
           bold: true,
           width: 2000,
           cuadro: true,
           alignment: AlignmentType.RIGHT,
+          total: true,
         }),
       ],
     })
@@ -1405,13 +1504,15 @@ function tablaLiquidadorUnicoZurich({
       cuadro: true,
       alignment: opts.alignment || AlignmentType.LEFT,
       bold: !!opts.bold,
+      header: !!opts.header,
+      total: !!opts.total,
       columnSpan: opts.columnSpan || 1,
     });
 
   const rows = [
     new TableRow({
       children: UNICO_COLS.labels.map((label, i) =>
-        cellU(label, i, { bold: true, alignment: AlignmentType.CENTER })
+        cellU(label, i, { bold: true, header: true, alignment: AlignmentType.CENTER })
       ),
     }),
   ];
@@ -1525,6 +1626,7 @@ function tablaLiquidadorUnicoZurich({
   }
   const wLabel = w.slice(0, 6).reduce((a, b) => a + b, 0);
   resumen.forEach(([lab, val]) => {
+    const esTotal = /TOTAL|INDEMNIZAR|NETO|SUBTOTAL/i.test(String(lab));
     rows.push(
       new TableRow({
         children: [
@@ -1535,6 +1637,7 @@ function tablaLiquidadorUnicoZurich({
             compact: true,
             cuadro: true,
             bold: true,
+            total: esTotal,
             alignment: AlignmentType.RIGHT,
           }),
           cell(val, {
@@ -1543,6 +1646,7 @@ function tablaLiquidadorUnicoZurich({
             compact: true,
             cuadro: true,
             bold: true,
+            total: esTotal,
             alignment: AlignmentType.RIGHT,
           }),
           cell('', { width: w[7], size: SIZE_UNICO, compact: true, cuadro: true }),
@@ -1562,22 +1666,17 @@ function tablaLiquidadorUnicoZurich({
 
 function footerUnicoConDeducibleZurich(base = {}, totales = {}, liq = {}) {
   const desglose = desgloseDeducibleTerremotoZurich(liq, totales.diagrama);
-  const contenidosPerdida = Number(totales.totalContenidos) || 0;
-  const contenidosDeducible = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
-  const contenidosNeto =
-    Number(totales.diagrama?.deducibleContenidos?.neto) ||
-    Number(totales.contenidos?.valorAIndemnizar) ||
-    0;
   return {
     ...base,
     deducibleAplicado:
       Number(desglose.aplicado) || Number(totales.deducibleAplicado) || 0,
     textoDeducible: desglose.texto || totales.deducibleTexto || '',
     totalIndemnizar: desglose.neto,
-    contenidosPerdida,
-    contenidosDeducible,
-    contenidosNeto,
-    totalIndemnizarFinal: Number(totales.totalIndemnizar) || 0,
+    // El edificio no arrastra contenidos aquí: van en 4.2 / 4.3.
+    contenidosPerdida: 0,
+    contenidosDeducible: 0,
+    contenidosNeto: 0,
+    totalIndemnizarFinal: desglose.neto,
   };
 }
 
@@ -1589,24 +1688,31 @@ function tablaResumenLiquidacionZurichWord(filas = []) {
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
     columnWidths: [labelW, valueW],
-    borders: bordersCuadro,
-    rows: list.map((fila) =>
-      new TableRow({
+    borders: bordersFicha,
+    rows: list.map((fila) => {
+      const destacado = !!(fila.bold || fila.destacado);
+      const esTotal =
+        destacado ||
+        /INDEMNIZAR|INDEMNIZACIÓN|TOTAL|NETO|RESERVA/i.test(String(fila.label || ''));
+      return new TableRow({
         children: [
           cell(fila.label, {
             width: labelW,
             cuadro: true,
-            bold: !!(fila.bold || fila.destacado),
+            bold: destacado || esTotal,
+            label: !esTotal,
+            total: esTotal,
           }),
           cell(money(fila.value), {
             width: valueW,
             cuadro: true,
-            bold: !!(fila.bold || fila.destacado),
+            bold: destacado || esTotal,
+            total: esTotal,
             alignment: AlignmentType.RIGHT,
           }),
         ],
-      })
-    ),
+      });
+    }),
   });
 }
 
@@ -1626,6 +1732,7 @@ function tablaLiquidacionPorCoberturaZurichWord(filas = []) {
             width: w[i],
             cuadro: true,
             bold: true,
+            header: true,
             alignment: i === 0 ? AlignmentType.LEFT : AlignmentType.RIGHT,
           })
         ),
@@ -1638,23 +1745,27 @@ function tablaLiquidacionPorCoberturaZurichWord(filas = []) {
                 width: w[0],
                 cuadro: true,
                 bold: !!fila.total,
+                total: !!fila.total,
               }),
               cell(money(fila.perdida), {
                 width: w[1],
                 cuadro: true,
                 bold: !!fila.total,
+                total: !!fila.total,
                 alignment: AlignmentType.RIGHT,
               }),
               cell(money(fila.deducible), {
                 width: w[2],
                 cuadro: true,
                 bold: !!fila.total,
+                total: !!fila.total,
                 alignment: AlignmentType.RIGHT,
               }),
               cell(money(fila.neto), {
                 width: w[3],
                 cuadro: true,
-                bold: true,
+                bold: !!fila.total,
+                total: !!fila.total,
                 alignment: AlignmentType.RIGHT,
               }),
             ],
@@ -1670,18 +1781,21 @@ function tablaDiagramaAjusteZurich(desglose = {}, extras = {}) {
       children: [
         cell('Capítulo', {
           bold: true,
+          header: true,
           width: 2800,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('Descripción del alcance', {
           bold: true,
+          header: true,
           width: 4560,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('Valor estimado', {
           bold: true,
+          header: true,
           width: 2000,
           cuadro: true,
           alignment: AlignmentType.CENTER,
@@ -1864,12 +1978,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       ? liq.evaluacionSismicaNSR10.presupuesto.items
       : [];
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
-  const tieneContenidosDiligenciados = (Array.isArray(contenidosNsr.items) ? contenidosNsr.items : []).some(
-    (it) =>
-      String(it?.articulo || '').trim() ||
-      String(it?.categoria || '').trim() ||
-      Number(it?.cantidad) > 0
-  );
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
     (totales.aiuPct ?? totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 10000
@@ -2096,7 +2204,12 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     );
   }
 
-  const header = await crearEncabezadoZurich({ caso, informe: info });
+  const header = await crearEncabezadoZurich({ caso, informe: info, landscape: false });
+  const headerLandscape = await crearEncabezadoZurich({
+    caso,
+    informe: info,
+    landscape: true,
+  });
 
   const usaCotizacion = totales.origenPresupuesto === 'cotizacion';
 
@@ -2233,23 +2346,41 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     rows: filasNsr,
   });
 
-  const { tabla: tablaContenidos } = construirTablaContenidosWord({
-    contenidos: contenidosNsr,
-    cell,
-    size: SIZE_NSR,
-    incluirDeduciblePorArticulo: usaDeduciblePorArticulo,
-    valoresAsegurablesCaso: valoresAsegurablesDesdeLiquidador(liq),
-  });
+  const valoresAsegWord = valoresAsegurablesDesdeLiquidador(liq);
+  const amparosContenidosWord =
+    Array.isArray(totales.contenidosPorAmparo) && totales.contenidosPorAmparo.length
+      ? totales.contenidosPorAmparo
+      : liquidarContenidosPorAmparoZurich(liq, {
+          evalData: liq?.evaluacionSismicaNSR10 || {},
+          valores: valoresAsegWord,
+        });
+  const seccionesContenidosWord = amparosContenidosWord
+    .filter((a) => Array.isArray(a.items) && a.items.length)
+    .map((amparo, idx) => {
+      const { tabla } = construirTablaContenidosWord({
+        contenidos: { ...contenidosNsr, items: amparo.items },
+        cell,
+        size: SIZE_NSR,
+        incluirDeduciblePorArticulo: false,
+        valoresAsegurablesCaso: valoresAsegWord,
+      });
+      const n = idx + 2; // 4.2, 4.3, ...
+      return {
+        heading: `4.${n} ${amparo.cobertura}`,
+        tabla,
+        amparo,
+      };
+    });
 
   const firmasParrafos = await construirZonaFirmasZurich({ caso, enc, info });
   const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionZurich({ info, caso });
 
   const pagePortrait = {
-    margin: { top: 1100, bottom: 720, left: 900, right: 900 },
+    margin: { top: 1000, bottom: 800, left: 1000, right: 1000 },
     size: { orientation: PageOrientation.PORTRAIT },
   };
   const pageLandscape = {
-    margin: { top: 700, bottom: 700, left: 600, right: 600 },
+    margin: { top: 720, bottom: 720, left: 720, right: 720 },
     size: { orientation: PageOrientation.LANDSCAPE },
   };
 
@@ -2390,10 +2521,16 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           total: totales.totalPresupuesto ?? totales.presupuesto?.total,
         };
     sections.push({
-      properties: { page: pagePortrait },
-      headers: { default: header },
+      properties: { page: pageLandscape },
+      headers: { default: headerLandscape },
       children: [
         heading('4. Liquidación (presupuesto de reparación ajustador)'),
+        p('4.1 Obra civil / Edificio', {
+          bold: true,
+          before: 80,
+          after: 80,
+          size: SIZE_12,
+        }),
         ...(seccionCotizacion.length
           ? seccionCotizacion
           : [
@@ -2419,7 +2556,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
                 mostrarImpuestos,
                 imprPct,
                 impPct,
-                otrosAmparos: totales.otrosAmparos || liq.otrosAmparos,
+                otrosAmparos: [],
               }),
             ]
           : filasConDatos.length
@@ -2464,48 +2601,78 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
                   ]),
                 ].filter(Boolean);
               })()),
-        ...(() => {
-          const coberturas = filasLiquidacionPorCoberturaZurich(liq, totales);
-          const tablaCob = tablaLiquidacionPorCoberturaZurichWord(coberturas);
-          if (!tablaCob) return [];
-          return [
-            p('Liquidación por coberturas', {
-              bold: true,
-              before: 200,
-              after: 80,
-            }),
-            p(
-              'Cada amparo se liquida con su pérdida y su deducible. Edificio usa el deducible de terremoto del presupuesto o de la cotización. Muebles, equipo eléctrico y maquinaria se liquidan por categoría. Las demás coberturas (gastos) no llevan deducible.',
-              { after: 80, size: SIZE_12 }
-            ),
-            tablaCob,
-          ];
-        })(),
-        ...(!usaCotizacion && tablaResumenCotiz
-          ? [
-              p('Resultado de la liquidación', {
-                bold: true,
-                before: 200,
-                after: 80,
-              }),
-              tablaResumenCotiz,
-            ]
-          : []),
       ],
     });
-    if (tieneContenidosDiligenciados && tablaContenidos) {
+    seccionesContenidosWord.forEach((sec) => {
       sections.push({
         properties: { page: pageLandscape },
-        headers: { default: header },
+        headers: { default: headerLandscape },
         children: [
-          heading('4.1 Liquidación de contenidos'),
+          heading(sec.heading),
+          sec.tabla,
           p(
-            'Los contenidos se liquidan aparte del edificio: pérdida − deducible por categoría. El neto se suma al presupuesto neto y a los gastos sin deducible.',
-            { after: 80, size: SIZE_12 }
+            `Subtotal pérdida ${sec.amparo.cobertura}: ${money(sec.amparo.perdida)}. ` +
+              `Deducible terremoto: − ${money(sec.amparo.deducible)}. ` +
+              `Indemnización: ${money(sec.amparo.neto)}.`,
+            { before: 120, after: 80, size: SIZE_12 }
           ),
-          tablaContenidos,
+          tablaResumenLiquidacionZurichWord([
+            { label: 'Subtotal pérdida', value: sec.amparo.perdida },
+            { label: 'Deducible terremoto', value: sec.amparo.deducible },
+            {
+              label: 'INDEMNIZACIÓN',
+              value: sec.amparo.neto,
+              bold: true,
+              destacado: true,
+            },
+          ]),
         ],
       });
+    });
+    {
+      const coberturas = filasLiquidacionPorCoberturaZurich(liq, totales);
+      const tablaCob = tablaLiquidacionPorCoberturaZurichWord(coberturas);
+      const otros = desgloseWordOtrosAmparos(totales.otrosAmparos || liq.otrosAmparos);
+      const hijos = [];
+      if (tablaCob) {
+        hijos.push(
+          heading(
+            `4.${2 + seccionesContenidosWord.length} Diagrama de liquidación`
+          ),
+          p(
+            'Cada amparo se liquida con su pérdida y su deducible. El total a indemnizar es la suma de los netos.',
+            { after: 80, size: SIZE_12 }
+          ),
+          tablaCob
+        );
+      }
+      if (otros.filas.length) {
+        hijos.push(
+          p('Gastos sin deducible', { bold: true, before: 160, after: 80 }),
+          tablaResumenLiquidacionZurichWord([
+            ...otros.filas.map((f) => ({ label: f.label, value: f.valor })),
+            {
+              label: 'TOTAL GASTOS SIN DEDUCIBLE',
+              value: otros.total,
+              bold: true,
+              destacado: true,
+            },
+            {
+              label: 'TOTAL A INDEMNIZAR',
+              value: totales.totalIndemnizar,
+              bold: true,
+              destacado: true,
+            },
+          ])
+        );
+      }
+      if (hijos.length) {
+        sections.push({
+          properties: { page: pageLandscape },
+          headers: { default: headerLandscape },
+          children: hijos,
+        });
+      }
     }
     sections.push({
       properties: { page: pagePortrait },

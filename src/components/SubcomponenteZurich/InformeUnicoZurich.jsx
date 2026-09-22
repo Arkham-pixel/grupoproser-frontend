@@ -47,8 +47,14 @@ import {
   patchDeducibleReservaZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
+  totalesPresupuestoPreliminarZurich,
+  resolverAiuPctPreliminarZurich,
+  aiuPorcentajePreliminarDesdeLiquidadorZurich,
   valorAseguradoPresupuestoZurich,
+  filasPresupuestoPreliminarDesdeLiquidadorZurich,
+  liquidadorTienePresupuestoParaPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
+import { esSesionPuedeImportarPptPreliminarZurich } from '../../utils/permisosCasoPorRol.js';
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
 import { formatMiles, resolverDepartamentoZurich } from './zurichHelpers.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
@@ -355,6 +361,18 @@ export default function InformeUnicoZurich({
     () => totalPresupuestoPreliminarZurich(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
   );
+  const aiuPctPreliminar = useMemo(
+    () => resolverAiuPctPreliminarZurich(informe, liquidador),
+    [informe.aiuPorcentajePreliminar, liquidador]
+  );
+  const totalesPptoPreliminar = useMemo(
+    () =>
+      totalesPresupuestoPreliminarZurich(
+        informe.filasPresupuestoPreliminar,
+        aiuPctPreliminar
+      ),
+    [informe.filasPresupuestoPreliminar, aiuPctPreliminar]
+  );
   const extrasReserva = useMemo(() => {
     const base = {
       caso: casoZurich,
@@ -381,6 +399,7 @@ export default function InformeUnicoZurich({
       informe.filasPresupuestoPreliminar,
       informe.porcentajeDeducibleReserva,
       informe.deducibleConfigReserva,
+      informe.aiuPorcentajePreliminar,
       extrasReserva,
     ]
   );
@@ -504,6 +523,77 @@ export default function InformeUnicoZurich({
     return next;
   };
 
+  const puedeImportarPptPreliminar = esSesionPuedeImportarPptPreliminarZurich();
+  const liquidadorConPresupuesto = useMemo(
+    () => liquidadorTienePresupuestoParaPreliminarZurich(liquidador),
+    [liquidador]
+  );
+
+  const importarPresupuestoDesdeLiquidador = () => {
+    if (!esSesionPuedeImportarPptPreliminarZurich()) {
+      setError('No tiene permiso para importar el presupuesto del liquidador.');
+      setMensaje('');
+      return;
+    }
+    if (!liquidadorTienePresupuestoParaPreliminarZurich(liquidador)) {
+      setError(
+        'No hay presupuesto en el liquidador. Digítelo en la pestaña Presupuesto y vuelva a intentar.'
+      );
+      setMensaje('');
+      return;
+    }
+    const filas = filasPresupuestoPreliminarDesdeLiquidadorZurich(liquidador);
+    const aiuPct = aiuPorcentajePreliminarDesdeLiquidadorZurich(liquidador);
+    setInforme((prev) => {
+      const base = {
+        ...prev,
+        tipoInforme: 'preliminar',
+        aiuPorcentajePreliminar: aiuPct,
+      };
+      return conReservaDesdePresupuesto(base, filas);
+    });
+    setError('');
+    setMensaje(
+      `Presupuesto del liquidador importado al preliminar (${filas.length} fila${
+        filas.length === 1 ? '' : 's'
+      }). Revise y guarde el informe.`
+    );
+  };
+
+  const bloqueImportarPpt = puedeImportarPptPreliminar ? (
+    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+      <p className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
+        Importar presupuesto del liquidador → informe preliminar
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={expressBtnPrimary}
+          disabled={!liquidadorConPresupuesto}
+          title={
+            liquidadorConPresupuesto
+              ? 'Copia el presupuesto digitado en la pestaña Presupuesto al preliminar'
+              : 'Primero digite el presupuesto en la pestaña Presupuesto'
+          }
+          onClick={importarPresupuestoDesdeLiquidador}
+        >
+          Traer presupuesto del liquidador
+        </button>
+        <button
+          type="button"
+          className={expressBtnGhost}
+          onClick={() => onAbrirPresupuesto?.()}
+        >
+          Ir al liquidador
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-blue-800/80 dark:text-blue-200/80">
+        Visible solo para Lady Andrea Escalante y Oscar Atencia. Reemplaza las filas del
+        preliminar y recalcula la reserva.
+      </p>
+    </div>
+  ) : null;
+
   const setDeducibleReserva = (patch) => {
     setInforme((prev) => {
       const next = patchDeducibleReservaZurich(prev, patch);
@@ -544,8 +634,28 @@ export default function InformeUnicoZurich({
 
   const handleNsrChange = (patch) => {
     setLiquidador((prev) => {
-      const next = { ...prev, ...patch, modelo: 'nsr10' };
-      if (patch.indemnizacionSugerida != null) {
+      const { encabezado: encPatch, ...rest } = patch || {};
+      const next = { ...prev, ...rest, modelo: 'nsr10' };
+      const vaCampos = [
+        'valorAseguradoInmueble',
+        'valorAseguradoContenidos',
+        'valorAseguradoEquipoElectronico',
+        'valorAseguradoMaquinaria',
+      ];
+      let enc = { ...(prev.encabezado || {}) };
+      let tocaEnc = false;
+      if (encPatch && typeof encPatch === 'object') {
+        enc = { ...enc, ...encPatch };
+        tocaEnc = true;
+      }
+      vaCampos.forEach((c) => {
+        if (Object.prototype.hasOwnProperty.call(patch || {}, c)) {
+          enc[c] = patch[c];
+          tocaEnc = true;
+        }
+      });
+      if (tocaEnc) next.encabezado = enc;
+      if (patch?.indemnizacionSugerida != null) {
         next.indemnizacionSugerida = patch.indemnizacionSugerida;
       }
       return next;
@@ -644,6 +754,8 @@ export default function InformeUnicoZurich({
           disabled={guardandoCaso}
         />
       )}
+
+      {bloqueImportarPpt}
 
       <p className="font-body text-sm text-gray-600 dark:text-gray-400">
         {tipoInforme === 'preliminar'
@@ -963,9 +1075,48 @@ export default function InformeUnicoZurich({
         <div className="mt-3 max-w-xl space-y-3">
           <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>Subtotal (costo directo)</span>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(totalesPptoPreliminar.subtotal)}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <label className="flex items-center gap-2">
+                <span>AIU (%)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="w-20 rounded border border-gray-200 bg-white px-2 py-1 font-mono text-sm dark:border-gray-700 dark:bg-gray-900"
+                  value={
+                    informe.aiuPorcentajePreliminar === '' ||
+                    informe.aiuPorcentajePreliminar == null
+                      ? String(totalesPptoPreliminar.aiuPctDisplay)
+                      : Number(informe.aiuPorcentajePreliminar) > 1
+                        ? String(informe.aiuPorcentajePreliminar)
+                        : String(
+                            Math.round(Number(informe.aiuPorcentajePreliminar) * 10000) / 100
+                          )
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(',', '.');
+                    if (raw === '') {
+                      setCampo('aiuPorcentajePreliminar', '');
+                      return;
+                    }
+                    const n = Number(raw);
+                    if (!Number.isFinite(n)) return;
+                    setCampo('aiuPorcentajePreliminar', n > 1 ? n / 100 : n);
+                  }}
+                />
+              </label>
+              <span className="font-mono tabular-nums">
+                $ {formatearMonto(totalesPptoPreliminar.aiu)}
+              </span>
+            </div>
+            <div className="flex justify-between px-4 py-2 text-sm font-semibold dark:border-gray-700">
               <span>{t('zurich.reportUnique.lossValue')}</span>
               <span className="font-mono tabular-nums">
-                $ {formatearMonto(totalPreliminar)}
+                $ {formatearMonto(totalesPptoPreliminar.total)}
               </span>
             </div>
           </div>

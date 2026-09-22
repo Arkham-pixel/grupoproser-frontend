@@ -56,19 +56,21 @@ export function construirTablaContenidosWord({
       cuadro: true,
       alignment: opts.alignment || AlignmentType.LEFT,
       bold: !!opts.bold,
+      header: !!opts.header,
+      total: !!opts.total,
     });
 
   const filas = [
     new TableRow({
       children: [
-        cellCont('Categoría', 0, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Artículo', 1, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Marca', 2, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Und', 3, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Cant.', 4, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Vlr. unit.', 5, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Vlr. total', 6, { bold: true, alignment: AlignmentType.CENTER }),
-        cellCont('Estado / obs.', 7, { bold: true, alignment: AlignmentType.CENTER }),
+        cellCont('Categoría', 0, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Artículo', 1, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Marca', 2, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Und', 3, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Cant.', 4, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Vlr. unit.', 5, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Vlr. total', 6, { bold: true, header: true, alignment: AlignmentType.CENTER }),
+        cellCont('Estado / obs.', 7, { bold: true, header: true, alignment: AlignmentType.CENTER }),
       ],
     }),
   ];
@@ -140,6 +142,7 @@ export function construirTablaContenidosWord({
             compact: true,
             cuadro: true,
             bold: true,
+            total: true,
             alignment: AlignmentType.RIGHT,
           }),
           cell(money(totales.total), {
@@ -148,6 +151,7 @@ export function construirTablaContenidosWord({
             compact: true,
             cuadro: true,
             bold: true,
+            total: true,
             alignment: AlignmentType.RIGHT,
           }),
           cell(
@@ -157,6 +161,7 @@ export function construirTablaContenidosWord({
               size,
               compact: true,
               cuadro: true,
+              total: true,
             }
           ),
         ],
