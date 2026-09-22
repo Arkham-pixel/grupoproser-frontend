@@ -144,9 +144,11 @@ function assertWellFormedXml(xml) {
 /**
  * Rellena la plantilla oficial Word (Arial Nova 9, tabla) con los datos del liquidador.
  */
-export async function generarConstanciaFdmBlob(liquidador, totalesParam) {
+export async function generarConstanciaFdmBlob(liquidador, totalesParam, opciones = {}) {
   const totales = totalesParam || calcularLiquidacionFdm(liquidador);
   const c = buildConstanciaPreview(liquidador, totales);
+  const riesgosDe =
+    opciones.usarTomador && c.tomador ? c.tomador : 'Básico Empresa Fundación de la Mujer';
   const letras = letrasConstancia(c.indemnizacionLetras);
   const cedulaFmt = formatearCedula(c.cedula);
 
@@ -174,7 +176,7 @@ export async function generarConstanciaFdmBlob(liquidador, totalesParam) {
   xml = replaceParagraphContaining(
     xml,
     'PRIMERO. -',
-    `PRIMERO. - Que he llegado con LA EQUIDAD SEGUROS GENERALES O.C., aseguradora de los riesgos de Básico Empresa Fundación de la Mujer, a un arreglo transaccional definitivo, con ocasión al evento ${c.evento} que afectó el bien asegurado, en la dirección: ${c.direccion}, en hechos ocurridos el ${c.fechaSiniestroLarga}.`
+    `PRIMERO. - Que he llegado con LA EQUIDAD SEGUROS GENERALES O.C., aseguradora de los riesgos de ${riesgosDe}, a un arreglo transaccional definitivo, con ocasión al evento ${c.evento} que afectó el bien asegurado, en la dirección: ${c.direccion}, en hechos ocurridos el ${c.fechaSiniestroLarga}.`
   );
 
   xml = replaceParagraphContaining(
@@ -218,7 +220,7 @@ export async function generarConstanciaFdmBlob(liquidador, totalesParam) {
   };
 }
 
-export async function descargarConstanciaFdmWord(liquidador, totales) {
-  const { blob, nombre } = await generarConstanciaFdmBlob(liquidador, totales);
+export async function descargarConstanciaFdmWord(liquidador, totales, opciones) {
+  const { blob, nombre } = await generarConstanciaFdmBlob(liquidador, totales, opciones);
   saveAs(blob, nombre);
 }

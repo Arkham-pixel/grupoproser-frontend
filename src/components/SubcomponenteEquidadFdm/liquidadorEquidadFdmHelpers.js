@@ -243,6 +243,27 @@ function crearItem(item = '', valor = '', id) {
   };
 }
 
+const TOMADOR_PLACEHOLDER_FDM = 'FUNDACION DE LA MUJER';
+
+function normalizarTomador(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+/** El default de FDM no debe tapar el tomador real de Equidad CAT. */
+function resolverTomadorLiquidador(tomadorCaso, tomadorGuardado) {
+  const caso = String(tomadorCaso || '').trim();
+  const guardado = String(tomadorGuardado || '').trim();
+  const guardadoEsPlaceholder = normalizarTomador(guardado) === TOMADOR_PLACEHOLDER_FDM;
+  const casoEsReal = Boolean(caso) && normalizarTomador(caso) !== TOMADOR_PLACEHOLDER_FDM;
+  if ((!guardado || guardadoEsPlaceholder) && casoEsReal) return caso;
+  return guardado || caso || TOMADOR_PLACEHOLDER_FDM;
+}
+
 export function mapCasoFdmALiquidador(caso = {}) {
   const anio = new Date().getFullYear();
   const base = {
@@ -288,6 +309,10 @@ export function mapCasoFdmALiquidador(caso = {}) {
       encabezado: {
         ...base.encabezado,
         ...(caso.liquidador.encabezado || {}),
+        tomador: resolverTomadorLiquidador(
+          caso.tomadorLiquidador || base.encabezado.tomador,
+          caso.liquidador.encabezado?.tomador
+        ),
       },
       deducible: {
         ...base.deducible,

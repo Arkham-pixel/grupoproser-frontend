@@ -565,6 +565,7 @@ export default function CasoEquidadCatWorkspace({ tabInicial = null } = {}) {
               <LiquidadorEquidadFdm
                 key={`liq-${casoId}-${restoreNonce}`}
                 casoFdm={casoFdm}
+                constanciaUsaTomador
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
                   setTotalesState(tot);

@@ -194,6 +194,7 @@ export default function LiquidadorEquidadFdm({
   onGuardarEnCaso,
   guardandoCaso = false,
   tieneLiquidadorGuardado = false,
+  constanciaUsaTomador = false,
 }) {
   const { t } = useTranslation();
   const fileRef = useRef(null);
@@ -303,7 +304,9 @@ export default function LiquidadorEquidadFdm({
     setDescargando(true);
     setError('');
     try {
-      await descargarConstanciaFdmWord(liquidador, totales);
+      await descargarConstanciaFdmWord(liquidador, totales, {
+        usarTomador: constanciaUsaTomador,
+      });
       setPreviewDoc(null);
     } catch (err) {
       console.error(err);
