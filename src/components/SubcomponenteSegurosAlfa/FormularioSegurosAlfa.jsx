@@ -339,6 +339,16 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     [initialData?.liquidador]
   );
   const camposDesdeLiquidador = Boolean(montosLiquidador);
+  const controlDesdeLiquidador = useMemo(
+    () => Boolean(camposControlLiquidacionDesdeLiquidadorAlfa(initialData?.liquidador)),
+    [initialData?.liquidador]
+  );
+  /** DESISTIDO / OBJETADO / CERRADO: no habrá liquidador → control editable a mano. */
+  const controlLiquidacionEditable = useMemo(() => {
+    if (controlDesdeLiquidador) return false;
+    const s = homologarEstadoSiniestroAlfa(form.estado, form);
+    return s === 'DESISTIDO' || s === 'OBJETADO' || s === 'CERRADO';
+  }, [controlDesdeLiquidador, form]);
 
   const inputMiles = (clave) => {
     const fromLiq =
@@ -352,6 +362,28 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         placeholder="0"
         {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
         readOnly={fromLiq}
+      />
+    );
+  };
+
+  const inputControlLiquidacion = (clave, { pendienteSiVacio = true } = {}) => {
+    if (controlLiquidacionEditable) {
+      return inputMiles(clave);
+    }
+    const tieneValor = form[clave] != null && form[clave] !== '';
+    const value = tieneValor
+      ? formatMiles(form[clave])
+      : pendienteSiVacio
+        ? 'Pendiente de liquidación'
+        : formatMiles(0);
+    return (
+      <InputFenix
+        type="text"
+        value={value}
+        readOnly
+        className={`bg-gray-50 dark:bg-gray-800${
+          clave === 'valorTotalPagar' ? ' font-semibold text-fenix-primario' : ''
+        }`}
       />
     );
   };
@@ -910,50 +942,32 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           </Campo>
         </div>
 
-        {/* Campos de control de liquidación (solo lectura, derivados del liquidador) */}
+        {/* Control de liquidación: desde liquidador (lectura) o editable si DESISTIDO/OBJETADO/CERRADO */}
         <h4 className="mt-6 mb-2 font-display text-base font-semibold text-gray-800 dark:text-gray-100">
           Control de liquidación
         </h4>
+        {controlLiquidacionEditable ? (
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            Caso sin liquidación esperada: puede cargar estos valores a mano (p. ej. 0).
+          </p>
+        ) : null}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label="Liquidado cobertura terremoto">
-            <InputFenix
-              type="text"
-              value={form.liquidadoCoberturaTerremo != null && form.liquidadoCoberturaTerremo !== '' ? formatMiles(form.liquidadoCoberturaTerremo) : 'Pendiente de liquidación'}
-              readOnly
-              className="bg-gray-50 dark:bg-gray-800"
-            />
+            {inputControlLiquidacion('liquidadoCoberturaTerremo')}
           </Campo>
           <Campo label="Deducible terremoto">
-            <InputFenix
-              type="text"
-              value={form.deducibleTerremoto != null && form.deducibleTerremoto !== '' ? formatMiles(form.deducibleTerremoto) : 'Pendiente de liquidación'}
-              readOnly
-              className="bg-gray-50 dark:bg-gray-800"
-            />
+            {inputControlLiquidacion('deducibleTerremoto')}
           </Campo>
           <Campo label="Valor liquidación coberturas adicionales">
-            <InputFenix
-              type="text"
-              value={form.valorLiquidacionCoberturasAdicionales != null && form.valorLiquidacionCoberturasAdicionales !== '' ? formatMiles(form.valorLiquidacionCoberturasAdicionales) : 'Pendiente de liquidación'}
-              readOnly
-              className="bg-gray-50 dark:bg-gray-800"
-            />
+            {inputControlLiquidacion('valorLiquidacionCoberturasAdicionales')}
           </Campo>
           <Campo label="Deducible coberturas adicionales">
-            <InputFenix
-              type="text"
-              value={form.deducibleCoberturasAdicionales != null ? formatMiles(form.deducibleCoberturasAdicionales) : '$0'}
-              readOnly
-              className="bg-gray-50 dark:bg-gray-800"
-            />
+            {inputControlLiquidacion('deducibleCoberturasAdicionales', {
+              pendienteSiVacio: false,
+            })}
           </Campo>
           <Campo label="Valor total a pagar">
-            <InputFenix
-              type="text"
-              value={form.valorTotalPagar != null && form.valorTotalPagar !== '' ? formatMiles(form.valorTotalPagar) : 'Pendiente de liquidación'}
-              readOnly
-              className="bg-gray-50 dark:bg-gray-800 font-semibold text-fenix-primario"
-            />
+            {inputControlLiquidacion('valorTotalPagar')}
           </Campo>
         </div>
       </section>

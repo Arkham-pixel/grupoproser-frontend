@@ -4,7 +4,6 @@ import {
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
   estadosSiniestroPermitidosParaGestionAlfa,
-  casoAlfaTieneEnvioAseguradora,
 } from './segurosAlfaHelpers.js';
 import { puedeTipificarProcesoDePagoAlfa } from '../../utils/permisosCasoPorRol.js';
 
@@ -62,7 +61,7 @@ function toneSiniestro(id) {
 /**
  * Dos barras independientes con relación oficial:
  * cada gestión solo habilita los siniestros permitidos en su etapa.
- * PROCESO DE PAGO: solo Leyna / Silvia / Daniela + fecha envío aseguradora.
+ * PROCESO DE PAGO: Leyna / Silvia / Daniela / Oscar + fecha envío aseguradora.
  */
 export default function BarraEstadosSegurosAlfa({
   valorGestion,
@@ -80,14 +79,13 @@ export default function BarraEstadosSegurosAlfa({
     typeof puedeProcesoDePago === 'boolean'
       ? puedeProcesoDePago
       : puedeTipificarProcesoDePagoAlfa();
-  const tieneEnvio = casoAlfaTieneEnvioAseguradora(caso);
 
   return (
     <div className="space-y-5">
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
         Cada estado de gestión solo admite los estados de siniestro de su etapa (flujo
         oficial Alfa). Desistido va con Inspeccionado; Objetado va con Liquidado.
-        PROCESO DE PAGO solo Leyna, Silvia o Daniela, y con fecha de envío a la aseguradora.
+        PROCESO DE PAGO solo lo pueden tipificar Leyna, Silvia, Daniela u Oscar.
       </p>
       {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => {
         const esGestion = grupo.id === 'gestion';
@@ -110,11 +108,7 @@ export default function BarraEstadosSegurosAlfa({
                   if (!autorizadoProceso) {
                     bloqueoProceso = true;
                     titleProceso =
-                      'Solo Leyna, Silvia o Daniela pueden tipificar PROCESO DE PAGO';
-                  } else if (!tieneEnvio) {
-                    bloqueoProceso = true;
-                    titleProceso =
-                      'Requiere fecha de envío a la aseguradora (casos enviados)';
+                      'Solo Leyna, Silvia, Daniela u Oscar pueden tipificar PROCESO DE PAGO';
                   }
                 }
                 const chipDisabled = disabled || fueraDeEtapa || bloqueoProceso;
