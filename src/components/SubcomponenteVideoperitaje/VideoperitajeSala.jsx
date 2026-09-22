@@ -201,10 +201,10 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'mx-auto max-h-[70vh] w-full max-w-md bg-black object-contain'
+                ? 'mx-auto h-[min(70vh,720px)] w-full max-w-md bg-black object-cover'
                 : 'pointer-events-none absolute h-px w-px opacity-0'
             }
-            style={room.remotePresent ? { aspectRatio: '9 / 16' } : undefined}
+            style={room.remotePresent ? { aspectRatio: '9 / 16', objectFit: 'cover' } : undefined}
           />
           <video
             ref={room.localVideoRef}
@@ -213,8 +213,8 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-contain shadow-lg'
-                : 'aspect-video w-full bg-black object-contain'
+                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg'
+                : 'aspect-video w-full bg-black object-cover'
             }
             style={room.remotePresent ? { aspectRatio: '4 / 3' } : undefined}
           />

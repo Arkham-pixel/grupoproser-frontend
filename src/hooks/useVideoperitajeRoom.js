@@ -67,7 +67,7 @@ export default function useVideoperitajeRoom({
 
   const forzarContain = (el) => {
     if (!el) return;
-    el.style.objectFit = 'contain';
+    el.style.objectFit = 'cover';
     el.style.objectPosition = 'center';
   };
 
