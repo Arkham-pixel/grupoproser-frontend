@@ -20,17 +20,26 @@ export default function ResumenLiquidacionZurich({
     [liquidador, totales]
   );
   if (!filas.length) return null;
+  const usaCotiz = totales.origenPresupuesto === 'cotizacion';
+  const tituloMostrar =
+    titulo ||
+    (usaCotiz
+      ? t('zurich.settlement.quoteSettlementTitle')
+      : t('zurich.settlement.budgetSettlementTitle'));
+  const hintMostrar =
+    hint ||
+    (usaCotiz
+      ? t('zurich.settlement.quoteSettlementHint')
+      : t('zurich.settlement.budgetSettlementHint'));
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
       <div className="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-          {titulo || t('zurich.settlement.quoteSettlementTitle')}
+          {tituloMostrar}
         </p>
-        {hint || t('zurich.settlement.quoteSettlementHint') ? (
-          <p className="mt-0.5 text-xs text-gray-500">
-            {hint || t('zurich.settlement.quoteSettlementHint')}
-          </p>
+        {hintMostrar ? (
+          <p className="mt-0.5 text-xs text-gray-500">{hintMostrar}</p>
         ) : null}
       </div>
       <table className="w-full text-sm">

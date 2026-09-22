@@ -11885,6 +11885,8 @@
       "quoteAiuHint": "Applied on the PDF amount (direct cost). If the quote already includes AIU, leave 0.",
       "quoteSettlementTitle": "Quote settlement",
       "quoteSettlementHint": "AIU is added to the PDF amount first (if it applies). Then the greater of the % and the SMMLV or SMDLV minimum is subtracted. Expenses without deductible are added last.",
+      "budgetSettlementTitle": "Budget settlement",
+      "budgetSettlementHint": "The deductible is subtracted from the NSR budget first. Expenses without deductible are added after. The same table feeds the PDF quote or the regular liquidator, whichever is active.",
       "totalQuote": "Quote final amount",
       "totalDamagesQuote": "Total damages (quote)",
       "totalDamagesNsr": "Total damages (NSR-10)"

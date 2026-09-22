@@ -451,6 +451,7 @@ function extrasReservaWord(info = {}, { caso = {}, enc = {}, liquidador = null }
     liquidador,
     valorAsegurado:
       valorAseguradoPresupuestoZurich(liquidador || {}) || caso?.valorAseguradoInmueble,
+    otrosAmparos: liquidador?.otrosAmparos || [],
   };
 }
 
@@ -1490,17 +1491,22 @@ function tablaLiquidadorUnicoZurich({
       `− ${money(totalesFooter.deducibleAplicado)}`,
     ]);
     if (totalesFooter.totalIndemnizar != null) {
-      resumen.push(['A INDEMNIZAR', money(totalesFooter.totalIndemnizar)]);
+      resumen.push(['PRESUPUESTO NETO', money(totalesFooter.totalIndemnizar)]);
     }
   }
   const otros = desgloseWordOtrosAmparos(otrosAmparos);
   if (otros.filas.length) {
     resumen.push(['GASTOS SIN DEDUCIBLE', money(otros.total)]);
     otros.filas.forEach((f) => resumen.push([f.label, money(f.valor)]));
-    resumen.push([
-      'TOTAL ESTIMADO + GASTOS SIN DEDUCIBLE',
-      money((Number(totalesFooter.total) || 0) + otros.total),
-    ]);
+    const neto =
+      totalesFooter.totalIndemnizar != null
+        ? Number(totalesFooter.totalIndemnizar) || 0
+        : Math.max(
+            0,
+            (Number(totalesFooter.total) || 0) -
+              (Number(totalesFooter.deducibleAplicado) || 0)
+          );
+    resumen.push(['TOTAL A INDEMNIZAR', money(neto + otros.total)]);
   }
   const wLabel = w.slice(0, 6).reduce((a, b) => a + b, 0);
   resumen.forEach(([lab, val]) => {
@@ -1537,6 +1543,17 @@ function tablaLiquidadorUnicoZurich({
     borders: bordersCuadro,
     rows,
   });
+}
+
+function footerUnicoConDeducibleZurich(base = {}, totales = {}, liq = {}) {
+  const desglose = desgloseDeducibleTerremotoZurich(liq, totales.diagrama);
+  return {
+    ...base,
+    deducibleAplicado:
+      Number(desglose.aplicado) || Number(totales.deducibleAplicado) || 0,
+    textoDeducible: desglose.texto || totales.deducibleTexto || '',
+    totalIndemnizar: desglose.neto,
+  };
 }
 
 function tablaResumenLiquidacionZurichWord(filas = []) {
@@ -2310,7 +2327,11 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           ? [
               tablaLiquidadorUnicoZurich({
                 filas: filasPresupuesto,
-                totalesFooter: totalesFooterUnico,
+                totalesFooter: footerUnicoConDeducibleZurich(
+                  totalesFooterUnico,
+                  totales,
+                  liq
+                ),
                 aiuPct: footerExpress?.aiuPct ?? aiuPctLiquidadorUnico,
                 mostrarImprevistos,
                 mostrarImpuestos,
@@ -2334,10 +2355,33 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
                   mostrarImpuestos,
                   imprPct,
                   impPct,
-                  otrosAmparos: totales.otrosAmparos || liq.otrosAmparos,
+                  otrosAmparos: [],
                 }),
               ]
-            : []),
+            : (() => {
+                const otros = desgloseWordOtrosAmparos(
+                  totales.otrosAmparos || liq.otrosAmparos
+                );
+                const yaEnResumen =
+                  tablaResumenCotiz && totales.origenPresupuesto === 'cotizacion';
+                if (!otros.filas.length || yaEnResumen) return [];
+                return [
+                  p('Gastos sin deducible', {
+                    bold: true,
+                    before: 160,
+                    after: 80,
+                  }),
+                  tablaResumenLiquidacionZurichWord([
+                    ...otros.filas.map((f) => ({ label: f.label, value: f.valor })),
+                    {
+                      label: 'TOTAL GASTOS SIN DEDUCIBLE',
+                      value: otros.total,
+                      bold: true,
+                      destacado: true,
+                    },
+                  ]),
+                ].filter(Boolean);
+              })()),
       ],
     });
     sections.push({

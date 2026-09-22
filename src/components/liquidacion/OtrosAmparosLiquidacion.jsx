@@ -43,6 +43,14 @@ export default function OtrosAmparosLiquidacion({
       Object.prototype.hasOwnProperty.call(patch, 'cantidad') ||
       Object.prototype.hasOwnProperty.call(patch, 'valorUnitario');
     if (tocaronCantVu) next = recalcularValorOtroAmparo(next);
+    const monto = valorMostrarOtroAmparo(next);
+    if (
+      (Object.prototype.hasOwnProperty.call(patch, 'valor') ||
+        Object.prototype.hasOwnProperty.call(patch, 'valorUnitario')) &&
+      Number(monto) > 0
+    ) {
+      next.aplica = true;
+    }
     base[index] = next;
     onChange?.(base);
   };
@@ -54,8 +62,8 @@ export default function OtrosAmparosLiquidacion({
           Otros amparos (sin deducible)
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Elija unidad (m³, m², mes…), cantidad y valor unitario: el valor se calcula solo
-          (cantidad × valor unitario). No aplica deducible ni AIU.
+          Marque Aplica y escriba el monto en Valor. Si llena cantidad y valor unitario,
+          el valor se calcula solo. No aplica deducible ni AIU.
         </p>
       </div>
       <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -179,16 +187,21 @@ export default function OtrosAmparosLiquidacion({
                   </td>
                   <td className="px-1 py-1 w-28">
                     <input
-                      className="w-full border-0 bg-gray-50 px-1 py-1 text-right text-sm outline-none dark:bg-gray-900/40"
-                      readOnly
-                      tabIndex={-1}
+                      className="w-full border-0 bg-transparent px-1 py-1 text-right text-sm outline-none"
+                      inputMode="decimal"
                       value={
                         valorCalc === '' || valorCalc == null
                           ? ''
                           : formatMilesNsr10(valorCalc)
                       }
-                      placeholder="Cant. × vlr."
-                      title="Cantidad × valor unitario"
+                      onChange={(e) =>
+                        patchFila(idx, {
+                          valor: formatMilesInputNsr10(e.target.value),
+                          valorUnitario: '',
+                        })
+                      }
+                      placeholder="Monto"
+                      title="Escriba el monto. Si llena cantidad y valor unitario, se calcula solo."
                     />
                   </td>
                   <td className="px-1 py-1 text-center">

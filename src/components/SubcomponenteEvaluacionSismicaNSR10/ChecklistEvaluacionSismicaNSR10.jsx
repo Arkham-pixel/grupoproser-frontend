@@ -528,7 +528,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
   notaLiquidacionPresupuesto = '',
   /** Override de reglas por cobertura (p. ej. Sura terremoto 2%). */
   reglasDeduciblePorCobertura = null,
-  /** Oculta gastos y el selector técnico de deducible; usado por Allianz. */
+  /** Simplifica el selector técnico de deducible; no oculta gastos sin deducible. */
   simplificarDeducible = false,
 }) {
   const { theme } = useTheme();
@@ -606,9 +606,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
   );
   const hojaRaw = evalData.hojaActiva || 'portada';
   const hojasMenu = (modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10).filter(
-    (h) =>
-      !(ocultarPresupuestoEscrito && h.id === 'presupuesto') &&
-      !(simplificarDeducible && h.id === 'gastos')
+    (h) => !(ocultarPresupuestoEscrito && h.id === 'presupuesto')
   );
   const hojaFallback = simplificarDeducible
     ? ocultarPresupuestoEscrito
@@ -3547,19 +3545,20 @@ export default function ChecklistEvaluacionSismicaNSR10({
         </section>
       )}
 
-      {!simplificarDeducible && hoja === 'gastos' && (
+      {hoja === 'gastos' && (
         <section className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
               Gastos y amparos sin deducible
             </h3>
             <p className="text-xs" style={{ color: textSecondary }}>
-              Hospedaje, arriendo, retiro de escombros y otros amparos extra no llevan
+              Arriendo, retiro de escombros y otros amparos extra no llevan
               deducible. Se suman al neto de edificio y contenidos para el total a
               indemnizar.
             </p>
           </div>
 
+          {!simplificarDeducible ? (
           <div className="grid gap-3 sm:grid-cols-2" style={{ color: textSecondary }}>
             <label className="block text-sm">
               % gastos de hospedaje
@@ -3594,6 +3593,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               />
             </label>
           </div>
+          ) : null}
 
           <OtrosAmparosLiquidacion
             otrosAmparos={formData.otrosAmparos}

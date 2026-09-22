@@ -1094,7 +1094,6 @@ export default function InformeUnicoZurich({
           />
         </div>
         {(usaCotizBase || tieneCotizacionPdf) ? (
-        <>
         <div className="mb-4 max-w-xl">
           <EditorDeducibleZurich
             cfg={configDeducibleCotizacionPdfZurich(liquidador)}
@@ -1122,10 +1121,14 @@ export default function InformeUnicoZurich({
             disabled={guardandoCaso}
           />
         </div>
+        ) : null}
+        {(usaCotizBase ||
+          tieneCotizacionPdf ||
+          Number(totales.totalPresupuesto) > 0 ||
+          Number(totales.totalOtrosAmparos) > 0) ? (
         <div className="mb-4 max-w-2xl">
           <ResumenLiquidacionZurich liquidador={liquidador} totales={totales} />
         </div>
-        </>
         ) : null}
         <SeccionModoLiquidadorCat
           modulo="zurich"

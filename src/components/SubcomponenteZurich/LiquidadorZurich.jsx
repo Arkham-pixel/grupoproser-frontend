@@ -407,7 +407,6 @@ export default function LiquidadorZurich({
           />
         </div>
         {(usaCotizBase || tieneCotizacionPdf) ? (
-        <>
         <div className="mt-4 max-w-xl">
           <EditorDeducibleZurich
             cfg={configDeducibleCotizacionPdfZurich(liquidador)}
@@ -435,10 +434,14 @@ export default function LiquidadorZurich({
             disabled={!!exportando || guardandoCaso}
           />
         </div>
+        ) : null}
+        {(usaCotizBase ||
+          tieneCotizacionPdf ||
+          Number(totales.totalPresupuesto) > 0 ||
+          Number(totales.totalOtrosAmparos) > 0) ? (
         <div className="mt-4 max-w-2xl">
           <ResumenLiquidacionZurich liquidador={liquidador} totales={totales} />
         </div>
-        </>
         ) : null}
         {totales.origenPresupuesto === 'cotizacion' && (
           <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.quoteDeductibleNote')}</p>

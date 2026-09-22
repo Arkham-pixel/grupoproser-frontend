@@ -11946,6 +11946,8 @@
       "quoteAiuHint": "Se aplica sobre el monto del PDF (costo directo). Si la cotización ya incluye AIU, deje 0.",
       "quoteSettlementTitle": "Liquidación de la cotización",
       "quoteSettlementHint": "Primero se suma el AIU al monto del PDF (si aplica). Luego se resta el mayor entre el % y el mínimo SMMLV o SMDLV. Al final se suman los gastos sin deducible.",
+      "budgetSettlementTitle": "Liquidación del presupuesto",
+      "budgetSettlementHint": "Primero se resta el deducible al presupuesto NSR. Después se suman los gastos sin deducible. La misma tabla alimenta cotización PDF o liquidador normal, según cuál esté activo.",
       "totalQuote": "Monto final cotización",
       "totalDamagesQuote": "Total daños (cotización)",
       "totalDamagesNsr": "Total daños (NSR-10)"
