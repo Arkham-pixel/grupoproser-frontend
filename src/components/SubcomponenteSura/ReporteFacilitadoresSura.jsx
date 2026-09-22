@@ -390,7 +390,7 @@ export default function ReporteFacilitadoresSura() {
                   <th className="px-3 py-3 text-left">Cerrado</th>
                   <th className="px-3 py-3 text-left">Fecha cierre</th>
                   <th className="px-3 py-3 text-left">Estado</th>
-                  <th className="px-3 py-3 text-left">Tipo vivienda</th>
+                  <th className="w-[6.5rem] px-2 py-3 text-left">Tipo vivienda</th>
                   <th className="px-3 py-3 text-left">Portal</th>
                 </tr>
               </thead>
@@ -437,7 +437,10 @@ export default function ReporteFacilitadoresSura() {
                         <td className="px-3 py-3">
                           {sinoConDefault(fila.visitaRealizada, { permitirNA: false }) === 'SI' ? (
                             <input
-                              type="date"
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="YYYY-MM-DD"
+                              title="Fecha visita (año-mes-día)"
                               className={inputSm}
                               disabled={busyRow}
                               value={fechaParaInput(fila.fechaVisita)}
@@ -450,9 +453,16 @@ export default function ReporteFacilitadoresSura() {
                                 );
                               }}
                               onBlur={(e) => {
+                                const raw = String(e.target.value || '').trim();
+                                const fechaVisita = fechaParaInput(raw) || raw;
+                                setFilas((prev) =>
+                                  prev.map((f) =>
+                                    f._id === fila._id ? { ...f, fechaVisita } : f
+                                  )
+                                );
                                 void guardarDetalleVisita(fila._id, {
                                   visitaRealizada: 'SI',
-                                  fechaVisita: e.target.value,
+                                  fechaVisita,
                                 });
                               }}
                             />
@@ -518,27 +528,14 @@ export default function ReporteFacilitadoresSura() {
                             {fila.estadoSiniestro || TEXTO_FALTA_GESTIONAR}
                           </Dato>
                         </td>
-                        <td className="px-3 py-3">
-                          <select
-                            className={inputSm}
-                            disabled={busyRow}
-                            value={fila.tipoVivienda || 'URBANA'}
-                            onChange={(e) => {
-                              const tipoVivienda = e.target.value || 'URBANA';
-                              setFilas((prev) =>
-                                prev.map((f) =>
-                                  f._id === fila._id ? { ...f, tipoVivienda } : f
-                                )
-                              );
-                              void guardarDetalleVisita(fila._id, { tipoVivienda });
-                            }}
-                          >
-                            {TIPOS_VIVIENDA_FACILITADOR.map((t) => (
-                              <option key={t.value} value={t.value}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </select>
+                        <td className="w-[6.5rem] whitespace-nowrap px-2 py-3">
+                          <Dato>
+                            {TIPOS_VIVIENDA_FACILITADOR.find(
+                              (t) => t.value === (fila.tipoVivienda || 'URBANA')
+                            )?.label ||
+                              fila.tipoVivienda ||
+                              'Urbana'}
+                          </Dato>
                         </td>
                         <td className="px-3 py-3 font-body text-xs">
                           {errs.length ? (

@@ -20,6 +20,7 @@ import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import CampoTomadorSura from '../SubcomponenteSura/CampoTomadorSura.jsx';
+import { TIPOS_VIVIENDA_FACILITADOR } from '../SubcomponenteSura/suraFacilitadoresHelpers.js';
 import { coincidirCiudadExacta } from '../../utils/ciudadesColombia.js';
 import { esSesionUltimoComentarioSura } from '../../utils/permisosCasoPorRol.js';
 
@@ -604,6 +605,23 @@ export default function DatosGenerales({
                 !['Critico', 'Medio', 'Bajo'].includes(String(formData.estadoPagoPrimas)) && (
                   <option value={formData.estadoPagoPrimas}>{formData.estadoPagoPrimas}</option>
                 )}
+            </SelectFenix>
+          </Campo>
+        ) : null}
+
+        {mostrarAsignacionCatastrofico ? (
+          <Campo label="Tipo de vivienda" className="max-w-[11rem]">
+            <SelectFenix
+              name="tipoVivienda"
+              value={formData.tipoVivienda || 'URBANA'}
+              onChange={handleChange}
+              className="max-w-[8rem]"
+            >
+              {TIPOS_VIVIENDA_FACILITADOR.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
             </SelectFenix>
           </Campo>
         ) : null}

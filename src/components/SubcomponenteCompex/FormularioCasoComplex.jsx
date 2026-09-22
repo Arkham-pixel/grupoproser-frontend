@@ -161,6 +161,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     fechaInicioPoliza: '',
     fechaFinPoliza: '',
     estadoPagoPrimas: '',
+    tipoVivienda: 'URBANA',
     departamento: '',
     departamentoCiudad: '',
     asgrBenfcro: '',
@@ -501,6 +502,7 @@ const nuevoFormData = {
           // Cargar descripcionEstado y observacionesPendientes desde initialData
           descripcionEstado: initialData.descripcionEstado || normalizados.descripcionEstado || '',
           estadoFacilitador: initialData.estadoFacilitador || normalizados.estadoFacilitador || '',
+          tipoVivienda: initialData.tipoVivienda || normalizados.tipoVivienda || 'URBANA',
           observacionesPendientes: initialData.observacionesPendientes || normalizados.observacionesPendientes || '',
           plantillaContactoInicial: initialData.plantillaContactoInicial || normalizados.plantillaContactoInicial || null,
           // Campos de facturación - asegurar que se carguen desde initialData
@@ -916,6 +918,7 @@ if (casoData && casoData._id) {
               obseCoordInspeccion: normalizados.obseCoordInspeccion || casoData.obse_coord_inspeccion || '',
               descripcionEstado: casoData.descripcionEstado || normalizados.descripcionEstado || '',
               estadoFacilitador: casoData.estadoFacilitador || normalizados.estadoFacilitador || '',
+              tipoVivienda: casoData.tipoVivienda || normalizados.tipoVivienda || 'URBANA',
               observacionesPendientes: casoData.observacionesPendientes || normalizados.observacionesPendientes || '',
               // Campos de facturación - asegurar que se carguen desde casoData
               numero_factura: casoData.numero_factura || casoData.nmroFactra || normalizados.nmroFactra || '',
@@ -3038,6 +3041,7 @@ return;
             fechaInicioPoliza: formData.fechaInicioPoliza || '',
             fechaFinPoliza: formData.fechaFinPoliza || '',
             estadoPagoPrimas: formData.estadoPagoPrimas || '',
+            tipoVivienda: formData.tipoVivienda || 'URBANA',
             ciudad: formData.ciudadSiniestro || formData.ciudad || '',
             departamento: formData.departamento || formData.departamentoCiudad || '',
             departamentoCiudad: formData.departamento || formData.departamentoCiudad || '',

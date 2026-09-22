@@ -75,12 +75,13 @@ export function sinoConDefault(valor, { permitirNA = true, defecto = 'NO' } = {}
 
 export const TEXTO_FALTA_GESTIONAR = 'Falta por gestionar';
 
-/** Fecha presentable; si no hay fecha → «Falta por gestionar». */
+/** Fecha presentable año-mes-día (YYYY-MM-DD); si no hay fecha → «Falta por gestionar». */
 export function fechaOFaltaGestionar(valor) {
   const iso = fechaParaInput(valor);
   if (!iso) return TEXTO_FALTA_GESTIONAR;
   const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
+  if (!y || !m || !d) return TEXTO_FALTA_GESTIONAR;
+  return `${y}-${m}-${d}`;
 }
 
 /** Texto libre; si vacío → «Falta por gestionar». */
@@ -138,12 +139,13 @@ export function estadoParaPlantillaSura(valor) {
   return mapa[n] || 'ABIERTO';
 }
 
-/** Fecha DD/MM/YYYY para plantilla SURA; vacío si no hay fecha. */
+/** Fecha YYYY-MM-DD para plantilla / Excel Facilitadores; vacío si no hay fecha. */
 export function fechaParaPlantillaSura(valor) {
   const iso = fechaParaInput(valor);
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
+  if (!y || !m || !d) return '';
+  return `${y}-${m}-${d}`;
 }
 
 export function filaPlantillaDesdeExcel(raw = {}) {
@@ -281,23 +283,32 @@ export async function descargarPlantillaFacilitadores(filas = []) {
   });
 
   for (const f of lista) {
+    const fechasYmD = {
+      3: fechaParaPlantillaSura(f.fechaAsignacion),
+      4: fechaParaPlantillaSura(f.fechaPrimerContacto),
+      6: fechaParaPlantillaSura(f.fechaVisita),
+      10: fechaParaPlantillaSura(f.fechaInformePreliminar),
+      12: fechaParaPlantillaSura(f.fechaInforme),
+      14: fechaParaPlantillaSura(f.fechaDocumentacionCompleta),
+      16: fechaParaPlantillaSura(f.fechaCierre),
+    };
     const row = ws.addRow([
       digitsReclamacion(f.reclamacion),
       String(f.proveedor || '').trim() || PROVEEDOR_FACILITADORES_SURA,
-      fechaParaPlantillaSura(f.fechaAsignacion),
-      fechaParaPlantillaSura(f.fechaPrimerContacto),
+      fechasYmD[3],
+      fechasYmD[4],
       sinoConDefault(f.visitaRealizada, { permitirNA: true }),
-      fechaParaPlantillaSura(f.fechaVisita),
+      fechasYmD[6],
       criterioConDefault(f.criterioDetalle),
       String(f.ultimoComentario || '').trim(),
       sinoConDefault(f.informePreliminarEnviado, { permitirNA: true }),
-      fechaParaPlantillaSura(f.fechaInformePreliminar),
+      fechasYmD[10],
       sinoConDefault(f.informeEnviado, { permitirNA: true }),
-      fechaParaPlantillaSura(f.fechaInforme),
+      fechasYmD[12],
       sinoConDefault(f.documentacionCompleta, { permitirNA: true }),
-      fechaParaPlantillaSura(f.fechaDocumentacionCompleta),
+      fechasYmD[14],
       sinoConDefault(f.casoCerrado, { permitirNA: false }),
-      fechaParaPlantillaSura(f.fechaCierre),
+      fechasYmD[16],
       estadoParaPlantillaSura(f.estadoSiniestro),
       tipoViviendaConDefault(f.tipoVivienda),
     ]);
@@ -307,7 +318,9 @@ export async function descargarPlantillaFacilitadores(filas = []) {
         center: ![2, 8].includes(c),
         fill: fillSolid('FFFFFFFF'),
       });
-      if (c === 1) {
+      // Reclamación y fechas: texto fijo YYYY-MM-DD (Excel no las convierte a dd/mm).
+      if (c === 1 || fechasYmD[c] !== undefined) {
+        cell.value = c === 1 ? String(cell.value ?? '') : String(fechasYmD[c] ?? '');
         cell.numFmt = '@';
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       }
