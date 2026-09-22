@@ -139,7 +139,12 @@ export const TOMADORES_EQUIDAD_CAT_DEFAULT = [
   'SEGUROS LA EQUIDAD',
 ];
 
-export const PRODUCTOS_EQUIDAD_CAT = ['VIVIENDA SEGURA'];
+export const PRODUCTOS_EQUIDAD_CAT = [
+  'VIVIENDA SEGURA',
+  'PYME',
+  'COPROPIEDADES',
+  'HOGAR',
+];
 
 export const TIPOS_DEDUCIBLE_EQUIDAD_CAT = [
   'Valor asegurable',
