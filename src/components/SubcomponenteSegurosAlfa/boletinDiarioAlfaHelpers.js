@@ -28,11 +28,11 @@ const CORTES_KEY = 'segurosAlfa.boletinDiario.cortes.v6';
  */
 export const CATEGORIAS_GESTION_TERREMOTO = [
   {
-    id: 'enGestion',
-    label: 'EN GESTIÓN / SIN RESPUESTA',
-    labelCorto: 'En gestión',
+    id: 'verificacion',
+    label: 'PTE CONTACTO / SIN RESPUESTA',
+    labelCorto: 'Pte contacto',
     descripcion:
-      'EN GESTIÓN, PTE CONTACTO, SOLICITUD DTOS y SIN RESPUESTA EFECTIVA — verificación de pérdidas mediante llamadas',
+      'PTE CONTACTO, SOLICITUD DTOS y SIN RESPUESTA EFECTIVA — verificación de pérdidas mediante llamadas (sin pérdida total)',
   },
   {
     id: 'enInspeccion',
@@ -80,7 +80,6 @@ export const CATEGORIAS_GESTION_TERREMOTO = [
 
 /** 2. Estado de gestión actual (conteo exacto Excel AI — catálogo oficial). */
 export const FILAS_ESTADO_GESTION_ACTUAL = [
-  { id: 'enGestion', label: 'EN GESTIÓN' },
   { id: 'pteContacto', label: 'PTE CONTACTO' },
   { id: 'solicitudDtos', label: 'SOLICITUD DTOS' },
   { id: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO' },
@@ -120,9 +119,9 @@ export const FILAS_CLASIFICACION_PERDIDAS = [
 
 /** Orden de avance para detectar retrocesos (menor = más temprano). */
 const ORDEN_ETAPA = {
-  enGestion: 0,
-  sinRespuesta: 0,
   verificacion: 0,
+  sinRespuesta: 0,
+  enGestion: 0, // legacy cortes
   enInspeccion: 1,
   enLiquidacion: 2,
   liquidados: 3,
@@ -235,8 +234,8 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     return 'enLiquidacion';
   }
   if (estadoGestion === 'CONTACTADO Y PROGRAMADO') return 'enInspeccion';
-  // EN GESTIÓN / PTE CONTACTO / SOLICITUD DTOS / SIN RESPUESTA → verificación
-  return 'enGestion';
+  // PTE CONTACTO / SOLICITUD DTOS / SIN RESPUESTA → verificación
+  return 'verificacion';
 }
 
 function desgloseCasoTerremoto(caso = {}, cat) {
@@ -245,11 +244,10 @@ function desgloseCasoTerremoto(caso = {}, cat) {
     estadoSiniestro,
     caso.estadoGestion || caso.estado
   );
-  if (cat === 'enGestion') {
+  if (cat === 'verificacion' || cat === 'enGestion') {
     if (estadoGestion === 'SIN RESPUESTA EFECTIVA') return 'SIN RESPUESTA EFECTIVA';
     if (estadoGestion === 'SOLICITUD DTOS') return 'SOLICITUD DTOS';
-    if (estadoGestion === 'PTE CONTACTO') return 'PTE CONTACTO';
-    return 'EN GESTIÓN';
+    return 'PTE CONTACTO';
   }
   if (cat === 'enInspeccion') return 'CONTACTADO Y PROGRAMADO';
   if (cat === 'enLiquidacion') return 'INSPECCIONADO';
@@ -299,7 +297,7 @@ export function contarGestionTerremoto(casos = []) {
 /** Casos con gestión efectiva = todo excepto por llamar / sin respuesta. */
 export function casosConGestionEfectiva(counts = {}) {
   return Object.entries(counts).reduce((acc, [id, n]) => {
-    if (id === 'enGestion' || id === 'sinRespuesta' || id === 'verificacion') return acc;
+    if (id === 'verificacion' || id === 'enGestion' || id === 'sinRespuesta') return acc;
     return acc + (Number(n) || 0);
   }, 0);
 }
@@ -315,7 +313,7 @@ export function clasificarBucketGestionExacto(caso = {}) {
   if (g === 'LIQUIDADO') return 'liquidado';
   if (g === 'SIN RESPUESTA EFECTIVA') return 'sinRespuesta';
   if (g === 'SIN PÓLIZA') return 'cerrado';
-  return 'enGestion';
+  return 'pteContacto';
 }
 
 /** Bucket exacto ESTADO SINIESTRO (AJ). */
@@ -633,7 +631,7 @@ function mapClassicCatToGestionExact(cat) {
   ) {
     return 'liquidado';
   }
-  return 'enGestion';
+  return 'pteContacto';
 }
 
 /** Mapea categoría del tablero 8 → bucket exacto ESTADO SINIESTRO (AJ). */
@@ -787,7 +785,7 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
     return 'enLiquidacion';
   }
   if (fechaIsoOnOrBefore(caso.fechaLlamada, isoCorte)) return 'enInspeccion';
-  return 'enGestion';
+  return 'verificacion';
 }
 
 /**
@@ -836,12 +834,12 @@ export function contarNuevasAsignacionesDia(casos = [], isoDia) {
   return n;
 }
 
-/** Migra cortes viejos con `verificacion` → `enGestion` (+ `sinRespuesta` si existía). */
+/** Migra cortes viejos: `enGestion` → `verificacion`. */
 function normalizarCountsCorteLegacy(counts = {}) {
   const next = { ...(counts || {}) };
-  if (next.verificacion != null) {
-    next.enGestion = Number(next.enGestion || 0) + Number(next.verificacion || 0);
-    delete next.verificacion;
+  if (next.enGestion != null) {
+    next.verificacion = Number(next.verificacion || 0) + Number(next.enGestion || 0);
+    delete next.enGestion;
   }
   return next;
 }
@@ -892,8 +890,10 @@ export function calcularComparativoDiario({
   for (const [id, catAyerRaw] of Object.entries(porCasoAyer)) {
     const catHoyRaw = porCasoHoy[id];
     if (!catHoyRaw) continue;
-    const catAyer = catAyerRaw === 'verificacion' ? 'enGestion' : catAyerRaw;
-    const catHoy = catHoyRaw === 'verificacion' ? 'enGestion' : catHoyRaw;
+    const catAyer =
+      catAyerRaw === 'enGestion' || catAyerRaw === 'sinRespuesta' ? 'verificacion' : catAyerRaw;
+    const catHoy =
+      catHoyRaw === 'enGestion' || catHoyRaw === 'sinRespuesta' ? 'verificacion' : catHoyRaw;
     const oA = ORDEN_ETAPA[catAyer] ?? 0;
     const oH = ORDEN_ETAPA[catHoy] ?? 0;
     if (oH < oA) retrocesos += 1;

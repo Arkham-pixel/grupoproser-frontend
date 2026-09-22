@@ -32,7 +32,6 @@ import {
   FaSearch,
   FaWallet,
   FaArrowUp,
-  FaThumbtack,
   FaHourglassHalf,
   FaChartBar,
   FaMoneyBillWave,
@@ -72,9 +71,8 @@ const tooltipEstilo = {
 };
 
 const ICONS_TERREMOTO = {
-  enGestion: FaPhoneAlt,
-  sinRespuesta: FaPhoneAlt,
   verificacion: FaPhoneAlt,
+  sinRespuesta: FaPhoneAlt,
   enInspeccion: FaSearch,
   enLiquidacion: FaFileAlt,
   liquidados: FaCheckCircle,
@@ -85,7 +83,6 @@ const ICONS_TERREMOTO = {
 };
 
 const ICONS_GESTION_ACTUAL = {
-  enGestion: FaThumbtack,
   pteContacto: FaUserClock,
   solicitudDtos: FaFolderOpen,
   contactadoProgramado: FaPhoneAlt,
@@ -661,7 +658,7 @@ export default function BoletinDiarioSegurosAlfa() {
           etiquetaHoy={boletin.etiquetaHoy}
           filas={estadoGestionActual?.filas || []}
           icons={ICONS_GESTION_ACTUAL}
-          maloSiSubeIds={['enGestion', 'sinRespuesta']}
+          maloSiSubeIds={['verificacion', 'sinRespuesta']}
         />
 
         <TablaComparativoEstados

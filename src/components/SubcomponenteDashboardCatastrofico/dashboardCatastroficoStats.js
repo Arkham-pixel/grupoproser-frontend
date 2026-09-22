@@ -280,9 +280,9 @@ export function construirDashboardCatastrofico(
     if (typeof normalizarEstadoGestionFn !== 'function') return null;
     const raw = String(c?.estadoGestion || c?.estado || '').trim();
     try {
-      return normalizarEstadoGestionFn(raw, c) || raw || 'EN GESTIÓN';
+      return normalizarEstadoGestionFn(raw, c) || raw || 'PTE CONTACTO';
     } catch {
-      return normalizarEstadoGestionFn(raw) || raw || 'EN GESTIÓN';
+      return normalizarEstadoGestionFn(raw) || raw || 'PTE CONTACTO';
     }
   };
   const esActivoDe = (c) => {

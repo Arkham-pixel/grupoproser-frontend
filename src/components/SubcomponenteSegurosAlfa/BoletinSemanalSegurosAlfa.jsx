@@ -226,8 +226,7 @@ export default function BoletinSemanalSegurosAlfa() {
         )}
 
         {/* KPIs lineamiento gestión Alfa (catálogo oficial) */}
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-9">
-          <ExpressMetricCard label="EN GESTIÓN" value={String(kpisGestion.enGestion)} />
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
           <ExpressMetricCard label="PTE CONTACTO" value={String(kpisGestion.pteContacto || 0)} />
           <ExpressMetricCard
             label="SOLICITUD DTOS"

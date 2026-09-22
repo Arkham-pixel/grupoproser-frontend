@@ -28,7 +28,6 @@ function esActivoAjAlfa(caso) {
 }
 
 const KPI_GESTION_SOLO = [
-  { key: 'enGestion', label: 'EN GESTIÓN' },
   { key: 'pteContacto', label: 'PTE CONTACTO' },
   { key: 'solicitudDtos', label: 'SOLICITUD DTOS' },
   { key: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO' },
