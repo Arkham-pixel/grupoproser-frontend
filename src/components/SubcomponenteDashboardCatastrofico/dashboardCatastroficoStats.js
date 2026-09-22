@@ -250,6 +250,7 @@ function pct(ok, total) {
 /**
  * Agrega KPIs y series de gráficas para Alfa / Sura / Zurich.
  * Si se pasan estadosGestionOrden + normalizarEstadoGestionFn, genera también porEstadoGestion.
+ * Opcional: esCasoActivoFn / filtroPorAjustador para alinear pendientes con boletín (Alfa).
  */
 export function construirDashboardCatastrofico(
   casos = [],
@@ -259,6 +260,8 @@ export function construirDashboardCatastrofico(
     normalizarEstadoFn,
     estadosGestionOrden = null,
     normalizarEstadoGestionFn = null,
+    esCasoActivoFn = null,
+    filtroPorAjustador = null,
   } = {}
 ) {
   const lista = Array.isArray(casos) ? casos : [];
@@ -282,8 +285,18 @@ export function construirDashboardCatastrofico(
       return normalizarEstadoGestionFn(raw) || raw || 'EN GESTIÓN';
     }
   };
+  const esActivoDe = (c) => {
+    if (typeof esCasoActivoFn === 'function') {
+      try {
+        return Boolean(esCasoActivoFn(c, estadoDe(c)));
+      } catch {
+        return Boolean(esCasoActivoFn(c));
+      }
+    }
+    return esCasoActivo(c, estadoDe(c));
+  };
   const totalCasos = lista.length;
-  const casosActivos = lista.filter((c) => esCasoActivo(c, estadoDe(c))).length;
+  const casosActivos = lista.filter((c) => esActivoDe(c)).length;
   const casosLiquidados = lista.filter((c) => esCasoLiquidado(c, estadoDe(c))).length;
 
   let totalReclamado = 0;
@@ -328,7 +341,7 @@ export function construirDashboardCatastrofico(
     totalReclamado += reclamado;
     totalLiquidado += liquidado;
     totalReserva += reserva;
-    if (esCasoActivo(c, estadoDe(c))) {
+    if (esActivoDe(c)) {
       reclamadoActivos += reclamado;
       reservaActivos += reserva;
     }
@@ -369,7 +382,7 @@ export function construirDashboardCatastrofico(
         const cub = cubetaDias(d);
         cubetasInsp.set(cub, (cubetasInsp.get(cub) || 0) + 1);
       }
-    } else if (fSin && !fInsp && esCasoActivo(c, estadoDe(c))) {
+    } else if (fSin && !fInsp && esActivoDe(c)) {
       const d = diasEntre(fSin, hoy);
       if (d != null && d > DIAS_ANS_INSPECCION) atrasadosInspeccion += 1;
     }
@@ -383,7 +396,7 @@ export function construirDashboardCatastrofico(
         const cub = cubetaDias(d);
         cubetasLiq.set(cub, (cubetasLiq.get(cub) || 0) + 1);
       }
-    } else if (fSin && !fLiq && esCasoActivo(c, estadoDe(c))) {
+    } else if (fSin && !fLiq && esActivoDe(c)) {
       const d = diasEntre(fSin, hoy);
       if (d != null && d > DIAS_ANS_LIQUIDACION) atrasadosLiquidacion += 1;
     }
@@ -420,15 +433,16 @@ export function construirDashboardCatastrofico(
   const ordenCubetas = ['0-7 d', '8-15 d', '16-30 d', '31-45 d', '46+ d'];
   const tendenciaMensual = [...mensual.values()].sort((a, b) => (a.mes > b.mes ? 1 : -1)).slice(-12);
 
-  const mapASerieEstado = (map, orden) =>
-    [
-      ...orden
-        .filter((e) => map.has(e))
-        .map((estado) => ({ estado, cantidad: map.get(estado) || 0 })),
-      ...[...map.entries()]
-        .filter(([estado]) => !orden.includes(estado))
-        .map(([estado, cantidad]) => ({ estado, cantidad })),
-    ].filter((row) => row.cantidad > 0);
+  const mapASerieEstado = (map, orden) => {
+    const known = orden.map((estado) => ({
+      estado,
+      cantidad: map.get(estado) || 0,
+    }));
+    const extras = [...map.entries()]
+      .filter(([estado, cantidad]) => !orden.includes(estado) && cantidad > 0)
+      .map(([estado, cantidad]) => ({ estado, cantidad }));
+    return [...known, ...extras];
+  };
 
   const porEstado = mapASerieEstado(porEstadoMap, estadosOrden);
   const porEstadoGestion = porEstadoGestionMap
@@ -468,12 +482,46 @@ export function construirDashboardCatastrofico(
     porEstado,
     porEstadoGestion,
     porCiudad: agruparConteo(lista, 'ciudad', { vacio: 'Sin ciudad' }),
-    porAjustador: agruparConteo(lista, (c) => etiquetaAjustadorCaso(c, mapaNombres), {
-      vacio: 'Sin ajustador',
-    }),
-    porInspector: agruparConteo(lista, (c) => etiquetaInspectorCaso(c, mapaNombres), {
-      vacio: 'Sin inspector',
-    }),
+    porAjustador: (() => {
+      const fuente =
+        typeof filtroPorAjustador === 'function'
+          ? lista.filter((c) => {
+              try {
+                return Boolean(filtroPorAjustador(c, estadoDe(c)));
+              } catch {
+                return Boolean(filtroPorAjustador(c));
+              }
+            })
+          : lista;
+      return agruparConteo(fuente, (c) => etiquetaAjustadorCaso(c, mapaNombres), {
+        vacio: 'Sin ajustador',
+      });
+    })(),
+    porInspector: (() => {
+      const fuente =
+        typeof filtroPorAjustador === 'function'
+          ? lista.filter((c) => {
+              try {
+                return Boolean(filtroPorAjustador(c, estadoDe(c)));
+              } catch {
+                return Boolean(filtroPorAjustador(c));
+              }
+            })
+          : lista;
+      return agruparConteo(fuente, (c) => etiquetaInspectorCaso(c, mapaNombres), {
+        vacio: 'Sin inspector',
+      });
+    })(),
+    totalFiltradoAjustador:
+      typeof filtroPorAjustador === 'function'
+        ? lista.filter((c) => {
+            try {
+              return Boolean(filtroPorAjustador(c, estadoDe(c)));
+            } catch {
+              return Boolean(filtroPorAjustador(c));
+            }
+          }).length
+        : lista.length,
     porTomador: agruparConteo(lista, 'tomador', { vacio: 'Sin tomador' }),
     tendenciaMensual,
     cubetasAns: ordenCubetas.map((rango) => ({

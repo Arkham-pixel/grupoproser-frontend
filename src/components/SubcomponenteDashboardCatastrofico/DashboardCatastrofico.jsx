@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  LabelList,
   Legend,
   Line,
   Pie,
@@ -101,6 +102,13 @@ export default function DashboardCatastrofico({
   modulo = '',
   normalizarEstadoFn,
   normalizarEstadoGestionFn,
+  esCasoActivoFn = null,
+  filtroPorAjustador = null,
+  chartTitleByAdjuster = null,
+  chartSeriesByAdjuster = null,
+  chartTitleByInspector = null,
+  chartSeriesByInspector = null,
+  kpiActivosHint = null,
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -250,8 +258,19 @@ export default function DashboardCatastrofico({
         normalizarEstadoFn,
         estadosGestionOrden: estadosGestion,
         normalizarEstadoGestionFn,
+        esCasoActivoFn,
+        filtroPorAjustador,
       }),
-    [casosFiltrados, estados, estadosGestion, mapaNombres, normalizarEstadoFn, normalizarEstadoGestionFn]
+    [
+      casosFiltrados,
+      estados,
+      estadosGestion,
+      mapaNombres,
+      normalizarEstadoFn,
+      normalizarEstadoGestionFn,
+      esCasoActivoFn,
+      filtroPorAjustador,
+    ]
   );
 
   const dualEstados = Array.isArray(stats.porEstadoGestion);
@@ -407,7 +426,12 @@ export default function DashboardCatastrofico({
           <ExpressMetricCard
             label={td('kpis.cases')}
             value={kpis.totalCasos}
-            hint={td('kpis.casesHint', { active: kpis.casosActivos })}
+            hint={
+              typeof kpiActivosHint === 'function'
+                ? kpiActivosHint(kpis.casosActivos)
+                : kpiActivosHint ||
+                  td('kpis.casesHint', { active: kpis.casosActivos })
+            }
           />
           {!esListado && (
             <>
@@ -458,181 +482,75 @@ export default function DashboardCatastrofico({
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           {dualEstados ? (
             <>
-              <ChartCard
+              <HorizontalBars
                 title={td('charts.byStatusGestion')}
-                empty={!stats.porEstadoGestion?.length}
-              >
-                <ExpressChartPlot height={320}>
-                  <PieChart>
-                    <Pie
-                      data={stats.porEstadoGestion}
-                      dataKey="cantidad"
-                      nameKey="estado"
-                      cx="42%"
-                      cy="50%"
-                      innerRadius={68}
-                      outerRadius={108}
-                      paddingAngle={2}
-                      stroke={pieStroke}
-                      strokeWidth={2}
-                    >
-                      {(stats.porEstadoGestion || []).map((entry, index) => (
-                        <Cell key={`g-${entry.estado}`} fill={getFenixChartColor(index, isDark)} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(value, name) => [value, name]}
-                    />
-                    <Legend
-                      layout="vertical"
-                      align="right"
-                      verticalAlign="middle"
-                      wrapperStyle={{
-                        fontSize: 11,
-                        color: tickColor,
-                        maxHeight: 280,
-                        overflowY: 'auto',
-                        paddingLeft: 8,
-                      }}
-                      formatter={(value) => truncar(value, 28)}
-                    />
-                  </PieChart>
-                </ExpressChartPlot>
-              </ChartCard>
-
-              <ChartCard
+                data={(stats.porEstadoGestion || []).map((r) => ({
+                  nombre: r.estado,
+                  cantidad: r.cantidad,
+                }))}
+                isDark={isDark}
+                tickColor={tickColor}
+                gridStroke={gridStroke}
+                tooltipStyle={tooltipStyle}
+                seriesName={td('kpis.cases')}
+                labelWidth={168}
+                labelMax={34}
+              />
+              <HorizontalBars
                 title={td('charts.byStatusSiniestro')}
-                empty={stats.porEstado.length === 0}
-              >
-                <ExpressChartPlot height={320}>
-                  <PieChart>
-                    <Pie
-                      data={stats.porEstado}
-                      dataKey="cantidad"
-                      nameKey="estado"
-                      cx="42%"
-                      cy="50%"
-                      innerRadius={68}
-                      outerRadius={108}
-                      paddingAngle={2}
-                      stroke={pieStroke}
-                      strokeWidth={2}
-                    >
-                      {stats.porEstado.map((entry, index) => (
-                        <Cell key={`s-${entry.estado}`} fill={getFenixChartColor(index, isDark)} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      formatter={(value, name) => [value, name]}
-                    />
-                    <Legend
-                      layout="vertical"
-                      align="right"
-                      verticalAlign="middle"
-                      wrapperStyle={{
-                        fontSize: 11,
-                        color: tickColor,
-                        maxHeight: 280,
-                        overflowY: 'auto',
-                        paddingLeft: 8,
-                      }}
-                      formatter={(value) => truncar(value, 28)}
-                    />
-                  </PieChart>
-                </ExpressChartPlot>
-              </ChartCard>
+                data={stats.porEstado.map((r) => ({
+                  nombre: r.estado,
+                  cantidad: r.cantidad,
+                }))}
+                isDark={isDark}
+                tickColor={tickColor}
+                gridStroke={gridStroke}
+                tooltipStyle={tooltipStyle}
+                seriesName={td('kpis.cases')}
+                labelWidth={168}
+                labelMax={34}
+              />
             </>
           ) : (
-            <ChartCard title={td('charts.byStatus')} empty={stats.porEstado.length === 0}>
-              <ExpressChartPlot height={320}>
-                <PieChart>
-                  <Pie
-                    data={stats.porEstado}
-                    dataKey="cantidad"
-                    nameKey="estado"
-                    cx="42%"
-                    cy="50%"
-                    innerRadius={68}
-                    outerRadius={108}
-                    paddingAngle={2}
-                    stroke={pieStroke}
-                    strokeWidth={2}
-                  >
-                    {stats.porEstado.map((entry, index) => (
-                      <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value, name) => [value, name]}
-                  />
-                  <Legend
-                    layout="vertical"
-                    align="right"
-                    verticalAlign="middle"
-                    wrapperStyle={{
-                      fontSize: 11,
-                      color: tickColor,
-                      maxHeight: 280,
-                      overflowY: 'auto',
-                      paddingLeft: 8,
-                    }}
-                    formatter={(value) => truncar(value, 28)}
-                  />
-                </PieChart>
-              </ExpressChartPlot>
-            </ChartCard>
+            <HorizontalBars
+              title={td('charts.byStatus')}
+              data={stats.porEstado.map((r) => ({
+                nombre: r.estado,
+                cantidad: r.cantidad,
+              }))}
+              isDark={isDark}
+              tickColor={tickColor}
+              gridStroke={gridStroke}
+              tooltipStyle={tooltipStyle}
+              seriesName={td('kpis.cases')}
+              labelWidth={168}
+              labelMax={34}
+            />
           )}
 
           {!dualEstados ? (
-          <ChartCard title={td('charts.byCity')} empty={stats.porCiudad.length === 0}>
-            <ExpressChartPlot height={Math.max(320, stats.porCiudad.length * 34)}>
-              <BarChart data={stats.porCiudad} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
-                <YAxis
-                  type="category"
-                  dataKey="nombre"
-                  width={128}
-                  tick={{ fill: tickColor, fontSize: 10 }}
-                  tickFormatter={(v) => truncar(v, 22)}
-                />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name={td('kpis.cases')} radius={[0, 4, 4, 0]}>
-                  {stats.porCiudad.map((entry, index) => (
-                    <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ExpressChartPlot>
-          </ChartCard>
+          <HorizontalBars
+            title={td('charts.byCity')}
+            data={stats.porCiudad}
+            isDark={isDark}
+            tickColor={tickColor}
+            gridStroke={gridStroke}
+            tooltipStyle={tooltipStyle}
+            seriesName={td('kpis.cases')}
+          />
           ) : null}
         </section>
 
         {dualEstados ? (
-          <ChartCard title={td('charts.byCity')} empty={stats.porCiudad.length === 0}>
-            <ExpressChartPlot height={Math.max(320, Math.min(480, stats.porCiudad.length * 34))}>
-              <BarChart data={stats.porCiudad} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
-                <YAxis
-                  type="category"
-                  dataKey="nombre"
-                  width={128}
-                  tick={{ fill: tickColor, fontSize: 10 }}
-                  tickFormatter={(v) => truncar(v, 22)}
-                />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name={td('kpis.cases')} radius={[0, 4, 4, 0]}>
-                  {stats.porCiudad.map((entry, index) => (
-                    <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ExpressChartPlot>
-          </ChartCard>
+          <HorizontalBars
+            title={td('charts.byCity')}
+            data={stats.porCiudad}
+            isDark={isDark}
+            tickColor={tickColor}
+            gridStroke={gridStroke}
+            tooltipStyle={tooltipStyle}
+            seriesName={td('kpis.cases')}
+          />
         ) : null}
 
         <ChartCard title={td('charts.monthlyTrend')} empty={stats.tendenciaMensual.length === 0}>
@@ -698,23 +616,31 @@ export default function DashboardCatastrofico({
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <HorizontalBars
-            title={td('charts.byAdjuster')}
+            title={
+              chartTitleByAdjuster
+                ? `${chartTitleByAdjuster} · total ${stats.totalFiltradoAjustador ?? 0}`
+                : td('charts.byAdjuster')
+            }
             data={stats.porAjustador}
             isDark={isDark}
             tickColor={tickColor}
             gridStroke={gridStroke}
             tooltipStyle={tooltipStyle}
-            seriesName={td('kpis.cases')}
+            seriesName={chartSeriesByAdjuster || td('kpis.cases')}
           />
           {!esBbvaCat && (
           <HorizontalBars
-            title={td('charts.byInspector')}
+            title={
+              chartTitleByInspector
+                ? `${chartTitleByInspector} · total ${stats.totalFiltradoAjustador ?? 0}`
+                : td('charts.byInspector')
+            }
             data={stats.porInspector}
             isDark={isDark}
             tickColor={tickColor}
             gridStroke={gridStroke}
             tooltipStyle={tooltipStyle}
-            seriesName={td('kpis.cases')}
+            seriesName={chartSeriesByInspector || chartSeriesByAdjuster || td('kpis.cases')}
           />
           )}
         </section>
@@ -896,25 +822,48 @@ function ChartCard({ title, empty, children }) {
   );
 }
 
-function HorizontalBars({ title, data, isDark, tickColor, gridStroke, tooltipStyle, seriesName }) {
+function HorizontalBars({
+  title,
+  data,
+  isDark,
+  tickColor,
+  gridStroke,
+  tooltipStyle,
+  seriesName,
+  labelWidth = 140,
+  labelMax = 24,
+}) {
+  const rows = Array.isArray(data) ? data : [];
   return (
-    <ChartCard title={title} empty={!data.length}>
-      <ExpressChartPlot height={Math.max(280, data.length * 34)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+    <ChartCard title={title} empty={!rows.length}>
+      <ExpressChartPlot height={Math.max(280, rows.length * 36)}>
+        <BarChart
+          data={rows}
+          layout="vertical"
+          margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
           <YAxis
             type="category"
             dataKey="nombre"
-            width={140}
+            width={labelWidth}
             tick={{ fill: tickColor, fontSize: 10 }}
-            tickFormatter={(v) => truncar(v, 24)}
+            tickFormatter={(v) => truncar(v, labelMax)}
+            interval={0}
           />
           <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="cantidad" name={seriesName} radius={[0, 4, 4, 0]}>
-            {data.map((entry, index) => (
+          <Bar dataKey="cantidad" name={seriesName} radius={[0, 4, 4, 0]} barSize={22}>
+            {rows.map((entry, index) => (
               <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
             ))}
+            <LabelList
+              dataKey="cantidad"
+              position="right"
+              fill={tickColor}
+              fontSize={12}
+              fontWeight={700}
+            />
           </Bar>
         </BarChart>
       </ExpressChartPlot>

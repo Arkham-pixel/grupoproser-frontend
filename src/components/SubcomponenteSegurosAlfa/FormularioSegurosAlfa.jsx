@@ -51,6 +51,7 @@ import {
   sincronizarGestionConCierreSiniestroAlfa,
   casoAlfaVenceSla2Dias,
   casoTieneEvidenciaComunicacionBajoDeducible,
+  validarTransicionProcesoDePagoAlfa,
 } from './segurosAlfaHelpers.js';
 import BarraEstadosSegurosAlfa from './BarraEstadosSegurosAlfa.jsx';
 import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
@@ -67,6 +68,7 @@ import {
   filtrarPayloadCasoPorRol,
   modoEdicionEraDelCaso,
   puedeEditarCampoCaso,
+  puedeTipificarProcesoDePagoAlfa,
 } from '../../utils/permisosCasoPorRol.js';
 import { identidadSesionEra } from '../../utils/jerarquiaEra.js';
 import {
@@ -443,6 +445,16 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       );
       return;
     }
+    const errProceso = validarTransicionProcesoDePagoAlfa({
+      estadoNuevo: form.estado,
+      estadoAnterior: esEdicion ? initialData?.estado : '',
+      caso: form,
+      autorizado: puedeTipificarProcesoDePagoAlfa(),
+    });
+    if (errProceso) {
+      setError(errProceso);
+      return;
+    }
 
     setGuardando(true);
     try {
@@ -679,6 +691,8 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               <BarraEstadosSegurosAlfa
                 valorGestion={form.estadoGestion}
                 valorSiniestro={form.estado}
+                caso={form}
+                puedeProcesoDePago={puedeTipificarProcesoDePagoAlfa()}
                 disabled={
                   !puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso) &&
                   !puedeEditarCampoCaso(rolUsuario, 'estadoGestion', ctxPermiso)
@@ -704,6 +718,18 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
                 }}
                 onChangeSiniestro={(estado) => {
                   if (!puedeEditarCampoCaso(rolUsuario, 'estado', ctxPermiso)) return;
+                  if (estado === 'PROCESO DE PAGO') {
+                    const err = validarTransicionProcesoDePagoAlfa({
+                      estadoNuevo: estado,
+                      estadoAnterior: form.estado,
+                      caso: form,
+                      autorizado: puedeTipificarProcesoDePagoAlfa(),
+                    });
+                    if (err) {
+                      setError(err);
+                      return;
+                    }
+                  }
                   setForm((prev) => ({
                     ...prev,
                     estado,

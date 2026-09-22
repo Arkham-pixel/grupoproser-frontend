@@ -32,8 +32,8 @@ export const RELACION_GESTION_SINIESTRO_ALFA = Object.freeze({
   'CONTACTADO Y PROGRAMADO': ['PENDIENTE'],
   INSPECCIONADO: ['INSPECCIONADO PENDIENTE', 'CERRADO', 'DESISTIDO'],
   LIQUIDADO: [
-    'PROCESO DE PAGO',
     'PENDIENTE ACEPTACION CIFRAS',
+    'PROCESO DE PAGO',
     'OBJETADO',
     'PAGADO',
   ],
@@ -155,7 +155,7 @@ const LEGACY_ESTADO_A_SINIESTRO = {
   'CASO OBJETADO': 'OBJETADO',
   OBJECION: 'OBJETADO',
   'OBJECIÓN': 'OBJETADO',
-  'ENVIADO ASEGURADORA': 'PROCESO DE PAGO',
+  'ENVIADO ASEGURADORA': 'PENDIENTE ACEPTACION CIFRAS',
   'EN PROCESO DE PAGO': 'PROCESO DE PAGO',
   'PROCESO DE PAGO': 'PROCESO DE PAGO',
   PAGADO: 'PAGADO',
@@ -193,15 +193,38 @@ function normKeyEstado(value) {
     .replace(/\s+/g, ' ');
 }
 
-function aceptoCifrasAlfa(extras = {}) {
-  const acep = String(extras?.liquidador?.aceptacionIndemnizacion || extras?.aceptacionIndemnizacion || '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toUpperCase()
-    .trim()
-    .replace(/\s+/g, '_');
-  if (acep === 'ACEPTO') return true;
-  return Boolean(extras?.fechaAceptacionLiquidacion);
+/** Evidencia operativa de envío a la aseguradora (carpeta / tipificación). */
+export function casoAlfaTieneEnvioAseguradora(caso = {}) {
+  const v = caso?.fechaEnvioAseguradora;
+  if (v == null || v === '') return false;
+  if (v instanceof Date) return !Number.isNaN(v.getTime());
+  const s = String(v).trim();
+  if (!s) return false;
+  const d = new Date(s);
+  return !Number.isNaN(d.getTime());
+}
+
+/**
+ * Valida transición hacia PROCESO DE PAGO.
+ * @returns {string|null} mensaje de error o null si ok / no aplica
+ */
+export function validarTransicionProcesoDePagoAlfa({
+  estadoNuevo,
+  estadoAnterior = '',
+  caso = {},
+  autorizado = false,
+} = {}) {
+  const next = homologarEstadoSiniestroAlfa(estadoNuevo, caso);
+  const prev = homologarEstadoSiniestroAlfa(estadoAnterior, caso);
+  if (next !== 'PROCESO DE PAGO') return null;
+  if (prev === 'PROCESO DE PAGO') return null; // ya estaba; no revalidar tipificación
+  if (!autorizado) {
+    return 'PROCESO DE PAGO solo lo pueden tipificar Leyna, Silvia o Daniela.';
+  }
+  if (!casoAlfaTieneEnvioAseguradora(caso)) {
+    return 'PROCESO DE PAGO requiere fecha de envío a la aseguradora (casos enviados).';
+  }
+  return null;
 }
 
 export function homologarEstadoGestionAlfa(valor) {
@@ -219,7 +242,7 @@ export function homologarEstadoSiniestroAlfa(valor, extras = {}) {
   const key = normKeyEstado(raw);
 
   if (key === 'LIQUIDADO') {
-    return aceptoCifrasAlfa(extras) ? 'PROCESO DE PAGO' : 'PENDIENTE ACEPTACION CIFRAS';
+    return 'PENDIENTE ACEPTACION CIFRAS';
   }
 
   if (LEGACY_ESTADO_A_SINIESTRO[key]) return LEGACY_ESTADO_A_SINIESTRO[key];
@@ -227,7 +250,7 @@ export function homologarEstadoSiniestroAlfa(valor, extras = {}) {
   // Cuando llega un estado de gestión legacy en el campo siniestro, cae en pendiente.
   const gestion = homologarEstadoGestionAlfa(raw);
   if (gestion === 'LIQUIDADO') {
-    return aceptoCifrasAlfa(extras) ? 'PROCESO DE PAGO' : 'PENDIENTE ACEPTACION CIFRAS';
+    return 'PENDIENTE ACEPTACION CIFRAS';
   }
   if (gestion === 'INSPECCIONADO') return 'INSPECCIONADO PENDIENTE';
   if (gestion === 'SIN PÓLIZA') return 'CERRADO';

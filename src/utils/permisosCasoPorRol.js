@@ -74,6 +74,16 @@ export const SURA_LOGINS_ULTIMO_COMENTARIO = Object.freeze(['66901947', '7213450
 export const ALFA_LOGINS_COLA_FECHA_LLAMADA = Object.freeze(['1098662033']);
 
 /**
+ * Alfa: únicos autorizados a tipificar estado de siniestro PROCESO DE PAGO.
+ * Leyna Alfonso, Silvia Rodríguez, Daniela Negrete.
+ */
+export const ALFA_LOGINS_PROCESO_DE_PAGO = Object.freeze([
+  '1098662033',
+  '1065658621',
+  '1003717060',
+]);
+
+/**
  * Allianz: ventana de informes (único / final / preliminar / liquidador).
  * Mario Alberto Pinilla de la Torre.
  */
@@ -116,6 +126,22 @@ export function esLoginColaFechaLlamadaAlfa(login) {
   const clave = normalizarClaveDocumentoLogin(login);
   if (!clave) return false;
   return ALFA_LOGINS_COLA_FECHA_LLAMADA.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+export function esLoginProcesoDePagoAlfa(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return ALFA_LOGINS_PROCESO_DE_PAGO.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+/** Sesión actual puede tipificar PROCESO DE PAGO (allowlist operativa Alfa). */
+export function puedeTipificarProcesoDePagoAlfa(opts = {}) {
+  const ctx = {
+    login: opts.login,
+    cedula: opts.cedula,
+    ...(!opts.login && !opts.cedula ? obtenerContextoPermisoCaso('alfa') : {}),
+  };
+  return [ctx.login, ctx.cedula].some((v) => esLoginProcesoDePagoAlfa(v));
 }
 
 export function esIdentidadColaFechaLlamadaAlfa(opts = {}) {

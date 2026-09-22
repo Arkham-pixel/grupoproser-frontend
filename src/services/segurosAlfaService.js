@@ -94,18 +94,50 @@ export const getCasosAlfaPaginado = async ({
     _t: Date.now(),
     ...(incluirExcluidos ? { incluirExcluidos: '1' } : {}),
   });
-  const response = await fetch(`${ALFA_API_URL}${queryString}`, { headers: authHeaders() });
-  if (!response.ok) {
-    throw new Error('Error al obtener los casos Seguros Alfa');
+  const url = `${ALFA_API_URL}${queryString}`;
+  const headers = authHeaders();
+  let lastError = null;
+
+  // Atlas/local a veces corta el listado (timeout/red); un reintento suele bastar.
+  for (let intento = 1; intento <= 2; intento += 1) {
+    try {
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        let detalle = '';
+        try {
+          const body = await response.json();
+          detalle = body?.detalle || body?.error || '';
+        } catch {
+          /* ignore */
+        }
+        const msg = detalle
+          ? `Error al obtener los casos Seguros Alfa (${response.status}): ${detalle}`
+          : `Error al obtener los casos Seguros Alfa (${response.status})`;
+        lastError = new Error(msg);
+        if (response.status >= 500 && intento < 2) {
+          await new Promise((r) => setTimeout(r, 800 * intento));
+          continue;
+        }
+        throw lastError;
+      }
+      const payload = await response.json();
+      if (payload?.data && Array.isArray(payload.data)) {
+        return { ...payload, data: normalizeResponseArray(payload.data) };
+      }
+      if (Array.isArray(payload)) {
+        return { data: normalizeResponseArray(payload), total: payload.length };
+      }
+      return payload;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (intento < 2 && /Failed to fetch|NetworkError|timeout/i.test(lastError.message)) {
+        await new Promise((r) => setTimeout(r, 800 * intento));
+        continue;
+      }
+      throw lastError;
+    }
   }
-  const payload = await response.json();
-  if (payload?.data && Array.isArray(payload.data)) {
-    return { ...payload, data: normalizeResponseArray(payload.data) };
-  }
-  if (Array.isArray(payload)) {
-    return { data: normalizeResponseArray(payload), total: payload.length };
-  }
-  return payload;
+  throw lastError || new Error('Error al obtener los casos Seguros Alfa');
 };
 
 export const fetchAllCasosAlfa = async (batchSize = 800, { incluirExcluidos = false } = {}) => {

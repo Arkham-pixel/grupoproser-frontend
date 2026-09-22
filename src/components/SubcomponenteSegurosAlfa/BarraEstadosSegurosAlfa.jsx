@@ -4,7 +4,9 @@ import {
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
   estadosSiniestroPermitidosParaGestionAlfa,
+  casoAlfaTieneEnvioAseguradora,
 } from './segurosAlfaHelpers.js';
+import { puedeTipificarProcesoDePagoAlfa } from '../../utils/permisosCasoPorRol.js';
 
 /**
  * Colores por grupo (mismo criterio del día de unificación de barra):
@@ -60,6 +62,7 @@ function toneSiniestro(id) {
 /**
  * Dos barras independientes con relación oficial:
  * cada gestión solo habilita los siniestros permitidos en su etapa.
+ * PROCESO DE PAGO: solo Leyna / Silvia / Daniela + fecha envío aseguradora.
  */
 export default function BarraEstadosSegurosAlfa({
   valorGestion,
@@ -67,16 +70,24 @@ export default function BarraEstadosSegurosAlfa({
   onChangeGestion,
   onChangeSiniestro,
   disabled = false,
+  caso = {},
+  puedeProcesoDePago,
 }) {
   const actualGestion = homologarEstadoGestionAlfa(valorGestion);
-  const actualSiniestro = homologarEstadoSiniestroAlfa(valorSiniestro);
+  const actualSiniestro = homologarEstadoSiniestroAlfa(valorSiniestro, caso);
   const siniestrosPermitidos = new Set(estadosSiniestroPermitidosParaGestionAlfa(actualGestion));
+  const autorizadoProceso =
+    typeof puedeProcesoDePago === 'boolean'
+      ? puedeProcesoDePago
+      : puedeTipificarProcesoDePagoAlfa();
+  const tieneEnvio = casoAlfaTieneEnvioAseguradora(caso);
 
   return (
     <div className="space-y-5">
       <p className="font-body text-xs text-gray-500 dark:text-gray-400">
         Cada estado de gestión solo admite los estados de siniestro de su etapa (flujo
         oficial Alfa). Desistido va con Inspeccionado; Objetado va con Liquidado.
+        PROCESO DE PAGO solo Leyna, Silvia o Daniela, y con fecha de envío a la aseguradora.
       </p>
       {GRUPOS_BARRA_ESTADOS_ALFA.map((grupo) => {
         const esGestion = grupo.id === 'gestion';
@@ -93,7 +104,20 @@ export default function BarraEstadosSegurosAlfa({
                 const label = typeof estado === 'string' ? estado : estado.label;
                 const activo = actual === id;
                 const fueraDeEtapa = !esGestion && !siniestrosPermitidos.has(id);
-                const chipDisabled = disabled || fueraDeEtapa;
+                let bloqueoProceso = false;
+                let titleProceso;
+                if (!esGestion && id === 'PROCESO DE PAGO' && !activo) {
+                  if (!autorizadoProceso) {
+                    bloqueoProceso = true;
+                    titleProceso =
+                      'Solo Leyna, Silvia o Daniela pueden tipificar PROCESO DE PAGO';
+                  } else if (!tieneEnvio) {
+                    bloqueoProceso = true;
+                    titleProceso =
+                      'Requiere fecha de envío a la aseguradora (casos enviados)';
+                  }
+                }
+                const chipDisabled = disabled || fueraDeEtapa || bloqueoProceso;
                 return (
                   <button
                     key={id}
@@ -101,11 +125,12 @@ export default function BarraEstadosSegurosAlfa({
                     disabled={chipDisabled}
                     aria-pressed={activo}
                     title={
-                      fueraDeEtapa
+                      titleProceso ||
+                      (fueraDeEtapa
                         ? `No permitido con gestión «${actualGestion}»`
                         : id !== label
                           ? id
-                          : undefined
+                          : undefined)
                     }
                     className={estiloChip(
                       activo,
