@@ -17,7 +17,7 @@ import {
 import { saveAs } from 'file-saver';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
-import { esModoDeduciblePorArticuloNsr, filaPresupuestoListaParaDeducible, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { esModoDeduciblePorArticuloNsr, filaPresupuestoListaParaDeducible, totalFilaPresupuesto, valoresAsegurablesDesdeLiquidador } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionZurich,
@@ -40,6 +40,7 @@ import {
   prefijoArchivoInformeZurich,
   desgloseReservaPreliminarZurich,
   filasResumenLiquidacionZurich,
+  filasLiquidacionPorCoberturaZurich,
   formatearPorcentajeLibreZurich,
   reservaSugeridaZurich,
   valorAseguradoPresupuestoZurich,
@@ -553,14 +554,7 @@ function construirCuadroPrincipal({
       : [
           [
             'INDEMNIZACIÓN SUGERIDA',
-            money(
-              desgloseReserva.perdida > 0
-                ? Math.round(
-                    (Number(desgloseReserva.reserva) || 0) +
-                      (Number(totales.totalOtrosAmparos) || 0)
-                  )
-                : totales.totalIndemnizar
-            ),
+            money(totales.totalIndemnizar),
           ],
         ]),
   ];
@@ -1494,19 +1488,40 @@ function tablaLiquidadorUnicoZurich({
       resumen.push(['PRESUPUESTO NETO', money(totalesFooter.totalIndemnizar)]);
     }
   }
+  if (Number(totalesFooter.contenidosPerdida) > 0) {
+    resumen.push(['TOTAL CONTENIDOS (PÉRDIDA)', money(totalesFooter.contenidosPerdida)]);
+    if (Number(totalesFooter.contenidosDeducible) > 0) {
+      resumen.push([
+        'DEDUCIBLE CONTENIDOS (POR CATEGORÍA)',
+        `− ${money(totalesFooter.contenidosDeducible)}`,
+      ]);
+    }
+    resumen.push(['CONTENIDOS NETO', money(totalesFooter.contenidosNeto)]);
+  }
   const otros = desgloseWordOtrosAmparos(otrosAmparos);
+  const netoPresupuesto =
+    totalesFooter.totalIndemnizar != null
+      ? Number(totalesFooter.totalIndemnizar) || 0
+      : Math.max(
+          0,
+          (Number(totalesFooter.total) || 0) -
+            (Number(totalesFooter.deducibleAplicado) || 0)
+        );
   if (otros.filas.length) {
     resumen.push(['GASTOS SIN DEDUCIBLE', money(otros.total)]);
     otros.filas.forEach((f) => resumen.push([f.label, money(f.valor)]));
-    const neto =
-      totalesFooter.totalIndemnizar != null
-        ? Number(totalesFooter.totalIndemnizar) || 0
-        : Math.max(
-            0,
-            (Number(totalesFooter.total) || 0) -
-              (Number(totalesFooter.deducibleAplicado) || 0)
-          );
-    resumen.push(['TOTAL A INDEMNIZAR', money(neto + otros.total)]);
+  }
+  const totalFinal = Number(totalesFooter.totalIndemnizarFinal);
+  const totalConGastos = netoPresupuesto + (Number(totalesFooter.contenidosNeto) || 0) + otros.total;
+  if (
+    otros.filas.length ||
+    Number(totalesFooter.contenidosPerdida) > 0 ||
+    (Number.isFinite(totalFinal) && Math.abs(totalFinal - netoPresupuesto) > 0.05)
+  ) {
+    resumen.push([
+      'TOTAL A INDEMNIZAR',
+      money(Number.isFinite(totalFinal) && totalFinal > 0 ? totalFinal : totalConGastos),
+    ]);
   }
   const wLabel = w.slice(0, 6).reduce((a, b) => a + b, 0);
   resumen.forEach(([lab, val]) => {
@@ -1547,12 +1562,22 @@ function tablaLiquidadorUnicoZurich({
 
 function footerUnicoConDeducibleZurich(base = {}, totales = {}, liq = {}) {
   const desglose = desgloseDeducibleTerremotoZurich(liq, totales.diagrama);
+  const contenidosPerdida = Number(totales.totalContenidos) || 0;
+  const contenidosDeducible = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
+  const contenidosNeto =
+    Number(totales.diagrama?.deducibleContenidos?.neto) ||
+    Number(totales.contenidos?.valorAIndemnizar) ||
+    0;
   return {
     ...base,
     deducibleAplicado:
       Number(desglose.aplicado) || Number(totales.deducibleAplicado) || 0,
     textoDeducible: desglose.texto || totales.deducibleTexto || '',
     totalIndemnizar: desglose.neto,
+    contenidosPerdida,
+    contenidosDeducible,
+    contenidosNeto,
+    totalIndemnizarFinal: Number(totales.totalIndemnizar) || 0,
   };
 }
 
@@ -1582,6 +1607,60 @@ function tablaResumenLiquidacionZurichWord(filas = []) {
         ],
       })
     ),
+  });
+}
+
+function tablaLiquidacionPorCoberturaZurichWord(filas = []) {
+  const list = Array.isArray(filas) ? filas.filter((f) => f && f.cobertura) : [];
+  if (!list.length) return null;
+  const w = [3600, 1920, 1920, 1920];
+  const head = ['Cobertura / amparo', 'Pérdida', 'Deducible', 'Neto'];
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: w,
+    borders: bordersCuadro,
+    rows: [
+      new TableRow({
+        children: head.map((h, i) =>
+          cell(h, {
+            width: w[i],
+            cuadro: true,
+            bold: true,
+            alignment: i === 0 ? AlignmentType.LEFT : AlignmentType.RIGHT,
+          })
+        ),
+      }),
+      ...list.map(
+        (fila) =>
+          new TableRow({
+            children: [
+              cell(fila.cobertura, {
+                width: w[0],
+                cuadro: true,
+                bold: !!fila.total,
+              }),
+              cell(money(fila.perdida), {
+                width: w[1],
+                cuadro: true,
+                bold: !!fila.total,
+                alignment: AlignmentType.RIGHT,
+              }),
+              cell(money(fila.deducible), {
+                width: w[2],
+                cuadro: true,
+                bold: !!fila.total,
+                alignment: AlignmentType.RIGHT,
+              }),
+              cell(money(fila.neto), {
+                width: w[3],
+                cuadro: true,
+                bold: true,
+                alignment: AlignmentType.RIGHT,
+              }),
+            ],
+          })
+      ),
+    ],
   });
 }
 
@@ -2159,6 +2238,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     cell,
     size: SIZE_NSR,
     incluirDeduciblePorArticulo: usaDeduciblePorArticulo,
+    valoresAsegurablesCaso: valoresAsegurablesDesdeLiquidador(liq),
   });
 
   const firmasParrafos = await construirZonaFirmasZurich({ caso, enc, info });
@@ -2280,6 +2360,8 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             encabezado: enc,
             informe: info,
             liquidador: liq,
+            totales,
+            conLiquidador: !esPreliminar,
             ...(!esPreliminar && perdidaAjusteUnico > 0 ? { perdida: perdidaAjusteUnico } : {}),
           }).filter((f) => {
             const concepto = String(f?.concepto || '')
@@ -2382,8 +2464,49 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
                   ]),
                 ].filter(Boolean);
               })()),
+        ...(() => {
+          const coberturas = filasLiquidacionPorCoberturaZurich(liq, totales);
+          const tablaCob = tablaLiquidacionPorCoberturaZurichWord(coberturas);
+          if (!tablaCob) return [];
+          return [
+            p('Liquidación por coberturas', {
+              bold: true,
+              before: 200,
+              after: 80,
+            }),
+            p(
+              'Cada amparo se liquida con su pérdida y su deducible. Edificio usa el deducible de terremoto del presupuesto o de la cotización. Muebles, equipo eléctrico y maquinaria se liquidan por categoría. Las demás coberturas (gastos) no llevan deducible.',
+              { after: 80, size: SIZE_12 }
+            ),
+            tablaCob,
+          ];
+        })(),
+        ...(!usaCotizacion && tablaResumenCotiz
+          ? [
+              p('Resultado de la liquidación', {
+                bold: true,
+                before: 200,
+                after: 80,
+              }),
+              tablaResumenCotiz,
+            ]
+          : []),
       ],
     });
+    if (tieneContenidosDiligenciados && tablaContenidos) {
+      sections.push({
+        properties: { page: pageLandscape },
+        headers: { default: header },
+        children: [
+          heading('4.1 Liquidación de contenidos'),
+          p(
+            'Los contenidos se liquidan aparte del edificio: pérdida − deducible por categoría. El neto se suma al presupuesto neto y a los gastos sin deducible.',
+            { after: 80, size: SIZE_12 }
+          ),
+          tablaContenidos,
+        ],
+      });
+    }
     sections.push({
       properties: { page: pagePortrait },
       headers: { default: header },

@@ -9,6 +9,7 @@ import {
 } from 'docx';
 import {
   calcularTotalesContenidos,
+  etiquetaGrupoDeducible,
   filaContenidoListaParaDeducible,
   totalFilaContenido,
 } from './catalogoEvaluacionSismicaNSR10.js';
@@ -32,6 +33,7 @@ export function construirTablaContenidosWord({
   cell,
   size = 16,
   incluirDeduciblePorArticulo = true,
+  valoresAsegurablesCaso = null,
 } = {}) {
   if (typeof cell !== 'function') {
     throw new Error('construirTablaContenidosWord requiere cell()');
@@ -43,7 +45,7 @@ export function construirTablaContenidosWord({
       String(it?.categoria || '').trim() ||
       Number(it?.cantidad) > 0
   );
-  const totales = calcularTotalesContenidos(contenidos);
+  const totales = calcularTotalesContenidos(contenidos, valoresAsegurablesCaso);
   const CONT_W = [2200, 3200, 1400, 1000, 1100, 1400, 1400, 2300];
   const CONT_TABLE_W = CONT_W.reduce((a, b) => a + b, 0);
   const cellCont = (value, colIdx, opts = {}) =>
@@ -160,6 +162,44 @@ export function construirTablaContenidosWord({
         ],
       })
     );
+    (Array.isArray(totales.gruposDeducible) ? totales.gruposDeducible : []).forEach((g) => {
+      const perdida = Number(g.sumaPL ?? g.perdida) || 0;
+      const deducible = Number(g.deducible ?? g.aplicado) || 0;
+      const neto =
+        g.neto != null && g.neto !== ''
+          ? Number(g.neto) || 0
+          : Math.max(0, perdida - deducible);
+      const nombre = [etiquetaGrupoDeducible(g.grupoId), g.coberturaLabel]
+        .filter(Boolean)
+        .join(' · ');
+      filas.push(
+        new TableRow({
+          children: [
+            cell(`${nombre} — pérdida ${money(perdida)} · deducible ${money(deducible)}`, {
+              width: CONT_W.slice(0, 6).reduce((a, b) => a + b, 0),
+              columnSpan: 6,
+              size,
+              compact: true,
+              cuadro: true,
+            }),
+            cell(money(neto), {
+              width: CONT_W[6],
+              size,
+              compact: true,
+              cuadro: true,
+              bold: true,
+              alignment: AlignmentType.RIGHT,
+            }),
+            cell('Neto amparo', {
+              width: CONT_W[7],
+              size,
+              compact: true,
+              cuadro: true,
+            }),
+          ],
+        })
+      );
+    });
   } else {
     filas.push(
       new TableRow({

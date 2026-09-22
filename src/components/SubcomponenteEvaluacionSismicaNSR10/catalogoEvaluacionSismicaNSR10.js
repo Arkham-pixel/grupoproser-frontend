@@ -806,6 +806,32 @@ export function etiquetaGrupoDeducible(id) {
   return 'Grupo';
 }
 
+const CATEGORIA_A_ARTICULO_POLIZA = {
+  electronicos: 'poliza_eee_fijo',
+  electrodomesticos: 'poliza_eee_fijo',
+  'oficina / equipo de computo': 'poliza_eee_fijo',
+  'maquinaria / equipo': 'poliza_maquinaria',
+  herramientas: 'poliza_maquinaria',
+  muebles: 'poliza_contenidos',
+  'textiles / ropa': 'poliza_contenidos',
+  'menaje / vajilla': 'poliza_contenidos',
+  cocina: 'poliza_contenidos',
+  bano: 'poliza_contenidos',
+  'inventario / mercancia': 'poliza_mercancias',
+};
+
+function claveCategoriaPoliza(valor) {
+  return String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+export function inferirArticuloPolizaDesdeCategoria(categoria) {
+  return CATEGORIA_A_ARTICULO_POLIZA[claveCategoriaPoliza(categoria)] || '';
+}
+
 /** Artículo de póliza de la fila (independiente del ítem de catálogo). */
 export function resolverArticuloPolizaId(row = {}) {
   const explicit = String(row.articuloPolizaId || '').trim();
@@ -815,7 +841,8 @@ export function resolverArticuloPolizaId(row = {}) {
   const hit = ARTICULOS_ASEGURADOS_POLIZA.find(
     (a) => a.id === cat || a.articulo === row.articulo
   );
-  return hit?.id || '';
+  if (hit?.id) return hit.id;
+  return inferirArticuloPolizaDesdeCategoria(row.categoria);
 }
 
 /**
@@ -849,6 +876,10 @@ export function camposValorAseguradoParaNsr(caso = {}, encabezado = {}) {
       enc.valorAseguradoInmueble ?? c.valorAseguradoInmueble ?? '',
     valorAseguradoContenidos:
       enc.valorAseguradoContenidos ?? c.valorAseguradoContenidos ?? '',
+    valorAseguradoEquipoElectronico:
+      enc.valorAseguradoEquipoElectronico ?? c.valorAseguradoEquipoElectronico ?? '',
+    valorAseguradoMaquinaria:
+      enc.valorAseguradoMaquinaria ?? c.valorAseguradoMaquinaria ?? '',
   };
 }
 
@@ -865,9 +896,15 @@ export function valoresAsegurablesDesdeFormData(formData = {}) {
   const contenidos = parseValorAsegurableCaso(
     fd.valorAseguradoContenidos ?? enc.valorAseguradoContenidos
   );
+  const eee = parseValorAsegurableCaso(
+    fd.valorAseguradoEquipoElectronico ?? enc.valorAseguradoEquipoElectronico
+  );
+  const maquinaria = parseValorAsegurableCaso(
+    fd.valorAseguradoMaquinaria ?? enc.valorAseguradoMaquinaria
+  );
   const general = parseValorAsegurableCaso(liq.valorAsegurado);
   const inmueble = inmuebleExplicito || general;
-  return { inmueble, contenidos, general, inmuebleExplicito };
+  return { inmueble, contenidos, eee, maquinaria, general, inmuebleExplicito };
 }
 
 export function valoresAsegurablesDesdeLiquidador(liquidador = {}) {
@@ -875,6 +912,8 @@ export function valoresAsegurablesDesdeLiquidador(liquidador = {}) {
   return valoresAsegurablesDesdeFormData({
     valorAseguradoInmueble: liq.encabezado?.valorAseguradoInmueble,
     valorAseguradoContenidos: liq.encabezado?.valorAseguradoContenidos,
+    valorAseguradoEquipoElectronico: liq.encabezado?.valorAseguradoEquipoElectronico,
+    valorAseguradoMaquinaria: liq.encabezado?.valorAseguradoMaquinaria,
     liquidacionCatastrofico: liq.liquidacionCatastrofico,
   });
 }
@@ -887,7 +926,14 @@ export function valorAsegurablePlataformaDeGrupo(grupoId, valores = {}) {
   const contenidos = Number(valores.contenidos) || 0;
   const general = Number(valores.general) || 0;
   const inmuebleExplicito = Number(valores.inmuebleExplicito) || 0;
+  const eee = Number(valores.eee) || 0;
+  const maquinaria = Number(valores.maquinaria) || 0;
   if (esEdificio) return inmueble || general || 0;
+  if (id === 'poliza_eee_fijo') return eee;
+  if (id === 'poliza_maquinaria') return maquinaria;
+  if (id === GRUPO_DEDUCIBLE_CONTENIDOS || id === 'contenidos' || id === 'poliza_contenidos') {
+    return contenidos;
+  }
   if (contenidos > 0) return contenidos;
   // Formulario CAT genérico: un solo VA de liquidación, sin campos inmueble/contenidos.
   if (!inmuebleExplicito && general > 0) return general;

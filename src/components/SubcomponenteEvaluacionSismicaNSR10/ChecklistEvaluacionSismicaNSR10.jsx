@@ -564,9 +564,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
     [
       formData?.valorAseguradoInmueble,
       formData?.valorAseguradoContenidos,
+      formData?.valorAseguradoEquipoElectronico,
+      formData?.valorAseguradoMaquinaria,
       formData?.liquidacionCatastrofico?.valorAsegurado,
       formData?.encabezado?.valorAseguradoInmueble,
       formData?.encabezado?.valorAseguradoContenidos,
+      formData?.encabezado?.valorAseguradoEquipoElectronico,
+      formData?.encabezado?.valorAseguradoMaquinaria,
     ]
   );
   const totales = useMemo(
@@ -679,7 +683,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
           100
       ) / 100
     : resumenTotales.sumaCompleta;
-  const usaPorArticuloContenidos = !simplificarDeducible;
+  const usaPorArticuloContenidos = true;
   const modoDeduciblePresupuesto = simplificarDeducible
     ? MODO_DEDUCIBLE_NSR10.GENERAL
     : resolverModoDeduciblePresupuesto(liquidacion, resumenTotales);
@@ -741,12 +745,24 @@ export default function ChecklistEvaluacionSismicaNSR10({
           liquidacion.modoAplicacionDeducible === 'compartido',
         ...(() => {
           if (simplificarDeducible) {
+            const hayContenidos =
+              Number(resumenTotales.totalContenidos) > 0 ||
+              (Array.isArray(filasContenidos) &&
+                filasContenidos.some(
+                  (it) =>
+                    String(it?.articulo || '').trim() ||
+                    String(it?.categoria || '').trim() ||
+                    Number(it?.cantidad) > 0
+                ));
             return {
-              usaDeduciblePorArticuloContenidos: false,
+              usaDeduciblePorArticuloContenidos: hayContenidos,
               usaDeduciblePorArticuloPresupuesto: false,
-              deducibleContenidosPorArticulos: 0,
+              deducibleContenidosPorArticulos:
+                resumenTotales.deduciblePorArticulosContenidos || 0,
               deduciblePresupuestoPorArticulos: 0,
-              contenidosNetoPorArticulo: null,
+              contenidosNetoPorArticulo: hayContenidos
+                ? resumenTotales.valorAIndemnizarContenidos
+                : null,
               presupuestoNetoPorArticulo: null,
             };
           }
@@ -776,6 +792,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       totalDaniosDiagrama,
       totalPresupuestoDiagrama,
       simplificarDeducible,
+      filasContenidos,
       basePctPresupuesto,
       resultadoCalculoValorAsegurado?.valorDeducible,
       presupuesto?.calculoValorAsegurado?.valorDeducible,
@@ -879,7 +896,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     };
     actualizarLiquidacion({
       deducibleConfig: nextCfg,
-      deducibleConfigContenidos: nextCfg,
+      ...(simplificarDeducible ? {} : { deducibleConfigContenidos: nextCfg }),
       deducible: nextCfg.texto || '',
     });
   };
@@ -899,7 +916,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
     };
     actualizarLiquidacion({
       deducibleConfigPresupuesto: nextCfg,
-      ...(simplificarDeducible ? { deducibleConfigContenidos: nextCfg } : {}),
     });
   };
 

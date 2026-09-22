@@ -33,6 +33,7 @@ import {
   patchAiuCotizacionPdfZurich,
   patchDeducibleCotizacionPdfZurich,
   patchValorAseguradoContenidosZurich,
+  patchValorAseguradoCampoZurich,
   patchValorAseguradoZurich,
   resolverAiuPctZurich,
 } from './liquidadorZurichHelpers.js';
@@ -371,6 +372,32 @@ export default function LiquidadorZurich({
               }
             />
           </Campo>
+          <Campo label={t('zurich.settlement.insuredValueElectronics')}>
+            <InputFenix
+              inputMode="numeric"
+              value={formatMiles(enc.valorAseguradoEquipoElectronico || '')}
+              onChange={(e) =>
+                setLiquidador((prev) =>
+                  patchValorAseguradoCampoZurich(
+                    prev,
+                    'valorAseguradoEquipoElectronico',
+                    e.target.value
+                  )
+                )
+              }
+            />
+          </Campo>
+          <Campo label={t('zurich.settlement.insuredValueMachinery')}>
+            <InputFenix
+              inputMode="numeric"
+              value={formatMiles(enc.valorAseguradoMaquinaria || '')}
+              onChange={(e) =>
+                setLiquidador((prev) =>
+                  patchValorAseguradoCampoZurich(prev, 'valorAseguradoMaquinaria', e.target.value)
+                )
+              }
+            />
+          </Campo>
         </div>
         <div className="mt-4">
           <OtrosAmparosLiquidacion
@@ -438,6 +465,7 @@ export default function LiquidadorZurich({
         {(usaCotizBase ||
           tieneCotizacionPdf ||
           Number(totales.totalPresupuesto) > 0 ||
+          Number(totales.totalContenidos) > 0 ||
           Number(totales.totalOtrosAmparos) > 0) ? (
         <div className="mt-4 max-w-2xl">
           <ResumenLiquidacionZurich liquidador={liquidador} totales={totales} />

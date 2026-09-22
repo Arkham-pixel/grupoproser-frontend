@@ -156,7 +156,11 @@ async function seccionZurich(children) {
 
 function filasDescripcion(totales = {}) {
   const edificio = parsearNumero(totales.totalPresupuesto);
-  const contenidos = parsearNumero(totales.totalContenidos);
+  const contenidos = parsearNumero(
+    totales.diagrama?.deducibleContenidos?.neto ??
+      totales.contenidos?.valorAIndemnizar ??
+      totales.totalContenidos
+  );
   const hospedaje = parsearNumero(totales.diagrama?.gastosHospedaje);
   const otros = Array.isArray(totales.otrosAmparos) ? totales.otrosAmparos : [];
 
@@ -209,7 +213,12 @@ function filasDescripcion(totales = {}) {
       filaTabla('Total', montoCelda(totalBruto, { siempre: true }), { bold: true }),
       filaTabla(
         'Deducible:',
-        montoCelda(totales.deducibleAplicado || totales.diagrama?.sumaDeducibles, { siempre: true })
+        montoCelda(
+          totales.diagrama?.deduciblePresupuesto?.aplicado ??
+            totales.diagrama?.deduciblePresupuesto?.deducibleAplicado ??
+            0,
+          { siempre: true }
+        )
       ),
       filaTabla('Total indemnización', montoCelda(totales.totalIndemnizar, { siempre: true }), { bold: true }),
     ],

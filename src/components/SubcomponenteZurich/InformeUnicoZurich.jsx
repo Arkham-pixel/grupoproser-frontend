@@ -34,6 +34,9 @@ import {
   patchAiuCotizacionPdfZurich,
   patchDeducibleCotizacionPdfZurich,
   patchValorAseguradoZurich,
+  patchValorAseguradoContenidosZurich,
+  patchValorAseguradoCampoZurich,
+  completarFilasPolizaCoberturaZurich,
   resolverAiuPctZurich,
   normalizarTipoInformeZurich,
   configDeducibleReservaZurich,
@@ -297,6 +300,38 @@ export default function InformeUnicoZurich({
 
   const tipoInforme = normalizarTipoInformeZurich(informe.tipoInforme, 'preliminar');
   const esPreliminar = tipoInforme === 'preliminar';
+  useEffect(() => {
+    if (esPreliminar) return;
+    setInforme((prev) => {
+      const nextFilas = completarFilasPolizaCoberturaZurich(prev.filasPolizaCobertura, {
+        caso: casoZurich,
+        encabezado: liquidador.encabezado,
+        informe: prev,
+        liquidador,
+        totales,
+        conLiquidador: true,
+      });
+      const prevFilas = Array.isArray(prev.filasPolizaCobertura) ? prev.filasPolizaCobertura : [];
+      const igual =
+        nextFilas.length === prevFilas.length &&
+        nextFilas.every((f, i) => {
+          const a = prevFilas[i] || {};
+          return (
+            String(a.concepto || '') === String(f.concepto || '') &&
+            String(a.analisis || '') === String(f.analisis || '') &&
+            String(a.conclusion || '') === String(f.conclusion || '')
+          );
+        });
+      if (igual) return prev;
+      return { ...prev, filasPolizaCobertura: nextFilas };
+    });
+  }, [
+    esPreliminar,
+    totales.totalIndemnizar,
+    totales.totalContenidos,
+    totales.totalPresupuesto,
+    totales.totalOtrosAmparos,
+  ]);
   const nFotos = esPreliminar ? 5 : 6;
   const nFirmas = esPreliminar ? 6 : 7;
   const formDataNsr = useMemo(
@@ -1040,7 +1075,7 @@ export default function InformeUnicoZurich({
             </button>
           )}
         </div>
-        <div className="mb-4 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mb-4 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
           <Campo label={t('zurich.settlement.insuredValue')}>
             <InputFenix
               inputMode="numeric"
@@ -1057,6 +1092,51 @@ export default function InformeUnicoZurich({
               }
             />
             <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.insuredValueHint')}</p>
+          </Campo>
+          <Campo label={t('zurich.settlement.insuredValueContents')}>
+            <InputFenix
+              inputMode="numeric"
+              value={formatMiles(
+                encPoliza.valorAseguradoContenidos ||
+                  casoZurich?.valorAseguradoContenidos ||
+                  ''
+              )}
+              onChange={(e) =>
+                setLiquidador((prev) =>
+                  patchValorAseguradoContenidosZurich(prev, e.target.value)
+                )
+              }
+            />
+          </Campo>
+          <Campo label={t('zurich.settlement.insuredValueElectronics')}>
+            <InputFenix
+              inputMode="numeric"
+              value={formatMiles(encPoliza.valorAseguradoEquipoElectronico || '')}
+              onChange={(e) =>
+                setLiquidador((prev) =>
+                  patchValorAseguradoCampoZurich(
+                    prev,
+                    'valorAseguradoEquipoElectronico',
+                    e.target.value
+                  )
+                )
+              }
+            />
+          </Campo>
+          <Campo label={t('zurich.settlement.insuredValueMachinery')}>
+            <InputFenix
+              inputMode="numeric"
+              value={formatMiles(encPoliza.valorAseguradoMaquinaria || '')}
+              onChange={(e) =>
+                setLiquidador((prev) =>
+                  patchValorAseguradoCampoZurich(
+                    prev,
+                    'valorAseguradoMaquinaria',
+                    e.target.value
+                  )
+                )
+              }
+            />
           </Campo>
         </div>
         <div className="mb-4">
@@ -1125,6 +1205,7 @@ export default function InformeUnicoZurich({
         {(usaCotizBase ||
           tieneCotizacionPdf ||
           Number(totales.totalPresupuesto) > 0 ||
+          Number(totales.totalContenidos) > 0 ||
           Number(totales.totalOtrosAmparos) > 0) ? (
         <div className="mb-4 max-w-2xl">
           <ResumenLiquidacionZurich liquidador={liquidador} totales={totales} />
