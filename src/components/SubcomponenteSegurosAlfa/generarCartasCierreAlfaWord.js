@@ -493,14 +493,11 @@ export async function descargarCartaInferiorDeducibleAlfaWord(liquidador = {}, _
 
 /**
  * Carta de desistimiento (plantilla oficial Seguros Alfa) — independiente de la de objeción.
- * Rellena asegurado, cédula y póliza del dueño del liquidador/caso.
+ * Va dirigida a la compañía; el asegurado firma como remitente (cédula/póliza del caso).
  */
 export async function descargarCartaDesistimientoAlfaWord(liquidador = {}, _totales, caso = {}) {
   const liq = enriquecerLiquidadorConCasoAlfa(liquidador, caso);
-  const { asegurado, ciudad, fecha, cedula, poliza, siniestro } = datosCartaDesdeLiquidador(
-    liq,
-    caso
-  );
+  const { asegurado, fecha, cedula, poliza, siniestro } = datosCartaDesdeLiquidador(liq, caso);
   const headerTable = await buildHeaderObjecionAlfa();
   const footer = buildFooterObjecionAlfa();
   const firmaClienteParrafo = await parrafoSoloImagenFirmaClienteAlfa(liq);
@@ -515,9 +512,10 @@ export async function descargarCartaDesistimientoAlfaWord(liquidador = {}, _tota
         before: 80,
       }),
       p('', { after: 80 }),
-      p('Estimado:', { alignment: AlignmentType.BOTH, after: 40 }),
-      p(asegurado, { alignment: AlignmentType.BOTH, bold: true, after: 40 }),
-      p(`${ciudad}, Colombia`, { alignment: AlignmentType.BOTH, after: 160 }),
+      // Destinatario = compañía (el asegurado es quien escribe y firma abajo).
+      p('Señores:', { alignment: AlignmentType.BOTH, after: 40 }),
+      p('Seguros Alfa S.A.', { alignment: AlignmentType.BOTH, bold: true, after: 40 }),
+      p('Bogotá D.C., Colombia', { alignment: AlignmentType.BOTH, after: 160 }),
       p('', { after: 80 }),
       p(
         [
