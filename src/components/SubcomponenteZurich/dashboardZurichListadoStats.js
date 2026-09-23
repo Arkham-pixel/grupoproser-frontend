@@ -12,6 +12,8 @@ import {
   ESTADO_ZURICH_FINALIZADO,
   ESTADO_ZURICH_EN_PROCESO_FACTURACION,
   ESTADO_ZURICH_FACTURADO,
+  ESTADO_ZURICH_DESISTIDO,
+  ESTADO_ZURICH_ANULADO,
   diasEnEstadoZurich,
   etiquetaTipoPolizaZurich,
   esEstadoCerradoZurich,
@@ -35,7 +37,13 @@ const CORTES_ABIERTOS_ZURICH = [CORTE_PROSER_ZURICH, CORTE_ASEGURADO_ZURICH, COR
 /** Quién tiene la pelota: Proser (ajuste), asegurado/intermediario (docs) o Zurich (autoridad / aceptación). */
 export function corteCarteraZurich(estado) {
   const e = claveEstado(estado);
-  if (e === ESTADO_ZURICH_FINALIZADO || e === ESTADO_ZURICH_EN_PROCESO_FACTURACION || e === ESTADO_ZURICH_FACTURADO) {
+  if (
+    e === ESTADO_ZURICH_FINALIZADO ||
+    e === ESTADO_ZURICH_EN_PROCESO_FACTURACION ||
+    e === ESTADO_ZURICH_FACTURADO ||
+    e === ESTADO_ZURICH_DESISTIDO ||
+    e === ESTADO_ZURICH_ANULADO
+  ) {
     return CORTE_CERRADO_ZURICH;
   }
   if (esEstadoPendienteDocsZurich(e)) return CORTE_ASEGURADO_ZURICH;

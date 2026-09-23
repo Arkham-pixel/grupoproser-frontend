@@ -11389,6 +11389,8 @@
       "fechaFinalizado": "Fecha FINALIZADO",
       "fechaEnProcesoFacturacion": "Fecha EN PROCESO DE FACTURACIÓN",
       "fechaFacturado": "Fecha FACTURADO",
+      "fechaDesistido": "Fecha DESISTIDO",
+      "fechaAnulado": "Fecha ANULADO",
       "fechaObjecion": "Fecha objetado (histórico)",
       "fechaAutorizacionAnalista": "Fecha autorización analista (histórico)",
       "fechaCasoParaPago": "Fecha caso para pago (histórico)",

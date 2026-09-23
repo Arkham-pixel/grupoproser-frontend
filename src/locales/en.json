@@ -11328,6 +11328,8 @@
       "fechaFinalizado": "FINALIZED date",
       "fechaEnProcesoFacturacion": "IN BILLING PROCESS date",
       "fechaFacturado": "BILLED date",
+      "fechaDesistido": "WITHDRAWN date",
+      "fechaAnulado": "CANCELLED date",
       "fechaObjecion": "Objected date (legacy)",
       "fechaAutorizacionAnalista": "Analyst authorization date (legacy)",
       "fechaCasoParaPago": "Ready-for-payment date (legacy)",

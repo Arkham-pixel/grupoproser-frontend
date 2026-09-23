@@ -380,6 +380,8 @@ const FormularioZurich = ({
         fechaFinalizado: form.fechaFinalizado,
         fechaEnProcesoFacturacion: form.fechaEnProcesoFacturacion,
         fechaFacturado: form.fechaFacturado,
+        fechaDesistido: form.fechaDesistido,
+        fechaAnulado: form.fechaAnulado,
         fechaObjecion: form.fechaObjecion,
         fechaLiquidado: form.fechaLiquidado,
         documentoFaltante: form.documentoFaltante ?? '',
@@ -882,6 +884,20 @@ const FormularioZurich = ({
               type="date"
               value={form.fechaFacturado || ''}
               onChange={setCampo('fechaFacturado')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaDesistido')}>
+            <InputFenix
+              type="date"
+              value={form.fechaDesistido || ''}
+              onChange={setCampo('fechaDesistido')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaAnulado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAnulado || ''}
+              onChange={setCampo('fechaAnulado')}
             />
           </Campo>
           {!esClienteZurich && (

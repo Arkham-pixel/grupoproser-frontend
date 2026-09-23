@@ -3,7 +3,11 @@
  * Independiente del boletín semanal.
  */
 
-import { homologarEstadoZurich } from './zurichHelpers.js';
+import {
+  ESTADO_ZURICH_ANULADO,
+  ESTADO_ZURICH_DESISTIDO,
+  homologarEstadoZurich,
+} from './zurichHelpers.js';
 import {
   isoDateBogota,
   parseFechaCaso,
@@ -149,7 +153,13 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     .filter(Boolean)
     .join(' ');
 
-  if (textoLibre && /desist/.test(normTexto(textoLibre))) return 'desistimientos';
+  if (
+    estado === ESTADO_ZURICH_DESISTIDO ||
+    estado === ESTADO_ZURICH_ANULADO ||
+    (textoLibre && /desist|anulad/.test(normTexto(textoLibre)))
+  ) {
+    return 'desistimientos';
+  }
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
   if (
     estado === 'FINALIZADO' ||
