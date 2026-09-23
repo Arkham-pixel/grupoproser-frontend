@@ -175,6 +175,8 @@ const COLUMNAS = [
   { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
   { clave: 'fechaAceptacionLiquidacion', labelKey: 'fechaAceptacionLiquidacion' },
   { clave: 'fechaEnvioAseguradora', labelKey: 'fechaEnvioAseguradora' },
+  { clave: 'fechaDesistimiento', labelKey: 'fechaDesistimiento' },
+  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
   { clave: 'zonaAsignada', labelKey: 'zonaAsignada' },
   { clave: 'tipoPerdida', labelKey: 'tipoPerdida' },
   { clave: 'estadoGestion', labelKey: 'estadoGestion' },
@@ -258,6 +260,8 @@ const CAMPOS_FECHA = new Set([
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaDesistimiento',
+  'fechaObjecion',
 ]);
 
 /** Encabezados Excel en orden fijo (hoja BD + control de liquidación). */
@@ -312,6 +316,8 @@ const EXPORT_COLUMNAS_ALFA = [
   { header: 'FECHA LIQUIDADO', clave: 'fechaLiquidado', tipo: 'fecha' },
   { header: 'FECHA ACEPTACIÓN LIQUIDACIÓN', clave: 'fechaAceptacionLiquidacion', tipo: 'fecha' },
   { header: 'FECHA ENVÍO A LA ASEGURADORA', clave: 'fechaEnvioAseguradora', tipo: 'fecha' },
+  { header: 'FECHA DESISTIMIENTO', clave: 'fechaDesistimiento', tipo: 'fecha' },
+  { header: 'FECHA OBJECIÓN', clave: 'fechaObjecion', tipo: 'fecha' },
   { header: 'ESTADO GESTION', clave: 'estadoGestion' },
   { header: 'ESTADO SINIESTRO', clave: 'estado', tipo: 'estado' },
   { header: 'TIPO PERDIDA', clave: 'tipoPerdida' },

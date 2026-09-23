@@ -1704,6 +1704,8 @@
       "fechaLiquidado": "Settlement date",
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
+      "fechaDesistimiento": "Withdrawal date",
+      "fechaObjecion": "Objection date",
       "estado": "Status",
       "estadoGestion": "Management status",
       "estadoSiniestro": "Claim status",

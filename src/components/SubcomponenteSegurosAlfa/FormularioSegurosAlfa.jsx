@@ -40,6 +40,7 @@ import {
   PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE,
   TIPOS_PERDIDA_ALFA,
   aplicarObservacionAutoCierreAlfa,
+  aplicarFechasCierreSiniestroAlfa,
   construirFormDesdeCasoAlfa,
   formatMiles,
   formatMilesInput,
@@ -745,6 +746,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
                         estado,
                         prev.observacionesGestion
                       ),
+                      ...aplicarFechasCierreSiniestroAlfa(estado, prev),
                     };
                   });
                 }}
@@ -773,6 +775,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
                       estado,
                       prev.observacionesGestion
                     ),
+                    ...aplicarFechasCierreSiniestroAlfa(estado, prev),
                   }));
                 }}
               />
@@ -1041,6 +1044,20 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               type="date"
               value={form.fechaEnvioAseguradora}
               onChange={setCampo('fechaEnvioAseguradora')}
+            />
+          </Campo>
+          <Campo label={t('segurosAlfa.fields.fechaDesistimiento')}>
+            <InputFenix
+              type="date"
+              value={form.fechaDesistimiento}
+              onChange={setCampo('fechaDesistimiento')}
+            />
+          </Campo>
+          <Campo label={t('segurosAlfa.fields.fechaObjecion')}>
+            <InputFenix
+              type="date"
+              value={form.fechaObjecion}
+              onChange={setCampo('fechaObjecion')}
             />
           </Campo>
         </div>

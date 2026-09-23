@@ -416,6 +416,23 @@ export function aplicarObservacionAutoCierreAlfa(estado, observacionActual = '')
   return actualEsAuto ? '' : actual;
 }
 
+/**
+ * Al tipificar DESISTIDO / OBJETADO, rellena la fecha correspondiente si está vacía
+ * (hoy en YYYY-MM-DD). No pisa una fecha ya cargada.
+ */
+export function aplicarFechasCierreSiniestroAlfa(estado, form = {}, ahora = new Date()) {
+  const s = homologarEstadoSiniestroAlfa(estado, form);
+  const hoy = formatDateIso(ahora);
+  const next = {};
+  if (s === 'DESISTIDO' && !String(form.fechaDesistimiento || '').trim() && hoy) {
+    next.fechaDesistimiento = hoy;
+  }
+  if (s === 'OBJETADO' && !String(form.fechaObjecion || '').trim() && hoy) {
+    next.fechaObjecion = hoy;
+  }
+  return next;
+}
+
 /** ESTADO SINIESTRO en SharePoint: etiquetas reales del boletín (sin forzar CERRADO). */
 export function estadoAlfaParaSharePoint(estado) {
   return homologarEstadoSiniestroAlfa(estado);
@@ -445,19 +462,9 @@ export function casoEnVerificacionLlamadasAlfa(caso = {}) {
   const s = homologarEstadoSiniestroAlfa(caso.estado, caso);
   const g = sincronizarGestionConCierreSiniestroAlfa(s, caso.estadoGestion || caso.estado);
   const tipoPerdida = homologarTipoPerdidaAlfa(caso.tipoPerdida);
-  const textoLibre = [caso.observacionLlamada, caso.observacionesGestion, caso.cobertura]
-    .filter(Boolean)
-    .join(' ');
-  const textoNorm = String(textoLibre)
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toUpperCase();
-  const esTotal =
-    tipoPerdida === 'TOTAL' ||
-    /PERDIDA\s*TOTAL|TOTAL\s*PERDIDA|INHABITABLE/.test(textoNorm);
 
   if (s === 'DESISTIDO' || s === 'OBJETADO') return false;
-  if (esTotal) return false;
+  if (tipoPerdida === 'TOTAL') return false;
   if (s === 'PAGADO' || s === 'CERRADO' || s === 'PROCESO DE PAGO') return false;
   if (g === 'SIN PÓLIZA') return false;
   if (s === 'PENDIENTE ACEPTACION CIFRAS' || g === 'LIQUIDADO') return false;
@@ -485,7 +492,7 @@ export function contarKpisGestionAlfa(casos = []) {
     const s = homologarEstadoSiniestroAlfa(c.estado, c);
     const g = sincronizarGestionConCierreSiniestroAlfa(s, c.estadoGestion || c.estado);
     // PTE / SOLICITUD / SIN RESPUESTA: mismo criterio mutuamente excluyente del boletín
-    // (p. ej. pérdida TOTAL no infla PTE CONTACTO).
+    // (pérdida TOTAL solo por campo tipoPerdida, no por observaciones).
     if (
       (g === 'PTE CONTACTO' || g === 'SOLICITUD DTOS' || g === 'SIN RESPUESTA EFECTIVA') &&
       casoEnVerificacionLlamadasAlfa(c)
@@ -683,6 +690,8 @@ export const FORM_VACIO_ALFA = {
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
+  fechaDesistimiento: '',
+  fechaObjecion: '',
   estadoGestion: 'PTE CONTACTO',
   estado: 'PENDIENTE',
   observacionesGestion: '',
@@ -705,6 +714,8 @@ export const CAMPOS_FECHA_ALFA = [
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaDesistimiento',
+  'fechaObjecion',
   'fechaComunicacionBajoDeducible',
 ];
 

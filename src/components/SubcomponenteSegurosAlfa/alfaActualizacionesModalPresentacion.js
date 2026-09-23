@@ -36,6 +36,8 @@ export const ALFA_FIELD_LABELS = Object.freeze({
   fechaLiquidado: 'Fecha liquidado',
   fechaAceptacionLiquidacion: 'Fecha aceptación liquidación',
   fechaEnvioAseguradora: 'Fecha envío a aseguradora',
+  fechaDesistimiento: 'Fecha desistimiento',
+  fechaObjecion: 'Fecha objeción',
   valorAseguradoSid: 'Valor asegurado SID',
   valorAseguradoInmueble: 'Valor asegurado inmueble',
   valorAseguradoContenidos: 'Valor asegurado contenidos',
@@ -68,6 +70,8 @@ const DATE_FIELDS = new Set([
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaDesistimiento',
+  'fechaObjecion',
 ]);
 
 export function alfaFieldLabel(field) {

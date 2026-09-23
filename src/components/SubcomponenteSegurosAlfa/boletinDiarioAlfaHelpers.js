@@ -187,15 +187,9 @@ export function casoIdAlfa(caso) {
   return String(caso?._id || caso?.id || caso?.consecutivo || caso?.siniestro || '');
 }
 
-export function esPerdidaTotalTexto(...textos) {
-  const t = normTexto(textos.filter(Boolean).join(' '));
-  if (!t) return false;
-  return (
-    t.includes('perdida total') ||
-    t.includes('perdidas totales') ||
-    /\bpt\b/.test(t) ||
-    t.includes('siniestro total')
-  );
+/** @deprecated Solo cuenta el campo tipoPerdida; no lee observaciones. */
+export function esPerdidaTotalTexto() {
+  return false;
 }
 
 /**
@@ -209,13 +203,10 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     caso.estadoGestion || caso.estado
   );
   const tipoPerdida = homologarTipoPerdidaAlfa(caso.tipoPerdida);
-  const textoLibre = [caso.observacionLlamada, caso.observacionesGestion, caso.cobertura]
-    .filter(Boolean)
-    .join(' ');
 
   if (estadoSiniestro === 'DESISTIDO') return 'desistimientos';
   if (estadoSiniestro === 'OBJETADO') return 'objetados';
-  if (tipoPerdida === 'TOTAL' || esPerdidaTotalTexto(textoLibre)) return 'perdidasTotales';
+  if (tipoPerdida === 'TOTAL') return 'perdidasTotales';
   if (
     estadoSiniestro === 'PAGADO' ||
     estadoSiniestro === 'CERRADO' ||
@@ -400,6 +391,7 @@ export function casoConMovimientoEnDia(caso = {}, isoDia) {
     caso.fechaLiquidado,
     caso.fechaCierre,
     caso.fechaDesistimiento,
+    caso.fechaObjecion,
     caso.updatedAt,
   ];
   return marcas.some((f) => {
@@ -420,8 +412,7 @@ export function contarCierresDelDia(casos = [], isoDia) {
 
     const s = homologarEstadoSiniestroAlfa(caso.estado, caso);
     const tipoPerdida = homologarTipoPerdidaAlfa(caso.tipoPerdida);
-    const esPerdidaTotal =
-      tipoPerdida === 'TOTAL' || esPerdidaTotalTexto(caso.observacionesGestion, caso.observacionLlamada, s);
+    const esPerdidaTotal = tipoPerdida === 'TOTAL';
 
     if (s === 'DESISTIDO') counts.desistidos += 1;
     else if (s === 'OBJETADO') counts.objetados += 1;
@@ -450,9 +441,7 @@ export function contarClasificacionPerdidas(casos = []) {
     if (tipo === 'PARCIAL') counts.parcial += 1;
     else if (tipo === 'TOTAL') counts.total += 1;
     else if (tipo === 'INHABITABLE') counts.inhabitable += 1;
-    else if (esPerdidaTotalTexto(caso.observacionesGestion, caso.observacionLlamada, caso.estado)) {
-      counts.total += 1;
-    } else {
+    else {
       counts.sinClasificar += 1;
     }
   }
@@ -477,7 +466,7 @@ export function clasificarGestionDiscriminada(caso = {}) {
   const estadoGestion = homologarEstadoGestionAlfa(caso.estadoGestion || caso.estado);
   const tipoPerdida = homologarTipoPerdidaAlfa(caso.tipoPerdida);
 
-  if (tipoPerdida === 'TOTAL' || esPerdidaTotalTexto(texto, estadoSiniestro)) {
+  if (tipoPerdida === 'TOTAL') {
     return 'perdidaTotal';
   }
   if (

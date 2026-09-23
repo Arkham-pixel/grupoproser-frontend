@@ -1709,6 +1709,8 @@
       "fechaLiquidado": "Fecha liquidado",
       "fechaAceptacionLiquidacion": "Fecha aceptación liquidación",
       "fechaEnvioAseguradora": "Fecha envío a la aseguradora",
+      "fechaDesistimiento": "Fecha desistimiento",
+      "fechaObjecion": "Fecha objeción",
       "estado": "Estado",
       "estadoGestion": "Estado de gestión",
       "estadoSiniestro": "Estado de siniestro",

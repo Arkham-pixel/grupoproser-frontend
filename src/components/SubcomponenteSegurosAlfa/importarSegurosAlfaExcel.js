@@ -69,6 +69,8 @@ const HEADER_MAP = {
   'FECHA LIQUIDADO': 'fechaLiquidado',
   'FECHA ACEPTACION LIQUIDACION': 'fechaAceptacionLiquidacion',
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
+  'FECHA DESISTIMIENTO': 'fechaDesistimiento',
+  'FECHA OBJECION': 'fechaObjecion',
   ESTADO: 'estado',
   'ESTADO FINAL': 'estado',
 };
@@ -155,6 +157,8 @@ const CAMPOS_FECHA = new Set([
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaDesistimiento',
+  'fechaObjecion',
 ]);
 
 const CAMPOS_NUMERO = new Set([
