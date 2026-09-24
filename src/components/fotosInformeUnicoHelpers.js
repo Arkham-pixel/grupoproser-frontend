@@ -81,7 +81,7 @@ export function fotosInformeDesdeCaso(caso = {}, guardado = null) {
         })
     : [];
   if (!delInforme.length) return delCaso;
-  const keys = new Set(delInforme.map((f) => String(f._id || f.ruta || '')).filter(Boolean));
-  const extra = delCaso.filter((f) => !keys.has(String(f._id || f.ruta || '')));
-  return [...delInforme, ...extra];
+  // Si el informe ya tiene galería, no reinyectar archivos del archivero:
+  // fotos borradas de S3 volvían al Word y llenaban la consola de 404.
+  return delInforme;
 }

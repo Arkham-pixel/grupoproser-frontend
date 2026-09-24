@@ -1375,6 +1375,20 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const seccionFotos = esPreliminar ? 5 : esUnico ? (incluirNsrWord ? 4 : 3) : 7;
   const numAnalisisFinalUnico = esUnico ? (incluirNsrWord ? 5 : 4) : 4;
 
+  const rutasVivas = new Set(
+    (Array.isArray(caso.archivos) ? caso.archivos : []).map((a) => a?.ruta).filter(Boolean)
+  );
+  const fotoConArchivoVivo = (f) => {
+    if (!f) return false;
+    if (f.file instanceof Blob) return true;
+    if (typeof f.preview === 'string' && (f.preview.startsWith('blob:') || f.preview.startsWith('data:'))) {
+      return true;
+    }
+    if (!f.ruta) return Boolean(f._id);
+    if (!/^s3:/i.test(String(f.ruta))) return true;
+    return rutasVivas.has(f.ruta);
+  };
+
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
     const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
@@ -1382,7 +1396,9 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
   });
   const fotosInforme = Array.isArray(info?.fotosInspeccion)
-    ? info.fotosInspeccion.filter((f) => f && (f.ruta || f.file || f.preview || f._id))
+    ? info.fotosInspeccion.filter(
+        (f) => f && (f.ruta || f.file || f.preview || f._id) && fotoConArchivoVivo(f)
+      )
     : [];
   const fotosParaWord = (fotosInforme.length ? fotosInforme : fotosArchivos).slice(0, 24);
   const fotosCargadas = await mapLimit(fotosParaWord, 4, async (archivo) => ({
@@ -1458,7 +1474,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const fotosCotizacionRaw = [
     ...(Array.isArray(info?.fotosCotizacion) ? info.fotosCotizacion : []),
     ...(Array.isArray(liq?.cotizacionPdf?.paginas) ? liq.cotizacionPdf.paginas : []),
-  ].filter((f) => f && (f.ruta || f.file || f.preview || f._id));
+  ].filter((f) => f && (f.ruta || f.file || f.preview || f._id) && fotoConArchivoVivo(f));
   const vistosCotiz = new Set();
   const fotosCotizacion = [];
   for (const f of fotosCotizacionRaw) {
