@@ -355,11 +355,22 @@ export const checkControlSeguimientoAlfa = async ({ force = false } = {}) => {
 export const flushOutboundControlSeguimientoAlfa = async ({
   maxRounds = 8,
   batchSize,
+  forceResync = true,
+  consecutivos = [],
+  onlyWithMoney = true,
+  enqueueLimit = 120,
 } = {}) => {
   const response = await fetch(`${ALFA_API_URL}/control-seguimiento/outbound-flush`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ maxRounds, batchSize }),
+    body: JSON.stringify({
+      maxRounds,
+      batchSize,
+      forceResync,
+      consecutivos,
+      onlyWithMoney,
+      enqueueLimit,
+    }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {

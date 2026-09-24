@@ -305,7 +305,12 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     setFlushing(true);
     setError(null);
     try {
-      const data = await flushOutboundControlSeguimientoAlfa({ maxRounds: 8 });
+      const data = await flushOutboundControlSeguimientoAlfa({
+        maxRounds: 10,
+        forceResync: true,
+        onlyWithMoney: true,
+        enqueueLimit: 150,
+      });
       setStatus((prev) =>
         prev
           ? { ...prev, outboundPending: data.outboundPending ?? data.flush?.pendingLeft ?? 0 }
