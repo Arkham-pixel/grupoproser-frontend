@@ -20,6 +20,7 @@ import {
 import { Campo, InputFenix, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { formatMilesInputNsr10, formatMilesNsr10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { getImageUrl } from '../../utils/imageUtils.js';
+import { resolverUrlImagen } from '../../services/storageSignedUrl.js';
 import { esMontoMillonesTruncadoCOP } from '../../utils/parsearMontoCOP.js';
 import {
   archivosPdfCotizacion,
@@ -42,13 +43,80 @@ async function fetchArchivoComoFile(url, nombre = 'cotizacion.pdf') {
   return new File([blob], nombre, { type: tipo.includes('pdf') ? 'application/pdf' : tipo });
 }
 
-function srcDePagina(pagina) {
+/** No usar blob: si ya hay ruta (tras subir se revoca y rompe la miniatura). */
+function srcDePaginaSync(pagina) {
   if (!pagina) return '';
+  if (pagina.ruta || pagina._id) {
+    return getImageUrl({ ruta: pagina.ruta, _id: pagina._id }) || '';
+  }
+  if (typeof pagina.preview === 'string' && (pagina.preview.startsWith('blob:') || pagina.preview.startsWith('data:'))) {
+    return pagina.preview;
+  }
+  return getImageUrl(pagina) || '';
+}
+
+function revocarBlobsDiferido(urls = [], delayMs = 1500) {
+  const list = (urls || []).filter((u) => typeof u === 'string' && u.startsWith('blob:'));
+  if (!list.length) return;
+  setTimeout(() => {
+    list.forEach((u) => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {
+        /* ignore */
+      }
+    });
+  }, delayMs);
+}
+
+/** Miniatura con URL firmada (S3) — evita blob: revocado y proxy sin firma. */
+function PaginaCotizacionImg({ pagina, alt, className, style }) {
+  const [src, setSrc] = useState(() => srcDePaginaSync(pagina));
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (pagina?.ruta || pagina?._id) {
+        const url = await resolverUrlImagen({
+          ruta: pagina.ruta,
+          _id: pagina._id,
+          // forzar servidor: el blob local ya pudo haberse revocado
+        });
+        if (!cancelado) setSrc(url || srcDePaginaSync(pagina) || '');
+        return;
+      }
+      if (
+        typeof pagina?.preview === 'string' &&
+        (pagina.preview.startsWith('blob:') || pagina.preview.startsWith('data:'))
+      ) {
+        if (!cancelado) setSrc(pagina.preview);
+        return;
+      }
+      const url = await resolverUrlImagen(pagina);
+      if (!cancelado) setSrc(url || '');
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [pagina?._id, pagina?.ruta, pagina?.preview]);
+
+  if (!src) {
+    return (
+      <div
+        className={`flex items-center justify-center bg-gray-50 text-xs text-gray-400 dark:bg-gray-950 ${className || ''}`}
+        style={style}
+      />
+    );
+  }
+
   return (
-    pagina.preview ||
-    getImageUrl(pagina) ||
-    (pagina.ruta ? getImageUrl({ ruta: pagina.ruta }) : '') ||
-    ''
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      style={style}
+      onError={() => setSrc('')}
+    />
   );
 }
 
@@ -239,6 +307,24 @@ export default function CotizacionPdfLiquidacion({
     onChange?.(next);
   };
 
+  // Limpiar preview blob: ya subido (ruta/_id) para no reintentar URLs revocadas
+  useEffect(() => {
+    if (!cotizacion?.paginas?.length) return;
+    const sucias = cotizacion.paginas.some(
+      (p) => typeof p?.preview === 'string' && p.preview.startsWith('blob:') && (p.ruta || p._id)
+    );
+    if (!sucias) return;
+    emitir({
+      ...cotizacion,
+      paginas: cotizacion.paginas.map((p) =>
+        typeof p?.preview === 'string' && p.preview.startsWith('blob:') && (p.ruta || p._id)
+          ? { ...p, preview: undefined }
+          : p
+      ),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cotizacion?.paginas]);
+
   const truncadoAplicadoRef = useRef('');
   useEffect(() => {
     if (procesando) truncadoAplicadoRef.current = '';
@@ -328,6 +414,7 @@ export default function CotizacionPdfLiquidacion({
     }
 
     const paginasSubidas = [];
+    const blobsARevocar = [];
     for (const pagina of resultado.paginas) {
       if (!pagina?.file) {
         paginasSubidas.push(pagina);
@@ -339,7 +426,7 @@ export default function CotizacionPdfLiquidacion({
         });
         if (creado) creados.push(creado);
         if (pagina.preview && pagina.preview.startsWith('blob:')) {
-          URL.revokeObjectURL(pagina.preview);
+          blobsARevocar.push(pagina.preview);
         }
         paginasSubidas.push({
           ...pagina,
@@ -371,6 +458,8 @@ export default function CotizacionPdfLiquidacion({
       paginas: paginasSubidas,
     };
     emitir(next);
+    // Revocar DESPUÉS de emitir estado con ruta (si se revoca antes → ERR_FILE_NOT_FOUND en UI)
+    revocarBlobsDiferido(blobsARevocar);
     return next;
   };
 
@@ -446,6 +535,7 @@ export default function CotizacionPdfLiquidacion({
       if (!casoId || !api?.subir) return;
       const creados = [];
       const paginasSubidas = [];
+      const blobsARevocar = [];
       for (const pagina of resultado.paginas) {
         if (!pagina?.file) {
           paginasSubidas.push(pagina);
@@ -457,7 +547,7 @@ export default function CotizacionPdfLiquidacion({
           });
           if (creado) creados.push(creado);
           if (pagina.preview && pagina.preview.startsWith('blob:')) {
-            URL.revokeObjectURL(pagina.preview);
+            blobsARevocar.push(pagina.preview);
           }
           paginasSubidas.push({
             ...pagina,
@@ -477,6 +567,7 @@ export default function CotizacionPdfLiquidacion({
       }
       if (creados.length) onArchivosCreados?.(creados);
       emitir({ ...next, paginas: paginasSubidas });
+      revocarBlobsDiferido(blobsARevocar);
     } catch (err) {
       console.error(err);
       setError(err.message || tq('quoteError'));
@@ -698,10 +789,11 @@ export default function CotizacionPdfLiquidacion({
           {paginas.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {paginas.map((pagina, idx) => {
-              const src = srcDePagina(pagina);
+              const src = srcDePaginaSync(pagina);
+              const tieneVista = Boolean(src || pagina.ruta || pagina._id || pagina.preview);
               return (
                 <figure
-                  key={pagina._id || pagina.preview || `p-${idx}`}
+                  key={pagina._id || pagina.ruta || pagina.preview || `p-${idx}`}
                   className="relative overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
                 >
                   <button
@@ -713,15 +805,15 @@ export default function CotizacionPdfLiquidacion({
                   >
                     <FaTrash className="h-3.5 w-3.5" />
                   </button>
-                  {src ? (
+                  {tieneVista ? (
                     <button
                       type="button"
                       className="group relative block w-full bg-gray-50 dark:bg-gray-950"
                       onClick={() => abrirVistaPagina(idx)}
                       title={tq('quotePreview', { defaultValue: 'Vista previa' })}
                     >
-                      <img
-                        src={src}
+                      <PaginaCotizacionImg
+                        pagina={pagina}
                         alt={pagina.descripcion || `Página ${pagina.pagina || idx + 1}`}
                         className="h-56 w-full object-contain"
                       />
@@ -931,8 +1023,8 @@ export default function CotizacionPdfLiquidacion({
             className="relative min-h-0 flex-1 overflow-auto p-3 sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={srcDePagina(paginas[previewPaginaIdx])}
+            <PaginaCotizacionImg
+              pagina={paginas[previewPaginaIdx]}
               alt={
                 paginas[previewPaginaIdx].descripcion ||
                 `Página ${paginas[previewPaginaIdx].pagina || previewPaginaIdx + 1}`
