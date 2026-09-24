@@ -810,8 +810,15 @@ export default function ReporteAllianz() {
             origen="cat"
             initialData={casoEdicion}
             onClose={() => setCasoEdicion(null)}
-            onSaved={async () => {
+            onSaved={async (guardado) => {
               setCasoEdicion(null);
+              if (guardado?._id) {
+                setCasos((prev) =>
+                  prev.map((c) =>
+                    String(c._id) === String(guardado._id) ? { ...c, ...guardado } : c
+                  )
+                );
+              }
               await recargar();
             }}
           />

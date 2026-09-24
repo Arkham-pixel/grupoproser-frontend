@@ -31,6 +31,23 @@ export const CAMPOS_ASIGNACION_CASO = Object.freeze([
   'inspector',
 ]);
 
+/** Lo que el inspector sí debe poder guardar en Gestionar. */
+export const CAMPOS_OPERATIVOS_INSPECTOR = Object.freeze([
+  'estado',
+  'estadoGestion',
+  'fechaVisita',
+  'fechaCoordinandoInspeccion',
+  'fechaInspeccion',
+  'fechaInspeccionRealizada',
+  'fechaInspeccionado',
+  'fechaPrimerContacto',
+  'horaInicioCoordinacion',
+  'horaFinCoordinacion',
+  'observaciones',
+  'observacionesCat',
+  'modalidadAtencion',
+]);
+
 /**
  * Logins con poderes de ajustador líder SOLO en módulo SURA.
  * Mario Alberto Pinilla de la Torre.
@@ -338,17 +355,26 @@ export function puedeEditarCampoCaso(rol = obtenerRolAlmacenado(), campo, opts =
   if (puedeEditarTodoElCaso(r, opts)) return true;
   if (esRolEra(r) || esIdentidadEra(opts)) {
     const modo = modoEdicionEraDelCaso(opts.caso, { ...opts, rol: r });
-    if (modo === 'inspector') return key === 'estado' || key === 'estadoGestion';
+    if (modo === 'inspector') return CAMPOS_OPERATIVOS_INSPECTOR.includes(key);
     if (modo === 'ajustador') return !esCampoAsignacionCaso(key);
     return false;
   }
-  if (r === ROL_INSPECTOR) return key === 'estado' || key === 'estadoGestion';
+  if (r === ROL_INSPECTOR) return CAMPOS_OPERATIVOS_INSPECTOR.includes(key);
   if (r === ROL_AJUSTADOR_CASO) return !esCampoAsignacionCaso(key);
   return true;
 }
 
 export function attrsCampoCaso(rol = obtenerRolAlmacenado(), campo, opts = {}) {
   return { disabled: !puedeEditarCampoCaso(rol, campo, opts) };
+}
+
+function payloadOperativoInspector(payload = {}, base = {}) {
+  const next = {};
+  for (const campo of CAMPOS_OPERATIVOS_INSPECTOR) {
+    if (payload[campo] != null) next[campo] = payload[campo];
+    else if (Object.prototype.hasOwnProperty.call(base, campo)) next[campo] = base[campo];
+  }
+  return { payload: next, soloEstado: true };
 }
 
 /**
@@ -364,14 +390,7 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}
   if (esRolEra(r) || esIdentidadEra(identidad)) {
     const modo = modoEdicionEraDelCaso(opts.caso || base, identidad);
     if (modo === 'inspector') {
-      return {
-        payload: {
-          estado: payload.estado != null ? payload.estado : base.estado,
-          estadoGestion:
-            payload.estadoGestion != null ? payload.estadoGestion : base.estadoGestion,
-        },
-        soloEstado: true,
-      };
+      return payloadOperativoInspector(payload, base);
     }
     if (modo === 'ajustador') {
       const next = { ...payload };
@@ -387,14 +406,7 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}
     return { payload: {}, soloEstado: false, denegado: true };
   }
   if (r === ROL_INSPECTOR) {
-    return {
-      payload: {
-        estado: payload.estado != null ? payload.estado : base.estado,
-        estadoGestion:
-          payload.estadoGestion != null ? payload.estadoGestion : base.estadoGestion,
-      },
-      soloEstado: true,
-    };
+    return payloadOperativoInspector(payload, base);
   }
   if (r === ROL_AJUSTADOR_CASO) {
     const next = { ...payload };

@@ -104,7 +104,10 @@ const aNumero = (valor) => {
 const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', onClose, onSaved }) => {
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
-  const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('allianz'), []);
+  const ctxPermiso = useMemo(
+    () => ({ ...obtenerContextoPermisoCaso('allianz'), caso: initialData || {} }),
+    [initialData]
+  );
   const soloInspector = esRolInspector(rolUsuario);
   const loginActual = String(localStorage.getItem('login') || '').trim();
   const puedeFacturacion = puedeVerFacturacionAllianz(loginActual) && !soloInspector;
@@ -403,13 +406,18 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         }));
         return;
       }
-    } else if (!form.identificacion.trim() && !String(form.riskId || '').trim()) {
+    } else if (
+      !String(form.identificacion || '').trim() &&
+      !String(form.riskId || '').trim() &&
+      !String(form.zc || '').trim() &&
+      !String(form.siniestro || '').trim()
+    ) {
       setError(t('allianz.validation.identificacionOrRiskRequired', {
         defaultValue: 'Indique identificación o Risk ID',
       }));
       return;
     }
-    if (!form.estado.trim()) {
+    if (!String(form.estado || '').trim()) {
       setError(t('allianz.validation.statusRequired'));
       return;
     }
@@ -643,6 +651,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               type="date"
               value={form.fechaVisita}
               onChange={setCampo('fechaVisita')}
+              {...attrsCampoCaso(rolUsuario, 'fechaVisita', ctxPermiso)}
             />
           </Campo>
           <Campo label={t('allianz.fields.observaciones')} className="md:col-span-2 lg:col-span-3">
@@ -651,6 +660,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               value={form.observaciones}
               onChange={setCampo('observaciones')}
               placeholder={t('allianz.placeholders.observaciones')}
+              {...attrsCampoCaso(rolUsuario, 'observaciones', ctxPermiso)}
             />
           </Campo>
         </div>
@@ -714,6 +724,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               type="date"
               value={form.fechaPrimerContacto}
               onChange={setCampo('fechaPrimerContacto')}
+              {...attrsCampoCaso(rolUsuario, 'fechaPrimerContacto', ctxPermiso)}
             />
           </Campo>
           <CampoFranjaCoordinacion
@@ -734,6 +745,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               type="date"
               value={form.fechaInspeccionRealizada}
               onChange={setCampo('fechaInspeccionRealizada')}
+              {...attrsCampoCaso(rolUsuario, 'fechaInspeccionRealizada', ctxPermiso)}
             />
           </Campo>
           <Campo label={t('allianz.fields.fechaAnalisisCaso')}>

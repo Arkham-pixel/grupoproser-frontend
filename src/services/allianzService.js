@@ -125,7 +125,8 @@ export const fetchAllCasosAllianz = async (batchSize = 2000, opciones = {}) => {
 
 export const getCasoAllianzById = async (id) => {
   if (!id) throw new Error('Identificador de caso Allianz no válido');
-  const response = await fetch(`${ALLIANZ_API_URL}/${id}`, { headers: authHeaders() });
+  const qs = new URLSearchParams({ _t: Date.now() });
+  const response = await fetch(`${ALLIANZ_API_URL}/${id}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error al obtener el caso (${response.status})`);
