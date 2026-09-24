@@ -10,8 +10,6 @@ import {
   LabelList,
   Legend,
   Line,
-  Pie,
-  PieChart,
   Tooltip,
   XAxis,
   YAxis,
@@ -48,6 +46,7 @@ import {
   etiquetaInspectorCaso,
   ESTADOS_EMBUDO_CATASTROFICO,
 } from './dashboardCatastroficoStats.js';
+import EstadoFranjas, { ResumenGerencial, TarjetaSumaBloque } from './EstadoFranjas.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F]';
 
@@ -109,6 +108,23 @@ export default function DashboardCatastrofico({
   chartTitleByInspector = null,
   chartSeriesByInspector = null,
   kpiActivosHint = null,
+  filtroEstadoControlado,
+  onFiltroEstadoChange,
+  filtroEstadoGestionControlado,
+  onFiltroEstadoGestionChange,
+  mostrarVistaGerencial = true,
+  mostrarFranjasEstado = true,
+  /** Franjas debajo de «Estados de cartera» (ej. estados facilitador Sura). */
+  franjasExtra = null,
+  /** Gráfica de barras al lado de «Casos por estado» (reemplaza ciudad en esa fila). */
+  chartBesideStatus = null,
+  /**
+   * Bloques de suma independientes (ej. cerrados Sura).
+   * [{ id, titulo, subtitulo, estados: string[] }]
+   */
+  bloquesSuma = null,
+  /** Tarjetas ya calculadas (ej. facilitador) además de bloquesSuma. */
+  tarjetasSumaExtra = null,
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -124,13 +140,18 @@ export default function DashboardCatastrofico({
     String(modulo || '')
       .toLowerCase()
       .includes('zurich');
+  /** Vista gerencial / franjas: todos los CAT menos BBVA. Zurich CAT las apaga por props; el Dashboard listado las enciende. */
+  const excluirVistaGerencial = esBbvaCat;
+  const verVistaGerencial = mostrarVistaGerencial && !excluirVistaGerencial;
+  const verFranjasEstado = mostrarFranjasEstado && !excluirVistaGerencial;
 
   const [casos, setCasos] = useState([]);
   const [mapaNombres, setMapaNombres] = useState(() => new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filtroCiudad, setFiltroCiudad] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroEstadoInterno, setFiltroEstadoInterno] = useState('');
+  const [filtroEstadoGestionInterno, setFiltroEstadoGestionInterno] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
   const [filtroInspector, setFiltroInspector] = useState('');
   const [filtroTomador, setFiltroTomador] = useState('');
@@ -138,6 +159,24 @@ export default function DashboardCatastrofico({
   const [fechaHasta, setFechaHasta] = useState('');
   const [tipoFecha, setTipoFecha] = useState('ingreso');
   const coincideCiudad = coincideFiltroCiudad || coincideFiltroTexto;
+
+  const filtroEstado =
+    filtroEstadoControlado !== undefined ? filtroEstadoControlado : filtroEstadoInterno;
+  const setFiltroEstado = (valor) => {
+    const next = valor ?? '';
+    if (filtroEstadoControlado === undefined) setFiltroEstadoInterno(next);
+    onFiltroEstadoChange?.(next);
+  };
+
+  const filtroEstadoGestion =
+    filtroEstadoGestionControlado !== undefined
+      ? filtroEstadoGestionControlado
+      : filtroEstadoGestionInterno;
+  const setFiltroEstadoGestion = (valor) => {
+    const next = valor ?? '';
+    if (filtroEstadoGestionControlado === undefined) setFiltroEstadoGestionInterno(next);
+    onFiltroEstadoGestionChange?.(next);
+  };
 
   useEffect(() => {
     let cancelado = false;
@@ -179,12 +218,20 @@ export default function DashboardCatastrofico({
   }, [fetchCasos, t, modulo]);
 
   const filtrosAplicados = Boolean(
-    filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || filtroTomador || fechaDesde || fechaHasta
+    filtroCiudad ||
+      filtroEstado ||
+      filtroEstadoGestion ||
+      filtroAjustador ||
+      filtroInspector ||
+      filtroTomador ||
+      fechaDesde ||
+      fechaHasta
   );
 
   const limpiarFiltros = () => {
     setFiltroCiudad('');
     setFiltroEstado('');
+    setFiltroEstadoGestion('');
     setFiltroAjustador('');
     setFiltroInspector('');
     setFiltroTomador('');
@@ -198,16 +245,30 @@ export default function DashboardCatastrofico({
       casos.filter((item) => {
         if (filtroCiudad && !coincideCiudad(item.ciudad, filtroCiudad)) return false;
         if (filtroEstado) {
-          const estado = typeof normalizarEstadoFn === 'function'
-            ? (() => {
-                try {
-                  return normalizarEstadoFn(item.estado, item);
-                } catch {
-                  return normalizarEstadoFn(item.estado);
-                }
-              })()
-            : item.estado;
+          const estado =
+            typeof normalizarEstadoFn === 'function'
+              ? (() => {
+                  try {
+                    return normalizarEstadoFn(item.estado, item);
+                  } catch {
+                    return normalizarEstadoFn(item.estado);
+                  }
+                })()
+              : item.estado;
           if (!coincideFiltroTexto(estado, filtroEstado)) return false;
+        }
+        if (filtroEstadoGestion) {
+          const estadoG =
+            typeof normalizarEstadoGestionFn === 'function'
+              ? (() => {
+                  try {
+                    return normalizarEstadoGestionFn(item.estadoGestion || item.estado, item);
+                  } catch {
+                    return normalizarEstadoGestionFn(item.estadoGestion || item.estado);
+                  }
+                })()
+              : item.estadoGestion || item.estado;
+          if (!coincideFiltroTexto(estadoG, filtroEstadoGestion)) return false;
         }
         if (
           filtroAjustador &&
@@ -235,6 +296,7 @@ export default function DashboardCatastrofico({
       casos,
       filtroCiudad,
       filtroEstado,
+      filtroEstadoGestion,
       filtroAjustador,
       filtroInspector,
       filtroTomador,
@@ -246,6 +308,7 @@ export default function DashboardCatastrofico({
       fechaEnRango,
       mapaNombres,
       normalizarEstadoFn,
+      normalizarEstadoGestionFn,
       esZurich,
     ]
   );
@@ -275,6 +338,104 @@ export default function DashboardCatastrofico({
 
   const dualEstados = Array.isArray(stats.porEstadoGestion);
 
+  const tarjetasDesdeBloques = useMemo(() => {
+    const defs = Array.isArray(bloquesSuma) ? bloquesSuma : [];
+    if (!defs.length) return [];
+    const mapaEstado = new Map((stats.porEstado || []).map((r) => [r.estado, Number(r.cantidad) || 0]));
+    const mapaGestion = new Map(
+      (stats.porEstadoGestion || []).map((r) => [r.estado, Number(r.cantidad) || 0])
+    );
+    return defs.map((bloque) => {
+      const fuente = String(bloque.fuente || 'estado').toLowerCase();
+      const mapa = fuente === 'gestion' ? mapaGestion : mapaEstado;
+      return {
+        id: bloque.id || bloque.titulo,
+        titulo: bloque.titulo,
+        subtitulo: bloque.subtitulo,
+        fuente,
+        desglose: (bloque.estados || []).map((estado) => ({
+          clave: estado,
+          label: estado,
+          cantidad: mapa.get(estado) || 0,
+        })),
+      };
+    });
+  }, [bloquesSuma, stats.porEstado, stats.porEstadoGestion]);
+
+  const insightGerencial = useMemo(() => {
+    const { kpis: k, ans: a } = stats;
+    const total = k.totalCasos || 0;
+    const pctActivos = total > 0 ? Math.round((k.casosActivos / total) * 100) : 0;
+    const lineas = [
+      td('executive.portfolio', { total }),
+      td('executive.openPct', { pct: pctActivos, active: k.casosActivos }),
+    ];
+    if (!esListado) {
+      lineas.push(td('executive.settledPct', { pct: k.porcentajeLiquidados ?? 0 }));
+    }
+
+    const hallazgos = [];
+    const serieEstado = dualEstados ? stats.porEstadoGestion : stats.porEstado;
+    if (serieEstado?.length) {
+      const top = [...serieEstado].sort((x, y) => (y.cantidad || 0) - (x.cantidad || 0))[0];
+      if (top?.cantidad > 0 && total > 0) {
+        const pct = Math.round((top.cantidad / total) * 100);
+        hallazgos.push(
+          td('executive.bottleneck', {
+            estado: top.estado,
+            cantidad: top.cantidad,
+            pct,
+          })
+        );
+      }
+    }
+    if (dualEstados && stats.porEstado?.length) {
+      const topAj = [...stats.porEstado].sort((x, y) => (y.cantidad || 0) - (x.cantidad || 0))[0];
+      if (topAj?.cantidad > 0) {
+        hallazgos.push(
+          td('executive.bottleneckAj', { estado: topAj.estado, cantidad: topAj.cantidad })
+        );
+      }
+    }
+
+    const tendencia = stats.tendenciaMensual || [];
+    if (tendencia.length >= 2) {
+      const prev = tendencia[tendencia.length - 2];
+      const curr = tendencia[tendencia.length - 1];
+      const delta = (curr.casos || 0) - (prev.casos || 0);
+      if (delta !== 0) {
+        hallazgos.push(
+          td('executive.monthDelta', {
+            delta: delta > 0 ? `+${delta}` : String(delta),
+            mes: curr.etiqueta || curr.mes,
+          })
+        );
+      }
+    }
+
+    const alertas = [];
+    if ((k.atrasadosInspeccion || 0) > 0) {
+      alertas.push({
+        id: 'ans-insp',
+        label: td('executive.alertAnsInsp', { count: k.atrasadosInspeccion }),
+      });
+    }
+    if ((k.atrasadosLiquidacion || 0) > 0) {
+      alertas.push({
+        id: 'ans-liq',
+        label: td('executive.alertAnsLiq', { count: k.atrasadosLiquidacion }),
+      });
+    }
+    if (a?.inspeccion?.pct != null && a.inspeccion.pct < 70) {
+      alertas.push({
+        id: 'ans-insp-pct',
+        label: td('executive.alertAnsInspPct', { pct: a.inspeccion.pct }),
+      });
+    }
+
+    return { lineas, hallazgos: hallazgos.slice(0, 3), alertas };
+  }, [stats, dualEstados, esListado, t]);
+
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos, buildOpcionesFiltro]);
   const ajustadores = useMemo(() => {
     const virtual = casos.map((c) => ({ ajustador: etiquetaAjustadorCaso(c, mapaNombres) }));
@@ -295,8 +456,6 @@ export default function DashboardCatastrofico({
   const tickColor = isDark ? '#B0B0B0' : '#6B6B6B';
   const gridStroke = isDark ? '#2D2D2D' : '#E5E7EB';
   const lineColors = getFenixLineChartColors(isDark);
-  const pieStroke = isDark ? '#1A1A1A' : '#FFFFFF';
-
   if (loading) {
     return (
       <div className={`${root} flex min-h-[40vh] items-center justify-center p-4`}>
@@ -335,6 +494,16 @@ export default function DashboardCatastrofico({
           )}
         </header>
 
+        {verVistaGerencial && (
+          <ResumenGerencial
+            titulo={td('executive.title')}
+            hallazgosTitulo={td('executive.findings')}
+            lineas={insightGerencial.lineas}
+            hallazgos={insightGerencial.hallazgos}
+            alertas={insightGerencial.alertas}
+          />
+        )}
+
         <ExpressFilterSection title={td('filters')} showClear={filtrosAplicados} onClear={limpiarFiltros}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Campo label={t(`${i18nNs}.fields.ciudad`)}>
@@ -348,7 +517,13 @@ export default function DashboardCatastrofico({
               </SelectFenix>
             </Campo>
             <Campo label={t(`${i18nNs}.fields.estado`)}>
-              <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+              <SelectFenix
+                value={filtroEstado}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value);
+                  if (e.target.value) setFiltroEstadoGestion('');
+                }}
+              >
                 <option value="">{td('all')}</option>
                 {estados.map((estado) => (
                   <option key={estado} value={estado}>
@@ -357,6 +532,24 @@ export default function DashboardCatastrofico({
                 ))}
               </SelectFenix>
             </Campo>
+            {Array.isArray(estadosGestion) && estadosGestion.length > 0 ? (
+              <Campo label={td('filtersGestion')}>
+                <SelectFenix
+                  value={filtroEstadoGestion}
+                  onChange={(e) => {
+                    setFiltroEstadoGestion(e.target.value);
+                    if (e.target.value) setFiltroEstado('');
+                  }}
+                >
+                  <option value="">{td('all')}</option>
+                  {estadosGestion.map((estado) => (
+                    <option key={estado} value={estado}>
+                      {estado}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
+            ) : null}
             <Campo label={t(`${i18nNs}.fields.ajustador`)}>
               <SelectFenix value={filtroAjustador} onChange={(e) => setFiltroAjustador(e.target.value)}>
                 <option value="">{td('all')}</option>
@@ -479,6 +672,101 @@ export default function DashboardCatastrofico({
         </section>
         )}
 
+        {verFranjasEstado && dualEstados ? (
+          <section className="grid w-full min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <EstadoFranjas
+              titulo={td('franjas.gestion')}
+              subtitulo={td('franjas.gestionHint')}
+              items={(stats.porEstadoGestion || []).map((r) => ({
+                clave: r.estado,
+                label: r.estado,
+                cantidad: r.cantidad,
+              }))}
+              total={kpis.totalCasos}
+              emptyLabel={td('noData')}
+              onSelect={(clave) => {
+                setFiltroEstadoGestion(clave);
+                setFiltroEstado('');
+              }}
+            />
+            <EstadoFranjas
+              titulo={td('franjas.siniestro')}
+              subtitulo={td('franjas.siniestroHint')}
+              items={stats.porEstado.map((r) => ({
+                clave: r.estado,
+                label: r.estado,
+                cantidad: r.cantidad,
+              }))}
+              total={kpis.totalCasos}
+              emptyLabel={td('noData')}
+              onSelect={(clave) => {
+                setFiltroEstado(clave);
+                setFiltroEstadoGestion('');
+              }}
+            />
+          </section>
+        ) : null}
+
+        {verFranjasEstado && !dualEstados ? (
+          <EstadoFranjas
+            titulo={td('franjas.estado')}
+            subtitulo={td('franjas.estadoHint')}
+            items={stats.porEstado.map((r) => ({
+              clave: r.estado,
+              label: r.estado,
+              cantidad: r.cantidad,
+            }))}
+            total={kpis.totalCasos}
+            emptyLabel={td('noData')}
+            onSelect={(clave) => setFiltroEstado(clave)}
+          />
+        ) : null}
+
+        {franjasExtra && Array.isArray(franjasExtra.items) && franjasExtra.items.length > 0 ? (
+          <EstadoFranjas
+            titulo={franjasExtra.titulo}
+            subtitulo={franjasExtra.subtitulo}
+            items={franjasExtra.items}
+            total={franjasExtra.total}
+            emptyLabel={franjasExtra.emptyLabel || td('noData')}
+            onSelect={franjasExtra.onSelect}
+          />
+        ) : null}
+
+        {(tarjetasDesdeBloques.length > 0 ||
+          (Array.isArray(tarjetasSumaExtra) && tarjetasSumaExtra.length > 0)) && (
+          <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+            {tarjetasDesdeBloques.map((tarjeta) => (
+              <TarjetaSumaBloque
+                key={tarjeta.id}
+                titulo={tarjeta.titulo}
+                subtitulo={tarjeta.subtitulo}
+                desglose={tarjeta.desglose}
+                totalCartera={kpis.totalCasos}
+                onSelectItem={(clave) => {
+                  if (tarjeta.fuente === 'gestion') {
+                    setFiltroEstadoGestion(clave);
+                    setFiltroEstado('');
+                  } else {
+                    setFiltroEstado(clave);
+                    setFiltroEstadoGestion('');
+                  }
+                }}
+              />
+            ))}
+            {(tarjetasSumaExtra || []).map((tarjeta) => (
+              <TarjetaSumaBloque
+                key={tarjeta.id || tarjeta.titulo}
+                titulo={tarjeta.titulo}
+                subtitulo={tarjeta.subtitulo}
+                desglose={tarjeta.desglose}
+                totalCartera={tarjeta.totalBase ?? franjasExtra?.total ?? 0}
+                onSelectItem={tarjeta.onSelectItem}
+              />
+            ))}
+          </section>
+        )}
+
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           {dualEstados ? (
             <>
@@ -528,7 +816,21 @@ export default function DashboardCatastrofico({
             />
           )}
 
-          {!dualEstados ? (
+          {!dualEstados && chartBesideStatus ? (
+            <HorizontalBars
+              title={chartBesideStatus.title}
+              data={chartBesideStatus.data || []}
+              isDark={isDark}
+              tickColor={tickColor}
+              gridStroke={gridStroke}
+              tooltipStyle={tooltipStyle}
+              seriesName={chartBesideStatus.seriesName || td('kpis.cases')}
+              labelWidth={chartBesideStatus.labelWidth || 140}
+              labelMax={chartBesideStatus.labelMax || 24}
+            />
+          ) : null}
+
+          {!dualEstados && !chartBesideStatus ? (
           <HorizontalBars
             title={td('charts.byCity')}
             data={stats.porCiudad}
@@ -540,6 +842,18 @@ export default function DashboardCatastrofico({
           />
           ) : null}
         </section>
+
+        {!dualEstados && chartBesideStatus ? (
+          <HorizontalBars
+            title={td('charts.byCity')}
+            data={stats.porCiudad}
+            isDark={isDark}
+            tickColor={tickColor}
+            gridStroke={gridStroke}
+            tooltipStyle={tooltipStyle}
+            seriesName={td('kpis.cases')}
+          />
+        ) : null}
 
         {dualEstados ? (
           <HorizontalBars
@@ -699,30 +1013,20 @@ export default function DashboardCatastrofico({
                 </BarChart>
               </ExpressChartPlot>
             </ChartCard>
-            <ChartCard title={td('charts.checklist')} empty={stats.checklist.length === 0}>
-              <ExpressChartPlot height={300}>
-                <PieChart>
-                  <Pie
-                    data={stats.checklist}
-                    dataKey="cantidad"
-                    nameKey="estado"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={62}
-                    outerRadius={100}
-                    paddingAngle={3}
-                    stroke={pieStroke}
-                    strokeWidth={2}
-                    label={({ estado, cantidad }) => `${estado} (${cantidad})`}
-                  >
-                    {stats.checklist.map((entry, index) => (
-                      <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                </PieChart>
-              </ExpressChartPlot>
-            </ChartCard>
+            <HorizontalBars
+              title={td('charts.checklist')}
+              data={stats.checklist.map((r) => ({
+                nombre: r.estado,
+                cantidad: r.cantidad,
+              }))}
+              isDark={isDark}
+              tickColor={tickColor}
+              gridStroke={gridStroke}
+              tooltipStyle={tooltipStyle}
+              seriesName={td('kpis.cases')}
+              labelWidth={140}
+              labelMax={28}
+            />
           </section>
         )}
 

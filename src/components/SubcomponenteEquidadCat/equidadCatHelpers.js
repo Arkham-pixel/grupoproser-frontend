@@ -13,6 +13,44 @@ export const ESTADOS_EQUIDAD_CAT = [
   'FINALIZADO',
 ];
 
+export const ESTADOS_EQUIDAD_CAT_BLOQUE_INGRESO = Object.freeze([
+  'CASO NUEVO',
+  'COORDINANDO INSPECCIÓN',
+]);
+
+export const ESTADOS_EQUIDAD_CAT_BLOQUE_ANALISIS = Object.freeze([
+  'ANÁLISIS DEL CASO',
+  'PENDIENTE DE DOCUMENTO',
+  'AUTORIZACIÓN ANALISTA',
+]);
+
+export const ESTADOS_EQUIDAD_CAT_BLOQUE_CIERRE = Object.freeze([
+  'OBJECIÓN',
+  'CASO PARA PAGO',
+  'FINALIZADO',
+]);
+
+export const BLOQUES_SUMA_EQUIDAD_CAT = Object.freeze([
+  {
+    id: 'bloque-ingreso',
+    titulo: 'Ingreso / coordinación',
+    subtitulo: 'CASO NUEVO · COORDINANDO INSPECCIÓN',
+    estados: [...ESTADOS_EQUIDAD_CAT_BLOQUE_INGRESO],
+  },
+  {
+    id: 'bloque-analisis',
+    titulo: 'Análisis y documentos',
+    subtitulo: 'ANÁLISIS DEL CASO · PENDIENTE DE DOCUMENTO · AUTORIZACIÓN ANALISTA',
+    estados: [...ESTADOS_EQUIDAD_CAT_BLOQUE_ANALISIS],
+  },
+  {
+    id: 'bloque-cierre',
+    titulo: 'Objeción, pago y finalizado',
+    subtitulo: 'OBJECIÓN · CASO PARA PAGO · FINALIZADO',
+    estados: [...ESTADOS_EQUIDAD_CAT_BLOQUE_CIERRE],
+  },
+]);
+
 export const MODALIDADES_EQUIDAD_CAT = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_EQUIDAD_CAT = {

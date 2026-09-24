@@ -17,6 +17,50 @@ export const ESTADOS_PREVISORA = [
   'FACTURADO',
 ];
 
+/** Bloque 1 · ingreso / programación */
+export const ESTADOS_PREVISORA_BLOQUE_INGRESO = Object.freeze([
+  'CASO NUEVO',
+  'PROGRAMANDO INSPECCIÓN',
+]);
+
+/** Bloque 2 · inspección, docs y cifras */
+export const ESTADOS_PREVISORA_BLOQUE_INSPECCION = Object.freeze([
+  'CASO INSPECCIONADO',
+  'PENDIENTE DE DOCUMENTOS',
+  'AUTORIZACIÓN ANALISTA',
+  'PRESENTACIÓN DE CIFRAS',
+]);
+
+/** Bloque 3 · objeción, cierre y facturación */
+export const ESTADOS_PREVISORA_BLOQUE_CIERRE = Object.freeze([
+  'OBJECIÓN',
+  'DESISTIMIENTO',
+  'CASO CERRADO',
+  'EN PROCESO DE FACTURACIÓN',
+  'FACTURADO',
+]);
+
+export const BLOQUES_SUMA_PREVISORA = Object.freeze([
+  {
+    id: 'bloque-ingreso',
+    titulo: 'Ingreso / programación',
+    subtitulo: 'CASO NUEVO · PROGRAMANDO INSPECCIÓN',
+    estados: [...ESTADOS_PREVISORA_BLOQUE_INGRESO],
+  },
+  {
+    id: 'bloque-inspeccion',
+    titulo: 'Inspección, documentos y cifras',
+    subtitulo: 'CASO INSPECCIONADO · PENDIENTE DE DOCUMENTOS · AUTORIZACIÓN ANALISTA · PRESENTACIÓN DE CIFRAS',
+    estados: [...ESTADOS_PREVISORA_BLOQUE_INSPECCION],
+  },
+  {
+    id: 'bloque-cierre',
+    titulo: 'Objeción, cierre y facturación',
+    subtitulo: 'OBJECIÓN · DESISTIMIENTO · CASO CERRADO · EN PROCESO DE FACTURACIÓN · FACTURADO',
+    estados: [...ESTADOS_PREVISORA_BLOQUE_CIERRE],
+  },
+]);
+
 export const MODALIDADES_PREVISORA = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_PREVISORA = {

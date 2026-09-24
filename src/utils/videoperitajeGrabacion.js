@@ -15,8 +15,8 @@ function drawContain(ctx, video, x, y, w, h) {
 function medidasLienzo(video) {
   const vw = video?.videoWidth || 0;
   const vh = video?.videoHeight || 0;
-  if (vw && vh && vw > vh) return { width: 1920, height: 1080 };
-  return { width: 1080, height: 1920 };
+  if (vw && vh && vw > vh) return { width: 1280, height: 720 };
+  return { width: 720, height: 1280 };
 }
 
 function pistasDeSala(room) {
@@ -102,8 +102,8 @@ function mezclarAudio(audios) {
 function crearRecorder(stream, mime) {
   const rec = new MediaRecorder(stream, {
     mimeType: mime,
-    videoBitsPerSecond: 8_000_000,
-    audioBitsPerSecond: 160_000,
+    videoBitsPerSecond: 2_500_000,
+    audioBitsPerSecond: 96_000,
   });
   const chunks = [];
   rec.ondataavailable = (ev) => {

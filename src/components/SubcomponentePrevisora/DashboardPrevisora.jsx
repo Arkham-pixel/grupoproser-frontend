@@ -2,6 +2,7 @@ import React from 'react';
 import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/DashboardCatastrofico.jsx';
 import { fetchAllCasosPrevisora } from '../../services/previsoraService.js';
 import {
+  BLOQUES_SUMA_PREVISORA,
   ESTADOS_PREVISORA,
   buildOpcionesFiltro,
   coincideFiltroTexto,
@@ -20,7 +21,11 @@ export default function DashboardPrevisora() {
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_PREVISORA}
       i18nNs="previsora"
+      modulo="previsora"
       extras={{ severidad: true }}
+      mostrarVistaGerencial
+      mostrarFranjasEstado
+      bloquesSuma={[...BLOQUES_SUMA_PREVISORA]}
     />
   );
 }

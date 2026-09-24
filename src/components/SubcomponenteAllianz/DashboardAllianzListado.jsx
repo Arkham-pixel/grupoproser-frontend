@@ -26,6 +26,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { fetchAllCasosAllianzListado } from '../../services/allianzListadoService.js';
 import {
+  BLOQUES_SUMA_ALLIANZ,
   ALLIANZ_REPORTE_PAGE_SIZE,
   ESTADOS_ALLIANZ,
   ESTADOS_CIERRE_ALLIANZ,
@@ -61,6 +62,10 @@ import {
   colorBarraPolizaAllianz,
   truncarAllianz,
 } from './tableroAllianzHelpers.js';
+import EstadoFranjas, {
+  ResumenGerencial,
+  TarjetaSumaBloque,
+} from '../SubcomponenteDashboardCatastrofico/EstadoFranjas.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F]';
 
@@ -151,6 +156,46 @@ export default function DashboardAllianzListado() {
       })),
     [stats.porEstado, filtros.estado, t]
   );
+
+  const insightGerencial = useMemo(() => {
+    const lineas = [
+      t('catastroficoDashboard.executive.portfolio', { total: kpis.totalCasos || 0 }),
+      t('catastroficoDashboard.executive.openPct', {
+        active: kpis.carteraAbierta || 0,
+        pct: openPct,
+      }),
+      t('catastroficoDashboard.executive.settledPct', { pct: kpis.porcentajeFinalizados || 0 }),
+    ];
+    const hallazgos = [];
+    if (stats.porEstado?.length && (kpis.totalCasos || 0) > 0) {
+      const top = [...stats.porEstado].sort((a, b) => (b.cantidad || 0) - (a.cantidad || 0))[0];
+      if (top?.cantidad > 0) {
+        const pct = Math.round((top.cantidad / kpis.totalCasos) * 100);
+        hallazgos.push(
+          t('catastroficoDashboard.executive.bottleneck', {
+            estado: top.estado,
+            cantidad: top.cantidad,
+            pct,
+          })
+        );
+      }
+    }
+    return { lineas, hallazgos };
+  }, [kpis, openPct, stats.porEstado, t]);
+
+  const tarjetasSuma = useMemo(() => {
+    const mapa = new Map((stats.porEstado || []).map((r) => [r.estado, Number(r.cantidad) || 0]));
+    return BLOQUES_SUMA_ALLIANZ.map((bloque) => ({
+      id: bloque.id,
+      titulo: bloque.titulo,
+      subtitulo: bloque.subtitulo,
+      desglose: (bloque.estados || []).map((estado) => ({
+        clave: estado,
+        label: td(`pipeline.short.${estado}`, { defaultValue: estado }),
+        cantidad: mapa.get(estado) || 0,
+      })),
+    }));
+  }, [stats.porEstado, t]);
 
   const barrasPoliza = useMemo(
     () =>
@@ -435,6 +480,40 @@ export default function DashboardAllianzListado() {
             </div>
           </ExpressFilterSection>
         )}
+
+        <ResumenGerencial
+          titulo={t('catastroficoDashboard.executive.title')}
+          hallazgosTitulo={t('catastroficoDashboard.executive.findings')}
+          lineas={insightGerencial.lineas}
+          hallazgos={insightGerencial.hallazgos}
+        />
+
+        <EstadoFranjas
+          titulo={t('catastroficoDashboard.franjas.estado')}
+          subtitulo={t('catastroficoDashboard.franjas.estadoHint')}
+          items={(stats.porEstado || []).map((fila) => ({
+            clave: fila.estado,
+            label: td(`pipeline.short.${fila.estado}`, { defaultValue: fila.estado }),
+            cantidad: fila.cantidad,
+            accent: filtros.estado === fila.estado,
+          }))}
+          total={kpis.totalCasos}
+          emptyLabel={td('noData')}
+          onSelect={(clave) => toggleFiltro('estado', clave)}
+        />
+
+        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          {tarjetasSuma.map((tarjeta) => (
+            <TarjetaSumaBloque
+              key={tarjeta.id}
+              titulo={tarjeta.titulo}
+              subtitulo={tarjeta.subtitulo}
+              desglose={tarjeta.desglose}
+              totalCartera={kpis.totalCasos}
+              onSelectItem={(clave) => toggleFiltro('estado', clave)}
+            />
+          ))}
+        </section>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <KpiTarjeta

@@ -171,14 +171,14 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:3000",
         changeOrigin: true,
-        timeout: 120000,
-        proxyTimeout: 120000,
+        timeout: 180000,
+        proxyTimeout: 180000,
       },
       "/uploads": {
         target: "http://localhost:3000",
         changeOrigin: true,
-        timeout: 120000,
-        proxyTimeout: 120000,
+        timeout: 180000,
+        proxyTimeout: 180000,
       },
     },
   },

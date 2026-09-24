@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/DashboardCatastrofico.jsx';
 import { fetchAllCasosEquidadCat } from '../../services/equidadCatService.js';
 import {
+  BLOQUES_SUMA_EQUIDAD_CAT,
   ESTADOS_EQUIDAD_CAT,
   buildOpcionesFiltro,
   coincideFiltroTexto,
@@ -25,6 +26,10 @@ export default function DashboardEquidadCat() {
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_EQUIDAD_CAT}
       i18nNs="equidadCat"
+      modulo="equidadCat"
+      mostrarVistaGerencial
+      mostrarFranjasEstado
+      bloquesSuma={[...BLOQUES_SUMA_EQUIDAD_CAT]}
     />
   );
 }

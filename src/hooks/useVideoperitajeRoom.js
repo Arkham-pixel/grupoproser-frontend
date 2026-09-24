@@ -62,20 +62,60 @@ export default function useVideoperitajeRoom({
   const portraitRef = useRef(portrait);
   portraitRef.current = portrait;
   const [facing, setFacing] = useState(facingMode);
+  // Escritorio: 720p ideal (muchas webcams fallan con min 1080).
+  // Celular: pedir alta resolución para fotos (solo ideal, sin min duro).
   const resolucionDe = () =>
-    portraitRef.current ? undefined : VideoPresets.h1080.resolution;
+    portraitRef.current
+      ? { width: 1080, height: 1920 }
+      : VideoPresets.h720.resolution;
 
-  const forzarContain = (el) => {
+  const constraintsVideo = (nivel = 'alta') => {
+    const facing = facingRef.current;
+    if (nivel === 'basica') {
+      return { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } };
+    }
+    if (nivel === 'media') {
+      return {
+        facingMode: { ideal: facing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 24 },
+      };
+    }
+    const res = resolucionDe();
+    return {
+      facingMode: { ideal: facing },
+      width: { ideal: res.width },
+      height: { ideal: res.height },
+      frameRate: { ideal: 24 },
+    };
+  };
+
+  const aplicarVideoEl = (el, { espejo = false } = {}) => {
     if (!el) return;
     el.style.objectFit = 'cover';
     el.style.objectPosition = 'center';
+    // Vista previa local: espejo (como un espejo). Remota: orientación real.
+    const t = espejo ? 'scaleX(-1)' : 'none';
+    el.style.transform = t;
+    el.style.webkitTransform = t;
   };
+
+  const forzarContain = (el) => aplicarVideoEl(el, { espejo: false });
 
   const attachRemote = useCallback((track) => {
     const el = remoteVideoRef.current;
     if (!el || !track) return;
     track.attach(el);
-    forzarContain(el);
+    aplicarVideoEl(el, { espejo: false });
+    requestAnimationFrame(() => aplicarVideoEl(el, { espejo: false }));
+  }, []);
+
+  const attachLocalPreview = useCallback((el) => {
+    // Frontal: espejo. Trasera: real (mapa / fachada).
+    const espejo = facingRef.current !== 'environment';
+    aplicarVideoEl(el, { espejo });
+    requestAnimationFrame(() => aplicarVideoEl(el, { espejo }));
   }, []);
 
   const mediaDisponible = () =>
@@ -98,40 +138,52 @@ export default function useVideoperitajeRoom({
         el.muted = true;
         el.play?.().catch(() => {});
       }
+      if (el) attachLocalPreview(el);
       return previewStreamRef.current;
     }
-    try {
-      const res = resolucionDe();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: publishVideo
-          ? res
-            ? {
-                facingMode: facingRef.current,
-                width: { ideal: res.width },
-                height: { ideal: res.height },
-                frameRate: { ideal: 30 },
-              }
-            : { facingMode: { ideal: facingRef.current } }
-          : false,
-        audio: publishAudio,
-      });
-      previewStreamRef.current = stream;
-      const el = localVideoRef.current;
-      if (el && publishVideo) {
-        el.srcObject = stream;
-        el.muted = true;
-        el.setAttribute('playsinline', '');
-        forzarContain(el);
-        el.play?.().catch(() => {});
+    let lastErr = null;
+    const intentos = publishVideo
+      ? [
+          { video: constraintsVideo('alta'), audio: publishAudio },
+          { video: constraintsVideo('media'), audio: publishAudio },
+          { video: constraintsVideo('basica'), audio: publishAudio },
+          { video: true, audio: publishAudio },
+        ]
+      : [{ video: false, audio: publishAudio }];
+
+    for (const constraints of intentos) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        previewStreamRef.current = stream;
+        const el = localVideoRef.current;
+        if (el && publishVideo) {
+          el.srcObject = stream;
+          el.muted = true;
+          el.setAttribute('playsinline', '');
+          attachLocalPreview(el);
+          el.play?.().catch(() => {});
+        }
+        setCameraOn(Boolean(stream.getVideoTracks().find((t) => t.readyState === 'live')));
+        setError('');
+        return stream;
+      } catch (err) {
+        lastErr = err;
       }
-      setCameraOn(Boolean(stream.getVideoTracks().find((t) => t.readyState === 'live')));
-      return stream;
-    } catch (err) {
-      setError(err.message || 'No se pudo abrir la cámara. Permita el acceso en el navegador.');
-      setCameraOn(false);
-      return null;
     }
-  }, [publishAudio, publishVideo]);
+
+    const raw = String(lastErr?.message || lastErr || '');
+    if (/Could not start video source|NotReadableError|Device in use/i.test(raw)) {
+      setError(
+        'La cámara del PC está ocupada o bloqueada. Cierra Zoom/Teams/otra pestaña, permite la cámara en Chrome y pulsa Encender cámara.'
+      );
+    } else if (/NotAllowedError|Permission/i.test(raw)) {
+      setError('Permita el acceso a la cámara en el navegador y pulse Encender cámara.');
+    } else {
+      setError(raw || 'No se pudo abrir la cámara.');
+    }
+    setCameraOn(false);
+    return null;
+  }, [publishAudio, publishVideo, attachLocalPreview]);
 
   const connect = useCallback(async () => {
     await mostrarPreviewLocal();
@@ -151,7 +203,7 @@ export default function useVideoperitajeRoom({
       },
       videoPublishDefaults: {
         videoEncoding: {
-          maxBitrate: portraitRef.current ? 2_500_000 : 4_500_000,
+          maxBitrate: portraitRef.current ? 4_000_000 : 5_000_000,
           maxFramerate: portraitRef.current ? 24 : 30,
         },
       },
@@ -212,7 +264,7 @@ export default function useVideoperitajeRoom({
               el.muted = true;
               el.play?.().catch(() => {});
             }
-            forzarContain(el);
+            attachLocalPreview(el);
           }
           setCameraOn(Boolean(preview.getVideoTracks().find((t) => t.readyState === 'live')));
         } catch (pubErr) {
@@ -262,7 +314,8 @@ export default function useVideoperitajeRoom({
       el.muted = true;
       el.play?.().catch(() => {});
     }
-  }, [connected, cameraOn]);
+    if (el && stream) attachLocalPreview(el);
+  }, [connected, cameraOn, attachLocalPreview]);
 
   useEffect(
     () => () => {
@@ -314,33 +367,92 @@ export default function useVideoperitajeRoom({
         await room.localParticipant.publishTrack(videoTrack);
         if (localVideoRef.current) {
           videoTrack.attach(localVideoRef.current);
-          forzarContain(localVideoRef.current);
+          facingRef.current = next;
+          attachLocalPreview(localVideoRef.current);
         }
       }
-      forzarContain(localVideoRef.current);
       facingRef.current = next;
+      attachLocalPreview(localVideoRef.current);
       setFacing(next);
     } catch (err) {
       setError(err.message || 'No se pudo cambiar de cámara');
     }
-  }, []);
+  }, [attachLocalPreview]);
 
   const toggleCamera = useCallback(async () => {
     const next = !cameraOn;
     const room = roomRef.current;
-    if (room) {
-      await room.localParticipant.setCameraEnabled(next);
-      setCameraOn(next);
-      return;
+    try {
+      if (room) {
+        if (next) {
+          // Liberar preview para que LiveKit pueda abrir la cámara sin "Device in use".
+          const preview = previewStreamRef.current;
+          if (preview) {
+            preview.getTracks().forEach((t) => {
+              try {
+                t.stop();
+              } catch {
+                /* ignore */
+              }
+            });
+            previewStreamRef.current = null;
+            if (localVideoRef.current?.srcObject === preview) {
+              localVideoRef.current.srcObject = null;
+            }
+          }
+          try {
+            await room.localParticipant.setCameraEnabled(true, {
+              resolution: VideoPresets.h720.resolution,
+              facingMode: facingRef.current,
+            });
+          } catch {
+            // Fallback: abrir cámara con constraints suaves y publicarla.
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: constraintsVideo('media'),
+              audio: false,
+            });
+            previewStreamRef.current = stream;
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+              await room.localParticipant.publishTrack(track);
+              const el = localVideoRef.current;
+              if (el) {
+                el.srcObject = stream;
+                el.muted = true;
+                attachLocalPreview(el);
+                el.play?.().catch(() => {});
+              }
+            }
+          }
+        } else {
+          await room.localParticipant.setCameraEnabled(false);
+        }
+        setCameraOn(next);
+        setError('');
+        return;
+      }
+      const preview = previewStreamRef.current;
+      if (preview) {
+        preview.getVideoTracks().forEach((t) => {
+          t.enabled = next;
+        });
+        setCameraOn(next);
+        setError('');
+      } else if (next) {
+        await mostrarPreviewLocal();
+      }
+    } catch (err) {
+      const raw = String(err?.message || err || '');
+      if (/Could not start video source|NotReadableError|Device in use|NotAllowedError/i.test(raw)) {
+        setError(
+          'No se pudo usar la cámara del PC. Cierra Zoom/Teams/otra pestaña que la use, permite la cámara en Chrome y en Configuración → Privacidad → Cámara, luego pulsa Encender cámara.'
+        );
+      } else {
+        setError(raw || 'No se pudo cambiar la cámara');
+      }
+      setCameraOn(false);
     }
-    const preview = previewStreamRef.current;
-    if (preview) {
-      preview.getVideoTracks().forEach((t) => {
-        t.enabled = next;
-      });
-      setCameraOn(next);
-    }
-  }, [cameraOn]);
+  }, [cameraOn, attachLocalPreview, mostrarPreviewLocal]);
 
   const sendCaptureCommand = useCallback(async () => {
     const room = roomRef.current;

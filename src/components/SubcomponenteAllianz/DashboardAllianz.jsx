@@ -2,6 +2,7 @@ import React from 'react';
 import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/DashboardCatastrofico.jsx';
 import { fetchAllCasosAllianz } from '../../services/allianzService.js';
 import {
+  BLOQUES_SUMA_ALLIANZ,
   ESTADOS_ALLIANZ,
   buildOpcionesFiltro,
   coincideFiltroCiudadAllianz,
@@ -24,7 +25,11 @@ export default function DashboardAllianz() {
       estados={ESTADOS_ALLIANZ}
       normalizarEstadoFn={homologarEstadoAllianz}
       i18nNs="allianz"
+      modulo="allianz"
       extras={{ severidad: true }}
+      mostrarVistaGerencial
+      mostrarFranjasEstado
+      bloquesSuma={[...BLOQUES_SUMA_ALLIANZ]}
     />
   );
 }

@@ -7,8 +7,6 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -232,7 +230,7 @@ function GraficaBarrasSimple({ filas = [], valorKey = 'cantidad', colors = PALET
   );
 }
 
-function GraficaDonutPerdidas({ filas = [] }) {
+function GraficaBarrasPerdidas({ filas = [] }) {
   const data = useMemo(
     () =>
       (filas || [])
@@ -258,24 +256,17 @@ function GraficaDonutPerdidas({ filas = [] }) {
         <p className="text-sm text-gray-400">Sin pérdidas clasificadas</p>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={48}
-              outerRadius={72}
-              paddingAngle={2}
-            >
+          <BarChart data={data} layout="vertical" margin={{ top: 4, right: 36, left: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E6" />
+            <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+            <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} interval={0} />
+            <Tooltip contentStyle={tooltipEstilo} />
+            <Bar dataKey="value" name="Casos" radius={[0, 4, 4, 0]} barSize={22}>
               {data.map((d) => (
                 <Cell key={d.name} fill={d.fill} />
               ))}
-            </Pie>
-            <Tooltip contentStyle={tooltipEstilo} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-          </PieChart>
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       )}
     </div>
@@ -445,7 +436,7 @@ function TablaResultadoCantidad({
             Vista gráfica
           </p>
           {chart === 'donut' ? (
-            <GraficaDonutPerdidas filas={filas} />
+            <GraficaBarrasPerdidas filas={filas} />
           ) : (
             <GraficaBarrasSimple filas={filas} />
           )}

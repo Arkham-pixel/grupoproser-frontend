@@ -23,6 +23,81 @@ export const ESTADOS_SINIESTRO_ALFA = [
   'PAGADO',
 ];
 
+/** AJ · ingreso */
+export const ESTADOS_ALFA_AJ_BLOQUE_INGRESO = Object.freeze(['PENDIENTE']);
+
+/** AJ · inspección */
+export const ESTADOS_ALFA_AJ_BLOQUE_INSPECCION = Object.freeze(['INSPECCIONADO PENDIENTE']);
+
+/** AJ · cifras, pago y salidas */
+export const ESTADOS_ALFA_AJ_BLOQUE_CIERRE = Object.freeze([
+  'CERRADO',
+  'DESISTIDO',
+  'PROCESO DE PAGO',
+  'PENDIENTE ACEPTACION CIFRAS',
+  'OBJETADO',
+  'PAGADO',
+]);
+
+/** AI · contacto / gestión temprana */
+export const ESTADOS_ALFA_AI_BLOQUE_CONTACTO = Object.freeze([
+  'PTE CONTACTO',
+  'SOLICITUD DTOS',
+  'SIN RESPUESTA EFECTIVA',
+  'CONTACTADO Y PROGRAMADO',
+]);
+
+/** AI · inspección */
+export const ESTADOS_ALFA_AI_BLOQUE_INSPECCION = Object.freeze(['INSPECCIONADO']);
+
+/** AI · liquidación / sin póliza */
+export const ESTADOS_ALFA_AI_BLOQUE_CIERRE = Object.freeze(['LIQUIDADO', 'SIN PÓLIZA']);
+
+export const BLOQUES_SUMA_ALFA = Object.freeze([
+  {
+    id: 'aj-ingreso',
+    titulo: 'AJ · Pendiente',
+    subtitulo: 'PENDIENTE',
+    fuente: 'estado',
+    estados: [...ESTADOS_ALFA_AJ_BLOQUE_INGRESO],
+  },
+  {
+    id: 'aj-inspeccion',
+    titulo: 'AJ · Inspección pendiente',
+    subtitulo: 'INSPECCIONADO PENDIENTE',
+    fuente: 'estado',
+    estados: [...ESTADOS_ALFA_AJ_BLOQUE_INSPECCION],
+  },
+  {
+    id: 'aj-cierre',
+    titulo: 'AJ · Cifras, pago y salidas',
+    subtitulo: 'CERRADO · DESISTIDO · PROCESO DE PAGO · PTE ACEPTACION CIFRAS · OBJETADO · PAGADO',
+    fuente: 'estado',
+    estados: [...ESTADOS_ALFA_AJ_BLOQUE_CIERRE],
+  },
+  {
+    id: 'ai-contacto',
+    titulo: 'AI · Contacto y gestión',
+    subtitulo: 'PTE CONTACTO · SOLICITUD DTOS · SIN RESPUESTA · CONTACTADO Y PROGRAMADO',
+    fuente: 'gestion',
+    estados: [...ESTADOS_ALFA_AI_BLOQUE_CONTACTO],
+  },
+  {
+    id: 'ai-inspeccion',
+    titulo: 'AI · Inspeccionado',
+    subtitulo: 'INSPECCIONADO',
+    fuente: 'gestion',
+    estados: [...ESTADOS_ALFA_AI_BLOQUE_INSPECCION],
+  },
+  {
+    id: 'ai-cierre',
+    titulo: 'AI · Liquidado / sin póliza',
+    subtitulo: 'LIQUIDADO · SIN PÓLIZA',
+    fuente: 'gestion',
+    estados: [...ESTADOS_ALFA_AI_BLOQUE_CIERRE],
+  },
+]);
+
 /** Relación oficial: gestión → siniestros permitidos. */
 export const RELACION_GESTION_SINIESTRO_ALFA = Object.freeze({
   'PTE CONTACTO': ['PENDIENTE'],

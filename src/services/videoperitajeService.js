@@ -92,6 +92,34 @@ export async function reenviarInvitacionVideoperitaje(id) {
   return parseJson(response);
 }
 
+export async function listarModulosCasoVideoperitaje() {
+  const response = await fetch(`${API}/casos/modulos`, { headers: authHeaders() });
+  return parseJson(response);
+}
+
+export async function obtenerCupoVideoperitaje(modulo = 'independiente') {
+  const qs = new URLSearchParams({ modulo }).toString();
+  const response = await fetch(`${API}/cupo?${qs}`, { headers: authHeaders() });
+  return parseJson(response);
+}
+
+export async function buscarCasosVideoperitaje({ modulo, q, limit = 20 } = {}) {
+  const qs = new URLSearchParams(
+    Object.entries({ modulo, q, limit }).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString();
+  const response = await fetch(`${API}/casos/buscar?${qs}`, { headers: authHeaders() });
+  return parseJson(response);
+}
+
+export async function asignarSesionACasoVideoperitaje(id, { modulo, casoId }) {
+  const response = await fetch(`${API}/sesiones/${id}/asignar-caso`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ modulo, casoId }),
+  });
+  return parseJson(response);
+}
+
 export async function subirFotoPeritoVideoperitaje(id, blob, { descripcion, pasoId, filename, tipo } = {}) {
   const esVideo = tipo === 'video' || String(blob?.type || '').startsWith('video/');
   const name = filename || (esVideo ? `grabacion-${Date.now()}.webm` : `captura-${Date.now()}.jpg`);
@@ -234,13 +262,17 @@ export async function completarPasoPublicoVideoperitaje(token, pasoId) {
 
 export function capturarFrameDeVideo(videoEl) {
   if (!videoEl || !videoEl.videoWidth) return Promise.resolve(null);
+  const srcW = videoEl.videoWidth;
+  const srcH = videoEl.videoHeight;
+  const largo = Math.max(srcW, srcH);
+  const scale = largo > 4096 ? 4096 / largo : 1;
   const canvas = document.createElement('canvas');
-  canvas.width = videoEl.videoWidth;
-  canvas.height = videoEl.videoHeight;
-  const ctx = canvas.getContext('2d');
+  canvas.width = Math.max(1, Math.round(srcW * scale));
+  canvas.height = Math.max(1, Math.round(srcH * scale));
+  const ctx = canvas.getContext('2d', { alpha: false });
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(videoEl, 0, 0);
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
 }
 

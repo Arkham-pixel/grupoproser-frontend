@@ -8,20 +8,35 @@ import {
   FaUpload,
 } from 'react-icons/fa';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   actualizarFacilitadorSura,
   importarFacilitadoresSura,
   listarFacilitadoresSura,
   sugerirFacilitadoresDesdeArnald,
 } from '../../services/suraFacilitadoresService.js';
 import { esSesionFacilitadoresSura } from '../../utils/permisosCasoPorRol.js';
+import { useTheme } from '../../context/ThemeContext';
 import { fechaParaInput } from './segurosSuraHelpers.js';
 import {
   CRITERIOS_FACILITADOR,
+  contarPorEstadoFacilitador,
   deduplicarFilasFacilitadores,
   descargarPlantillaFacilitadores,
   erroresFilaPortal,
+  ESTADOS_FACILITADOR,
   fechaOFaltaGestionar,
   filaParaInput,
+  normalizarEstadoFacilitador,
   parsearPlantillaFacilitadores,
   sinoConDefault,
   textoOFaltaGestionar,
@@ -32,14 +47,17 @@ import {
   expressBadge,
   expressBtnPrimary,
   expressBtnSecondary,
+  expressChartCard,
   expressPageSubtitle,
   expressPageTitle,
   expressScope,
   expressTableHead,
   expressTableScroll,
   expressTableWrap,
+  getFenixChartColor,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { ExpressAvisoModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import EstadoFranjas from '../SubcomponenteDashboardCatastrofico/EstadoFranjas.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -103,11 +121,14 @@ function hoyIso() {
 
 export default function ReporteFacilitadoresSura() {
   const permitido = esSesionFacilitadoresSura();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const fileRef = useRef(null);
   const [filas, setFilas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
   const [soloInvalidos, setSoloInvalidos] = useState(false);
   const [aviso, setAviso] = useState(null);
   const [guardandoId, setGuardandoId] = useState('');
@@ -146,12 +167,18 @@ export default function ReporteFacilitadoresSura() {
     return { total: filas.length, ok, invalid };
   }, [filas]);
 
+  const porEstadoFacilitador = useMemo(() => contarPorEstadoFacilitador(filas), [filas]);
+
   const visibles = useMemo(() => {
     const q = String(busqueda || '')
       .trim()
       .toLowerCase();
     return filas.filter((f) => {
       if (soloInvalidos && !erroresFilaPortal(f).length) return false;
+      if (filtroEstado) {
+        const e = normalizarEstadoFacilitador(f.estadoSiniestro) || 'Abierto';
+        if (e !== filtroEstado) return false;
+      }
       if (!q) return true;
       return (
         String(f.reclamacion || '').toLowerCase().includes(q) ||
@@ -159,7 +186,7 @@ export default function ReporteFacilitadoresSura() {
         String(f.estadoSiniestro || '').toLowerCase().includes(q)
       );
     });
-  }, [filas, busqueda, soloInvalidos]);
+  }, [filas, busqueda, soloInvalidos, filtroEstado]);
 
   if (!permitido) {
     return <Navigate to="/sura/reporte" replace />;
@@ -356,6 +383,23 @@ export default function ReporteFacilitadoresSura() {
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-[#1A1A1A] dark:text-gray-200"
             />
           </label>
+          <label className="min-w-[12rem] font-body text-sm">
+            <span className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+              Estado facilitador
+            </span>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-[#1A1A1A] dark:text-gray-200"
+            >
+              <option value="">Todos</option>
+              {ESTADOS_FACILITADOR.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="inline-flex items-center gap-2 pb-2 font-body text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
@@ -367,7 +411,102 @@ export default function ReporteFacilitadoresSura() {
           <button type="button" className={expressBtnSecondary} onClick={recargar} disabled={loading}>
             Recargar
           </button>
+          {filtroEstado ? (
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={() => setFiltroEstado('')}
+            >
+              Quitar filtro estado
+            </button>
+          ) : null}
         </div>
+
+        {!loading && filas.length > 0 ? (
+          <section className="grid w-full min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <EstadoFranjas
+              titulo="Estados facilitador"
+              subtitulo="Estas franjas suman el 100% de la plantilla · clic para filtrar la tabla"
+              items={porEstadoFacilitador.map((r) => ({
+                clave: r.estado,
+                label: r.nombre,
+                cantidad: r.cantidad,
+                accent: filtroEstado === r.estado,
+              }))}
+              total={filas.length}
+              onSelect={(clave) =>
+                setFiltroEstado((prev) => (prev === clave ? '' : clave))
+              }
+            />
+            <div className={`${expressChartCard} min-w-0`}>
+              <h3 className="mb-1 font-heading text-lg font-bold text-gray-900 dark:text-white">
+                Casos por estado facilitador
+              </h3>
+              <p className="mb-4 font-body text-xs text-gray-500">
+                Abierto · Tramitado · Anulado · Desistido · Objetado · Cancelado Sura
+              </p>
+              <ResponsiveContainer width="100%" height={Math.max(280, porEstadoFacilitador.length * 40)}>
+                <BarChart
+                  data={porEstadoFacilitador}
+                  layout="vertical"
+                  margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2D2D2D' : '#E5E7EB'} />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    tick={{ fill: isDark ? '#B0B0B0' : '#6B6B6B', fontSize: 11 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="nombre"
+                    width={120}
+                    tick={{ fill: isDark ? '#B0B0B0' : '#6B6B6B', fontSize: 11 }}
+                    interval={0}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                      border: `1px solid ${isDark ? '#2D2D2D' : '#E6E6E6'}`,
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Bar
+                    dataKey="cantidad"
+                    name="Casos"
+                    radius={[0, 4, 4, 0]}
+                    barSize={22}
+                    cursor="pointer"
+                    onClick={(entry) => {
+                      const clave = entry?.estado || entry?.payload?.estado;
+                      if (clave) setFiltroEstado((prev) => (prev === clave ? '' : clave));
+                    }}
+                  >
+                    {porEstadoFacilitador.map((entry, index) => (
+                      <Cell
+                        key={entry.estado}
+                        fill={
+                          filtroEstado && filtroEstado !== entry.estado
+                            ? isDark
+                              ? '#4B5563'
+                              : '#D1D5DB'
+                            : getFenixChartColor(index, isDark)
+                        }
+                      />
+                    ))}
+                    <LabelList
+                      dataKey="cantidad"
+                      position="right"
+                      fill={isDark ? '#E5E7EB' : '#1E1E1E'}
+                      fontSize={12}
+                      fontWeight={700}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        ) : null}
 
         <div className={expressTableWrap}>
           <div className={expressTableScroll}>

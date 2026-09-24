@@ -199,6 +199,32 @@ export const hrefReporteFdmConFiltros = (qs) => {
 export const LOGIN_FDM_SOLO_CON_ARCHIVOS = '1065012991';
 
 export const ESTADOS_FDM = ['PENDIENTE', 'LIQUIDADO', 'OBJETADO', 'GIRADO'];
+
+export const ESTADOS_FDM_BLOQUE_INGRESO = Object.freeze(['PENDIENTE']);
+export const ESTADOS_FDM_BLOQUE_LIQUIDACION = Object.freeze(['LIQUIDADO']);
+export const ESTADOS_FDM_BLOQUE_SALIDAS = Object.freeze(['OBJETADO', 'GIRADO']);
+
+export const BLOQUES_SUMA_FDM = Object.freeze([
+  {
+    id: 'bloque-ingreso',
+    titulo: 'Ingreso / pendiente',
+    subtitulo: 'PENDIENTE',
+    estados: [...ESTADOS_FDM_BLOQUE_INGRESO],
+  },
+  {
+    id: 'bloque-liquidacion',
+    titulo: 'Liquidado',
+    subtitulo: 'LIQUIDADO',
+    estados: [...ESTADOS_FDM_BLOQUE_LIQUIDACION],
+  },
+  {
+    id: 'bloque-salidas',
+    titulo: 'Salidas',
+    subtitulo: 'OBJETADO · GIRADO',
+    estados: [...ESTADOS_FDM_BLOQUE_SALIDAS],
+  },
+]);
+
 export const EVENTOS_FDM = ['OLA INVERNAL', 'TERREMOTO 10 AGOSTO 2026'];
 
 export const cantidadArchivosFdm = (caso = {}) =>

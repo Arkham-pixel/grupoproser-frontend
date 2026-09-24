@@ -5,6 +5,7 @@ function esFotoArchivo(a) {
   return (
     et === 'FOTOS' ||
     et === 'INSPECCION' ||
+    et === 'VIDEOPERITAJE' ||
     et.startsWith('FOTO_') ||
     /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre) ||
     String(a?.tipoMime || '').startsWith('image/')

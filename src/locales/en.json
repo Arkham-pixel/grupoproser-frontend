@@ -563,6 +563,7 @@
       "zurichListadoReport": "Zurich list report",
       "zurichMyCases": "My Zurich cases",
       "zurichListadoDashboard": "Zurich CAT control tower",
+      "zurichListadoOperativo": "Zurich Dashboard",
       "zurichReport": "Zurich CAT report",
       "zurichDashboard": "Zurich CAT dashboard",
       "zurichBulletin": "Zurich weekly bulletin",
@@ -643,6 +644,7 @@
     "zurichBillingTray": "Hours-control inbox",
     "zurichListadoReport": "List report",
     "zurichListadoDashboard": "Control tower",
+    "zurichListadoOperativo": "Dashboard",
     "zurichReport": "CAT report",
     "zurichDashboard": "CAT dashboard",
     "zurichBulletin": "Weekly bulletin",
@@ -1610,6 +1612,28 @@
     "toInspection": "Coordinated inspection to",
     "openBulletin": "Open weekly bulletin",
     "noData": "No data to show with the current filters.",
+    "filtersGestion": "Management status",
+    "executive": {
+      "title": "Executive view",
+      "findings": "Findings",
+      "portfolio": "Portfolio: {{total}} cases",
+      "openPct": "Open: {{active}} ({{pct}}%)",
+      "settledPct": "Settled: {{pct}}% of portfolio",
+      "bottleneck": "Highest concentration: «{{estado}}» · {{cantidad}} cases ({{pct}}%)",
+      "bottleneckAj": "Claim-status bottleneck: {{estado}} · {{cantidad}}",
+      "monthDelta": "Case change vs prior month: {{delta}} ({{mes}})",
+      "alertAnsInsp": "Overdue inspection SLA: {{count}}",
+      "alertAnsLiq": "Overdue settlement SLA: {{count}}",
+      "alertAnsInspPct": "Inspection SLA at {{pct}}% (below 70%)"
+    },
+    "franjas": {
+      "gestion": "Management statuses",
+      "gestionHint": "Independent strip per status · click to filter",
+      "siniestro": "Claim statuses",
+      "siniestroHint": "Independent strip per status · click to filter",
+      "estado": "Portfolio statuses",
+      "estadoHint": "Independent strip per status · click to filter"
+    },
     "kpis": {
       "cases": "Cases",
       "casesHint": "{{active}} active in portfolio",
@@ -11462,12 +11486,18 @@
       "subtitle": "Client list cases (ZC, STRO, insured and contacts). Independent from CAT inspection.",
       "searchPlaceholder": "ZC, STRO, policy, insured, city…"
     },
+    "listadoOperativo": {
+      "badge": "Zurich · Dashboard",
+      "title": "Dashboard",
+      "subtitle": "Executive view of the list portfolio: status strips, findings and filters. Complements the control tower."
+    },
     "listadoDashboard": {
       "title": "Zurich CAT control tower",
       "subtitle": "Open book, reserve and cases with pending work. One view of the client list portfolio.",
       "subtitleStaff": "The same book Zurich sees. SLA and day-count tracking stay on Operations & SLA, which the insurer does not see.",
       "badge": "Zurich · Client",
       "badgeStaff": "Proser · Support",
+      "openOperativo": "Go to Dashboard",
       "filters": "Filters",
       "filtersToggle": "Filter portfolio",
       "filtersHide": "Hide filters",

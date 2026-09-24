@@ -33,6 +33,50 @@ export const ESTADOS_ZURICH = [
   ESTADO_ZURICH_ANULADO,
 ];
 
+export const ESTADOS_ZURICH_BLOQUE_INGRESO = Object.freeze([
+  ESTADO_ZURICH_DEFAULT,
+  ESTADO_ZURICH_ASIGNADO,
+  ESTADO_ZURICH_INSPECCION_COORDINADA,
+]);
+
+export const ESTADOS_ZURICH_BLOQUE_ANALISIS = Object.freeze([
+  ESTADO_ZURICH_ANALISIS,
+  ESTADO_ZURICH_PENDIENTE_DOCS,
+  ESTADO_ZURICH_LIQUIDAR,
+  ESTADO_ZURICH_AUTORIDAD_DELEGADA,
+  ESTADO_ZURICH_ACEPTACION_CLIENTE,
+]);
+
+export const ESTADOS_ZURICH_BLOQUE_CIERRE = Object.freeze([
+  ESTADO_ZURICH_FINALIZADO,
+  ESTADO_ZURICH_EN_PROCESO_FACTURACION,
+  ESTADO_ZURICH_FACTURADO,
+  ESTADO_ZURICH_DESISTIDO,
+  ESTADO_ZURICH_ANULADO,
+]);
+
+export const BLOQUES_SUMA_ZURICH = Object.freeze([
+  {
+    id: 'bloque-ingreso',
+    titulo: 'Ingreso / asignación',
+    subtitulo: 'CASO NUEVO · ASIGNADO · INSPECCIÓN COORDINADA',
+    estados: [...ESTADOS_ZURICH_BLOQUE_INGRESO],
+  },
+  {
+    id: 'bloque-analisis',
+    titulo: 'Análisis e informes',
+    subtitulo:
+      'ANALISIS DEL CASO · PENDIENTE DOCUMENTOS · LIQUIDAR · AUTORIDAD DELEGADA · ACEPTACIÓN CLIENTE',
+    estados: [...ESTADOS_ZURICH_BLOQUE_ANALISIS],
+  },
+  {
+    id: 'bloque-cierre',
+    titulo: 'Finalizado, facturación y salidas',
+    subtitulo: 'FINALIZADO · EN PROCESO DE FACTURACIÓN · FACTURADO · DESISTIDO · ANULADO',
+    estados: [...ESTADOS_ZURICH_BLOQUE_CIERRE],
+  },
+]);
+
 export const MODALIDADES_ZURICH = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_ZURICH = {

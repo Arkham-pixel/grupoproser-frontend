@@ -3459,16 +3459,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     <input
                       type="text"
                       inputMode="decimal"
-                      className={`${inputClass} mt-1`}
-                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                       value={valorInputDeducible(deducibleCfgInput.porcentaje, 2)}
                       onChange={(e) =>
                         actualizarDeducibleConfig({
                           porcentaje: e.target.value === '' ? '' : Number(e.target.value),
                         })
                       }
-                    />
-                  </label>
+                  />
+                </label>
                   <label className="block text-xs" style={{ color: textSecondary }}>
                     Año SMMLV
                     <select
@@ -3563,7 +3563,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       </label>
                     </>
                   )}
-                </div>
+              </div>
                 <p className="text-xs" style={{ color: textSecondary }}>
                   Cada amparo (muebles, eléctrico, maquinaria…) tiene su propio cuadro: pérdida −
                   deducible individual (mayor entre % del VA de ese amparo y el mínimo). Como en el
@@ -3582,8 +3582,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     <div
                       key={amparo.id}
                       className="space-y-3 rounded-lg border p-4 text-sm"
-                      style={{ borderColor, backgroundColor: softBg }}
-                    >
+                style={{ borderColor, backgroundColor: softBg }}
+              >
                       <h4 className="font-semibold" style={{ color: textPrimary }}>
                         Liquidación — {amparo.cobertura}
                       </h4>

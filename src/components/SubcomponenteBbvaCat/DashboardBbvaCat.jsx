@@ -22,6 +22,8 @@ export default function DashboardBbvaCat() {
       i18nNs="bbvaCat"
       extras={{ severidad: true }}
       modulo="bbvaCat"
+      mostrarVistaGerencial={false}
+      mostrarFranjasEstado={false}
     />
   );
 }

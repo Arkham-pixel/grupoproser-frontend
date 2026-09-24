@@ -85,13 +85,13 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         });
         if (blob) {
           await subirFotoPublicaVideoperitaje(token, blob, {
-            descripcion: 'Captura HD del asegurado',
+            descripcion: 'Captura videoperitaje',
           });
         }
       } catch {
         /* el ajustador reintenta con fallback */
       } finally {
-        setTimeout(() => setFlash(false), 350);
+        setTimeout(() => setFlash(false), 180);
       }
     });
   }, [room.connected, token]);
@@ -103,15 +103,15 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         autoPlay
         muted
         playsInline
-        className="absolute inset-0 h-full w-full bg-black object-cover"
-        style={{ objectFit: 'cover', objectPosition: 'center' }}
+        className="absolute inset-0 h-full w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]"
+        style={{ objectFit: 'cover', objectPosition: 'center', transform: 'scaleX(-1)' }}
       />
       <video
         ref={room.remoteVideoRef}
         autoPlay
         playsInline
-        className="absolute bottom-6 right-3 z-10 h-[150px] w-[112px] rounded-lg border-2 border-white bg-black object-cover shadow-lg"
-        style={{ objectFit: 'cover', objectPosition: 'center' }}
+        className="absolute bottom-6 right-3 z-10 h-[150px] w-[112px] rounded-lg border-2 border-white bg-black object-cover shadow-lg [transform:none]"
+        style={{ objectFit: 'cover', objectPosition: 'center', transform: 'none' }}
       />
       <p className="pointer-events-none absolute left-3 top-3 z-20 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/80">
         Grupo Proser · Videoperitaje

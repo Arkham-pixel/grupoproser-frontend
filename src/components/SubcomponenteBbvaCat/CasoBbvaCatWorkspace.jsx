@@ -41,6 +41,8 @@ import { STORAGE_ORIGEN_LISTADO_BBVA_CAT } from './bbvaCatHelpers.js';
 import { esRolSoloBbva } from '../../config/roles.js';
 import VideoperitajeIniciarModal from '../SubcomponenteVideoperitaje/VideoperitajeIniciarModal.jsx';
 import { sesionPuedeVideoperitaje } from '../../config/videoperitajePermitidos.js';
+import { videoperitajeEnCatHabilitado } from '../../config/arnaldFeatures.js';
+import AsistenteArnaldPanel from '../SubcomponenteIa/AsistenteArnaldPanel.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -173,7 +175,8 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
   const [videoModal, setVideoModal] = useState(false);
-  const puedeVideoperitaje = sesionPuedeVideoperitaje();
+  // Flag VITE_VIDEOPERITAJE_EN_CAT: listo en código, apagado hasta activarlo.
+  const puedeVideoperitaje = videoperitajeEnCatHabilitado() && sesionPuedeVideoperitaje();
 
   const casoId = casoBbvaCat?._id || casoIdFromQuery || null;
 
@@ -632,6 +635,34 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
           </div>
         </div>
       </div>
+      {casoId && (
+        <AsistenteArnaldPanel
+          modulo={esModuloListado ? 'bbva-cat-listado' : 'bbva-cat'}
+          casoId={casoId}
+          onAplicarSugerencias={(s) => {
+            const patch = {
+              ...(s.descripcionDanios ? { descripcionDanios: s.descripcionDanios } : {}),
+              ...(s.conclusiones ? { conclusiones: s.conclusiones } : {}),
+              ...(s.recomendacion ? { recomendacion: s.recomendacion } : {}),
+            };
+            setInformeState((prev) => {
+              const next = { ...(prev || {}), ...patch };
+              setCasoBbvaCat((c) =>
+                c
+                  ? {
+                      ...c,
+                      informeUnico: { ...(c.informeUnico || {}), ...next },
+                    }
+                  : c
+              );
+              return next;
+            });
+            setRestoreNonce((n) => n + 1);
+            setTab(TABS_BBVA_CAT.INFORME);
+            setMensaje('Informe actualizado con IA. Revise y guarde.');
+          }}
+        />
+      )}
       {archiveroAbierto && casoBbvaCat && (
         <ExpressModal
           open

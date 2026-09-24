@@ -25,10 +25,6 @@ import {
   vpWrap,
 } from './videoperitajeUi.js';
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 function SalaLivePerito({ sesion, onRefresh }) {
   const { t } = useTranslation();
   const [lk, setLk] = useState(null);
@@ -75,8 +71,11 @@ function SalaLivePerito({ sesion, onRefresh }) {
     Boolean(sesion.aseguradoVistaAt) &&
     Date.now() - new Date(sesion.aseguradoVistaAt).getTime() < 30000;
 
-  const detenerGrabacion = useCallback(async () => {
-    if (flushPromiseRef.current) return flushPromiseRef.current;
+  const detenerGrabacion = useCallback(async (opts = {}) => {
+    const waitUpload = opts.waitUpload !== false;
+    if (flushPromiseRef.current) {
+      return waitUpload ? flushPromiseRef.current : null;
+    }
     const rec = grabacionRef.current;
     grabacionRef.current = null;
     if (timerRef.current) {
@@ -85,31 +84,39 @@ function SalaLivePerito({ sesion, onRefresh }) {
     }
     setGrabando(false);
     if (!rec) return null;
+    const sesionId = sesion._id;
     const job = (async () => {
       setSubiendoVideo(true);
       try {
         const blob = await rec.stop();
         if (blob && blob.size > 4000) {
-          await subirFotoPeritoVideoperitaje(sesion._id, blob, {
+          await subirFotoPeritoVideoperitaje(sesionId, blob, {
             descripcion: 'Grabación de la videollamada',
             tipo: 'video',
             filename: `grabacion-${Date.now()}.webm`,
           });
-          await onRefresh?.();
+          try {
+            await onRefresh?.();
+          } catch {
+            /* sala ya cerrada */
+          }
         }
       } catch (err) {
-        setLkError(err.message);
-        throw err;
+        if (waitUpload) {
+          setLkError(err.message);
+          throw err;
+        }
+        console.warn('[videoperitaje] subida de grabación en segundo plano:', err?.message || err);
       } finally {
         setSubiendoVideo(false);
       }
     })();
     flushPromiseRef.current = job;
-    try {
-      await job;
-    } finally {
+    job.finally(() => {
       if (flushPromiseRef.current === job) flushPromiseRef.current = null;
-    }
+    });
+    if (waitUpload) await job;
+    return null;
   }, [sesion._id, onRefresh]);
 
   const iniciarGrabacion = async () => {
@@ -135,10 +142,18 @@ function SalaLivePerito({ sesion, onRefresh }) {
 
   useEffect(() => {
     window.__vpFlushGrabacion = detenerGrabacion;
+    window.__vpHangupLive = () => {
+      try {
+        room.disconnect?.();
+      } catch {
+        /* ignore */
+      }
+    };
     return () => {
       if (window.__vpFlushGrabacion === detenerGrabacion) delete window.__vpFlushGrabacion;
+      delete window.__vpHangupLive;
     };
-  }, [detenerGrabacion]);
+  }, [detenerGrabacion, room]);
 
   useEffect(
     () => () => {
@@ -156,29 +171,33 @@ function SalaLivePerito({ sesion, onRefresh }) {
     setLkError('');
     try {
       const antes = (sesion.medias || []).length;
-      let llegó = false;
+      // Dispara captura en el celular (una foto HD desde su cámara).
       if (room.connected) {
-        await room.sendCaptureCommand();
+        room.sendCaptureCommand().catch(() => {});
+      }
+      const fuente = room.remoteVideoRef.current?.videoWidth
+        ? room.remoteVideoRef.current
+        : room.localVideoRef.current;
+      const blobLocal = await capturarFrameDeVideo(fuente);
+
+      // Espera a la foto del celular (takePhoto = varios MP). Solo si no llega, usamos el stream.
+      let llegóCliente = false;
+      if (room.connected && room.remotePresent) {
         for (let i = 0; i < 8; i += 1) {
-          await sleep(700);
+          await new Promise((r) => setTimeout(r, 280));
           const r = await onRefresh?.();
           if ((r?.medias?.length || 0) > antes) {
-            llegó = true;
+            llegóCliente = true;
             break;
           }
         }
       }
-      if (!llegó) {
-        const fuente = room.remoteVideoRef.current?.videoWidth
-          ? room.remoteVideoRef.current
-          : room.localVideoRef.current;
-        const blob = await capturarFrameDeVideo(fuente);
-        if (blob) {
-          await subirFotoPeritoVideoperitaje(sesion._id, blob, {
-            descripcion: 'Captura HD del ajustador',
-          });
-          await onRefresh?.();
-        }
+
+      if (!llegóCliente && blobLocal) {
+        await subirFotoPeritoVideoperitaje(sesion._id, blobLocal, {
+          descripcion: 'Captura videoperitaje',
+        });
+        await onRefresh?.();
       }
     } catch (err) {
       setLkError(err.message);
@@ -201,10 +220,14 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'mx-auto h-[min(70vh,720px)] w-full max-w-md bg-black object-cover'
+                ? 'mx-auto h-[min(70vh,720px)] w-full max-w-md bg-black object-cover [transform:none]'
                 : 'pointer-events-none absolute h-px w-px opacity-0'
             }
-            style={room.remotePresent ? { aspectRatio: '9 / 16', objectFit: 'cover' } : undefined}
+            style={
+              room.remotePresent
+                ? { aspectRatio: '9 / 16', objectFit: 'cover', transform: 'none' }
+                : undefined
+            }
           />
           <video
             ref={room.localVideoRef}
@@ -213,10 +236,14 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg'
-                : 'aspect-video w-full bg-black object-cover'
+                ? 'absolute right-3 top-3 z-10 w-[28%] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
+                : 'aspect-video w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
             }
-            style={room.remotePresent ? { aspectRatio: '4 / 3' } : undefined}
+            style={
+              room.remotePresent
+                ? { aspectRatio: '4 / 3', transform: 'scaleX(-1)' }
+                : { transform: 'scaleX(-1)' }
+            }
           />
           {grabando && (
             <p className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white">
@@ -351,13 +378,15 @@ export default function VideoperitajeSala() {
                 onClick={async () => {
                   if (cerrando) return;
                   setCerrando(true);
-                  setAviso(t('videoperitaje.savingRecording'));
+                  setAviso('');
                   try {
                     if (typeof window.__vpFlushGrabacion === 'function') {
-                      await window.__vpFlushGrabacion();
+                      window.__vpFlushGrabacion({ waitUpload: false });
+                    }
+                    if (typeof window.__vpHangupLive === 'function') {
+                      window.__vpHangupLive();
                     }
                     await finalizarSesionVideoperitaje(sesion._id);
-                    setAviso('');
                     await cargar();
                   } catch (err) {
                     setError(err.message);
@@ -366,7 +395,7 @@ export default function VideoperitajeSala() {
                   }
                 }}
               >
-                <FaCheck /> {cerrando ? t('videoperitaje.savingRecording') : t('videoperitaje.finish')}
+                <FaCheck /> {t('videoperitaje.finish')}
               </button>
             )}
           </div>

@@ -94,6 +94,7 @@ import DashboardZurich from './components/SubcomponenteZurich/DashboardZurich';
 import BoletinDiarioZurich from './components/SubcomponenteZurich/BoletinDiarioZurich';
 import ReporteZurichListado from './components/SubcomponenteZurich/ReporteZurichListado';
 import DashboardZurichListado from './components/SubcomponenteZurich/DashboardZurichListado';
+import DashboardZurichOperativo from './components/SubcomponenteZurich/DashboardZurichOperativo';
 import BandejaFacturacionZurich from './components/SubcomponenteZurich/BandejaFacturacionZurich';
 import BandejaFacturacionModulo from './components/shared/BandejaFacturacionModulo';
 import CasoZurichWorkspace, {
@@ -649,6 +650,7 @@ export default function App() {
           <Route path="zurich/listado/reporte" element={<ReporteZurichListado />} />
           <Route path="zurich/listado/mis-casos" element={<ReporteZurichListado modoAsignados />} />
           <Route path="zurich/listado/dashboard" element={<DashboardZurichListado />} />
+          <Route path="zurich/listado/dashboard-operativo" element={<DashboardZurichOperativo />} />
           <Route path="zurich/listado/caso" element={<RedirectZurichListadoWorkspace />} />
           <Route path="zurich/reporte" element={<ReporteZurich />} />
           <Route path="zurich/dashboard" element={<DashboardZurich />} />

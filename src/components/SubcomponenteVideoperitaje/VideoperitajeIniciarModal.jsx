@@ -17,6 +17,7 @@ const MODULOS = [
   { id: 'independiente', label: 'Independiente (sin caso)' },
   { id: 'bbva-cat', label: 'BBVA CAT' },
   { id: 'bbva-cat-listado', label: 'BBVA CAT listado' },
+  { id: 'seguros-alfa', label: 'Seguros Alfa' },
   { id: 'zurich', label: 'Zurich' },
   { id: 'allianz', label: 'Allianz' },
   { id: 'previsora', label: 'Previsora' },
@@ -40,6 +41,7 @@ export default function VideoperitajeIniciarModal({
     aseguradoNombre: defaults.aseguradoNombre || '',
     modulo: modulo || 'independiente',
     plantillaId: '',
+    programadaAt: defaults.programadaAt || '',
   });
   const [plantillas, setPlantillas] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -58,11 +60,20 @@ export default function VideoperitajeIniciarModal({
       aseguradoNombre: defaults.aseguradoNombre || '',
       modulo: modulo || 'independiente',
       plantillaId: '',
+      programadaAt: defaults.programadaAt || '',
     });
     listarPlantillasVideoperitaje()
       .then((r) => setPlantillas((r.data || []).filter((p) => p.activa !== false)))
       .catch(() => setPlantillas([]));
-  }, [open, defaults.expediente, defaults.celular, defaults.email, defaults.aseguradoNombre, modulo]);
+  }, [
+    open,
+    defaults.expediente,
+    defaults.celular,
+    defaults.email,
+    defaults.aseguradoNombre,
+    defaults.programadaAt,
+    modulo,
+  ]);
 
   const puedeCrear = useMemo(
     () => Boolean(form.celular || form.email),
@@ -84,6 +95,7 @@ export default function VideoperitajeIniciarModal({
         email: form.email,
         aseguradoNombre: form.aseguradoNombre,
         plantillaId: tipo === 'guided' ? form.plantillaId : undefined,
+        programadaAt: form.programadaAt ? new Date(form.programadaAt).toISOString() : null,
       });
       setResultado(r);
       onCreated?.(r);
@@ -168,6 +180,18 @@ export default function VideoperitajeIniciarModal({
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               />
+            </label>
+            <label className="block">
+              <span className={vpLabel}>Fecha y hora de la videollamada</span>
+              <input
+                className={vpInput}
+                type="datetime-local"
+                value={form.programadaAt}
+                onChange={(e) => setForm((f) => ({ ...f, programadaAt: e.target.value }))}
+              />
+              <span className="mt-1 block text-xs text-gray-500">
+                Ventana: 15 min antes y 60 min después. Vacío = se puede iniciar de inmediato.
+              </span>
             </label>
             {tipo === 'guided' && (
               <label className="block">

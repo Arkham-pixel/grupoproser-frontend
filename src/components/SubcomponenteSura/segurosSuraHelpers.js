@@ -42,6 +42,75 @@ export const ESTADOS_SURA_CERRADOS = [
   'CANCELADO SURA',
 ];
 
+/**
+ * Cierre por excepción / salida del flujo (tablero gerencial).
+ * No incluye FACTURADO (cierre comercial) ni OTROS (etiquetas sin homologar).
+ * TRAMITADO no existe en cartera: solo en portal Facilitadores.
+ */
+export const ESTADOS_SURA_CERRADOS_EXCEPCION = Object.freeze([
+  'ANULADO',
+  'DESISTIDO',
+  'OBJETADO',
+  'CANCELADO SURA',
+]);
+
+/** Bloque 1 · ingreso / asignación */
+export const ESTADOS_SURA_BLOQUE_INGRESO = Object.freeze([
+  'CASO NUEVO',
+  'ASIGNADO (PARA ASIGNAR INSPECTOR)',
+]);
+
+/** Bloque 2 · inspección e informes */
+export const ESTADOS_SURA_BLOQUE_INSPECCION_INFORMES = Object.freeze([
+  'INSPECCIONADO',
+  'INFORME DEL INSPECTOR',
+  'INFORME PRELIMINAR Y/O ACTUALIZACIÓN',
+  'INFORME ÚNICO O FINAL',
+]);
+
+/** Bloque 3 · facturación, salidas y otros */
+export const ESTADOS_SURA_BLOQUE_CIERRE_CARTERA = Object.freeze([
+  'EN PROCESO DE FACTURACIÓN',
+  'FACTURADO',
+  'ANULADO',
+  'DESISTIDO',
+  'OBJETADO',
+  'CANCELADO SURA',
+  'OTROS',
+]);
+
+export const BLOQUES_SUMA_SURA = Object.freeze([
+  {
+    id: 'bloque-ingreso',
+    titulo: 'Ingreso / asignación',
+    subtitulo: 'CASO NUEVO · ASIGNADO (PARA ASIGNAR INSPECTOR)',
+    estados: [...ESTADOS_SURA_BLOQUE_INGRESO],
+  },
+  {
+    id: 'bloque-inspeccion-informes',
+    titulo: 'Inspección e informes',
+    subtitulo:
+      'INSPECCIONADO · INFORME DEL INSPECTOR · INFORME PRELIMINAR · INFORME ÚNICO O FINAL',
+    estados: [...ESTADOS_SURA_BLOQUE_INSPECCION_INFORMES],
+  },
+  {
+    id: 'bloque-facturacion-salidas',
+    titulo: 'Facturación, salidas y otros',
+    subtitulo:
+      'EN PROCESO DE FACTURACIÓN · FACTURADO · ANULADO · DESISTIDO · OBJETADO · CANCELADO SURA · OTROS',
+    estados: [...ESTADOS_SURA_BLOQUE_CIERRE_CARTERA],
+  },
+]);
+
+/** @deprecated Usar ESTADOS_SURA_BLOQUE_INGRESO */
+export const ESTADOS_SURA_ABIERTOS_INICIALES = ESTADOS_SURA_BLOQUE_INGRESO;
+
+/** @deprecated Usar ESTADOS_SURA_BLOQUE_INSPECCION_INFORMES */
+export const ESTADOS_SURA_EN_INFORME = Object.freeze([
+  'INFORME PRELIMINAR Y/O ACTUALIZACIÓN',
+  'INFORME ÚNICO O FINAL',
+]);
+
 export const FECHA_ACCION_POR_ESTADO_SURA = {
   'EN PROCESO DE FACTURACIÓN': 'fchaEnProcesoFacturacion',
   FACTURADO: 'fchaFacturado',

@@ -114,6 +114,29 @@ export function normalizarEstadoFacilitador(valor) {
   return '';
 }
 
+/**
+ * Serie para gráfica / franjas: un conteo por estado oficial del portal.
+ * Cada fila cuenta en un solo estado; sin estado → Abierto.
+ */
+export function contarPorEstadoFacilitador(filas = []) {
+  const counts = Object.fromEntries(ESTADOS_FACILITADOR.map((e) => [e, 0]));
+  let otros = 0;
+  for (const f of filas) {
+    const e = normalizarEstadoFacilitador(f?.estadoSiniestro) || 'Abierto';
+    if (counts[e] != null) counts[e] += 1;
+    else otros += 1;
+  }
+  const serie = ESTADOS_FACILITADOR.map((estado) => ({
+    estado,
+    nombre: estado,
+    cantidad: counts[estado] || 0,
+  }));
+  if (otros > 0) {
+    serie.push({ estado: 'Otros', nombre: 'Otros', cantidad: otros });
+  }
+  return serie;
+}
+
 export function normalizarTipoViviendaFacilitador(valor) {
   const k = clave(valor);
   if (k.startsWith('RUR')) return 'RURAL';

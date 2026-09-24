@@ -1,11 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaSave, FaVideo } from 'react-icons/fa';
 import LiquidadorSegurosAlfa from './LiquidadorSegurosAlfa.jsx';
 import InformeUnicoSegurosAlfa from './InformeUnicoSegurosAlfa.jsx';
 import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
 import { esUsuarioAlfaSharePointSubir } from './ModalImportarExcelAlfa.jsx';
+import VideoperitajeIniciarModal from '../SubcomponenteVideoperitaje/VideoperitajeIniciarModal.jsx';
+import { sesionPuedeVideoperitaje } from '../../config/videoperitajePermitidos.js';
+import { videoperitajeEnCatHabilitado } from '../../config/arnaldFeatures.js';
+import AsistenteArnaldPanel from '../SubcomponenteIa/AsistenteArnaldPanel.jsx';
 import {
   expressBtnGhost,
   expressBtnPrimary,
@@ -230,6 +234,9 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
+  const [videoModal, setVideoModal] = useState(false);
+  // Flag VITE_VIDEOPERITAJE_EN_CAT: listo, apagado hasta activarlo.
+  const puedeVideoperitaje = videoperitajeEnCatHabilitado() && sesionPuedeVideoperitaje();
 
   const casoId = casoAlfa?._id || casoIdFromQuery || null;
   const archivosCountPrev = useRef(null);
@@ -811,6 +818,15 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {casoId && puedeVideoperitaje && (
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => setVideoModal(true)}
+              >
+                <FaVideo /> {t('videoperitaje.startTitle', { defaultValue: 'Videoperitaje' })}
+              </button>
+            )}
             {casoId && (
               <button
                 type="button"
@@ -920,6 +936,58 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           </div>
         </div>
       </div>
+      {casoId && (
+        <AsistenteArnaldPanel
+          modulo="seguros-alfa"
+          casoId={casoId}
+          onAplicarSugerencias={(s) => {
+            const patch = {
+              ...(s.descripcionDanios ? { descripcionDanios: s.descripcionDanios } : {}),
+              ...(s.conclusiones ? { conclusiones: s.conclusiones } : {}),
+              ...(s.recomendacion ? { recomendacion: s.recomendacion } : {}),
+            };
+            const analisisPatch = {
+              ...(s.descripcionDanios ? { descripcionEvento: s.descripcionDanios } : {}),
+              ...((s.conclusiones || s.recomendacion)
+                ? {
+                    observaciones: [s.conclusiones, s.recomendacion]
+                      .filter(Boolean)
+                      .join('\n\n'),
+                  }
+                : {}),
+            };
+            setInformeState((prev) => {
+              const next = {
+                ...(prev || {}),
+                ...patch,
+                analisisGeneral: {
+                  ...(prev?.analisisGeneral || {}),
+                  ...analisisPatch,
+                },
+              };
+              setCasoAlfa((c) =>
+                c
+                  ? {
+                      ...c,
+                      informeUnico: {
+                        ...(c.informeUnico || {}),
+                        ...next,
+                        analisisGeneral: {
+                          ...(c.informeUnico?.analisisGeneral || {}),
+                          ...(next.analisisGeneral || {}),
+                        },
+                      },
+                    }
+                  : c
+              );
+              return next;
+            });
+            setRestoreNonce((n) => n + 1);
+            setTab(TABS_ALFA.INFORME);
+            setMensaje('Informe actualizado con IA. Revise y guarde.');
+          }}
+        />
+      )}
       <ArnaldDraftChrome
         draftStatus={draftStatus}
         lastDraftAt={lastDraftAt}
@@ -960,6 +1028,23 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           }}
         />
       )}
+      <VideoperitajeIniciarModal
+        open={puedeVideoperitaje && videoModal}
+        onClose={() => setVideoModal(false)}
+        casoId={casoId}
+        modulo="seguros-alfa"
+        defaults={{
+          expediente: casoAlfa?.consecutivo || casoAlfa?.siniestro || '',
+          celular: casoAlfa?.celular || '',
+          email: casoAlfa?.correo || '',
+          aseguradoNombre: casoAlfa?.asegurado || '',
+        }}
+        onCreated={(r) => {
+          if (r?.data?._id && r.data.tipo === 'live') {
+            navigate(`/videoperitaje/sala/${r.data._id}`);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -1,9 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/DashboardCatastrofico.jsx';
+import EstadoFranjas, {
+  ResumenGerencial,
+} from '../SubcomponenteDashboardCatastrofico/EstadoFranjas.jsx';
 import { fetchAllCasosAlfa } from '../../services/segurosAlfaService.js';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 import {
+  BLOQUES_SUMA_ALFA,
   ESTADOS_ALFA,
   ESTADOS_GESTION_ALFA,
   ESTADOS_SINIESTRO_ALFA,
@@ -15,7 +19,6 @@ import {
   homologarEstadoSiniestroAlfa,
   sincronizarGestionConCierreSiniestroAlfa,
 } from './segurosAlfaHelpers.js';
-
 /** Mismo criterio AJ del boletín diario §3 (solo PENDIENTE). */
 function esPendienteAjAlfa(caso) {
   return homologarEstadoSiniestroAlfa(caso?.estado, caso) === 'PENDIENTE';
@@ -27,41 +30,21 @@ function esActivoAjAlfa(caso) {
   return s === 'PENDIENTE' || s === 'INSPECCIONADO PENDIENTE';
 }
 
-const KPI_GESTION_SOLO = [
-  { key: 'pteContacto', label: 'PTE CONTACTO' },
-  { key: 'solicitudDtos', label: 'SOLICITUD DTOS' },
-  { key: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO' },
-  { key: 'inspeccionado', label: 'INSPECCIONADO' },
-  { key: 'liquidado', label: 'LIQUIDADO' },
-  { key: 'sinRespuesta', label: 'SIN RESPUESTA EFECTIVA' },
-  { key: 'cerrado', label: 'SIN PÓLIZA' },
+const KPI_GESTION_FRANJAS = [
+  { key: 'pteContacto', label: 'PTE CONTACTO', filtro: 'PTE CONTACTO' },
+  { key: 'solicitudDtos', label: 'SOLICITUD DTOS', filtro: 'SOLICITUD DTOS' },
+  { key: 'contactadoProgramado', label: 'CONTACTADO Y PROGRAMADO', filtro: 'CONTACTADO Y PROGRAMADO' },
+  { key: 'inspeccionado', label: 'INSPECCIONADO', filtro: 'INSPECCIONADO' },
+  { key: 'liquidado', label: 'LIQUIDADO', filtro: 'LIQUIDADO' },
+  { key: 'sinRespuesta', label: 'SIN RESPUESTA EFECTIVA', filtro: 'SIN RESPUESTA EFECTIVA' },
+  { key: 'cerrado', label: 'SIN PÓLIZA', filtro: 'SIN PÓLIZA' },
 ];
 
-function KpiCard({ label, value, accent = false, hint }) {
-  return (
-    <div
-      className={`rounded-lg border px-3 py-2.5 ${
-        accent
-          ? 'border-fenix-borde bg-red-50/50 dark:border-red-900/40 dark:bg-red-950/25'
-          : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
-      }`}
-    >
-      <div
-        className={`text-[11px] font-medium uppercase tracking-wide ${
-          accent ? 'text-fenix-primario' : 'text-gray-500'
-        }`}
-      >
-        {label}
-      </div>
-      <div className="mt-0.5 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">
-        {value}
-      </div>
-      {hint ? <p className="mt-1 text-[10px] leading-snug text-gray-500">{hint}</p> : null}
-    </div>
-  );
-}
-
-function AlfaKpisGestionStrip({ casos = [] }) {
+function AlfaKpisGestionStrip({
+  casos = [],
+  onFiltroGestion,
+  onFiltroSiniestro,
+}) {
   const kpis = useMemo(() => contarKpisGestionAlfa(casos), [casos]);
   const porSiniestro = useMemo(() => {
     const counts = Object.fromEntries(ESTADOS_SINIESTRO_ALFA.map((e) => [e, 0]));
@@ -74,16 +57,104 @@ function AlfaKpisGestionStrip({ casos = [] }) {
 
   const totalCartera = casos.length;
   const abiertosAj = (porSiniestro.PENDIENTE || 0) + (porSiniestro['INSPECCIONADO PENDIENTE'] || 0);
+  const pctAbiertos = totalCartera > 0 ? Math.round((abiertosAj / totalCartera) * 100) : 0;
+
+  const franjasAi = useMemo(
+    () =>
+      KPI_GESTION_FRANJAS.map(({ key, label, filtro }) => ({
+        clave: filtro,
+        label,
+        cantidad: kpis[key] ?? 0,
+      })),
+    [kpis]
+  );
+
+  const franjasAj = useMemo(
+    () =>
+      ESTADOS_SINIESTRO_ALFA.map((estado) => ({
+        clave: estado,
+        label: estado,
+        cantidad: porSiniestro[estado] || 0,
+        accent: estado === 'PENDIENTE',
+        hint:
+          estado === 'PENDIENTE'
+            ? 'Pendientes AJ · misma fila del boletín'
+            : estado === 'INSPECCIONADO PENDIENTE'
+              ? 'No suma como Pendiente AJ'
+              : undefined,
+      })),
+    [porSiniestro]
+  );
+
+  const atascoAi = useMemo(() => {
+    if (!franjasAi.length) return null;
+    return franjasAi.reduce((best, row) => (row.cantidad > (best?.cantidad || 0) ? row : best), null);
+  }, [franjasAi]);
+
+  const atascoAj = useMemo(() => {
+    if (!franjasAj.length) return null;
+    return franjasAj.reduce((best, row) => (row.cantidad > (best?.cantidad || 0) ? row : best), null);
+  }, [franjasAj]);
+
+  const hallazgos = useMemo(() => {
+    const list = [];
+    if (atascoAi && atascoAi.cantidad > 0 && totalCartera > 0) {
+      const pct = Math.round((atascoAi.cantidad / totalCartera) * 100);
+      list.push(`${pct}% de la cartera en «${atascoAi.label}» (gestión AI)`);
+    }
+    if (atascoAj && atascoAj.cantidad > 0) {
+      list.push(`Mayor atasco AJ: ${atascoAj.label} (${atascoAj.cantidad} casos)`);
+    }
+    if (kpis.siniestroDefinido > 0 && totalCartera > 0) {
+      const pct = Math.round((kpis.siniestroDefinido / totalCartera) * 100);
+      list.push(`Siniestro definido: ${kpis.siniestroDefinido} (${pct}% ya avanzó en AJ)`);
+    }
+    return list.slice(0, 3);
+  }, [atascoAi, atascoAj, kpis.siniestroDefinido, totalCartera]);
+
+  const alertas = useMemo(() => {
+    const list = [];
+    if (kpis.slaVencido > 0) {
+      list.push({ id: 'sla', label: `SLA vencidos: ${kpis.slaVencido}`, filtro: null });
+    }
+    if (kpis.fueraDeZona > 0) {
+      list.push({ id: 'zona', label: `Fuera de zona: ${kpis.fueraDeZona}`, filtro: null });
+    }
+    if (kpis.sinRespuesta > 0) {
+      list.push({
+        id: 'sinRespuesta',
+        label: `Sin respuesta efectiva: ${kpis.sinRespuesta}`,
+        filtro: 'SIN RESPUESTA EFECTIVA',
+        tipo: 'gestion',
+      });
+    }
+    const cifras = porSiniestro['PENDIENTE ACEPTACIÓN CIFRAS'] || 0;
+    if (cifras > 0) {
+      list.push({
+        id: 'cifras',
+        label: `Pendiente aceptación cifras: ${cifras}`,
+        filtro: 'PENDIENTE ACEPTACIÓN CIFRAS',
+        tipo: 'siniestro',
+      });
+    }
+    return list;
+  }, [kpis, porSiniestro]);
+
+  const handleAlerta = (alerta) => {
+    if (!alerta?.filtro) return;
+    if (alerta.tipo === 'gestion') onFiltroGestion?.(alerta.filtro);
+    else onFiltroSiniestro?.(alerta.filtro);
+  };
 
   return (
-    <div className="mb-5 space-y-5">
+    <div className="mb-5 space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="font-heading text-base font-semibold text-gray-800 dark:text-gray-100">
             Tablero Alfa · tipificación dual
           </h2>
           <p className="text-xs text-gray-500">
-            Cartera visible: {totalCartera} · Abiertos AJ (pendiente + insp. pendiente): {abiertosAj}
+            Clic en una franja o alerta para filtrar el dashboard operativo.
           </p>
         </div>
         <Link
@@ -94,69 +165,43 @@ function AlfaKpisGestionStrip({ casos = [] }) {
         </Link>
       </div>
 
-      {/* Bloque 1 — AI */}
-      <section className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-950/40">
-        <div className="mb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-fenix-primario">
-            1 · Estado de gestión (AI)
-          </p>
-          <p className="text-xs text-gray-500">
-            Cómo va el caso en operación (contactos, inspección, liquidación).
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {KPI_GESTION_SOLO.map(({ key, label }) => (
-            <KpiCard key={key} label={label} value={kpis[key] ?? 0} />
-          ))}
-        </div>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <KpiCard
-            label="SINIESTRO DEFINIDO"
-            value={kpis.siniestroDefinido ?? 0}
-            hint="Todo excepto AJ = PENDIENTE (ya avanzó en siniestro)"
-          />
-          {(kpis.slaVencido > 0 || kpis.fueraDeZona > 0) && (
-            <div className="flex items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-              SLA vencidos: {kpis.slaVencido} · Fuera de zona: {kpis.fueraDeZona}
-            </div>
-          )}
-        </div>
-      </section>
+      <ResumenGerencial
+        titulo="Vista gerencial"
+        lineas={[
+          `Cartera visible: ${totalCartera}`,
+          `Abiertos AJ: ${abiertosAj} (${pctAbiertos}%)`,
+          kpis.slaVencido > 0 ? `SLA vencidos: ${kpis.slaVencido}` : null,
+        ]}
+        hallazgos={hallazgos}
+        alertas={alertas}
+        onAlertaClick={handleAlerta}
+      />
 
-      {/* Bloque 2 — AJ */}
-      <section className="rounded-xl border border-fenix-borde/60 bg-red-50/30 p-4 dark:border-red-900/40 dark:bg-red-950/20">
-        <div className="mb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-fenix-primario">
-            2 · Estado de siniestro (AJ)
-          </p>
-          <p className="text-xs text-gray-500">
-            Mismo criterio del boletín diario · fila «Estado del siniestro».
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {ESTADOS_SINIESTRO_ALFA.map((estado) => (
-            <KpiCard
-              key={estado}
-              label={estado}
-              value={porSiniestro[estado] || 0}
-              accent={estado === 'PENDIENTE'}
-              hint={
-                estado === 'PENDIENTE'
-                  ? 'Pendientes AJ · misma fila del boletín'
-                  : estado === 'INSPECCIONADO PENDIENTE'
-                    ? 'No suma como Pendiente AJ'
-                    : undefined
-              }
-            />
-          ))}
-        </div>
-      </section>
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <EstadoFranjas
+          titulo="1 · Estado de gestión (AI)"
+          subtitulo="Cómo va el caso en operación (contactos, inspección, liquidación)."
+          items={franjasAi}
+          total={totalCartera}
+          onSelect={(clave) => onFiltroGestion?.(clave)}
+        />
+        <EstadoFranjas
+          titulo="2 · Estado de siniestro (AJ)"
+          subtitulo="Mismo criterio del boletín diario · fila «Estado del siniestro»."
+          items={franjasAj}
+          total={totalCartera}
+          onSelect={(clave) => onFiltroSiniestro?.(clave)}
+        />
+      </div>
     </div>
   );
 }
 
 export default function DashboardSegurosAlfa() {
   const [casos, setCasos] = useState([]);
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroEstadoGestion, setFiltroEstadoGestion] = useState('');
+
   const fetchCasos = useCallback(async () => {
     const lista = await fetchAllCasosAlfa();
     setCasos(lista);
@@ -168,10 +213,24 @@ export default function DashboardSegurosAlfa() {
     [casos]
   );
 
+  const aplicarFiltroGestion = useCallback((estado) => {
+    setFiltroEstadoGestion(estado || '');
+    setFiltroEstado('');
+  }, []);
+
+  const aplicarFiltroSiniestro = useCallback((estado) => {
+    setFiltroEstado(estado || '');
+    setFiltroEstadoGestion('');
+  }, []);
+
   return (
     <div className="min-h-full w-full">
       <div className="px-4 pt-4 sm:px-6">
-        <AlfaKpisGestionStrip casos={casosVisibles} />
+        <AlfaKpisGestionStrip
+          casos={casosVisibles}
+          onFiltroGestion={aplicarFiltroGestion}
+          onFiltroSiniestro={aplicarFiltroSiniestro}
+        />
       </div>
       <DashboardCatastrofico
         badge="Seguros Alfa"
@@ -201,6 +260,13 @@ export default function DashboardSegurosAlfa() {
         }
         i18nNs="segurosAlfa"
         boletinPath="/seguros-alfa/boletin-diario"
+        filtroEstadoControlado={filtroEstado}
+        onFiltroEstadoChange={setFiltroEstado}
+        filtroEstadoGestionControlado={filtroEstadoGestion}
+        onFiltroEstadoGestionChange={setFiltroEstadoGestion}
+        mostrarVistaGerencial={false}
+        mostrarFranjasEstado={false}
+        bloquesSuma={[...BLOQUES_SUMA_ALFA]}
       />
     </div>
   );

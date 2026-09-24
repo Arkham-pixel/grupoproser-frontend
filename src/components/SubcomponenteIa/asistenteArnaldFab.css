@@ -1,0 +1,253 @@
+/**
+ * FAB Asistente Arnald — PNG del mock + animaciones.
+ *
+ * Ajustes en `.arnald-fab-root`:
+ *   --arnald-fab-size / --arnald-fab-size-mobile
+ *   --arnald-fab-pulse-ms   (pulso en reposo; default 2s)
+ *   --arnald-fab-hover-ms
+ *   --arnald-fab-process-ms
+ */
+
+.arnald-fab-root {
+  --arnald-fab-size: 3.5rem;
+  --arnald-fab-size-mobile: 3rem;
+  --arnald-fab-pulse-ms: 1.2s;
+  --arnald-fab-hover-ms: 160ms;
+  --arnald-fab-process-ms: 1s;
+  --arnald-fab-press-ms: 100ms;
+}
+
+.arnald-fab-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--arnald-fab-size);
+  height: var(--arnald-fab-size);
+  min-width: var(--arnald-fab-size);
+  min-height: var(--arnald-fab-size);
+  padding: 0;
+  margin: 0;
+  border: none !important;
+  border-radius: 9999px;
+  background: transparent !important;
+  background-image: none !important;
+  cursor: pointer;
+  outline: none;
+  overflow: visible;
+  appearance: none;
+  -webkit-appearance: none;
+  transform: translateZ(0);
+  transition: transform var(--arnald-fab-hover-ms) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Halo de pulso: siempre centrado detrás del icono */
+.arnald-fab-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(200, 16, 46, 0.45);
+  transform: scale(1);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: arnald-fab-halo var(--arnald-fab-pulse-ms) ease-in-out infinite;
+}
+
+.arnald-fab-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 0 rgba(200, 16, 46, 0.35);
+  z-index: 0;
+  pointer-events: none;
+  animation: arnald-fab-ring-pulse var(--arnald-fab-pulse-ms) ease-in-out infinite;
+}
+
+@media (max-width: 640px) {
+  .arnald-fab-btn {
+    width: var(--arnald-fab-size-mobile);
+    height: var(--arnald-fab-size-mobile);
+    min-width: var(--arnald-fab-size-mobile);
+    min-height: var(--arnald-fab-size-mobile);
+  }
+}
+
+.arnald-fab-btn:hover,
+.arnald-fab-btn:focus-visible {
+  transform: scale(1.06);
+  animation-play-state: paused;
+}
+
+.arnald-fab-btn:hover::before,
+.arnald-fab-btn:hover::after,
+.arnald-fab-btn:focus-visible::before,
+.arnald-fab-btn:focus-visible::after {
+  animation-play-state: paused;
+  opacity: 0.35;
+  transform: scale(1.12);
+}
+
+.arnald-fab-btn:hover::after,
+.arnald-fab-btn:focus-visible::after {
+  box-shadow: 0 0 0 6px rgba(200, 16, 46, 0.2);
+}
+
+.arnald-fab-btn:hover .arnald-fab-icon,
+.arnald-fab-btn:focus-visible .arnald-fab-icon {
+  filter:
+    drop-shadow(0 0 10px rgba(90, 8, 20, 0.35))
+    brightness(1.08);
+}
+
+.arnald-fab-btn:focus-visible {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #c8102e;
+}
+
+.arnald-fab-btn:active {
+  transform: scale(0.94);
+  transition-duration: var(--arnald-fab-press-ms);
+}
+
+.arnald-fab-btn:active .arnald-fab-icon {
+  filter:
+    drop-shadow(0 0 8px rgba(90, 8, 20, 0.3))
+    brightness(0.96);
+}
+
+.arnald-fab-btn.is-open::before,
+.arnald-fab-btn.is-open::after,
+.arnald-fab-btn.is-busy::before,
+.arnald-fab-btn.is-busy::after {
+  animation: none;
+  opacity: 0;
+}
+
+.arnald-fab-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  border-radius: 9999px;
+  /* Sombra centrada (sin offset) para que no se vea “corrida” */
+  filter: drop-shadow(0 0 10px rgba(90, 8, 20, 0.35));
+}
+
+/* Brillo que recorre el borde mientras la IA procesa */
+.arnald-fab-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 240deg,
+    rgba(255, 255, 255, 0.95) 285deg,
+    rgba(255, 255, 255, 0.25) 320deg,
+    transparent 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+}
+
+.arnald-fab-btn.is-busy .arnald-fab-ring {
+  opacity: 1;
+  animation: arnald-fab-shine var(--arnald-fab-process-ms) linear infinite;
+}
+
+.arnald-fab-btn.is-busy .arnald-fab-icon {
+  filter:
+    drop-shadow(0 0 10px rgba(90, 8, 20, 0.35))
+    drop-shadow(0 0 14px rgba(200, 16, 46, 0.55));
+}
+
+/* Escala del botón en reposo (suave) */
+.arnald-fab-btn:not(.is-open):not(.is-busy) {
+  animation: arnald-fab-breathe var(--arnald-fab-pulse-ms) ease-in-out infinite;
+}
+
+@keyframes arnald-fab-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes arnald-fab-halo {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.28);
+    opacity: 0.4;
+  }
+}
+
+@keyframes arnald-fab-ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 16, 46, 0);
+  }
+  50% {
+    box-shadow: 0 0 18px 6px rgba(200, 16, 46, 0.4);
+  }
+}
+
+@keyframes arnald-fab-shine {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arnald-fab-btn,
+  .arnald-fab-btn::before,
+  .arnald-fab-btn::after,
+  .arnald-fab-btn.is-busy .arnald-fab-ring {
+    animation: none !important;
+  }
+
+  .arnald-fab-btn {
+    transition: none;
+  }
+
+  .arnald-fab-btn:hover,
+  .arnald-fab-btn:focus-visible {
+    transform: none;
+  }
+
+  .arnald-fab-btn:hover .arnald-fab-icon,
+  .arnald-fab-btn:focus-visible .arnald-fab-icon {
+    filter:
+      drop-shadow(0 0 10px rgba(90, 8, 20, 0.35))
+      brightness(1.06);
+  }
+
+  .arnald-fab-btn:active {
+    transform: none;
+  }
+
+  .arnald-fab-btn.is-busy .arnald-fab-ring {
+    opacity: 0.9;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    background: transparent;
+    -webkit-mask: none;
+    mask: none;
+    inset: -4px;
+  }
+}

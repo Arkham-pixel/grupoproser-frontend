@@ -24,6 +24,8 @@ export default function DashboardZurich() {
       i18nNs="zurich"
       modulo="zurich"
       extras={{ severidad: true }}
+      mostrarVistaGerencial={false}
+      mostrarFranjasEstado={false}
     />
   );
 }

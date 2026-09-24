@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
-import { FaFileExcel } from 'react-icons/fa';
+import { FaChartLine, FaFileExcel } from 'react-icons/fa';
 import {
   Bar,
   CartesianGrid,
@@ -344,9 +344,15 @@ export default function DashboardZurichListado() {
               <p className={expressPageSubtitle}>{esInterno ? td('subtitleStaff') : td('subtitle')}</p>
             </div>
           </div>
-          <button type="button" className={expressBtnGhost} onClick={() => setMostrarFiltros((v) => !v)}>
-            {filtrosVisibles ? td('filtersHide') : td('filtersToggle')}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/zurich/listado/dashboard-operativo" className={expressBtnSecondary}>
+              <FaChartLine className="mr-1.5 inline" />
+              {td('openOperativo')}
+            </Link>
+            <button type="button" className={expressBtnGhost} onClick={() => setMostrarFiltros((v) => !v)}>
+              {filtrosVisibles ? td('filtersHide') : td('filtersToggle')}
+            </button>
+          </div>
         </header>
 
         <nav className="flex flex-wrap gap-2" aria-label={td('title')}>

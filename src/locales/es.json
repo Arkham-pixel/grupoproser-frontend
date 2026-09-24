@@ -564,6 +564,7 @@
       "zurichListadoReport": "Reporte listado Zurich",
       "zurichMyCases": "Mis casos Zurich",
       "zurichListadoDashboard": "Torre de control CAT Zurich",
+      "zurichListadoOperativo": "Dashboard Zurich",
       "zurichReport": "Reporte CAT Zurich",
       "zurichDashboard": "Dashboard CAT Zurich",
       "zurichBulletin": "Boletín semanal Zurich",
@@ -644,6 +645,7 @@
     "zurichBillingTray": "Bandeja control de horas",
     "zurichListadoReport": "Reporte listado",
     "zurichListadoDashboard": "Torre de control",
+    "zurichListadoOperativo": "Dashboard",
     "zurichReport": "Reporte CAT",
     "zurichDashboard": "Dashboard CAT",
     "zurichBulletin": "Boletín semanal",
@@ -1610,6 +1612,28 @@
     "toInspection": "Inspección coordinada hasta",
     "openBulletin": "Ver boletín semanal",
     "noData": "No hay datos para mostrar con los filtros actuales.",
+    "filtersGestion": "Estado de gestión",
+    "executive": {
+      "title": "Vista gerencial",
+      "findings": "Hallazgos",
+      "portfolio": "Cartera: {{total}} casos",
+      "openPct": "Abiertos: {{active}} ({{pct}}%)",
+      "settledPct": "Liquidados: {{pct}}% de la cartera",
+      "bottleneck": "Mayor concentración: «{{estado}}» · {{cantidad}} casos ({{pct}}%)",
+      "bottleneckAj": "Atasco siniestro (AJ): {{estado}} · {{cantidad}}",
+      "monthDelta": "Variación de casos vs mes previo: {{delta}} ({{mes}})",
+      "alertAnsInsp": "ANS inspección atrasados: {{count}}",
+      "alertAnsLiq": "ANS liquidación atrasados: {{count}}",
+      "alertAnsInspPct": "ANS inspección en {{pct}}% (bajo 70%)"
+    },
+    "franjas": {
+      "gestion": "Estados de gestión",
+      "gestionHint": "Franja independiente por estado · clic para filtrar",
+      "siniestro": "Estados de siniestro",
+      "siniestroHint": "Franja independiente por estado · clic para filtrar",
+      "estado": "Estados de cartera",
+      "estadoHint": "Franja independiente por estado · clic para filtrar"
+    },
     "kpis": {
       "cases": "Casos",
       "casesHint": "{{active}} activos en cartera",
@@ -11518,6 +11542,11 @@
       "editCase": "Editar caso {{caseNumber}}",
       "newCase": "Nuevo caso"
     },
+    "listadoOperativo": {
+      "badge": "Zurich · Dashboard",
+      "title": "Dashboard",
+      "subtitle": "Vista gerencial de la cartera del listado: estados en franjas, hallazgos y filtros. Complementa la Torre de control."
+    },
     "listadoReport": {
       "title": "Reporte listado Zurich",
       "subtitle": "Casos del listado cliente (ZC, STRO, asegurado y contactos). Base independiente de la inspección CAT.",
@@ -11529,6 +11558,7 @@
       "subtitleStaff": "La misma cartera que ve Zurich. El seguimiento de ANS y días está en Operación y ANS, que la aseguradora no ve.",
       "badge": "Zurich · Cliente",
       "badgeStaff": "Proser · Soporte",
+      "openOperativo": "Ir al Dashboard",
       "filters": "Filtros",
       "filtersToggle": "Filtrar cartera",
       "filtersHide": "Ocultar filtros",

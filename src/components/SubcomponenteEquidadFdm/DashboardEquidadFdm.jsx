@@ -12,13 +12,13 @@ import {
   LineChart,
   Line,
   CartesianGrid,
-  PieChart,
-  Pie,
+  LabelList,
 } from 'recharts';
 import { fetchAllCasosFdm } from '../../services/equidadFdmService.js';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import {
+  BLOQUES_SUMA_FDM,
   buildOpcionesFiltro,
   coincideFiltroTexto,
   esCasoNuevoFdm,
@@ -28,7 +28,6 @@ import {
   parseDate,
 } from './equidadFdmHelpers.js';
 import {
-  buildPieLegendPayload,
   expressChartCard,
   expressPageWrap,
   expressScope,
@@ -43,6 +42,10 @@ import {
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
+import EstadoFranjas, {
+  ResumenGerencial,
+  TarjetaSumaBloque,
+} from '../SubcomponenteDashboardCatastrofico/EstadoFranjas.jsx';
 
 const fdmDashboardRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F]';
 
@@ -67,14 +70,6 @@ const formatearEtiquetaLegible = (valor) => {
       .join(' ');
   }
   return texto;
-};
-
-const formatoLeyendaPieFdm = (total, labelKey) => (value, entry) => {
-  const item = entry?.payload ?? {};
-  const etiqueta = formatearEtiquetaLegible(item[labelKey] || value || '');
-  const cantidad = item.cantidad ?? 0;
-  const pct = total > 0 ? Math.round((cantidad / total) * 100) : 0;
-  return `${etiqueta}: ${cantidad} (${pct}%)`;
 };
 
 const tieneNumeroValidoFdm = (valor) => {
@@ -181,6 +176,34 @@ const DashboardEquidadFdm = () => {
       .sort((a, b) => b.cantidad - a.cantidad);
   }, [casosFiltrados]);
 
+  const insightGerencial = useMemo(() => {
+    const lineas = [
+      `Cartera filtrada: ${totalCasos}`,
+      `Liquidados: ${casosLiquidados} (${porcentajeLiquidados}%)`,
+    ];
+    const hallazgos = [];
+    if (casosPorEstado.length > 0 && totalCasos > 0) {
+      const top = casosPorEstado[0];
+      const pct = Math.round((top.cantidad / totalCasos) * 100);
+      hallazgos.push(`Mayor concentración: «${top.estado}» · ${top.cantidad} casos (${pct}%)`);
+    }
+    return { lineas, hallazgos };
+  }, [totalCasos, casosLiquidados, porcentajeLiquidados, casosPorEstado]);
+
+  const tarjetasSuma = useMemo(() => {
+    const mapa = new Map(casosPorEstado.map((r) => [r.estado, Number(r.cantidad) || 0]));
+    return BLOQUES_SUMA_FDM.map((bloque) => ({
+      id: bloque.id,
+      titulo: bloque.titulo,
+      subtitulo: bloque.subtitulo,
+      desglose: (bloque.estados || []).map((estado) => ({
+        clave: estado,
+        label: formatearEtiquetaLegible(estado),
+        cantidad: mapa.get(estado) || 0,
+      })),
+    }));
+  }, [casosPorEstado]);
+
   const casosPorMunicipio = useMemo(() => {
     const agrupado = casosFiltrados.reduce((acc, item) => {
       const normalizado = normalizarMunicipioFdm(item.municipio);
@@ -226,22 +249,6 @@ const DashboardEquidadFdm = () => {
     return { con, sin, total: con + sin };
   }, [onBaseData]);
 
-  const leyendaPorEstado = useMemo(
-    () => buildPieLegendPayload(casosPorEstado, 'estado', isDark),
-    [casosPorEstado, isDark]
-  );
-
-  const leyendaOnBase = useMemo(
-    () =>
-      onBaseData.map((item, index) => ({
-        value: item.label,
-        type: 'circle',
-        color: getFenixChartColor(index === 0 ? 0 : 3, isDark),
-        payload: item,
-      })),
-    [onBaseData, isDark]
-  );
-
   /** Siniestros: casos con número de siniestro vs sin número de siniestro. */
   const siniestrosData = useMemo(() => {
     let conSiniestro = 0;
@@ -261,17 +268,6 @@ const DashboardEquidadFdm = () => {
     const sin = siniestrosData.find((r) => r.clave === 'sinSiniestro')?.cantidad || 0;
     return { con, sin, total: con + sin };
   }, [siniestrosData]);
-
-  const leyendaSiniestros = useMemo(
-    () =>
-      siniestrosData.map((item, index) => ({
-        value: item.label,
-        type: 'circle',
-        color: getFenixChartColor(index === 0 ? 1 : 4, isDark),
-        payload: item,
-      })),
-    [siniestrosData, isDark]
-  );
 
   const tendenciaMensual = useMemo(() => {
     const agrupado = casosFiltrados.reduce((acc, item) => {
@@ -308,7 +304,6 @@ const DashboardEquidadFdm = () => {
 
   const tickColor = isDark ? '#B0B0B0' : '#6B6B6B';
   const gridStroke = isDark ? '#2D2D2D' : '#E5E7EB';
-  const pieStroke = isDark ? '#0F0F0F' : '#FFFFFF';
   const lineColors = getFenixLineChartColors(isDark);
 
   if (loading) {
@@ -396,6 +391,13 @@ const DashboardEquidadFdm = () => {
           </div>
         </ExpressFilterSection>
 
+        <ResumenGerencial
+          titulo={t('catastroficoDashboard.executive.title')}
+          hallazgosTitulo={t('catastroficoDashboard.executive.findings')}
+          lineas={insightGerencial.lineas}
+          hallazgos={insightGerencial.hallazgos}
+        />
+
         <section className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ExpressMetricCard label={t('equidadFdm.dashboard.cases')} value={totalCasos} hint={t('equidadFdm.dashboard.filteredTotal')} />
           <ExpressMetricCard
@@ -419,43 +421,72 @@ const DashboardEquidadFdm = () => {
           />
         </section>
 
+        <EstadoFranjas
+          titulo={t('catastroficoDashboard.franjas.estado')}
+          subtitulo={t('catastroficoDashboard.franjas.estadoHint')}
+          items={casosPorEstado.map((r) => ({
+            clave: r.estado,
+            label: formatearEtiquetaLegible(r.estado),
+            cantidad: r.cantidad,
+          }))}
+          total={totalCasos}
+          emptyLabel={t('equidadFdm.dashboard.noData', { defaultValue: 'Sin datos' })}
+          onSelect={(clave) => setFiltroEstado(clave)}
+        />
+
+        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          {tarjetasSuma.map((tarjeta) => (
+            <TarjetaSumaBloque
+              key={tarjeta.id}
+              titulo={tarjeta.titulo}
+              subtitulo={tarjeta.subtitulo}
+              desglose={tarjeta.desglose}
+              totalCartera={totalCasos}
+              onSelectItem={(clave) => setFiltroEstado(clave)}
+            />
+          ))}
+        </section>
+
         <section className="grid w-full min-w-0 grid-cols-1 gap-4">
           <ChartCard title={t('equidadFdm.dashboard.byStatus')} empty={casosPorEstado.length === 0}>
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={casosPorEstado}
-                  dataKey="cantidad"
-                  nameKey="estado"
-                  cx="42%"
-                  cy="50%"
-                  innerRadius={52}
-                  outerRadius={88}
-                  stroke={pieStroke}
-                  strokeWidth={2}
-                >
+            <ResponsiveContainer width="100%" height={Math.max(280, casosPorEstado.length * 36)}>
+              <BarChart
+                data={casosPorEstado}
+                layout="vertical"
+                margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="estado"
+                  width={148}
+                  tick={{ fill: tickColor, fontSize: 11 }}
+                  tickFormatter={(v) => truncarEtiqueta(formatearEtiquetaLegible(v), 22)}
+                  interval={0}
+                />
+                <Tooltip
+                  formatter={(value) => {
+                    const cantidad = Number(value) || 0;
+                    const pct = totalCasos > 0 ? Math.round((cantidad / totalCasos) * 100) : 0;
+                    return [`${cantidad} (${pct}%)`, t('equidadFdm.dashboard.cases')];
+                  }}
+                  labelFormatter={(label) => formatearEtiquetaLegible(label)}
+                  contentStyle={tooltipStyle}
+                />
+                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]} barSize={22}>
                   {casosPorEstado.map((entry, index) => (
                     <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
                   ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value, _name, props) => {
-                    const cantidad = props.payload?.cantidad || value || 0;
-                    const pct = totalCasos > 0 ? Math.round((cantidad / totalCasos) * 100) : 0;
-                    return [`${cantidad} (${pct}%)`, formatearEtiquetaLegible(props.payload?.estado)];
-                  }}
-                  contentStyle={tooltipStyle}
-                />
-                <Legend
-                  layout="vertical"
-                  align="right"
-                  verticalAlign="middle"
-                  payload={leyendaPorEstado}
-                  formatter={formatoLeyendaPieFdm(totalCasos, 'estado')}
-                  wrapperStyle={{ fontSize: '11px', color: tickColor, paddingLeft: '8px', lineHeight: '1.45' }}
-                  iconType="circle"
-                />
-              </PieChart>
+                  <LabelList
+                    dataKey="cantidad"
+                    position="right"
+                    fill={tickColor}
+                    fontSize={12}
+                    fontWeight={700}
+                  />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
         </section>
@@ -465,19 +496,31 @@ const DashboardEquidadFdm = () => {
             title={t('equidadFdm.dashboard.onBase')}
             empty={casosFiltrados.length === 0}
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={onBaseData}
-                  dataKey="cantidad"
-                  nameKey="label"
-                  cx="50%"
-                  cy="46%"
-                  innerRadius={58}
-                  outerRadius={92}
-                  stroke={pieStroke}
-                  strokeWidth={2}
-                >
+            <ResponsiveContainer width="100%" height={Math.max(220, onBaseData.length * 48)}>
+              <BarChart
+                data={onBaseData}
+                layout="vertical"
+                margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  width={160}
+                  tick={{ fill: tickColor, fontSize: 11 }}
+                  interval={0}
+                />
+                <Tooltip
+                  formatter={(value) => {
+                    const cantidad = Number(value) || 0;
+                    const pct =
+                      onBaseTotales.total > 0 ? Math.round((cantidad / onBaseTotales.total) * 100) : 0;
+                    return [`${cantidad} (${pct}%)`, t('equidadFdm.dashboard.cases')];
+                  }}
+                  contentStyle={tooltipStyle}
+                />
+                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]} barSize={28}>
                   {onBaseData.map((entry) => (
                     <Cell
                       key={entry.clave}
@@ -488,36 +531,15 @@ const DashboardEquidadFdm = () => {
                       }
                     />
                   ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value, _name, props) => {
-                    const cantidad = props.payload?.cantidad || value || 0;
-                    const pct =
-                      onBaseTotales.total > 0 ? Math.round((cantidad / onBaseTotales.total) * 100) : 0;
-                    return [`${cantidad} (${pct}%)`, props.payload?.label || ''];
-                  }}
-                  contentStyle={tooltipStyle}
-                />
-                <Legend
-                  layout="horizontal"
-                  align="center"
-                  verticalAlign="bottom"
-                  payload={leyendaOnBase}
-                  formatter={(value, entry) => {
-                    const cantidad = entry?.payload?.cantidad ?? 0;
-                    const pct =
-                      onBaseTotales.total > 0 ? Math.round((cantidad / onBaseTotales.total) * 100) : 0;
-                    return `${value}: ${cantidad} (${pct}%)`;
-                  }}
-                  wrapperStyle={{
-                    fontSize: '12px',
-                    color: tickColor,
-                    paddingTop: '8px',
-                    lineHeight: '1.5',
-                  }}
-                  iconType="circle"
-                />
-              </PieChart>
+                  <LabelList
+                    dataKey="cantidad"
+                    position="right"
+                    fill={tickColor}
+                    fontSize={12}
+                    fontWeight={700}
+                  />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
             <p className="mt-2 text-center font-body text-xs text-gray-500 dark:text-gray-400">
               {t('equidadFdm.dashboard.onBaseTotal', { total: onBaseTotales.total })}
@@ -528,19 +550,33 @@ const DashboardEquidadFdm = () => {
             title={t('equidadFdm.dashboard.byClaimNumber')}
             empty={casosFiltrados.length === 0}
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={siniestrosData}
-                  dataKey="cantidad"
-                  nameKey="label"
-                  cx="50%"
-                  cy="46%"
-                  innerRadius={58}
-                  outerRadius={92}
-                  stroke={pieStroke}
-                  strokeWidth={2}
-                >
+            <ResponsiveContainer width="100%" height={Math.max(220, siniestrosData.length * 48)}>
+              <BarChart
+                data={siniestrosData}
+                layout="vertical"
+                margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  width={160}
+                  tick={{ fill: tickColor, fontSize: 11 }}
+                  interval={0}
+                />
+                <Tooltip
+                  formatter={(value) => {
+                    const cantidad = Number(value) || 0;
+                    const pct =
+                      siniestrosTotales.total > 0
+                        ? Math.round((cantidad / siniestrosTotales.total) * 100)
+                        : 0;
+                    return [`${cantidad} (${pct}%)`, t('equidadFdm.dashboard.cases')];
+                  }}
+                  contentStyle={tooltipStyle}
+                />
+                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]} barSize={28}>
                   {siniestrosData.map((entry) => (
                     <Cell
                       key={entry.clave}
@@ -551,40 +587,15 @@ const DashboardEquidadFdm = () => {
                       }
                     />
                   ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value, _name, props) => {
-                    const cantidad = props.payload?.cantidad || value || 0;
-                    const pct =
-                      siniestrosTotales.total > 0
-                        ? Math.round((cantidad / siniestrosTotales.total) * 100)
-                        : 0;
-                    return [`${cantidad} (${pct}%)`, props.payload?.label || ''];
-                  }}
-                  contentStyle={tooltipStyle}
-                />
-                <Legend
-                  layout="horizontal"
-                  align="center"
-                  verticalAlign="bottom"
-                  payload={leyendaSiniestros}
-                  formatter={(value, entry) => {
-                    const cantidad = entry?.payload?.cantidad ?? 0;
-                    const pct =
-                      siniestrosTotales.total > 0
-                        ? Math.round((cantidad / siniestrosTotales.total) * 100)
-                        : 0;
-                    return `${value}: ${cantidad} (${pct}%)`;
-                  }}
-                  wrapperStyle={{
-                    fontSize: '12px',
-                    color: tickColor,
-                    paddingTop: '8px',
-                    lineHeight: '1.5',
-                  }}
-                  iconType="circle"
-                />
-              </PieChart>
+                  <LabelList
+                    dataKey="cantidad"
+                    position="right"
+                    fill={tickColor}
+                    fontSize={12}
+                    fontWeight={700}
+                  />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
             <p className="mt-2 text-center font-body text-xs text-gray-500 dark:text-gray-400">
               {t('equidadFdm.dashboard.claimNumberTotal', { total: siniestrosTotales.total })}
