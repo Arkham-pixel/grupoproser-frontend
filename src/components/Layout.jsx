@@ -1416,37 +1416,6 @@ export default function Layout() {
           }}
           className="sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-3"
         >
-          {puedeVideoperitaje ? (
-            menuCollapsed ? (
-              <div className="relative mb-2 flex justify-center">
-                <Link
-                  to="/videoperitaje"
-                  title="Videoperitaje"
-                  onClick={closeMobileNav}
-                  className={`rounded-lg p-2.5 transition-all ${
-                    location.pathname.startsWith('/videoperitaje')
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-900/30'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }`}
-                >
-                  <FaVideo className="text-lg" />
-                </Link>
-              </div>
-            ) : (
-              <Link
-                to="/videoperitaje"
-                onClick={closeMobileNav}
-                className={`mb-2 flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
-                  location.pathname.startsWith('/videoperitaje')
-                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-900/30'
-                    : 'bg-gray-800 text-white hover:bg-gray-700'
-                }`}
-              >
-                <FaVideo className="text-base shrink-0" />
-                <span className="flex-1 text-left">Videoperitaje</span>
-              </Link>
-            )
-          ) : null}
           {sections.map((section) => (
             <NavSection key={section.key} section={section} />
           ))}
