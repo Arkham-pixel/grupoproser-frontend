@@ -112,6 +112,13 @@ export async function resolverUrlImagen(imagenORef) {
     return resolverUrlArchivo(imagenORef);
   }
   if (imagenORef.preview && typeof imagenORef.preview === 'string') {
+    // blob: muerto → no devolverlo si hay ruta en servidor
+    if (
+      imagenORef.preview.startsWith('blob:') &&
+      imagenORef.ruta
+    ) {
+      return resolverUrlArchivo(imagenORef.ruta);
+    }
     return imagenORef.preview;
   }
   if (imagenORef.url && esUrlLocalInstantanea(imagenORef.url)) {

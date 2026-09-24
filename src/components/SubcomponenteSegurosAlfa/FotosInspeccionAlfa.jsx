@@ -106,12 +106,21 @@ export default function FotosInspeccionAlfa({
       }
       const creado = await subirArchivoAlfa(casoId, file, 'FOTOS');
       onArchivoCreado?.(creado);
+      if (item?.preview?.startsWith?.('blob:')) {
+        try {
+          URL.revokeObjectURL(item.preview);
+        } catch {
+          /* ignore */
+        }
+      }
       return {
         ...item,
         _id: creado?._id || item._id,
         ruta: creado?.ruta || item.ruta,
         nombre: creado?.nombreOriginal || item.nombre,
         tipoMime: creado?.tipoMime || item.tipoMime,
+        preview: undefined,
+        file,
         subiendo: false,
         error: '',
       };
@@ -165,7 +174,7 @@ export default function FotosInspeccionAlfa({
           const actualizada = await subirAlServidor(nueva);
           setImagenes((prev) => {
             const next = prev.map((img) =>
-              img.id === nueva.id ? { ...img, ...actualizada, preview: img.preview } : img
+              img.id === nueva.id ? { ...img, ...actualizada } : img
             );
             isInternalUpdateRef.current = true;
             ultimaEstructuraRef.current = next.map((img, idx) => idImagen(img, idx)).join('|');

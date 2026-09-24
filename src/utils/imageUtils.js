@@ -61,9 +61,9 @@ export function getImageUrlCandidates(imagen) {
 }
 
 /**
- * Obtiene la primera URL disponible para una imagen
- * @param {Object|string} imagen - Objeto de imagen o string base64
- * @returns {string|null} Primera URL disponible o null
+ * Obtiene la primera URL disponible para una imagen.
+ * Si hay preview blob: y también ruta, prioriza blob solo si aún es usable;
+ * getImageUrlCandidates ya lista ambos — aquí preferimos preview local primero.
  */
 export function getImageUrl(imagen) {
   const candidates = getImageUrlCandidates(imagen);
@@ -89,9 +89,14 @@ export function isServerUrl(url) {
 export function createImageErrorHandler(imagen, onAllFailed = null) {
   return function handleImageError(e) {
     const img = e.target;
-    const currentSrc = img.src;
+    const currentSrc = img.src || '';
     const candidates = getImageUrlCandidates(imagen);
-    const currentIndex = candidates.findIndex(url => url === currentSrc);
+    let currentIndex = candidates.findIndex((url) => url === currentSrc);
+    if (currentIndex < 0 && currentSrc.startsWith('blob:')) {
+      currentIndex = candidates.findIndex(
+        (url) => typeof url === 'string' && url.startsWith('blob:')
+      );
+    }
     
     // Prevenir múltiples intentos del mismo error
     if (img.dataset.errorHandled === 'true') {

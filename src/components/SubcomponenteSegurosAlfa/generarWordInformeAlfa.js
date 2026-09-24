@@ -639,7 +639,13 @@ async function resolverBytesFoto(foto, archivosCaso = []) {
     }
   }
 
-  // Preferir ruta del servidor antes que blob: local (más estable al generar Word)
+  // blob: local ANTES que red (misma sesión = Word rápido sin S3)
+  if (foto.preview && String(foto.preview).startsWith('blob:')) {
+    const img = await bytesDesdeBlobUrl(foto.preview);
+    if (img) return img;
+  }
+
+  // Preferir ruta del servidor
   if (ruta) {
     const urls = await candidatosUrlArchivo(
       ruta,
@@ -650,11 +656,6 @@ async function resolverBytesFoto(foto, archivosCaso = []) {
       const img = await fetchImageBytes(url);
       if (img) return img;
     }
-  }
-
-  if (foto.preview && String(foto.preview).startsWith('blob:')) {
-    const img = await bytesDesdeBlobUrl(foto.preview);
-    if (img) return img;
   }
 
   return null;

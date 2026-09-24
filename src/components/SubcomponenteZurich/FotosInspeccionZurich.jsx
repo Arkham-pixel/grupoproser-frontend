@@ -107,6 +107,13 @@ export default function FotosInspeccionZurich({
         ...(origenCarga ? { origenCarga } : {}),
       });
       onArchivoCreado?.(creado);
+      if (item?.preview?.startsWith?.('blob:')) {
+        try {
+          URL.revokeObjectURL(item.preview);
+        } catch {
+          /* ignore */
+        }
+      }
       return {
         ...item,
         _id: creado?._id || item._id,
@@ -115,6 +122,8 @@ export default function FotosInspeccionZurich({
         nombreOriginal: creado?.nombreOriginal || item.nombreOriginal || item.nombre,
         tipoMime: creado?.tipoMime || item.tipoMime,
         etiqueta: creado?.etiqueta || 'FOTOS',
+        preview: undefined,
+        file,
         subiendo: false,
         error: '',
       };
@@ -169,9 +178,9 @@ export default function FotosInspeccionZurich({
 
       const aplicarSubida = (nueva, actualizada) => {
         setImagenes((prev) => {
-          const next = prev.map((img) =>
-            img.id === nueva.id ? { ...img, ...actualizada, preview: img.preview } : img
-          );
+            const next = prev.map((img) =>
+              img.id === nueva.id ? { ...img, ...actualizada } : img
+            );
           isInternalUpdateRef.current = true;
           ultimaEstructuraRef.current = next.map((img, idx) => idImagen(img, idx)).join('|');
           queueMicrotask(() => onFotosInformeChange?.(next));

@@ -106,12 +106,22 @@ export default function FotosInspeccionSura({
       }
       const creado = await subirArchivoSura(casoId, file, 'FOTOS');
       onArchivoCreado?.(creado);
+      // Soltar preview blob (UI usará ruta); conservar `file` para Word rápido en la misma sesión
+      if (item?.preview?.startsWith?.('blob:')) {
+        try {
+          URL.revokeObjectURL(item.preview);
+        } catch {
+          /* ignore */
+        }
+      }
       return {
         ...item,
         _id: creado?._id || item._id,
         ruta: creado?.ruta || item.ruta,
         nombre: creado?.nombreOriginal || item.nombre,
         tipoMime: creado?.tipoMime || item.tipoMime,
+        preview: undefined,
+        file, // comprimido listo para embeber sin S3
         subiendo: false,
         error: '',
       };
@@ -165,7 +175,7 @@ export default function FotosInspeccionSura({
           const actualizada = await subirAlServidor(nueva);
           setImagenes((prev) => {
             const next = prev.map((img) =>
-              img.id === nueva.id ? { ...img, ...actualizada, preview: img.preview } : img
+              img.id === nueva.id ? { ...img, ...actualizada } : img
             );
             isInternalUpdateRef.current = true;
             ultimaEstructuraRef.current = next.map((img, idx) => idImagen(img, idx)).join('|');
