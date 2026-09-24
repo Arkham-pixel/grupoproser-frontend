@@ -1,7 +1,7 @@
 /**
  * Interruptores de producto.
  * Videoperitaje en CAT: activo (BBVA / Alfa y módulos con el botón).
- * IA: solo con VITE_ARNALD_IA_ENABLED=true en el build.
+ * IA: oculta (no activar con VITE_* hasta que el equipo lo autorice).
  */
 
 function truthy(v) {
@@ -14,9 +14,9 @@ export function videoperitajeEnCatHabilitado() {
   return true;
 }
 
-/** Panel Asistente Arnald (IA). No montar flujos reales hasta activarlo. */
+/** Panel Asistente Arnald (IA). Oculto hasta autorización explícita del equipo. */
 export function arnaldIaHabilitado() {
-  return truthy(import.meta.env.VITE_ARNALD_IA_ENABLED);
+  return false;
 }
 
 /** Módulos CAT donde se puede lanzar videoperitaje desde el caso. */
