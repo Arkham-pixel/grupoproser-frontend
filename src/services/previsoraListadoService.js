@@ -132,10 +132,10 @@ export const actualizarCasoPrevisoraListado = async (id, datos) => {
   return normalizePrevisoraListadoItem(payload?.data ?? payload);
 };
 
-export const getCasoPrevisoraListadoById = async (id, { nsr = false } = {}) => {
+export const getCasoPrevisoraListadoById = async (id, { nsr = true } = {}) => {
   if (!id) throw new Error('Identificador de caso no válido');
   const qs = new URLSearchParams({ _t: Date.now() });
-  if (nsr) qs.set('nsr', '1');
+  qs.set('nsr', nsr ? '1' : '0');
   const response = await fetch(`${API_URL}/${id}?${qs}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
