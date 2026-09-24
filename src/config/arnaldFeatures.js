@@ -1,12 +1,8 @@
 /**
  * Interruptores de producto.
  * Videoperitaje en CAT: activo (BBVA / Alfa y módulos con el botón).
- * IA: oculta (no activar con VITE_* hasta que el equipo lo autorice).
+ * IA: oculta (no activar hasta que el equipo lo autorice).
  */
-
-function truthy(v) {
-  return ['1', 'true', 'yes', 'on'].includes(String(v || '').trim().toLowerCase());
-}
 
 /** Botón / panel de videoperitaje dentro de BBVA CAT, Alfa y módulos CAT. */
 export function videoperitajeEnCatHabilitado() {
