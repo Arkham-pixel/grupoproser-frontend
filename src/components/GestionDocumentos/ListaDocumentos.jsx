@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { FaSearch, FaDownload, FaTrash, FaEdit, FaTimes, FaTag, FaUser, FaCalendar, FaEye } from 'react-icons/fa';
 
 export default function ListaDocumentos() {
@@ -100,15 +101,7 @@ export default function ListaDocumentos() {
         responseType: 'blob'
       });
 
-      // Crear URL del blob y descargar
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', documento.archivo.nombreOriginal);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      descargarBlob(new Blob([response.data]), documento.archivo.nombreOriginal);
     } catch (error) {
       console.error('Error descargando documento:', error);
       setMensaje({

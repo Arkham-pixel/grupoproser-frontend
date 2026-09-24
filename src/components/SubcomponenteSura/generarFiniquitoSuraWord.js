@@ -13,7 +13,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { montoALetrasFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
 import {
   calcularLiquidacionSura,
@@ -317,5 +317,5 @@ export async function descargarFiniquitoSuraWord(liquidador = {}, totalesInput) 
     .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '_')
     .slice(0, 50);
   const nombre = `Finiquito_Constancia_Sura_${safe}.docx`;
-  saveAs(blob, nombre);
+  descargarBlob(blob, nombre);
 }

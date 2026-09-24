@@ -3,6 +3,7 @@ import { BASE_URL, PROD_URL, getUploadsUrlCandidates, isDevelopmentEnv } from '.
 import { isStoredFileReference } from '../utils/storedFilePath.js';
 import { appendUploadFile, sanitizeUploadFileName } from '../utils/sanitizeUploadFileName.js';
 import { AREAS_FOTOS_ANIDADAS } from '../utils/propiedadesFotoUtils.js';
+import { descargarBlob } from '../utils/descargarArchivo.js';
 
 // Tipos de formularios disponibles
 export const TIPOS_FORMULARIOS = {
@@ -1045,16 +1046,8 @@ return true;
               if (!blob || blob.size === 0) continue;
 
               const filename = errorData?.detalles?.nombreArchivo || 'formulario.docx';
-              const downloadUrl = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = downloadUrl;
-              a.download = filename;
-              a.style.display = 'none';
-              document.body.appendChild(a);
-              a.click();
-              window.URL.revokeObjectURL(downloadUrl);
-              document.body.removeChild(a);
-return true;
+              descargarBlob(blob, filename);
+              return true;
             } catch {
               // Continuar con el siguiente candidato
             }
@@ -1090,20 +1083,8 @@ if (blob.size === 0) {
         }
       }
       
-// Crear y descargar el archivo
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      
-      // Limpiar
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
-
-return true;
+      descargarBlob(blob, filename);
+      return true;
       
     } catch (error) {
       console.error('❌ Error descargando formulario:', error);

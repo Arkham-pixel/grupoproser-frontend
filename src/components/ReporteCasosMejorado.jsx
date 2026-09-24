@@ -9,6 +9,7 @@ import historialService, { TIPOS_FORMULARIOS } from '../services/historialServic
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { formatearFechaUI } from '../utils/fechaUtils';
+import { descargarBlob } from '../utils/descargarArchivo.js';
 import { FaFileExcel, FaSlidersH, FaTable } from 'react-icons/fa';
 import { cargarMapeoFuncionarios, obtenerNombreFuncionarioDesdeCaso } from '../utils/funcionarioMapper';
 import {
@@ -1689,12 +1690,7 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
 // Escribir el archivo usando ExcelJS
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = nombreArchivo;
-    link.click();
-    window.URL.revokeObjectURL(url);
+    descargarBlob(blob, nombreArchivo);
   };
 
   if (loading) {

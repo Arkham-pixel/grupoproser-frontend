@@ -14,7 +14,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import { esModoDeduciblePorArticuloNsr, filaPresupuestoListaParaDeducible, totalFilaPresupuesto, valoresAsegurablesDesdeLiquidador } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -740,11 +740,10 @@ async function bytesDesdeFoto(foto = {}) {
       return { bytes: u8, type: isPng ? 'png' : 'jpg' };
     }
     if (typeof foto?.preview === 'string' && (foto.preview.startsWith('blob:') || foto.preview.startsWith('data:'))) {
-      const resp = await fetch(foto.preview);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        const buf = await blob.arrayBuffer();
-        const u8 = await jpegDesdeBytesImagen(new Uint8Array(buf));
+      const { bytesDesdePreviewLocal } = await import('../../utils/descargarArchivo.js');
+      const raw = await bytesDesdePreviewLocal(foto.preview);
+      if (raw?.length) {
+        const u8 = await jpegDesdeBytesImagen(raw);
         const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
         return { bytes: u8, type: isPng ? 'png' : 'jpg' };
       }
@@ -2697,6 +2696,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );
-  saveAs(blob, nombre);
+  descargarBlob(blob, nombre);
   return { blob, filename: nombre };
 }

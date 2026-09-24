@@ -24,6 +24,7 @@ import {
 } from "docx";
 import { SimpleField } from "docx";
 import { saveAs } from "file-saver";
+import { arrayBufferDesdeBlobUrlImagen, dataUrlDesdeBlobUrlImagen } from '../utils/descargarArchivo.js';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -2701,11 +2702,10 @@ try {
         const base64Data = preview.split(',')[1] || preview;
         imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
 } else if (preview.startsWith('blob:')) {
-        // Es blob URL, necesitamos convertirlo
+        // blob: no usar fetch: CSP connect-src lo bloquea en producción
         try {
-          const response = await fetch(preview);
-          imagenBuffer = await response.arrayBuffer();
-} catch (blobError) {
+          imagenBuffer = await arrayBufferDesdeBlobUrlImagen(preview);
+        } catch (blobError) {
           console.error('❌ Error al obtener imagen desde blob URL:', blobError);
         }
       }
@@ -3291,8 +3291,7 @@ try {
           const base64Data = imagenMapa.split(',')[1] || imagenMapa;
           mapaBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
 } else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('blob:')) {
-          const response = await fetch(imagenMapa);
-          mapaBuffer = await response.arrayBuffer();
+          mapaBuffer = await arrayBufferDesdeBlobUrlImagen(imagenMapa);
 } else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('http')) {
           const response = await fetch(imagenMapa);
           mapaBuffer = await response.arrayBuffer();
@@ -4905,16 +4904,11 @@ const convertirImagenABase64 = (file) => {
   });
 };
 
-// Convertir una URL local (blob:) a base64 dataURL para poder persistirla
+// Convertir una URL local (blob:) a base64 dataURL (sin fetch: CSP lo bloquea en prod)
 const convertirBlobUrlABase64 = async (blobUrl) => {
-  const response = await fetch(blobUrl);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+  const dataUrl = await dataUrlDesdeBlobUrlImagen(blobUrl);
+  if (!dataUrl) throw new Error('No se pudo convertir blob URL a base64');
+  return dataUrl;
 };
 
 const convertirBlobABase64 = (blob) => {

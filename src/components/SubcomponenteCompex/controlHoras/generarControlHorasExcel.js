@@ -6,6 +6,7 @@ import {
   formatearFechaDisplay,
 } from './controlHorasUtils';
 import { esFilaFijaControlHoras } from './catalogoControlHoras';
+import { descargarBlob as descargarArchivoBlob } from '../../../utils/descargarArchivo.js';
 
 const FUENTE = 'Arial';
 const COLOR_PROSER = 'FFDC2626';
@@ -424,12 +425,5 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
 }
 
 export function descargarBlob(blob, nombre) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = nombre;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  descargarArchivoBlob(blob, nombre);
 }

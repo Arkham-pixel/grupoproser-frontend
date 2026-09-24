@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { FaTimes, FaDownload, FaEye, FaCalendar, FaFile, FaTag } from 'react-icons/fa';
 
 export default function VerDocumentosUsuario({ usuario, onCerrar }) {
@@ -48,14 +49,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
       const response = await api.get(`/api/documentos/${documento._id}/descargar`, {
         responseType: 'blob'
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', documento.archivo.nombreOriginal);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      descargarBlob(new Blob([response.data]), documento.archivo.nombreOriginal);
     } catch (error) {
       console.error('Error descargando documento:', error);
     }

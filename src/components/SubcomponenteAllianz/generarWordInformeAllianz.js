@@ -14,7 +14,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -779,11 +779,10 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
       return normalizarBytesImagenWord(new Uint8Array(buf));
     }
     if (typeof foto?.preview === 'string' && (foto.preview.startsWith('blob:') || foto.preview.startsWith('data:'))) {
-      const resp = await fetch(foto.preview);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        const buf = await blob.arrayBuffer();
-        return normalizarBytesImagenWord(new Uint8Array(buf));
+      const { bytesDesdePreviewLocal } = await import('../../utils/descargarArchivo.js');
+      const raw = await bytesDesdePreviewLocal(foto.preview);
+      if (raw?.length) {
+        return normalizarBytesImagenWord(raw);
       }
     }
   } catch {
@@ -2243,6 +2242,6 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );
-  saveAs(blob, nombre);
+  descargarBlob(blob, nombre);
   return { blob, filename: nombre };
 }

@@ -1,5 +1,6 @@
 // Servicio independiente para el nuevo informe: Portada + Tabla de Contenido
 // No modifica el reporte existente
+import { descargarBlob } from '../utils/descargarArchivo.js';
 
 export class ReporteInformeMadreService {
   // Genera el HTML completo del nuevo informe (solo portada y TOC por ahora)
@@ -99,11 +100,7 @@ export class ReporteInformeMadreService {
     const fecha = new Date().toISOString().split('T')[0];
     const nombreCompleto = `${nombreArchivo}_${fecha}.doc`;
     const blob = new Blob([htmlWord], { type: 'application/msword;charset=utf-8' });
-    const enlace = document.createElement('a');
-    enlace.href = URL.createObjectURL(blob);
-    enlace.download = nombreCompleto;
-    enlace.click();
-    URL.revokeObjectURL(enlace.href);
+    descargarBlob(blob, nombreCompleto);
 
     return { success: true, nombreArchivo: nombreCompleto };
   }
@@ -113,11 +110,7 @@ export class ReporteInformeMadreService {
     const fecha = new Date().toISOString().split('T')[0];
     const nombreCompleto = `${nombreArchivo}_${fecha}.html`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const enlace = document.createElement('a');
-    enlace.href = URL.createObjectURL(blob);
-    enlace.download = nombreCompleto;
-    enlace.click();
-    URL.revokeObjectURL(enlace.href);
+    descargarBlob(blob, nombreCompleto);
 
     return { success: true, nombreArchivo: nombreCompleto };
   }

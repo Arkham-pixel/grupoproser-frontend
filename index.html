@@ -61,6 +61,7 @@
                 https://khms2.googleapis.com
                 https://khms3.googleapis.com
                 https://*.google.com
+                blob:
                 ws: wss:;
     img-src 'self' data: blob:
              http://localhost:3000
@@ -104,7 +105,8 @@
     font-src 'self' data:
              https://fonts.gstatic.com
              https://*.googleapis.com;
-    frame-src https://accounts.google.com
+    frame-src 'self' blob:
+              https://accounts.google.com
               https://*.googleusercontent.com
               https://content.googleapis.com
               https://*.firebaseapp.com

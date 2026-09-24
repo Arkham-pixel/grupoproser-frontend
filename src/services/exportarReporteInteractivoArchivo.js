@@ -1,5 +1,6 @@
 import { ReporteService } from './reporteService.js';
 import { REPORTE_INTERACTIVO_JS } from './reporteInteractivoScript.js';
+import { descargarBlob } from '../utils/descargarArchivo.js';
 
 /**
  * Descarga un archivo .html autónomo e interactivo (no PDF).
@@ -33,14 +34,7 @@ export async function descargarReporteInteractivoHtml(
   const nombreCompleto = `${nombreArchivo}_interactivo_${fecha}.html`;
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = nombreCompleto;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  descargarBlob(blob, nombreCompleto);
 
   return {
     success: true,

@@ -3,6 +3,7 @@ import { BASE_URL } from '../../config/apiConfig.js';
 import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
 import { normCatalogoLabel, resolverNombreCatalogo } from '../../services/expressCatalogoService.js';
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import i18n from '../../i18n';
 
 export const EXPRESS_LIMIT_FETCH = 2000;
@@ -690,20 +691,32 @@ export async function verAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
 }
 
 export async function descargarAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
+  const nombre = anexo.nombre || anexo.filename || 'documento';
+  // File/Blob local: saveAs evita blob URL + revoke prematuro (ERR_FILE_NOT_FOUND)
+  if (anexo?.file instanceof File || anexo?.file instanceof Blob) {
+    descargarBlob(anexo.file, nombre);
+    return { ok: true };
+  }
   const enlace = await resolverUrlAnexoExpress(anexo);
   if (!enlace) {
     return { ok: false, error: t('express.ui.attachments.downloadUnavailable') };
   }
+  if (enlace.startsWith('blob:')) {
+    try {
+      const resp = await fetch(enlace);
+      const blob = await resp.blob();
+      descargarBlob(blob, nombre);
+    } catch {
+      return { ok: false, error: t('express.ui.attachments.downloadUnavailable') };
+    }
+    return { ok: true };
+  }
   const link = document.createElement('a');
   link.href = enlace;
-  link.download = anexo.nombre || anexo.filename || 'documento';
-  link.target = '_blank';
+  link.download = nombre;
   link.rel = 'noopener noreferrer';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  if (enlace.startsWith('blob:')) {
-    setTimeout(() => URL.revokeObjectURL(enlace), 2000);
-  }
   return { ok: true };
 }

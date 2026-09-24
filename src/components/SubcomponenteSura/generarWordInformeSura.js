@@ -15,7 +15,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto, MODO_DEDUCIBLE_NSR10, resolverCalculoValorAseguradoNsr10, calcularValorAseguradoFechaSiniestroNsr10, calculoValorAseguradoTieneDatosNsr10, parseMontoNsr10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
@@ -2151,6 +2151,6 @@ export async function descargarWordInformeSura({
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );
-  saveAs(blob, nombre);
+  descargarBlob(blob, nombre);
   return { blob, nombre, filename: nombre };
 }

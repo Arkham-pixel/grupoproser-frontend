@@ -27,6 +27,7 @@ import {
   resolverCronologiaCatastrofico,
   cargarImagenCronologiaComoDataUrl,
 } from './catalogoCronologiaCatastrofico.js';
+import { descargarBlob as descargarArchivoBlob } from '../../utils/descargarArchivo.js';
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: '999999' };
 const borders = { top: border, bottom: border, left: border, right: border };
@@ -1391,12 +1392,5 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
 }
 
 export function descargarBlob(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  descargarArchivoBlob(blob, fileName);
 }

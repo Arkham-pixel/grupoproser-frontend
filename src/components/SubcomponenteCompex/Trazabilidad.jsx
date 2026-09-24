@@ -29,6 +29,7 @@ import SeguimientoDocumentosPago from './SeguimientoDocumentosPago.jsx';
 import { calcularDiasInfoSeguimientoTrazabilidad } from '../../utils/seguimientoProtocoloUtils.js';
 import { parsearFechaHoraComplex } from '../../utils/complexFechaHoraUtils.js';
 import { diasHabilesColombiaEntre } from '../../utils/festivosColombia.js';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import {
   ETAPAS_TRAZABILIDAD,
   EstadoGeneralTrazabilidad,
@@ -835,14 +836,7 @@ const Trazabilidad = memo(function Trazabilidad({
           return response.blob();
         })
         .then((blob) => {
-          const blobUrl = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = documento?.nombre || documento?.filename || 'documento';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
+          descargarBlob(blob, documento?.nombre || documento?.filename || 'documento');
         })
         .catch(() => descargarConLink());
     } else {

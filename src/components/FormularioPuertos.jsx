@@ -21,6 +21,7 @@ import {
 } from "docx";
 import { SimpleField } from "docx";
 import { saveAs } from "file-saver";
+import { arrayBufferDesdeBlobUrlImagen } from '../utils/descargarArchivo.js';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -889,11 +890,9 @@ try {
         const base64Data = preview.split(',')[1] || preview;
         imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
 } else if (preview.startsWith('blob:')) {
-        // Es blob URL, necesitamos convertirlo
         try {
-          const response = await fetch(preview);
-          imagenBuffer = await response.arrayBuffer();
-} catch (blobError) {
+          imagenBuffer = await arrayBufferDesdeBlobUrlImagen(preview);
+        } catch (blobError) {
           console.error('❌ Error al obtener imagen desde blob URL:', blobError);
         }
       }
@@ -1377,8 +1376,7 @@ try {
           const base64Data = imagenMapa.split(',')[1] || imagenMapa;
           mapaBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
 } else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('blob:')) {
-          const response = await fetch(imagenMapa);
-          mapaBuffer = await response.arrayBuffer();
+          mapaBuffer = await arrayBufferDesdeBlobUrlImagen(imagenMapa);
 } else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('http')) {
           const response = await fetch(imagenMapa);
           mapaBuffer = await response.arrayBuffer();

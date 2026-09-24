@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
 import { formatearFechaParaWord, obtenerFechaActualISO, obtenerFechaHoraActualISO } from '../../utils/fechaUtils';
+import { descargarBlob } from '../../utils/descargarArchivo.js';
 import { useTheme } from '../../context/ThemeContext';
 import { AUTO_SAVE_ENABLED, OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig';
 import useOfflineAutosave from '../../hooks/useOfflineAutosave.js';
@@ -3995,14 +3996,7 @@ const nombreDocx = `PAGINA_1_${fd.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaAc
           tipoMime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
         
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = nombreDocx;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        descargarBlob(blob, nombreDocx);
         
         setCargando(false);
 }).catch(error => {
