@@ -113,11 +113,6 @@ export default function VideoperitajeHistorial() {
               {t('videoperitaje.title')}
             </h1>
             <p className="mt-1 text-sm text-gray-500">{t('videoperitaje.subtitle', { total })}</p>
-            {!esAdmin && (
-              <p className="mt-1 text-xs text-gray-400">
-                Solo ves las videollamadas que tú creaste.
-              </p>
-            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to="/videoperitaje/plantillas" className={vpBtnGhost}>

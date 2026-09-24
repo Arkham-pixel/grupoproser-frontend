@@ -1,5 +1,6 @@
 /**
- * Módulo de videoperitaje: acceso abierto + admin (historial completo / vaciar / cupo).
+ * Módulo de videoperitaje: acceso abierto + admin (vaciar / cupo).
+ * Historial compartido entre todos los usuarios con acceso.
  * Debe coincidir con backend/config/videoperitajePermitidos.js
  *
  * VITE_LOGINS_VIDEOPERITAJE=* | all | open → todos
