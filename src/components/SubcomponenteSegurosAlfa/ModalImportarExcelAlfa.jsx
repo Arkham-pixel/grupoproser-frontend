@@ -504,13 +504,20 @@ export function esAdminOSoporteAlfa() {
   return rol === 'admin' || rol === 'soporte' || rol === 'administrador' || rol === 'support';
 }
 
-/** Único usuario que puede pulsar Actualizar (Excel ↔ ARNALD) y Subir a SharePoint. */
-export const LOGIN_ALFA_EXCEL_ACTUALIZAR = '1065012991';
+/** Usuarios que pueden pulsar Actualizar (Excel ↔ ARNALD) y Subir a SharePoint. */
+export const LOGINS_ALFA_EXCEL_ACTUALIZAR = Object.freeze([
+  '1065012991', // TI
+  '1003717060', // DANIELA NEGRETE
+]);
+
+/** @deprecated usar LOGINS_ALFA_EXCEL_ACTUALIZAR */
+export const LOGIN_ALFA_EXCEL_ACTUALIZAR = LOGINS_ALFA_EXCEL_ACTUALIZAR[0];
 
 export function esUsuarioAlfaExcelActualizar() {
   const login = String(localStorage.getItem('login') || '').trim();
   const cedula = String(localStorage.getItem('cedula') || '').trim();
-  return login === LOGIN_ALFA_EXCEL_ACTUALIZAR || cedula === LOGIN_ALFA_EXCEL_ACTUALIZAR;
+  const ids = [login, cedula].filter(Boolean);
+  return ids.some((id) => LOGINS_ALFA_EXCEL_ACTUALIZAR.includes(id));
 }
 
 /** Alias: mismo login para botones Subir / No subir del archivero. */
