@@ -60,7 +60,7 @@ export async function resolverUrlArchivo(ref) {
       : raw;
 
     const res = await authFetch(
-      `${BASE_URL}/api/storage/signed-url?ref=${encodeURIComponent(refParam)}`
+      `${BASE_URL}/api/storage/signed-url?ref=${encodeURIComponent(refParam)}&prefer=proxy`
     );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || !payload?.url) {

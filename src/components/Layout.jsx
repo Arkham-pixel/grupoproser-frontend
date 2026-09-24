@@ -534,6 +534,7 @@ export default function Layout() {
     '/zurich/listado/reporte': t('nav.pageTitles.zurichListadoReport'),
     '/zurich/listado/mis-casos': t('nav.pageTitles.zurichMyCases'),
     '/zurich/listado/dashboard': t('nav.pageTitles.zurichListadoDashboard'),
+    '/zurich/listado/dashboard-operativo': t('nav.pageTitles.zurichListadoOperativo'),
     '/zurich/listado/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/reporte': t('nav.pageTitles.zurichReport'),
     '/zurich/dashboard': t('nav.pageTitles.zurichDashboard'),
@@ -706,9 +707,11 @@ export default function Layout() {
         const { obtenerPerfil } = await import('../services/userService');
         const { data } = await obtenerPerfil(token, tipoUsuario);
         if (data?.foto) {
-          const { getUploadsUrlCandidates } = await import('../config/apiConfig');
-          const urls = getUploadsUrlCandidates(data.foto);
-          setFotoUsuarioQueue(urls.length ? urls : []);
+          // URL firmada o proxy vía storage (no getUploadsUrlCandidates a pelo:
+          // las firmas antiguas con checksum rompían el <img>)
+          const { resolverUrlArchivo } = await import('../services/storageSignedUrl.js');
+          const url = await resolverUrlArchivo(data.foto);
+          setFotoUsuarioQueue(url ? [url] : []);
         }
       } catch {
         /* sin foto */
@@ -941,6 +944,7 @@ export default function Layout() {
       ? esRolContractorZurich(rolNorm)
         ? [
             { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
+            { path: '/zurich/listado/dashboard-operativo', icon: FaChartLine, label: t('nav.zurichListadoOperativo') },
             { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
             { path: '/zurich/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           ]
@@ -950,6 +954,7 @@ export default function Layout() {
               ? [{ path: '/zurich/bandeja-facturacion', icon: FaInbox, label: t('nav.zurichBillingTray') }]
               : []),
             { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
+            { path: '/zurich/listado/dashboard-operativo', icon: FaChartLine, label: t('nav.zurichListadoOperativo') },
             { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
             { path: '/zurich/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
             { path: '/zurich/boletin-diario', icon: FaCalendarAlt, label: t('nav.zurichDailyBulletin') },
