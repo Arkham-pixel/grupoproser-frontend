@@ -78,6 +78,14 @@ export function resolverTipoHonorariosSura(caso = {}) {
   if (estado.includes('DESIST')) return 'desistido';
   if (estado.includes('OBJET')) return 'objetado';
 
+  // Tipología ya resuelta (p. ej. Excel Control Facturación).
+  const tipoguardado = String(caso.control_horas?._tipo_honorarios || caso._tipo_honorarios || '')
+    .toLowerCase()
+    .trim();
+  if (tipoguardado && TOPES_HONORARIOS_SURA[tipoguardado] != null) {
+    return tipoguardado;
+  }
+
   const tipoInf = String(caso.informeUnico?.tipoInforme || caso.tipoInforme || '')
     .toLowerCase()
     .normalize('NFD')
@@ -94,8 +102,9 @@ export function resolverTipoHonorariosSura(caso = {}) {
     norm(caso.estado).includes('UNICO') ||
     norm(caso.estado).includes('FINAL');
 
+  // Informe final en operación = hubo preliminar + final (tope $3M).
+  if (tipoInf.includes('final') || (tienePrelim && tieneFinal)) return 'preliminar_final';
   if (tipoInf.includes('unic') && !tienePrelim) return 'unico';
-  if (tienePrelim && tieneFinal) return 'preliminar_final';
   if (tieneFinal && !tienePrelim) return 'unico';
   if (tipoInf.includes('prelim')) return 'preliminar_final';
   return 'preliminar_final';

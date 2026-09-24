@@ -743,6 +743,7 @@ const FormularioZurich = ({
               type="date"
               value={form.fechaVisita}
               onChange={setCampo('fechaVisita')}
+              {...attrsCampoCaso(rolUsuario, 'fechaVisita', ctxPermiso)}
             />
           </Campo>
           {esModuloListado ? (
@@ -760,6 +761,7 @@ const FormularioZurich = ({
               value={form.observaciones}
               onChange={setCampo('observaciones')}
               placeholder={t('zurich.placeholders.observaciones')}
+              {...attrsCampoCaso(rolUsuario, 'observaciones', ctxPermiso)}
             />
           </Campo>
         </div>

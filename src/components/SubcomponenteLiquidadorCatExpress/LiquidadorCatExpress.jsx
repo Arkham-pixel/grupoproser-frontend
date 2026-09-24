@@ -1,8 +1,15 @@
-import React, { useMemo } from 'react';
-import { TIPOS_RIESGO_EXPRESS } from './catalogoLiquidadorCatExpress.js';
+import React, { useMemo, useState } from 'react';
+import { TIPOS_RIESGO_EXPRESS, esIdExpress } from './catalogoLiquidadorCatExpress.js';
 import EditorDeducibleCatExpress from './EditorDeducibleCatExpress.jsx';
+import SelectBuscable from '../SelectBuscable.jsx';
 import {
+  CAPITULOS_BASE_PRECIOS,
+  catalogoPresupuestoPorCapitulo,
+} from '../SubcomponenteEvaluacionSismicaNSR10/basePreciosPresupuesto.js';
+import {
+  agregarItemExpressDesdeBase,
   parseMontoNsr10,
+  quitarItemExpress,
   totalFilaPresupuesto,
 } from './liquidadorCatExpressHelpers.js';
 
@@ -70,11 +77,33 @@ export default function LiquidadorCatExpress({
   const grupos = useMemo(() => agruparPorCapitulo(filas), [filas]);
   const tot = liquidacion || {};
   const aiuPct = Math.round(Number(aiuPorcentaje || 0) * 1000) / 10;
+  const [capituloAdd, setCapituloAdd] = useState('');
+  const [itemAdd, setItemAdd] = useState('');
+
+  const idsEnTabla = useMemo(
+    () => new Set((filas || []).map((it) => String(it.catalogoId || '')).filter(Boolean)),
+    [filas]
+  );
+  const opcionesBase = useMemo(() => {
+    return catalogoPresupuestoPorCapitulo(capituloAdd)
+      .filter((c) => !idsEnTabla.has(c.id))
+      .map((c) => ({
+        value: c.id,
+        label: `${c.actividad} · ${COP(c.valorUnitario)} / ${c.unidad}`,
+      }));
+  }, [capituloAdd, idsEnTabla]);
 
   const patchFila = (catalogoId, campo, valor) => {
     onFilasChange?.(
       filas.map((it) => (it.catalogoId === catalogoId ? { ...it, [campo]: valor } : it))
     );
+  };
+
+  const agregarDeLaBase = (catalogoId) => {
+    const id = String(catalogoId || itemAdd || '');
+    if (!id || disabled) return;
+    onFilasChange?.(agregarItemExpressDesdeBase(filas, id));
+    setItemAdd('');
   };
 
   return (
@@ -86,8 +115,8 @@ export default function LiquidadorCatExpress({
           </p>
           <p className="mt-0.5 max-w-2xl font-body text-xs text-gray-500">
             Ítems fijos de la base de precios (los más usados en casos menores a $50 M).
-            Llene cantidad; el valor unitario viene de la base y se puede editar. El
-            liquidador robusto NSR-10 sigue disponible al lado.
+            Llene cantidad; el VU viene de la base. Use «Agregar ítem» para elegir
+            cualquier actividad del catálogo con su precio.
           </p>
         </div>
         <label className="block font-body text-xs font-semibold text-gray-600 dark:text-gray-300">
@@ -107,6 +136,55 @@ export default function LiquidadorCatExpress({
         </label>
       </div>
 
+      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-fenix-primario/40 bg-fenix-primario/5 px-3 py-3 dark:border-fenix-primario/30 dark:bg-fenix-primario/10">
+        <label className="block min-w-[160px] flex-1 font-body text-xs font-semibold text-gray-600 dark:text-gray-300">
+          Capítulo
+          <select
+            className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+            value={capituloAdd}
+            disabled={disabled}
+            onChange={(e) => {
+              setCapituloAdd(e.target.value);
+              setItemAdd('');
+            }}
+          >
+            <option value="">Todos los capítulos</option>
+            {CAPITULOS_BASE_PRECIOS.map((cap) => (
+              <option key={cap} value={cap}>
+                {cap}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block min-w-[240px] flex-[2] font-body text-xs font-semibold text-gray-600 dark:text-gray-300">
+          Ítem de la base
+          <div className="mt-1">
+            <SelectBuscable
+              options={opcionesBase}
+              value={itemAdd}
+              disabled={disabled}
+              onChange={(val) => {
+                setItemAdd(val);
+                if (val) agregarDeLaBase(val);
+              }}
+              placeholder="Buscar actividad (sale con precio)…"
+              searchPlaceholder="Escriba demolición, estuco, cerámica…"
+              emptyOption
+              emptyLabel="— Elegir de la base —"
+              buttonClassName="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-left font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+            />
+          </div>
+        </label>
+        <button
+          type="button"
+          disabled={disabled || !itemAdd}
+          onClick={() => agregarDeLaBase(itemAdd)}
+          className="rounded-lg bg-fenix-primario px-4 py-2 font-body text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Agregar ítem
+        </button>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
         <table className="min-w-full font-body text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900/60 dark:text-gray-400">
@@ -116,19 +194,21 @@ export default function LiquidadorCatExpress({
               <th className="px-3 py-2 text-right font-semibold">Cantidad</th>
               <th className="px-3 py-2 text-right font-semibold">VU base</th>
               <th className="px-3 py-2 text-right font-semibold">Total</th>
+              <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {grupos.map((g) => (
               <React.Fragment key={g.capitulo}>
                 <tr className="bg-fenix-primario/5 dark:bg-fenix-primario/10">
-                  <td colSpan={5} className="px-3 py-1.5 text-xs font-semibold text-fenix-primario">
+                  <td colSpan={6} className="px-3 py-1.5 text-xs font-semibold text-fenix-primario">
                     {g.capitulo}
                   </td>
                 </tr>
                 {g.filas.map((fila) => {
                   const total = totalFilaPresupuesto(fila);
                   const tieneCant = (parseMontoNsr10(fila.cantidad) || 0) > 0;
+                  const extra = !esIdExpress(fila.catalogoId);
                   return (
                     <tr
                       key={fila.catalogoId}
@@ -136,7 +216,14 @@ export default function LiquidadorCatExpress({
                         tieneCant ? 'bg-white dark:bg-gray-950' : ''
                       }`}
                     >
-                      <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{fila.actividad}</td>
+                      <td className="px-3 py-2 text-gray-800 dark:text-gray-100">
+                        {fila.actividad}
+                        {extra ? (
+                          <span className="ml-2 rounded bg-fenix-primario/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-fenix-primario">
+                            Extra
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="px-3 py-2 text-gray-500">{fila.unidad}</td>
                       <td className="px-3 py-2 text-right">
                         <InputCantidad
@@ -156,6 +243,21 @@ export default function LiquidadorCatExpress({
                       </td>
                       <td className="px-3 py-2 text-right font-medium text-gray-800 dark:text-gray-100">
                         {total == null ? '—' : COP(total)}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {extra ? (
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            title="Quitar ítem extra"
+                            onClick={() =>
+                              onFilasChange?.(quitarItemExpress(filas, fila.catalogoId))
+                            }
+                            className="rounded px-2 py-1 font-body text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40 dark:hover:bg-red-950/40"
+                          >
+                            Quitar
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   );

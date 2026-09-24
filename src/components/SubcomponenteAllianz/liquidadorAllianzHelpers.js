@@ -968,6 +968,88 @@ export function cuadroLiquidacionAllianz(totales = {}, liquidador = {}) {
   };
 }
 
+function primerMontoPositivoAllianz(...candidatos) {
+  for (const candidato of candidatos) {
+    const n = parsearNumero(candidato);
+    if (n > 0) return n;
+  }
+  return 0;
+}
+
+/**
+ * Copia al caso (Gestionar) los valores que ya calculó el liquidador.
+ * No pisa un dato útil del caso con cero.
+ */
+export function camposValoresDesdeLiquidadorAllianz(liquidador = {}, totales = {}, casoBase = {}) {
+  const liq = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  const enc = liq.encabezado && typeof liq.encabezado === 'object' ? liq.encabezado : {};
+  const cat =
+    liq.liquidacionCatastrofico && typeof liq.liquidacionCatastrofico === 'object'
+      ? liq.liquidacionCatastrofico
+      : {};
+  const nsr =
+    liq.evaluacionSismicaNSR10 && typeof liq.evaluacionSismicaNSR10 === 'object'
+      ? liq.evaluacionSismicaNSR10
+      : {};
+  const totEntrante = totales && typeof totales === 'object' ? totales : {};
+  const tot =
+    primerMontoPositivoAllianz(
+      totEntrante.totalReclamado,
+      totEntrante.totalIndemnizar,
+      totEntrante.sumaCompleta,
+      totEntrante.totalDanios
+    ) > 0
+      ? totEntrante
+      : calcularLiquidacionAllianz(liq);
+
+  const valorAseguradoInmueble = primerMontoPositivoAllianz(
+    enc.valorAseguradoInmueble,
+    cat.valorAsegurado,
+    nsr.valorAseguradoInmueble,
+    nsr.encabezado?.valorAseguradoInmueble,
+    casoBase.valorAseguradoInmueble
+  );
+  const valorAseguradoContenidos = primerMontoPositivoAllianz(
+    enc.valorAseguradoContenidos,
+    nsr.valorAseguradoContenidos,
+    casoBase.valorAseguradoContenidos
+  );
+  const valorComercialInmueble = primerMontoPositivoAllianz(
+    enc.valorComercialInmueble,
+    nsr.valorComercialInmueble,
+    casoBase.valorComercialInmueble
+  );
+  const valorReclamado = primerMontoPositivoAllianz(
+    tot.totalReclamado,
+    liq.valorReclamadoCaso,
+    tot.cotizacionMonto,
+    tot.sumaCompleta,
+    tot.totalDanios,
+    casoBase.valorReclamado
+  );
+  const valorLiquidado = primerMontoPositivoAllianz(
+    tot.totalIndemnizar,
+    tot.totalIndemnizable,
+    liq.indemnizacionSugerida,
+    casoBase.valorLiquidado
+  );
+  const reserva = primerMontoPositivoAllianz(valorLiquidado, tot.sumaCompleta, casoBase.reserva);
+
+  const out = {};
+  if (valorAseguradoInmueble > 0) out.valorAseguradoInmueble = valorAseguradoInmueble;
+  if (valorAseguradoContenidos > 0) out.valorAseguradoContenidos = valorAseguradoContenidos;
+  if (valorComercialInmueble > 0) out.valorComercialInmueble = valorComercialInmueble;
+  if (valorReclamado > 0) out.valorReclamado = valorReclamado;
+  if (valorLiquidado > 0) out.valorLiquidado = valorLiquidado;
+  if (reserva > 0) {
+    out.reserva = reserva;
+    if (!(parsearNumero(casoBase.valorReservaPreventivaPromedio) > 0)) {
+      out.valorReservaPreventivaPromedio = reserva;
+    }
+  }
+  return out;
+}
+
 function bienAfectadoAllianz(enc = {}) {
   const causa = String(enc.causa || enc.evento || enc.cobertura || 'terremoto').trim();
   if (!causa) return 'Daños por terremoto';

@@ -56,7 +56,7 @@ export function tipoExpressDeLiquidador(liquidador) {
   return 'casa';
 }
 
-function filaDesdeBase(catalogoId, previa = {}) {
+export function filaDesdeBase(catalogoId, previa = {}) {
   const cat = buscarItemBasePrecios(catalogoId);
   const base = aplicarCatalogoAFilaPresupuesto(crearFilaPresupuestoVacia(), cat);
   const cantPrev = previa.cantidad;
@@ -84,23 +84,54 @@ function indicePorCatalogo(items = []) {
   return map;
 }
 
-/** Plantilla visible: todos los ítems fijos del tipo, con cantidades ya liquidas si existen. */
+function idsExtraExpress(liquidador = {}, idsFijos = []) {
+  const vistos = new Set(idsFijos.map(String));
+  const extra = [];
+  const recoger = (it) => {
+    const id = String(it?.catalogoId || '');
+    if (!id || vistos.has(id) || !buscarItemBasePrecios(id)) return;
+    vistos.add(id);
+    extra.push(id);
+  };
+  (liquidador?.presupuestoExpress?.items || []).forEach(recoger);
+  (liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).forEach((it) => {
+    if (it?.fuente === FUENTE_EXPRESS) recoger(it);
+  });
+  return extra;
+}
+
+/** Plantilla visible: ítems fijos del tipo + extras elegidos de la base. */
 export function construirFilasExpress(liquidador = {}, tipo = 'casa') {
   const ids = idsExpressPorTipo(tipo);
   const guardadas = indicePorCatalogo(liquidador?.presupuestoExpress?.items);
   const nsr = indicePorCatalogo(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items);
-  return ids
-    .map((id) => {
-      const previa = guardadas.get(id) || nsr.get(id) || {};
-      return filaDesdeBase(id, previa);
-    })
-    .filter((it) => it.catalogoId)
-    .sort((a, b) => {
-      const ca = ORDEN_CAPITULO.indexOf(a.capitulo);
-      const cb = ORDEN_CAPITULO.indexOf(b.capitulo);
-      if (ca !== cb) return (ca < 0 ? 99 : ca) - (cb < 0 ? 99 : cb);
-      return String(a.actividad || '').localeCompare(String(b.actividad || ''), 'es');
-    });
+  const armar = (id) => {
+    const previa = guardadas.get(id) || nsr.get(id) || {};
+    return filaDesdeBase(id, previa);
+  };
+  const fijos = ids.map(armar).filter((it) => it.catalogoId);
+  const extras = idsExtraExpress(liquidador, ids)
+    .map(armar)
+    .filter((it) => it.catalogoId);
+  return [...fijos, ...extras].sort((a, b) => {
+    const ca = ORDEN_CAPITULO.indexOf(a.capitulo);
+    const cb = ORDEN_CAPITULO.indexOf(b.capitulo);
+    if (ca !== cb) return (ca < 0 ? 99 : ca) - (cb < 0 ? 99 : cb);
+    return String(a.actividad || '').localeCompare(String(b.actividad || ''), 'es');
+  });
+}
+
+export function agregarItemExpressDesdeBase(filas = [], catalogoId) {
+  const id = String(catalogoId || '');
+  if (!id || !buscarItemBasePrecios(id)) return filas;
+  if ((filas || []).some((it) => String(it?.catalogoId) === id)) return filas;
+  return [...(filas || []), filaDesdeBase(id)];
+}
+
+export function quitarItemExpress(filas = [], catalogoId) {
+  const id = String(catalogoId || '');
+  if (!id || esIdExpress(id)) return filas;
+  return (filas || []).filter((it) => String(it?.catalogoId) !== id);
 }
 
 export function filasExpressConCantidad(filas = []) {

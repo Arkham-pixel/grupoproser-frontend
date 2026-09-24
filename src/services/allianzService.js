@@ -1,5 +1,9 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
-import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
+import {
+  sanitizarInformeUnicoAllianz,
+  sanitizarLiquidadorAllianz,
+  camposValoresDesdeLiquidadorAllianz,
+} from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
 import { homologarCiudadAllianz, homologarEstadoAllianz, homologarTipoPolizaAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
 
 const ALLIANZ_API_URL = `${BASE_URL}/api/allianz`;
@@ -346,16 +350,7 @@ export const guardarLiquidadorEnCasoAllianz = async ({
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
     liquidador: sanitizarLiquidadorAllianz(liquidador || {}),
-    valorReclamado:
-      totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
-    valorLiquidado:
-      totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
-    valorAseguradoInmueble:
-      parsearNumero(liquidador?.encabezado?.valorAseguradoInmueble) ||
-      casoBase.valorAseguradoInmueble,
-    valorAseguradoContenidos:
-      parsearNumero(liquidador?.encabezado?.valorAseguradoContenidos) ||
-      casoBase.valorAseguradoContenidos,
+    ...camposValoresDesdeLiquidadorAllianz(liquidador || {}, totales, casoBase),
   };
 
   delete payload._id;

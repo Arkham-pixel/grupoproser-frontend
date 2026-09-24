@@ -1,5 +1,9 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
-import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
+import {
+  sanitizarInformeUnicoAllianz,
+  sanitizarLiquidadorAllianz,
+  camposValoresDesdeLiquidadorAllianz,
+} from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
 import { homologarCiudadAllianz, homologarEstadoAllianz, homologarTipoPolizaAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
 
 const API_URL = `${BASE_URL}/api/allianz-listado`;
@@ -152,18 +156,14 @@ const omitirMeta = (casoBase = {}) => {
 export const guardarLiquidadorEnCasoAllianzListado = async ({
   casoId,
   liquidador,
+  totales = {},
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
   return actualizarCasoAllianzListado(casoId, {
     ...omitirMeta(casoBase),
     liquidador: sanitizarLiquidadorAllianz(liquidador || {}),
-    valorAseguradoInmueble:
-      parsearNumero(liquidador?.encabezado?.valorAseguradoInmueble) ||
-      casoBase.valorAseguradoInmueble,
-    valorAseguradoContenidos:
-      parsearNumero(liquidador?.encabezado?.valorAseguradoContenidos) ||
-      casoBase.valorAseguradoContenidos,
+    ...camposValoresDesdeLiquidadorAllianz(liquidador || {}, totales, casoBase),
   });
 };
 

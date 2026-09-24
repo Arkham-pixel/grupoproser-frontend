@@ -335,6 +335,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         ? await guardarLiquidadorEnCasoAllianzListado({
             casoId,
             liquidador,
+            totales,
             casoBase: casoConSecciones(),
           })
         : await guardarLiquidadorEnCasoAllianz({

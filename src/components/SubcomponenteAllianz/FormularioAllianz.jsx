@@ -54,9 +54,11 @@ import {
   OPCIONES_SI_NO_ALLIANZ,
   TIPOS_NEGOCIO_HOMOLOGADO_ALLIANZ,
   construirFormDesdecasoAllianz,
+  formatMiles,
   formatMilesInput,
   normalizeEvidenciaCat,
 } from './allianzHelpers.js';
+import { camposValoresDesdeLiquidadorAllianz } from './liquidadorAllianzHelpers.js';
 import CampoTomadorAllianz from './CampoTomadorAllianz.jsx';
 import FacturacionAllianzPanel from './FacturacionAllianzPanel.jsx';
 import { camposFacturacionDesdeForm } from '../shared/camposFacturacionAseguradora.js';
@@ -101,6 +103,17 @@ const aNumero = (valor) => {
   return Number.isNaN(n) ? null : n;
 };
 
+const formDesdeCasoAllianz = (caso) => {
+  const form = construirFormDesdecasoAllianz(caso);
+  const extra = camposValoresDesdeLiquidadorAllianz(caso?.liquidador || {}, {}, caso || {});
+  const next = { ...form };
+  for (const [clave, valor] of Object.entries(extra)) {
+    if (!(Number(valor) > 0)) continue;
+    if (!(aNumero(next[clave]) > 0)) next[clave] = formatMiles(valor);
+  }
+  return next;
+};
+
 const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', onClose, onSaved }) => {
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
@@ -121,7 +134,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
     fechaCasoNuevo: fechaParaInput(new Date()),
   });
   const [form, setForm] = useState(() =>
-    initialData ? construirFormDesdecasoAllianz(initialData) : formNuevoAllianz()
+    initialData ? formDesdeCasoAllianz(initialData) : formNuevoAllianz()
   );
   const [guardando, setGuardando] = useState(false);
   const [modalImportOpen, setModalImportOpen] = useState(false);
@@ -159,7 +172,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   });
 
   useEffect(() => {
-    setForm(initialData ? construirFormDesdecasoAllianz(initialData) : formNuevoAllianz());
+    setForm(initialData ? formDesdeCasoAllianz(initialData) : formNuevoAllianz());
     setError(null);
     setExito(null);
     setResumenImport(null);
@@ -469,7 +482,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   };
 
   const limpiar = () => {
-    setForm(initialData ? construirFormDesdecasoAllianz(initialData) : formNuevoAllianz());
+    setForm(initialData ? formDesdeCasoAllianz(initialData) : formNuevoAllianz());
     setError(null);
     setExito(null);
   };

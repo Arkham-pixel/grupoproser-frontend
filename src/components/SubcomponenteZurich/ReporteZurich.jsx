@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoZurich,
   fetchAllCasosZurich,
+  getCasoZurichById,
 } from '../../services/zurichService.js';
 import FormularioZurich from './FormularioZurich.jsx';
 import ArchiveroZurich from './ArchiveroZurich.jsx';
@@ -277,6 +278,15 @@ export default function ReporteZurich() {
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
+
+  const abrirEdicion = useCallback(async (item) => {
+    if (!item?._id) return;
+    try {
+      setCasoEdicion(await getCasoZurichById(item._id));
+    } catch {
+      setCasoEdicion(item);
+    }
+  }, []);
 
   const recargar = useCallback(async ({ silencioso = false } = {}) => {
     if (!silencioso) {
@@ -695,7 +705,7 @@ export default function ReporteZurich() {
                           docsCount={item.archivos?.length || 0}
                           tieneLiquidador={!!item.liquidador}
                           tieneInforme={!!item.informeUnico || !!item.historialCatastroficoId}
-                          onGestionar={() => setCasoEdicion(item)}
+                          onGestionar={() => abrirEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
                             navigate(`/zurich/caso?casoId=${item._id}&tab=cat`, {

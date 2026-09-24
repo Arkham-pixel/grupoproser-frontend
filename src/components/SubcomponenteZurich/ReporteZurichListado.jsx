@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoZurichListado,
   fetchAllCasosZurichListado,
+  getCasoZurichListadoById,
 } from '../../services/zurichListadoService.js';
 import FormularioZurich from './FormularioZurich.jsx';
 import AccionesZurichMenu from './AccionesZurichMenu.jsx';
@@ -185,6 +186,15 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteZurich();
+
+  const abrirEdicion = useCallback(async (item) => {
+    if (!item?._id) return;
+    try {
+      setCasoEdicion(await getCasoZurichListadoById(item._id));
+    } catch {
+      setCasoEdicion(item);
+    }
+  }, []);
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -610,7 +620,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
                           docsCount={item.nArchivos ?? item.archivos?.length ?? 0}
                           tieneLiquidador={!!(item.tieneLiquidador ?? item.liquidador)}
                           tieneInforme={!!(item.tieneInforme ?? item.informeUnico)}
-                          onGestionar={() => setCasoEdicion(item)}
+                          onGestionar={() => abrirEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
                             navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`)
