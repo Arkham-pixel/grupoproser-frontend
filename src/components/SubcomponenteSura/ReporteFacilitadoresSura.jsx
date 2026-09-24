@@ -8,28 +8,15 @@ import {
   FaUpload,
 } from 'react-icons/fa';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
   actualizarFacilitadorSura,
   importarFacilitadoresSura,
   listarFacilitadoresSura,
   sugerirFacilitadoresDesdeArnald,
 } from '../../services/suraFacilitadoresService.js';
 import { esSesionFacilitadoresSura } from '../../utils/permisosCasoPorRol.js';
-import { useTheme } from '../../context/ThemeContext';
 import { fechaParaInput } from './segurosSuraHelpers.js';
 import {
   CRITERIOS_FACILITADOR,
-  contarPorEstadoFacilitador,
   deduplicarFilasFacilitadores,
   descargarPlantillaFacilitadores,
   erroresFilaPortal,
@@ -47,17 +34,14 @@ import {
   expressBadge,
   expressBtnPrimary,
   expressBtnSecondary,
-  expressChartCard,
   expressPageSubtitle,
   expressPageTitle,
   expressScope,
   expressTableHead,
   expressTableScroll,
   expressTableWrap,
-  getFenixChartColor,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { ExpressAvisoModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import EstadoFranjas from '../SubcomponenteDashboardCatastrofico/EstadoFranjas.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -121,8 +105,6 @@ function hoyIso() {
 
 export default function ReporteFacilitadoresSura() {
   const permitido = esSesionFacilitadoresSura();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
   const fileRef = useRef(null);
   const [filas, setFilas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -166,8 +148,6 @@ export default function ReporteFacilitadoresSura() {
     }
     return { total: filas.length, ok, invalid };
   }, [filas]);
-
-  const porEstadoFacilitador = useMemo(() => contarPorEstadoFacilitador(filas), [filas]);
 
   const visibles = useMemo(() => {
     const q = String(busqueda || '')
@@ -421,92 +401,6 @@ export default function ReporteFacilitadoresSura() {
             </button>
           ) : null}
         </div>
-
-        {!loading && filas.length > 0 ? (
-          <section className="grid w-full min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            <EstadoFranjas
-              titulo="Estados facilitador"
-              subtitulo="Estas franjas suman el 100% de la plantilla · clic para filtrar la tabla"
-              items={porEstadoFacilitador.map((r) => ({
-                clave: r.estado,
-                label: r.nombre,
-                cantidad: r.cantidad,
-                accent: filtroEstado === r.estado,
-              }))}
-              total={filas.length}
-              onSelect={(clave) =>
-                setFiltroEstado((prev) => (prev === clave ? '' : clave))
-              }
-            />
-            <div className={`${expressChartCard} min-w-0`}>
-              <h3 className="mb-1 font-heading text-lg font-bold text-gray-900 dark:text-white">
-                Casos por estado facilitador
-              </h3>
-              <p className="mb-4 font-body text-xs text-gray-500">
-                Abierto · Tramitado · Anulado · Desistido · Objetado · Cancelado Sura
-              </p>
-              <ResponsiveContainer width="100%" height={Math.max(280, porEstadoFacilitador.length * 40)}>
-                <BarChart
-                  data={porEstadoFacilitador}
-                  layout="vertical"
-                  margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2D2D2D' : '#E5E7EB'} />
-                  <XAxis
-                    type="number"
-                    allowDecimals={false}
-                    tick={{ fill: isDark ? '#B0B0B0' : '#6B6B6B', fontSize: 11 }}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="nombre"
-                    width={120}
-                    tick={{ fill: isDark ? '#B0B0B0' : '#6B6B6B', fontSize: 11 }}
-                    interval={0}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                      border: `1px solid ${isDark ? '#2D2D2D' : '#E6E6E6'}`,
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Bar
-                    dataKey="cantidad"
-                    name="Casos"
-                    radius={[0, 4, 4, 0]}
-                    barSize={22}
-                    cursor="pointer"
-                    onClick={(entry) => {
-                      const clave = entry?.estado || entry?.payload?.estado;
-                      if (clave) setFiltroEstado((prev) => (prev === clave ? '' : clave));
-                    }}
-                  >
-                    {porEstadoFacilitador.map((entry, index) => (
-                      <Cell
-                        key={entry.estado}
-                        fill={
-                          filtroEstado && filtroEstado !== entry.estado
-                            ? isDark
-                              ? '#4B5563'
-                              : '#D1D5DB'
-                            : getFenixChartColor(index, isDark)
-                        }
-                      />
-                    ))}
-                    <LabelList
-                      dataKey="cantidad"
-                      position="right"
-                      fill={isDark ? '#E5E7EB' : '#1E1E1E'}
-                      fontSize={12}
-                      fontWeight={700}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-        ) : null}
 
         <div className={expressTableWrap}>
           <div className={expressTableScroll}>

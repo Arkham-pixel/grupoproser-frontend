@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getControlSeguimientoAlfaStatus,
   checkControlSeguimientoAlfa,
+  flushOutboundControlSeguimientoAlfa,
   dismissControlSeguimientoAlfaNotification,
   getImportExcelAlfaStatus,
   executeImportExcelAlfa,
@@ -42,12 +43,13 @@ const toneClass = {
 
 /**
  * Banner + modal automático de actualizaciones Control y Seguimiento.
- * Visible solo para el usuario autorizado (1065012991).
+ * Visible para logins en LOGINS_ALFA_EXCEL_ACTUALIZAR (TI + Daniela Negrete).
  */
 export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [flushing, setFlushing] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -298,6 +300,27 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     }
   };
 
+  const handleFlushOutbound = async () => {
+    if (!puedeActualizar) return;
+    setFlushing(true);
+    setError(null);
+    try {
+      const data = await flushOutboundControlSeguimientoAlfa({ maxRounds: 8 });
+      setStatus((prev) =>
+        prev
+          ? { ...prev, outboundPending: data.outboundPending ?? data.flush?.pendingLeft ?? 0 }
+          : prev
+      );
+      setSuccessMsg(data.message || 'Envío a Excel finalizado');
+      setExecuteSummary(null);
+      await load();
+    } catch (err) {
+      setError(err.message || 'No se pudo enviar a Excel');
+    } finally {
+      setFlushing(false);
+    }
+  };
+
   const handleRevisarDespues = () => {
     if (isCompleteAlfaCsModalKey(key)) {
       markAlfaCsModalSeen(window.localStorage, key);
@@ -385,6 +408,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   const canAct =
     status?.uiStatus === 'updates_available' || status?.uiStatus === 'requires_review';
   const isError = status?.uiStatus === 'error';
+  const outboundPending = Number(status?.outboundPending || 0);
 
   return (
     <div className="space-y-2">
@@ -421,6 +445,12 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
               {status?.headline || '—'}
             </p>
             <p className="mt-0.5 font-body text-sm opacity-90">{status?.detail}</p>
+            <p className="mt-1 font-body text-xs opacity-80">
+              Sync manual: use los botones (sin cron automático para no saturar Atlas).
+              {outboundPending > 0
+                ? ` · ${outboundPending} cambio(s) pendientes de enviar a Excel.`
+                : ' · Cola a Excel vacía.'}
+            </p>
             {lastAt && !isError && (
               <p className="mt-1 font-body text-xs opacity-70">Última revisión: {lastAt}</p>
             )}
@@ -441,16 +471,32 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
               <button
                 type="button"
                 className={expressBtnGhost}
-                disabled={checking}
+                disabled={checking || flushing}
                 onClick={handleCheck}
+                title="Busca cambios en el Excel de SharePoint y prepara preview hacia ARNALD"
               >
                 {checking
                   ? isError
                     ? 'Reintentando…'
-                    : 'Revisando…'
+                    : 'Buscando en SharePoint…'
                   : isError
                     ? 'Reintentar consulta'
-                    : 'Actualizar estado'}
+                    : 'Buscar en SharePoint'}
+              </button>
+            )}
+            {puedeActualizar && (
+              <button
+                type="button"
+                className={outboundPending > 0 ? expressBtnPrimary : expressBtnGhost}
+                disabled={checking || flushing}
+                onClick={handleFlushOutbound}
+                title="Envía a Excel SharePoint los cambios tipificados en ARNALD (cola amarilla)"
+              >
+                {flushing
+                  ? 'Enviando a Excel…'
+                  : outboundPending > 0
+                    ? `Enviar a Excel (${outboundPending})`
+                    : 'Enviar a Excel'}
               </button>
             )}
             {canAct && (source?.lastPreviewImportId || pinnedSessionId) && (

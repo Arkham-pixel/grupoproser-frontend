@@ -337,7 +337,7 @@ export const getControlSeguimientoAlfaStatus = async () => {
   return payload;
 };
 
-/** Fuerza un ciclo de detección+preview (admin/soporte). */
+/** Fuerza un ciclo de detección+preview (admin/soporte). Manual: SharePoint → ARNALD. */
 export const checkControlSeguimientoAlfa = async ({ force = false } = {}) => {
   const response = await fetch(`${ALFA_API_URL}/control-seguimiento/check`, {
     method: 'POST',
@@ -347,6 +347,23 @@ export const checkControlSeguimientoAlfa = async ({ force = false } = {}) => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error en check (${response.status})`);
+  }
+  return payload;
+};
+
+/** Envía cola ARNALD → Excel SharePoint (botón manual; cron OFF). */
+export const flushOutboundControlSeguimientoAlfa = async ({
+  maxRounds = 8,
+  batchSize,
+} = {}) => {
+  const response = await fetch(`${ALFA_API_URL}/control-seguimiento/outbound-flush`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ maxRounds, batchSize }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al enviar a Excel (${response.status})`);
   }
   return payload;
 };
