@@ -166,6 +166,7 @@ export async function candidatosUrlArchivoParaFetch(ruta, ...fallbacks) {
   for (const f of fallbacks) {
     if (f) out.push(f);
   }
+  if (out.length) return [...new Set(out.filter(Boolean))];
   const raw = String(ruta || '').trim();
   if (raw) {
     try {

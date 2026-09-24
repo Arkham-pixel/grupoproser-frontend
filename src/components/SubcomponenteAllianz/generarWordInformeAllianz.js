@@ -51,7 +51,6 @@ import {
 } from './liquidadorAllianzHelpers.js';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
-import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
 import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { filasPresupuestoParaWord } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
@@ -769,19 +768,35 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = await candidatosUrlArchivoParaFetch(
-    foto?.ruta,
-    urlFn?.(foto?.ruta),
-    ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : [])
-  );
+  const candidatos = [];
+  const directa = urlFn?.(foto?.ruta);
+  if (directa) candidatos.push(directa);
+  const mismaOrigen = foto?.ruta ? getUploadsUrlCandidates(foto.ruta)[0] : '';
+  if (mismaOrigen && !candidatos.includes(mismaOrigen)) candidatos.push(mismaOrigen);
   const vistos = new Set();
   for (const url of candidatos) {
-    if (vistos.has(url)) continue;
+    if (!url || vistos.has(url)) continue;
     vistos.add(url);
     const img = await fetchImageBytes(url);
     if (img) return img;
   }
   return null;
+}
+
+async function mapLimit(items, limit, fn) {
+  const list = Array.isArray(items) ? items : [];
+  const results = new Array(list.length);
+  let cursor = 0;
+  const n = Math.max(1, Math.min(limit, list.length));
+  await Promise.all(
+    Array.from({ length: list.length ? n : 0 }, async () => {
+      while (cursor < list.length) {
+        const i = cursor++;
+        results[i] = await fn(list[i], i);
+      }
+    })
+  );
+  return results;
 }
 
 async function imagenDesdeDataUrl(dataUrl) {
@@ -846,7 +861,7 @@ async function cargarMapaRiesgoDataUrl(info = {}) {
   if (im && typeof im === 'string' && im.startsWith('data:')) return im;
   if (im && typeof im === 'string' && /^https?:\/\//i.test(im)) {
     try {
-      const resp = await fetch(im);
+      const resp = await fetch(im, { signal: AbortSignal.timeout(8000) });
       if (resp.ok) return await blobToDataUrl(await resp.blob());
     } catch {
       /* ignore */
@@ -858,7 +873,7 @@ async function cargarMapaRiesgoDataUrl(info = {}) {
       const urls = getUploadsUrlCandidates(im.ruta);
       for (const url of urls) {
         try {
-          const resp = await fetch(url);
+          const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
           if (!resp.ok) continue;
           return await blobToDataUrl(await resp.blob());
         } catch {
@@ -1369,17 +1384,20 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const fotosInforme = Array.isArray(info?.fotosInspeccion)
     ? info.fotosInspeccion.filter((f) => f && (f.ruta || f.file || f.preview || f._id))
     : [];
-  const fotosParaWord = fotosInforme.length ? fotosInforme : fotosArchivos;
+  const fotosParaWord = (fotosInforme.length ? fotosInforme : fotosArchivos).slice(0, 24);
+  const fotosCargadas = await mapLimit(fotosParaWord, 4, async (archivo) => ({
+    archivo,
+    img: await bytesDesdeFotoParaInforme(archivo, urlDescargaArchivoAllianz),
+  }));
 
   const fotoParrafos = [];
   let fotosIncluidas = 0;
-  for (const archivo of fotosParaWord.slice(0, 24)) {
+  for (const { archivo, img } of fotosCargadas) {
     const nombreFoto =
       archivo.nombreOriginal || archivo.nombre || `Foto ${fotosIncluidas + 1}`;
     const descripcionFoto = String(
       archivo.descripcion || archivo.observacion || archivo.comentario || ''
     ).trim();
-    const img = await bytesDesdeFotoParaInforme(archivo, urlDescargaArchivoAllianz);
     if (!img) {
       fotoParrafos.push(
         p(`• ${nombreFoto} (no embebida)`, {
@@ -1451,8 +1469,11 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   }
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
-  for (const archivo of fotosCotizacion) {
-    const img = await bytesDesdeFotoParaInforme(archivo, urlDescargaArchivoAllianz);
+  const cotizCargadas = await mapLimit(fotosCotizacion, 3, async (archivo) => ({
+    archivo,
+    img: await bytesDesdeFotoParaInforme(archivo, urlDescargaArchivoAllianz),
+  }));
+  for (const { archivo, img } of cotizCargadas) {
     if (!img) continue;
     cotizacionesIncluidas += 1;
     const natW = Number(archivo.width) || 0;

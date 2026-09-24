@@ -534,6 +534,7 @@ export default function InformeUnicoAllianz({
         informe: informeRef.current,
         liquidador: liquidadorRef.current,
       });
+      setDescargando(false);
       const blob = resultado?.blob;
       const nombre = resultado?.filename || resultado?.nombre;
       if (blob && nombre && casoAllianz?._id) {

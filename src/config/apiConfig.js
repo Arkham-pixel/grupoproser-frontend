@@ -51,6 +51,15 @@ function storageFileUrl(baseUrl, ref) {
   return `${baseUrl}/api/storage/file?ref=${encodeURIComponent(ref)}`;
 }
 
+/** Vite (BASE_URL vacío) ya proxya a :3000; el fallback a prod cuelga el Word en 404 lentos. */
+function withDevProdFallback(primary, prod) {
+  const list = [primary];
+  if (isDevelopmentEnv && BASE_URL && BASE_URL !== PROD_URL && prod && prod !== primary) {
+    list.push(prod);
+  }
+  return list;
+}
+
 /**
  * Devuelve candidatos de URL para recursos subidos (por ejemplo `/uploads/...` o `s3:legacy/...`).
  * - Referencias `s3:` → preferir `/api/storage/signed-url` (front); este helper sigue
@@ -74,38 +83,29 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
       } catch {
         // referencia sin codificar: usar tal cual
       }
-      const list = [storageFileUrl(BASE_URL, ref)];
-      if (isDevelopmentEnv) list.push(storageFileUrl(PROD_URL, ref));
+      const list = withDevProdFallback(storageFileUrl(BASE_URL, ref), storageFileUrl(PROD_URL, ref));
       return list;
     }
     return [rutaOrUrl];
   }
 
   if (rutaOrUrl.startsWith('s3:') || rutaOrUrl.startsWith('s3://')) {
-    const list = [storageFileUrl(BASE_URL, rutaOrUrl)];
-    if (isDevelopmentEnv) list.push(storageFileUrl(PROD_URL, rutaOrUrl));
-    return list;
+    return withDevProdFallback(storageFileUrl(BASE_URL, rutaOrUrl), storageFileUrl(PROD_URL, rutaOrUrl));
   }
 
   // Referencias mutiladas tipo "/s3:clave" (guardadas así por normalizaciones antiguas)
   if (/^\/s3:/i.test(rutaOrUrl)) {
     const ref = rutaOrUrl.slice(1);
-    const list = [storageFileUrl(BASE_URL, ref)];
-    if (isDevelopmentEnv) list.push(storageFileUrl(PROD_URL, ref));
-    return list;
+    return withDevProdFallback(storageFileUrl(BASE_URL, ref), storageFileUrl(PROD_URL, ref));
   }
 
   if (rutaOrUrl.startsWith('/uploads/')) {
-    const list = [`${BASE_URL}${rutaOrUrl}`];
-    if (isDevelopmentEnv) list.push(`${PROD_URL}${rutaOrUrl}`);
-    return list;
+    return withDevProdFallback(`${BASE_URL}${rutaOrUrl}`, `${PROD_URL}${rutaOrUrl}`);
   }
 
   if (rutaOrUrl.startsWith('uploads/')) {
     const path = `/${rutaOrUrl}`;
-    const list = [`${BASE_URL}${path}`];
-    if (isDevelopmentEnv) list.push(`${PROD_URL}${path}`);
-    return list;
+    return withDevProdFallback(`${BASE_URL}${path}`, `${PROD_URL}${path}`);
   }
 
   if (rutaOrUrl.startsWith('/')) return [`${BASE_URL}${rutaOrUrl}`];
