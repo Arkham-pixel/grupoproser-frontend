@@ -90,7 +90,7 @@ function TablaFilasSura({
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {(filas || []).map((fila, idx) => (
-              <tr key={`${idx}-${fila.zona || fila.concepto || fila.capitulo || 'fila'}`}>
+              <tr key={fila.id || `sura-fila-${idx}`}>
                 {columnas.map((col) => (
                   <td key={col.key} className="align-top px-2 py-2">
                     {col.type === 'select' ? (
@@ -319,14 +319,23 @@ export default function InformeUnicoSegurosSura({
   const setFila = (campo, idx, key, valor) => {
     setInforme((prev) => {
       const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
-      list[idx] = { ...(list[idx] || {}), [key]: valor };
+      const actual = list[idx] || {};
+      list[idx] = {
+        ...actual,
+        [key]: valor,
+        id: actual.id || `${campo}-${idx}-${Date.now()}`,
+      };
       return { ...prev, [campo]: list };
     });
   };
 
   const addFila = (campo, vacia) => {
     setInforme((prev) => {
-      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
+      const fila = {
+        ...(vacia || {}),
+        id: vacia?.id || `${campo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      };
+      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), fila];
       return { ...prev, [campo]: list };
     });
   };

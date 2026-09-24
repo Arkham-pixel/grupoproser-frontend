@@ -171,7 +171,7 @@ function TablaFilasZurich({
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {(filas || []).map((fila, idx) => (
-                <tr key={fila.id || `${idx}-${fila.concepto || 'fila'}`}>
+                <tr key={fila.id || `zurich-fila-${idx}`}>
                   {columnas.map((col) => (
                     <td key={col.key} className="align-top px-2 py-2">
                       {campoFila(col, fila, idx)}
@@ -606,7 +606,12 @@ export default function InformeUnicoZurich({
   const setFila = (campo, idx, key, valor) => {
     setInforme((prev) => {
       const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
-      list[idx] = { ...(list[idx] || {}), [key]: valor };
+      const actual = list[idx] || {};
+      list[idx] = {
+        ...actual,
+        [key]: valor,
+        id: actual.id || `${campo}-${idx}-${Date.now()}`,
+      };
       if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
@@ -614,7 +619,11 @@ export default function InformeUnicoZurich({
 
   const addFila = (campo, vacia) => {
     setInforme((prev) => {
-      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
+      const fila = {
+        ...(vacia || {}),
+        id: vacia?.id || `${campo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      };
+      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), fila];
       if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
