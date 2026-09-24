@@ -311,12 +311,27 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
         onlyWithMoney: true,
         enqueueLimit: 150,
       });
+      const left =
+        data.outboundPending ??
+        data.flush?.pendingLeft ??
+        data.outboundQueue?.total ??
+        0;
       setStatus((prev) =>
         prev
-          ? { ...prev, outboundPending: data.outboundPending ?? data.flush?.pendingLeft ?? 0 }
+          ? {
+              ...prev,
+              outboundPending: left,
+              outboundQueue: data.outboundQueue || prev.outboundQueue,
+            }
           : prev
       );
-      setSuccessMsg(data.message || 'Envío a Excel finalizado');
+      const synced = Number(data.flush?.synced || 0);
+      setSuccessMsg(
+        data.message ||
+          (synced > 0
+            ? `Enviados ${synced} cambio(s) a Excel.`
+            : 'Envío a Excel finalizado')
+      );
       setExecuteSummary(null);
       await load();
     } catch (err) {
@@ -451,10 +466,27 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
             </p>
             <p className="mt-0.5 font-body text-sm opacity-90">{status?.detail}</p>
             <p className="mt-1 font-body text-xs opacity-80">
-              Sync manual: use los botones (sin cron automático para no saturar Atlas).
-              {outboundPending > 0
-                ? ` · ${outboundPending} cambio(s) pendientes de enviar a Excel.`
-                : ' · Cola a Excel vacía.'}
+              Sync manual (sin cron). Verde = Excel→ARNALD al día.
+              {outboundPending > 0 ? (
+                <>
+                  {' '}
+                  · <strong>{outboundPending}</strong> cambio(s) ARNALD→Excel por
+                  enviar
+                  {status?.outboundQueue
+                    ? ` (pendientes ${status.outboundQueue.pending || 0}` +
+                      (status.outboundQueue.processing
+                        ? `, en proceso ${status.outboundQueue.processing}`
+                        : '') +
+                      (status.outboundQueue.failed
+                        ? `, fallidos ${status.outboundQueue.failed}`
+                        : '') +
+                      ')'
+                    : ''}
+                  .
+                </>
+              ) : (
+                ' · Cola ARNALD→Excel vacía.'
+              )}
             </p>
             {lastAt && !isError && (
               <p className="mt-1 font-body text-xs opacity-70">Última revisión: {lastAt}</p>

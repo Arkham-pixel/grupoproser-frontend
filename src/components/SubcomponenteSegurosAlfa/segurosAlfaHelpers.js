@@ -611,8 +611,8 @@ export function casoAlfaTieneFechaLlamada(caso = {}) {
   return true;
 }
 
-export const formatCurrency = (value) => {
-  const n = pesosOficialesAlfa(value);
+export const formatCurrency = (value, field = null) => {
+  const n = pesosOficialesAlfa(value, null, field);
   if (n == null) return '—';
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
@@ -810,6 +810,27 @@ export const CAMPOS_NUMERICOS_ALFA = [
   'valorTotalPagar',
 ];
 
+/** Cobertura/póliza: montos reales pueden ser ≥ 1.000M; no aplicar ÷100. */
+export const CAMPOS_ASEGURADO_MONEY_ALFA = [
+  'valorAseguradoSid',
+  'valorAseguradoInmueble',
+  'valorAseguradoContenidos',
+  'valorReservaPreventivaPromedio',
+  'valorComercialInmueble',
+];
+
+/** Liquidación: sí sanear centavos concatenados (≥ 1.000M → ÷100). */
+export const CAMPOS_LIQUIDACION_MONEY_ALFA = [
+  'reserva',
+  'valorReclamado',
+  'valorLiquidado',
+  'liquidadoCoberturaTerremo',
+  'deducibleTerremoto',
+  'valorLiquidacionCoberturasAdicionales',
+  'deducibleCoberturasAdicionales',
+  'valorTotalPagar',
+];
+
 /**
  * Parsea COP sin concatenar centavos al entero.
  * Acepta 36208706.98 | "36.208.706,98" | "36.208.707".
@@ -858,11 +879,18 @@ export function pareceIdentificacionComoMontoAlfa(valor, identificacion) {
   return false;
 }
 
-export function pesosOficialesAlfa(valor, identificacion) {
+/**
+ * Pesos enteros para UI.
+ * Solo ÷100 en campos de liquidación (centavos concatenados).
+ * Asegurado/póliza y llamadas sin campo: nunca dividir (≥ 1.000M pueden ser reales).
+ */
+export function pesosOficialesAlfa(valor, identificacion, field = null) {
   const n = parseMontoCopAlfa(valor);
   if (n == null || !Number.isFinite(n)) return null;
   if (pareceIdentificacionComoMontoAlfa(n, identificacion)) return null;
-  if (Math.abs(n) >= 1_000_000_000) {
+  const key = String(field || '');
+  const sanearCentavos = CAMPOS_LIQUIDACION_MONEY_ALFA.includes(key);
+  if (sanearCentavos && Math.abs(n) >= 1_000_000_000) {
     const divided = Math.round(n / 100);
     if (pareceIdentificacionComoMontoAlfa(divided, identificacion)) return null;
     return divided;
@@ -891,13 +919,13 @@ export const formatMilesInput = (valor) => {
  * Formatea pesos enteros con puntos de miles (es-CO).
  * 36208706.98 → 36.208.707  (no 3.620.870.698)
  */
-export const formatMiles = (valor) => {
+export const formatMiles = (valor, field = null) => {
   if (valor === null || valor === undefined || valor === '') return '';
   const oficial =
     typeof valor === 'number' && Number.isFinite(valor)
-      ? pesosOficialesAlfa(valor)
+      ? pesosOficialesAlfa(valor, null, field)
       : parseMontoCopAlfa(valor) != null
-        ? pesosOficialesAlfa(valor)
+        ? pesosOficialesAlfa(valor, null, field)
         : null;
   if (oficial != null) return formatEnteroConMiles(oficial);
   return formatMilesInput(valor);
@@ -913,7 +941,7 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
         if (valor === null || valor === undefined)
           return [clave, clave === 'fueraDeZona' || clave === 'noAceptacionOferta' ? false : ''];
         if (CAMPOS_FECHA_ALFA.includes(clave)) return [clave, fechaParaInput(valor)];
-        if (CAMPOS_NUMERICOS_ALFA.includes(clave)) return [clave, formatMiles(valor)];
+        if (CAMPOS_NUMERICOS_ALFA.includes(clave)) return [clave, formatMiles(valor, clave)];
         return [clave, String(valor)];
       })
     ),

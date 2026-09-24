@@ -95,9 +95,9 @@ const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4
 const BTN_CIUDAD_ALFA =
   'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
 
-const aNumero = (valor) => {
+const aNumero = (valor, field = null) => {
   if (valor === '' || valor === null || valor === undefined) return null;
-  return pesosOficialesAlfa(valor);
+  return pesosOficialesAlfa(valor, null, field);
 };
 
 const formDesdeCasoAlfa = (caso) => {
@@ -392,7 +392,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   const construirPayload = () => {
     const payload = { ...form };
     camposNumericos.forEach((clave) => {
-      payload[clave] = aNumero(payload[clave]);
+      payload[clave] = aNumero(payload[clave], clave);
     });
     if (montosLiquidador) {
       if (montosLiquidador.valorReclamado != null) {

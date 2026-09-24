@@ -799,9 +799,9 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     if (clave === 'estadoGestion') return homologarEstadoGestionAlfa(item.estadoGestion || item.estado);
     if (CAMPOS_MONEDA.has(clave)) {
       if (item[clave] === null || item[clave] === undefined || item[clave] === '') {
-        return CAMPOS_CONTROL_LIQUIDACION.has(clave) ? formatCurrency(0) : '—';
+        return CAMPOS_CONTROL_LIQUIDACION.has(clave) ? formatCurrency(0, clave) : '—';
       }
-      return formatCurrency(item[clave]);
+      return formatCurrency(item[clave], clave);
     }
     if (CAMPOS_FECHA.has(clave)) return formatDate(item[clave]) || '—';
     const valor = item[clave];

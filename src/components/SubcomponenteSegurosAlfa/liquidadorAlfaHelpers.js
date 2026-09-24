@@ -69,10 +69,21 @@ Posterior al evento principal se han presentado diferentes réplicas, por lo que
 
 Este evento sísmico constituye el antecedente general bajo el cual se desarrollan las inspecciones y evaluaciones de daños objeto del presente informe.`;
 
-export function pesosEnterosAlfa(valor) {
+export function pesosEnterosAlfa(valor, field = null) {
   if (valor == null || valor === '') return null;
   const n = typeof valor === 'number' ? valor : parsearNumero(valor);
   if (!Number.isFinite(n)) return null;
+  const key = String(field || '');
+  if (
+    key === 'valorAseguradoSid' ||
+    key === 'valorAseguradoInmueble' ||
+    key === 'valorAseguradoContenidos' ||
+    key === 'valorReservaPreventivaPromedio' ||
+    key === 'valorComercialInmueble' ||
+    key === 'valorAsegurado'
+  ) {
+    return Math.round(n);
+  }
   if (Math.abs(n) >= 1_000_000_000) return Math.round(n / 100);
   return Math.round(n);
 }
