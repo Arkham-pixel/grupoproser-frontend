@@ -307,9 +307,8 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     try {
       const data = await flushOutboundControlSeguimientoAlfa({
         maxRounds: 10,
-        forceResync: true,
-        onlyWithMoney: true,
-        enqueueLimit: 150,
+        forceResync: false,
+        onlyWithMoney: false,
       });
       const left =
         data.outboundPending ??
@@ -527,7 +526,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
                 className={outboundPending > 0 ? expressBtnPrimary : expressBtnGhost}
                 disabled={checking || flushing}
                 onClick={handleFlushOutbound}
-                title="Envía a Excel SharePoint los cambios tipificados en ARNALD (cola amarilla)"
+                title="Envía a Excel solo lo tipificado en ARNALD (cola pendiente). No reescribe casos ajenos."
               >
                 {flushing
                   ? 'Enviando a Excel…'

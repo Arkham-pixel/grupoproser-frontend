@@ -351,13 +351,15 @@ export const checkControlSeguimientoAlfa = async ({ force = false } = {}) => {
   return payload;
 };
 
-/** Envía cola ARNALD → Excel SharePoint (botón manual; cron OFF). */
+/** Envía cola ARNALD → Excel SharePoint (botón manual; cron OFF).
+ * Por defecto NO hace forceResync: solo jobs reales tipificados en ARNALD.
+ */
 export const flushOutboundControlSeguimientoAlfa = async ({
   maxRounds = 8,
   batchSize,
-  forceResync = true,
+  forceResync = false,
   consecutivos = [],
-  onlyWithMoney = true,
+  onlyWithMoney = false,
   enqueueLimit = 120,
 } = {}) => {
   const response = await fetch(`${ALFA_API_URL}/control-seguimiento/outbound-flush`, {
