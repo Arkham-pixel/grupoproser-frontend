@@ -2,7 +2,8 @@ import { saveAs } from 'file-saver';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
-import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
 import { generarWorkbookLiquidadorSuraNsr, pintarResumenIndemnizacionSura } from './generarLiquidadorSuraExcel.js';
 import {
@@ -45,15 +46,12 @@ async function fetchImageBuffer(url) {
   if (!url) return null;
   try {
     if (String(url).startsWith('blob:')) return await bufferDesdeBlobUrl(url);
-    const token = localStorage.getItem('token');
-    const res = await fetch(url, {
-      credentials: 'include',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) return null;
-    const buffer = await res.arrayBuffer();
-    const extension = detectarExtensionImagen(buffer);
+    const got = await fetchBytesImagenUrl(url);
+    if (!got?.bytes?.length) return null;
+    const bytes = got.bytes;
+    const extension = detectarExtensionImagen(bytes);
     if (!extension) return null;
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     return { buffer, extension };
   } catch {
     return null;
@@ -111,7 +109,7 @@ async function resolverBufferFoto(item = {}, archivosCaso = []) {
     if (arch?.ruta) ruta = arch.ruta;
   }
   if (!ruta) return null;
-  const urls = await candidatosUrlArchivo(
+  const urls = await candidatosUrlArchivoParaFetch(
     ruta,
     urlDescargaArchivoSura(ruta),
     ...(getUploadsUrlCandidates(ruta) || [])
@@ -263,7 +261,7 @@ async function resolverBufferMapaInforme(informe = {}) {
     }
     const ruta = im.ruta || im.fotoRuta || '';
     if (ruta) {
-      const urls = await candidatosUrlArchivo(
+      const urls = await candidatosUrlArchivoParaFetch(
         ruta,
         urlDescargaArchivoSura(ruta),
         ...(getUploadsUrlCandidates(ruta) || [])

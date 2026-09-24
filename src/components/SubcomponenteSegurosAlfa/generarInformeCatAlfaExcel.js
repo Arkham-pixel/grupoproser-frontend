@@ -2,7 +2,8 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
-import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import {
   calcularLiquidacionAlfa,
   defaultInformeUnicoAlfa,
@@ -558,9 +559,9 @@ async function fetchImageBuffer(url) {
   try {
     if (String(url).startsWith('blob:')) return bufferDesdeBlobUrl(url);
     if (String(url).startsWith('data:')) return dataUrlABuffer(url);
-    const res = await fetch(url, { credentials: 'include' });
-    if (!res.ok) return null;
-    const buffer = aUint8(await res.arrayBuffer());
+    const got = await fetchBytesImagenUrl(url);
+    if (!got?.bytes?.length) return null;
+    const buffer = aUint8(got.bytes);
     if (!buffer) return null;
     const extension = detectarExtensionImagen(buffer);
     if (!extension) return null;
@@ -594,7 +595,7 @@ async function resolverBufferFoto(foto) {
   const ruta = foto.ruta || foto.fotoRuta || '';
   if (ruta) {
     if (String(ruta).startsWith('data:')) return dataUrlABuffer(ruta);
-    const urls = await candidatosUrlArchivo(
+    const urls = await candidatosUrlArchivoParaFetch(
       ruta,
       urlDescargaArchivoAlfa(ruta),
       ...(getUploadsUrlCandidates(ruta) || [])

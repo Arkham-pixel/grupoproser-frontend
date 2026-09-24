@@ -22,7 +22,8 @@ import {
 import { saveAs } from 'file-saver';
 import logoAllianzUrl from '../../assets/logo-allianz.jpg';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
-import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import { nombreUsuarioPlataforma } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   DISCLAIMER_CAT_ALLIANZ,
@@ -54,23 +55,15 @@ async function loadLogoBytes(url) {
 }
 
 async function fetchImageBytes(url) {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/')) return null;
-    const buf = await blob.arrayBuffer();
-    const u8 = new Uint8Array(buf);
-    const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
-    const isJpg = u8.length > 3 && u8[0] === 0xff && u8[1] === 0xd8;
-    const type = isPng ? 'png' : isJpg ? 'jpg' : blob.type.includes('png') ? 'png' : 'jpg';
-    return { bytes: u8, type };
-  } catch {
-    return null;
-  }
+  if (!url || typeof url !== 'string') return null;
+  const got = await fetchBytesImagenUrl(url);
+  if (!got?.bytes?.length) return null;
+  const u8 = got.bytes;
+  const ct = got.contentType || '';
+  const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+  const isJpg = u8.length > 3 && u8[0] === 0xff && u8[1] === 0xd8;
+  const type = isPng ? 'png' : isJpg ? 'jpg' : ct.includes('png') ? 'png' : 'jpg';
+  return { bytes: u8, type };
 }
 
 const cell = (text, opts = {}) => {
@@ -217,7 +210,7 @@ async function construirParrafosFotos(caso = {}) {
     const a = fotosOrdenadas[i];
     const titulo = `${i + 1}. ${a.nombreOriginal || a.nombreArchivo || 'Foto'}`;
     const descripcion = String(a.descripcion || '').trim();
-    const urls = await candidatosUrlArchivo(a.ruta, urlDescargaArchivoAllianz(a.ruta));
+    const urls = await candidatosUrlArchivoParaFetch(a.ruta, urlDescargaArchivoAllianz(a.ruta));
     let img = null;
     for (const url of urls) {
       img = await fetchImageBytes(url);

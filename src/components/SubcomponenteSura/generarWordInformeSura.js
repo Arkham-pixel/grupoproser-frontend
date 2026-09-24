@@ -43,8 +43,9 @@ import {
 } from './liquidadorSuraHelpers.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
-import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
 import { compactarFotoParaWord, FOTO_FETCH_PARALELO, mapConCurrencia } from '../../utils/fotoWordPipeline.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { lineasPieMapaInforme } from '../../utils/mapaInformeAtribucion.js';
 import { seccionesConEncabezadoUnico } from '../../utils/wordEncabezadoUnico.js';
@@ -860,29 +861,16 @@ async function fetchImageBytes(url) {
   if (url.startsWith('blob:')) {
     return bytesDesdeBlobUrl(url);
   }
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) return null;
-    const buf = await response.arrayBuffer();
-    const bytes = new Uint8Array(buf);
-    if (bytes.length < 32) return null;
-    const ct = String(response.headers.get('content-type') || '').toLowerCase();
-    // S3/proxy a menudo manda application/octet-stream: no rechazar solo por MIME
-    if (!esCabeceraImagen(bytes) && ct && !ct.startsWith('image/') && !ct.includes('octet-stream')) {
-      return null;
-    }
-    const tipo = ct.includes('png')
-      ? 'png'
-      : ct.includes('webp')
-        ? 'webp'
-        : detectarTipoImagen(bytes);
-    return bytesAJpegSiNecesario(bytes, tipo);
-  } catch {
-    return null;
-  }
+  const got = await fetchBytesImagenUrl(url);
+  if (!got?.bytes?.length) return null;
+  const bytes = got.bytes;
+  const ct = got.contentType || '';
+  const tipo = ct.includes('png')
+    ? 'png'
+    : ct.includes('webp')
+      ? 'webp'
+      : detectarTipoImagen(bytes);
+  return bytesAJpegSiNecesario(bytes, tipo);
 }
 
 /** Lee blob: vía Image+canvas (evita fetch bloqueado por CSP). */
@@ -950,7 +938,7 @@ async function resolverBytesFoto(foto, archivosCaso = []) {
   }
 
   if (ruta) {
-    const urls = await candidatosUrlArchivo(
+    const urls = await candidatosUrlArchivoParaFetch(
       ruta,
       urlDescargaArchivoSura(ruta),
       ...(getUploadsUrlCandidates(ruta) || [])

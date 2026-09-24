@@ -47,8 +47,9 @@ import {
   valorAseguradoPresupuestoZurich,
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
-import { resolverUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
 import {
@@ -714,21 +715,13 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
 }
 
 async function fetchImageBytes(url) {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') return null;
-    const buf = await blob.arrayBuffer();
-    const u8 = await jpegDesdeBytesImagen(new Uint8Array(buf));
-    const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
-    return { bytes: u8, type: isPng || blob.type.includes('png') ? 'png' : 'jpg' };
-  } catch {
-    return null;
-  }
+  if (!url || typeof url !== 'string') return null;
+  const got = await fetchBytesImagenUrl(url);
+  if (!got?.bytes?.length) return null;
+  const u8 = await jpegDesdeBytesImagen(got.bytes);
+  const ct = got.contentType || '';
+  const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+  return { bytes: u8, type: isPng || ct.includes('png') ? 'png' : 'jpg' };
 }
 
 async function bytesDesdeFoto(foto = {}) {
@@ -751,21 +744,13 @@ async function bytesDesdeFoto(foto = {}) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = [];
-  try {
-    if (foto?.ruta) {
-      const firmada = await resolverUrlArchivo(foto.ruta);
-      if (firmada) candidatos.push(firmada);
-    }
-  } catch {
-    /* proxy abajo */
-  }
-  candidatos.push(
+  const candidatos = await candidatosUrlArchivoParaFetch(
+    foto?.ruta,
     ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : []),
     urlDescargaArchivoZurich(foto?.ruta)
   );
   const vistos = new Set();
-  for (const url of candidatos.filter(Boolean)) {
+  for (const url of candidatos) {
     if (vistos.has(url)) continue;
     vistos.add(url);
     const img = await fetchImageBytes(url);

@@ -33,7 +33,8 @@ import { calcularLiquidacionFdm } from '../SubcomponenteEquidadFdm/liquidadorEqu
 import { payloadExpressParaInforme } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 import { urlDescargaArchivoEquidadCat } from '../../services/equidadCatService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
-import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -538,21 +539,13 @@ function parrafosCapturaLiquidadorFdm(paginas = []) {
 }
 
 async function fetchImageBytes(url) {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') return null;
-    const buf = await blob.arrayBuffer();
-    const u8 = new Uint8Array(buf);
-    const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
-    return { bytes: u8, type: isPng || blob.type.includes('png') ? 'png' : 'jpg' };
-  } catch {
-    return null;
-  }
+  if (!url || typeof url !== 'string') return null;
+  const got = await fetchBytesImagenUrl(url);
+  if (!got?.bytes?.length) return null;
+  const u8 = got.bytes;
+  const ct = got.contentType || '';
+  const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+  return { bytes: u8, type: isPng || ct.includes('png') ? 'png' : 'jpg' };
 }
 
 async function bytesDesdeFoto(foto = {}, urlFn) {
@@ -574,7 +567,7 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = await candidatosUrlArchivo(
+  const candidatos = await candidatosUrlArchivoParaFetch(
     foto?.ruta,
     urlFn?.(foto?.ruta),
     ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : [])

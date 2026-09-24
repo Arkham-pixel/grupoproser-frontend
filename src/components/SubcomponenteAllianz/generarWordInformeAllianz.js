@@ -51,7 +51,8 @@ import {
 } from './liquidadorAllianzHelpers.js';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
-import { candidatosUrlArchivo } from '../../services/storageSignedUrl.js';
+import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
+import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { filasPresupuestoParaWord } from '../SubcomponenteLiquidadorCatExpress/syncLiquidadorCatExpressAlInforme.js';
 
@@ -658,20 +659,6 @@ function esJpgBytes(u8) {
   return Boolean(u8 && u8.length > 3 && u8[0] === 0xff && u8[1] === 0xd8);
 }
 
-function headersFetchImagen(url) {
-  try {
-    const origen = typeof window !== 'undefined' ? window.location.origin : '';
-    const u = new URL(url, origen || 'http://localhost');
-    const esApi = u.pathname.includes('/api/') || (origen && u.origin === origen);
-    if (!esApi) return {};
-  } catch {
-    /* url relativa */
-  }
-  if (typeof localStorage === 'undefined') return {};
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 async function jpegCompactoParaWord(bytes) {
   if (!bytes || !bytes.length) return null;
   return new Promise((resolve) => {
@@ -760,16 +747,10 @@ async function bytesDesdeFotoParaInforme(foto = {}, urlFn) {
 }
 
 async function fetchImageBytes(url) {
-  try {
-    const response = await fetch(url, { headers: headersFetchImagen(url) });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') return null;
-    const buf = await blob.arrayBuffer();
-    return normalizarBytesImagenWord(new Uint8Array(buf));
-  } catch {
-    return null;
-  }
+  if (!url || typeof url !== 'string') return null;
+  const got = await fetchBytesImagenUrl(url);
+  if (!got?.bytes?.length) return null;
+  return normalizarBytesImagenWord(got.bytes);
 }
 
 async function bytesDesdeFoto(foto = {}, urlFn) {
@@ -788,7 +769,7 @@ async function bytesDesdeFoto(foto = {}, urlFn) {
   } catch {
     /* continuar con ruta */
   }
-  const candidatos = await candidatosUrlArchivo(
+  const candidatos = await candidatosUrlArchivoParaFetch(
     foto?.ruta,
     urlFn?.(foto?.ruta),
     ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : [])

@@ -138,7 +138,7 @@ export async function resolverUrlImagen(imagenORef) {
 
 /**
  * Lista de URLs a probar (firmada primero, luego proxies).
- * Útil en Word / Excel / desprendibles.
+ * Mejor para <img src> / navegación; para fetch() del Word usar candidatosUrlArchivoParaFetch.
  */
 export async function candidatosUrlArchivo(ruta, ...fallbacks) {
   const out = [];
@@ -153,6 +153,27 @@ export async function candidatosUrlArchivo(ruta, ...fallbacks) {
   }
   for (const f of fallbacks) {
     if (f) out.push(f);
+  }
+  return [...new Set(out.filter(Boolean))];
+}
+
+/**
+ * Para fetch() en el navegador (Word/Excel): proxy con JWT primero.
+ * La URL firmada de S3 al final — si se pide con Authorization provoca CORS preflight.
+ */
+export async function candidatosUrlArchivoParaFetch(ruta, ...fallbacks) {
+  const out = [];
+  for (const f of fallbacks) {
+    if (f) out.push(f);
+  }
+  const raw = String(ruta || '').trim();
+  if (raw) {
+    try {
+      const firmada = await resolverUrlArchivo(raw);
+      if (firmada) out.push(firmada);
+    } catch {
+      /* ignore */
+    }
   }
   return [...new Set(out.filter(Boolean))];
 }
