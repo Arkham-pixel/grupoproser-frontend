@@ -307,8 +307,9 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     try {
       const data = await flushOutboundControlSeguimientoAlfa({
         maxRounds: 10,
-        forceResync: false,
-        onlyWithMoney: false,
+        forceResync: true,
+        onlyWithMoney: true,
+        enqueueLimit: 150,
       });
       const left =
         data.outboundPending ??
@@ -526,7 +527,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
                 className={outboundPending > 0 ? expressBtnPrimary : expressBtnGhost}
                 disabled={checking || flushing}
                 onClick={handleFlushOutbound}
-                title="Envía a Excel solo lo tipificado en ARNALD (cola pendiente). No reescribe casos ajenos."
+                title="Alinea Excel con ARNALD: tipificaciones pendientes + diferencias reales en columnas amarillas. Excel→ARNALD va con Revisar/Actualizar."
               >
                 {flushing
                   ? 'Enviando a Excel…'
