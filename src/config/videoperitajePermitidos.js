@@ -1,9 +1,7 @@
 /**
- * Módulo de videoperitaje: acceso abierto + admin (vaciar / cupo).
- * Historial compartido entre todos los usuarios con acceso.
+ * Módulo de videoperitaje: abierto a todos los usuarios autenticados.
+ * Admin (vaciar / cupo): VITE_LOGINS_VIDEOPERITAJE_ADMIN o rol admin.
  * Debe coincidir con backend/config/videoperitajePermitidos.js
- *
- * VITE_LOGINS_VIDEOPERITAJE=* | all | open → todos
  */
 
 function parseLogins(raw) {
@@ -13,26 +11,19 @@ function parseLogins(raw) {
     .filter(Boolean);
 }
 
-const rawAllow = import.meta.env.VITE_LOGINS_VIDEOPERITAJE;
-export const LOGINS_VIDEOPERITAJE = parseLogins(
-  rawAllow == null || String(rawAllow).trim() === '' ? '*' : rawAllow
-);
+/** Acceso al módulo: siempre abierto (no depende del build/env de Coolify). */
+export const LOGINS_VIDEOPERITAJE = ['*'];
 
 export const LOGINS_VIDEOPERITAJE_ADMIN = parseLogins(
   import.meta.env.VITE_LOGINS_VIDEOPERITAJE_ADMIN || '1065012991'
 );
 
 export function accesoVideoperitajeAbierto() {
-  if (LOGINS_VIDEOPERITAJE.length === 0) return true;
-  return LOGINS_VIDEOPERITAJE.some((id) =>
-    ['*', 'all', 'open', 'todos'].includes(String(id).toLowerCase())
-  );
+  return true;
 }
 
-export function usuarioPuedeVideoperitaje(login, cedula) {
-  if (accesoVideoperitajeAbierto()) return true;
-  const ids = [login, cedula].map((v) => String(v || '').trim()).filter(Boolean);
-  return ids.some((id) => LOGINS_VIDEOPERITAJE.includes(id));
+export function usuarioPuedeVideoperitaje(_login, _cedula) {
+  return true;
 }
 
 export function usuarioEsAdminVideoperitaje(login, cedula, rol) {
@@ -43,10 +34,8 @@ export function usuarioEsAdminVideoperitaje(login, cedula, rol) {
 }
 
 export function sesionPuedeVideoperitaje() {
-  return usuarioPuedeVideoperitaje(
-    localStorage.getItem('login'),
-    localStorage.getItem('cedula')
-  );
+  // Cualquier sesión autenticada ve el módulo (Layout ya exige login).
+  return true;
 }
 
 export function sesionEsAdminVideoperitaje() {
