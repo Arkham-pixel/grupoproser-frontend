@@ -359,6 +359,7 @@ export const guardarLiquidadorEnCasoPrevisora = async ({
   delete payload.createdAt;
   delete payload.updatedAt;
   delete payload.archivos;
+  delete payload.nsrOmitido;
 
   return actualizarCasoPrevisora(casoId, payload);
 };
@@ -382,6 +383,7 @@ export const guardarInformeUnicoEnCasoPrevisora = async ({
   delete payload.updatedAt;
   delete payload.archivos;
   delete payload.liquidador;
+  delete payload.nsrOmitido;
 
   return actualizarCasoPrevisora(casoId, payload);
 };

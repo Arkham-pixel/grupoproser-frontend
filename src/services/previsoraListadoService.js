@@ -157,6 +157,7 @@ const omitirMeta = (casoBase = {}) => {
   delete payload.nArchivos;
   delete payload.diasEnEstado;
   delete payload.ultimaGestion;
+  delete payload.nsrOmitido;
   return payload;
 };
 

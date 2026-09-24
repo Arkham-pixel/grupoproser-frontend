@@ -183,9 +183,12 @@ export default function usePrevisoraCasoAutosave({
       informeState?.tipoInforme,
       'unico'
     );
+    const esStubNsr =
+      !liquidadorState?.evaluacionSismicaNSR10 &&
+      Boolean(liquidadorState?.nsrOmitido || casoRef.current?.nsrOmitido);
     const liquidadorUsable =
       liquidadorState &&
-      !liquidadorState.nsrOmitido &&
+      !esStubNsr &&
       !(tabActivo === TAB_INFORME && tipoInforme === 'preliminar');
 
     if (liquidadorUsable) {

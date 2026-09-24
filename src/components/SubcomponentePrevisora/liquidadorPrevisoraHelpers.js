@@ -38,8 +38,9 @@ export function sanitizarInformeUnicoPrevisora(informe = {}) {
 /** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
 export function sanitizarLiquidadorPrevisora(liquidador = {}) {
   if (!liquidador || typeof liquidador !== 'object') return liquidador;
+  const { nsrOmitido: _omitido, ...rest } = liquidador;
   return {
-    ...liquidador,
+    ...rest,
     cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
   };
 }

@@ -27,7 +27,8 @@ import {
   itemsPlanosPrevisora,
   mapcasoPrevisoraALiquidador,
 } from './liquidadorPrevisoraHelpers.js';
-import { contarItemsPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { contarItemsPresupuestoNsr, scoreContenidoLiquidadorNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { esStubLiquidadorNsr } from './previsoraHelpers.js';
 import { descargarFiniquitoPrevisoraWord } from './generarFiniquitoPrevisoraWord.js';
 import { descargarLiquidadorPrevisoraExcel } from './generarLiquidadorPrevisoraExcel.js';
 import { descargarLiquidadorPrevisoraPdf } from './generarLiquidadorPrevisoraPdf.js';
@@ -70,13 +71,20 @@ export default function LiquidadorPrevisora({
   const [exportando, setExportando] = useState('');
 
   useEffect(() => {
-    setLiquidador(liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {}));
+    if (liquidadorInicial) {
+      setLiquidador(liquidadorInicial);
+      return;
+    }
+    setLiquidador(mapcasoPrevisoraALiquidador(casoPrevisora || {}));
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
-    if (!liquidadorInicial?.evaluacionSismicaNSR10 || liquidadorInicial.nsrOmitido) return;
+    if (!liquidadorInicial?.evaluacionSismicaNSR10) return;
     setLiquidador((prev) => {
-      if (contarItemsPresupuestoNsr(prev) >= contarItemsPresupuestoNsr(liquidadorInicial)) {
+      if (!prev || esStubLiquidadorNsr(prev) || scoreContenidoLiquidadorNsr(prev) === 0) {
+        return liquidadorInicial;
+      }
+      if (scoreContenidoLiquidadorNsr(prev) >= scoreContenidoLiquidadorNsr(liquidadorInicial)) {
         return prev;
       }
       return liquidadorInicial;

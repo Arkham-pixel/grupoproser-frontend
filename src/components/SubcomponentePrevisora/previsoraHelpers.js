@@ -782,15 +782,33 @@ export function scoreInformeLlenoPrevisora(informe) {
 }
 
 /** Conserva el NSR-10 local si el GET/PUT vino recortado (nsrOmitido). */
+export function casoPrevisoraNsrOmitido(caso = {}) {
+  return Boolean(caso?.nsrOmitido || caso?.liquidador?.nsrOmitido);
+}
+
+/** Cascarón recortado: no tiene el blob NSR y no debe persistirse. */
+export function esStubLiquidadorNsr(liq) {
+  if (!liq || typeof liq !== 'object') return false;
+  if (liq.evaluacionSismicaNSR10) return false;
+  return Boolean(liq.nsrOmitido);
+}
+
 export function fusionarCasoPrevisoraConservandoNsr(prev, incoming) {
   if (!incoming) return prev;
-  if (!incoming?.liquidador?.nsrOmitido) return incoming;
   const nsrLocal = prev?.liquidador?.evaluacionSismicaNSR10;
+  if (!casoPrevisoraNsrOmitido(incoming)) {
+    const liq = incoming.liquidador && typeof incoming.liquidador === 'object'
+      ? { ...incoming.liquidador }
+      : incoming.liquidador;
+    if (liq && typeof liq === 'object') delete liq.nsrOmitido;
+    return { ...incoming, nsrOmitido: false, liquidador: liq };
+  }
   if (!nsrLocal) return incoming;
   return {
     ...incoming,
+    nsrOmitido: false,
     liquidador: {
-      ...incoming.liquidador,
+      ...(incoming.liquidador || {}),
       evaluacionSismicaNSR10: nsrLocal,
       nsrOmitido: false,
     },

@@ -263,10 +263,10 @@ export default function InformeUnicoPrevisora({
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
-    if (!liquidadorInicial?.evaluacionSismicaNSR10 || liquidadorInicial.nsrOmitido) return;
+    if (!liquidadorInicial?.evaluacionSismicaNSR10) return;
     setLiquidador((prev) => {
-      if (prev?.evaluacionSismicaNSR10 && !prev.nsrOmitido) return prev;
-      return liquidadorInicial;
+      if (!prev || prev.nsrOmitido || !prev.evaluacionSismicaNSR10) return liquidadorInicial;
+      return prev;
     });
   }, [liquidadorInicial]);
 

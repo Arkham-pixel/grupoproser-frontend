@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
@@ -25,7 +25,12 @@ import {
   guardarLiquidadorEnCasoPrevisoraListado,
 } from '../../services/previsoraListadoService.js';
 import { calcularLiquidacionPrevisora, normalizarTipoInformePrevisora } from './liquidadorPrevisoraHelpers.js';
-import { fusionarCasoPrevisoraConservandoNsr } from './previsoraHelpers.js';
+import {
+  casoPrevisoraNsrOmitido,
+  esStubLiquidadorNsr,
+  fusionarCasoPrevisoraConservandoNsr,
+} from './previsoraHelpers.js';
+import { scoreContenidoLiquidadorNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
@@ -156,8 +161,10 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
   const [restoreNonce, setRestoreNonce] = useState(0);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
+  const [cargandoNsr, setCargandoNsr] = useState(false);
 
   const casoId = casoPrevisora?._id || casoIdFromQuery || null;
+  const nsrFetchKeyRef = useRef('');
 
   useEffect(() => {
     if (casoId) guardarCasoIdSesion(esModuloListado, casoId);
@@ -167,6 +174,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     setLiquidadorState(null);
     setInformeState(null);
     setTotalesState(null);
+    nsrFetchKeyRef.current = '';
   }, [casoIdFromQuery]);
 
   useEffect(() => {
@@ -206,8 +214,13 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
 
   useEffect(() => {
     if (!casoIdFromQuery || cargandoCaso || !necesitaNsrCompleto) return undefined;
-    if (!casoPrevisora?.liquidador?.nsrOmitido) return undefined;
+    if (!casoPrevisoraNsrOmitido(casoPrevisora)) return undefined;
+    if (liquidadorState?.evaluacionSismicaNSR10) return undefined;
+    const fetchKey = `${casoIdFromQuery}:nsr`;
+    if (nsrFetchKeyRef.current === fetchKey) return undefined;
+    nsrFetchKeyRef.current = fetchKey;
     let cancelado = false;
+    setCargandoNsr(true);
     (async () => {
       try {
         const full = esModuloListado
@@ -215,9 +228,27 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
           : await getCasoPrevisoraById(casoIdFromQuery, { nsr: true });
         if (cancelado || !full) return;
         setCasoPrevisora((prev) => fusionarCasoPrevisoraConservandoNsr(prev, full) || full);
-        if (full.liquidador) setLiquidadorState(full.liquidador);
+        if (full.liquidador) {
+          setLiquidadorState((prev) => {
+            const incoming = full.liquidador;
+            if (!prev || esStubLiquidadorNsr(prev) || !prev.evaluacionSismicaNSR10) {
+              return {
+                ...incoming,
+                encabezado: { ...(incoming.encabezado || {}), ...(prev?.encabezado || {}) },
+                observaciones: prev?.observaciones || incoming.observaciones,
+                cotizacionPdf: prev?.cotizacionPdf || incoming.cotizacionPdf,
+              };
+            }
+            if (scoreContenidoLiquidadorNsr(prev) > scoreContenidoLiquidadorNsr(incoming)) {
+              return prev;
+            }
+            return incoming;
+          });
+        }
       } catch {
-        /* el informe preliminar ya se puede usar sin el blob NSR-10 */
+        nsrFetchKeyRef.current = `${fetchKey}:fail`;
+      } finally {
+        if (!cancelado) setCargandoNsr(false);
       }
     })();
     return () => {
@@ -227,7 +258,9 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     casoIdFromQuery,
     cargandoCaso,
     necesitaNsrCompleto,
+    casoPrevisora?.nsrOmitido,
     casoPrevisora?.liquidador?.nsrOmitido,
+    liquidadorState?.evaluacionSismicaNSR10,
     esModuloListado,
   ]);
 
@@ -305,8 +338,12 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     }
     const liquidador = liqArg || liquidadorState;
     const totales = totArg || totalesState || calcularLiquidacionPrevisora(liquidador || {});
-    if (!liquidador || liquidador.nsrOmitido) {
+    if (!liquidador) {
       setError(t('previsora.settlement.noData'));
+      return;
+    }
+    if (cargandoNsr) {
+      setError(t('previsora.workspace.loading'));
       return;
     }
     setGuardando(true);
@@ -501,9 +538,10 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
                 className={expressBtnPrimary}
                 disabled={
                   guardando ||
+                  cargandoNsr ||
                   (tabActivo === TABS_PREVISORA.INFORME
                     ? !informeState
-                    : !liquidadorState || liquidadorState?.nsrOmitido)
+                    : !liquidadorState || esStubLiquidadorNsr(liquidadorState))
                 }
                 onClick={handleGuardarActual}
               >
@@ -599,6 +637,8 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
           <div className={expressCardBody}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('previsora.workspace.loading')}</p>
+            ) : tabActivo === TABS_PREVISORA.LIQUIDADOR && cargandoNsr ? (
+              <p className="text-sm text-gray-500">Cargando liquidador NSR-10…</p>
             ) : (
               <Suspense fallback={<p className="text-sm text-gray-500">{t('previsora.workspace.loading')}</p>}>
                 {!esModuloListado && tabActivo === TABS_PREVISORA.CAT ? (
@@ -629,7 +669,10 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
                     casoPrevisora={casoPrevisora}
                     liquidadorInicial={liquidadorState}
                     onEstadoChange={(liq, tot) => {
-                      setLiquidadorState(liq);
+                      const limpio =
+                        liq && typeof liq === 'object' ? { ...liq, nsrOmitido: undefined } : liq;
+                      if (limpio && 'nsrOmitido' in limpio) delete limpio.nsrOmitido;
+                      setLiquidadorState(limpio);
                       setTotalesState(tot);
                       if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
                         setInformeState((prev) => {
