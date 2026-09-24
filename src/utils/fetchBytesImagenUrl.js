@@ -46,6 +46,7 @@ export async function fetchBytesImagenUrl(url) {
       headers,
       mode: 'cors',
       credentials: firmadaS3 ? 'omit' : 'same-origin',
+      signal: AbortSignal.timeout(firmadaS3 ? 15_000 : 8_000),
     });
     if (!response.ok) return null;
     const buf = await response.arrayBuffer();
