@@ -65,6 +65,8 @@ export default function ControlHorasEditor({
     nombreCliente: formData.nombreCliente,
     fchaAsgncion: formData.fchaAsgncion,
     reserva: formData.reserva,
+    formData,
+    caso: formData,
   };
 
   useEffect(() => {
@@ -110,7 +112,9 @@ export default function ControlHorasEditor({
     tarifaBloqueada || (datos.valor_hora_origen === 'tarifa' && !edicionManualValorHora);
   const tarifaCatalogo = resolverTarifaHora(argsTarifa);
   const esTarifaPrevisora = tarifaCatalogo.tarifaId === 'PREVISORA';
+  const esTarifaSura = tarifaCatalogo.tarifaId === 'SURA';
   const topeHorasPrevisora = esTarifaPrevisora ? Number(tarifaCatalogo.maxHoras) || 12.5 : null;
+  const topeHonorariosSura = esTarifaSura ? Number(tarifaCatalogo.maxHonorarios) || null : null;
   const puedeRestaurarTarifa = tarifaCatalogo.origen === 'tarifa';
 
   const actualizarCampo = (campo, valor) => {
@@ -128,6 +132,7 @@ export default function ControlHorasEditor({
 
   const actualizarFila = (id, campo, valor) => {
     let excedeTope = false;
+    let motivoTope = '';
     setDatos((prev) => {
       const filas = prev.filas.map((f) => {
         if (f.id !== id) return f;
@@ -140,27 +145,45 @@ export default function ControlHorasEditor({
         return { ...f, [campo]: siguiente };
       });
       const next = { ...prev, filas };
-      if (
-        String(campo).startsWith('horas_') &&
-        topeHorasPrevisora &&
-        !prev.horas_extra_autorizadas
-      ) {
-        const nuevoTotal = calcularTotalesControlHoras(next).total_horas;
-        if (nuevoTotal > topeHorasPrevisora + 0.001) {
+      if (String(campo).startsWith('horas_')) {
+        const calc = calcularTotalesControlHoras(next);
+        if (
+          topeHorasPrevisora &&
+          !prev.horas_extra_autorizadas &&
+          calc.total_horas > topeHorasPrevisora + 0.001
+        ) {
           excedeTope = true;
+          motivoTope = 'previsora';
+          return prev;
+        }
+        if (topeHonorariosSura && calc.subtotal_honorarios > topeHonorariosSura + 0.5) {
+          excedeTope = true;
+          motivoTope = 'sura';
           return prev;
         }
       }
       return next;
     });
     if (excedeTope) {
-      mostrarAviso(
-        t('complex.ui.control_horas_editor.tope_horas_previsora', {
-          max: topeHorasPrevisora,
-        }),
-        t('complex.ui.control_horas_editor.tarifa_previsora'),
-        'warning'
-      );
+      if (motivoTope === 'sura') {
+        mostrarAviso(
+          `El tope SURA para este tipo de gestión es ${new Intl.NumberFormat('es-CO', {
+            style: 'currency',
+            currency: 'COP',
+            maximumFractionDigits: 0,
+          }).format(topeHonorariosSura)}. Ajuste las horas o el tipo de liquidador.`,
+          'Tope honorarios SURA',
+          'warning'
+        );
+      } else {
+        mostrarAviso(
+          t('complex.ui.control_horas_editor.tope_horas_previsora', {
+            max: topeHorasPrevisora,
+          }),
+          t('complex.ui.control_horas_editor.tarifa_previsora'),
+          'warning'
+        );
+      }
     }
   };
 
@@ -295,6 +318,19 @@ export default function ControlHorasEditor({
           max: topeHorasPrevisora,
         }),
         t('complex.ui.control_horas_editor.tarifa_previsora'),
+        'warning'
+      );
+      return false;
+    }
+
+    if (topeHonorariosSura && totales.subtotal_honorarios > topeHonorariosSura + 0.5) {
+      mostrarAviso(
+        `El tope SURA para este tipo de gestión es ${new Intl.NumberFormat('es-CO', {
+          style: 'currency',
+          currency: 'COP',
+          maximumFractionDigits: 0,
+        }).format(topeHonorariosSura)}. Baje horas o gastos de honorarios antes de guardar.`,
+        'Tope honorarios SURA',
         'warning'
       );
       return false;
@@ -468,6 +504,14 @@ export default function ControlHorasEditor({
                 <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">
                   {formatearMoneda(totales?.total)}
                 </p>
+                {esTarifaSura && topeHonorariosSura ? (
+                  <p className="mt-0.5 font-body text-xs text-gray-500">
+                    Tope SURA {formatearMoneda(topeHonorariosSura)}
+                    {tarifaCatalogo.honorariosSugeridos
+                      ? ` · sugerido ${formatearMoneda(tarifaCatalogo.honorariosSugeridos)}`
+                      : ''}
+                  </p>
+                ) : null}
               </div>
             </div>
             <p className="mt-2 font-body text-sm text-gray-500">{t("complex.ui.control_horas_editor.subtotal_honorarios")}{formatearMoneda(totales?.subtotal_honorarios)}

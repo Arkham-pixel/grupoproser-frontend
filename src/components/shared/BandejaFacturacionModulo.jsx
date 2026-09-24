@@ -62,7 +62,8 @@ const CONFIG_MODULO = {
     tituloKey: 'nav.suraBillingTray',
     puedeVer: puedeVerFacturacionSura,
     tieneOrigen: false,
-    abrirCaso: (fila) => `/sura/caso?casoId=${fila.casoId}`,
+    abrirCaso: (fila) =>
+      `/sura/editar?casoId=${fila.casoId}&tab=facturacion&abrirControlHoras=1`,
     links: [{ to: '/sura/reporte', labelKey: 'nav.suraReport' }],
   },
 };
@@ -117,7 +118,9 @@ export default function BandejaFacturacionModulo({ modulo }) {
 
   const abrirCaso = (fila) => {
     if (!fila?.casoId || !cfg) return;
-    navigate(cfg.abrirCaso(fila), { state: { returnPath: cfg.ruta } });
+    navigate(cfg.abrirCaso(fila), {
+      state: { returnPath: cfg.ruta, tab: 'facturacion', abrirControlHoras: true },
+    });
   };
 
   const payloadEnvio = (fila) => ({
@@ -182,7 +185,7 @@ export default function BandejaFacturacionModulo({ modulo }) {
     return <Navigate to="/inicio" replace />;
   }
 
-  const colSpan = (cfg.tieneOrigen ? 11 : 10) + (puedeAdministrar ? 1 : 0);
+  const colSpan = (cfg.tieneOrigen ? 12 : 11) + (puedeAdministrar ? 1 : 0);
 
   return (
     <div className={`${expressScope} p-4 sm:p-6`}>
@@ -280,6 +283,9 @@ export default function BandejaFacturacionModulo({ modulo }) {
                 plural: items.length === 1 ? '' : 's',
               })}
         </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {t('complex.ui.bandeja_facturacion.hint_control_hecho')}
+        </p>
       </div>
 
       {error && (
@@ -301,6 +307,7 @@ export default function BandejaFacturacionModulo({ modulo }) {
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.asegurado')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.responsable')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.tipo_envio')}</th>
+                <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.control')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.jefe_destino')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.correo')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.fecha_envio')}</th>
@@ -335,9 +342,25 @@ export default function BandejaFacturacionModulo({ modulo }) {
                   <td className="px-3 py-3 text-sm">{fila.nombreResponsable || '—'}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-sm">
                     {labelTipoEnvio(fila.tipoEnvio, t)}
+                    {fila.pendienteNotificar ? (
+                      <span className="mt-0.5 block text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                        {t('complex.ui.bandeja_facturacion.sin_notificar')}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-sm">
+                    {fila.tieneControlHoras ? (
+                      <span className="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        {t('complex.ui.bandeja_facturacion.control_hecho')}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-sm">
-                    {fila.nombreGerente || nombreGerente(fila.gerente)}
+                    {fila.pendienteNotificar
+                      ? t('complex.ui.bandeja_facturacion.sin_notificar')
+                      : fila.nombreGerente || nombreGerente(fila.gerente)}
                   </td>
                   <td className="break-all px-3 py-3 text-xs">{fila.emailDestinatario || '—'}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-sm">
@@ -355,27 +378,31 @@ export default function BandejaFacturacionModulo({ modulo }) {
                   </td>
                   {puedeAdministrar && (
                     <td className="whitespace-nowrap px-3 py-3 text-center">
-                      <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          className={`${expressBtnSecondary} !px-2 !py-1 text-xs`}
-                          disabled={guardandoAdmin}
-                          onClick={() => {
-                            setFilaEditando(fila);
-                            setNuevoGerenteCorreccion(fila.gerente || 'elkin');
-                          }}
-                        >
-                          <FaEdit className="inline" /> {t('complex.ui.bandeja_facturacion.jefe')}
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
-                          disabled={guardandoAdmin}
-                          onClick={() => quitarEnvio(fila)}
-                        >
-                          <FaTrash className="inline" />
-                        </button>
-                      </div>
+                      {fila.pendienteNotificar ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : (
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            className={`${expressBtnSecondary} !px-2 !py-1 text-xs`}
+                            disabled={guardandoAdmin}
+                            onClick={() => {
+                              setFilaEditando(fila);
+                              setNuevoGerenteCorreccion(fila.gerente || 'elkin');
+                            }}
+                          >
+                            <FaEdit className="inline" /> {t('complex.ui.bandeja_facturacion.jefe')}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                            disabled={guardandoAdmin}
+                            onClick={() => quitarEnvio(fila)}
+                          >
+                            <FaTrash className="inline" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   )}
                 </tr>

@@ -85,7 +85,16 @@ function mapearOpcionFuncionarioAseguradora(f) {
   };
 }
 
-export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false, variant = 'complex' }) {
+export default function FormularioCasoComplex({
+  initialData,
+  onSave,
+  onAutoSave,
+  onCancel,
+  camposFijos = false,
+  autoGuardadoActivo = false,
+  variant = 'complex',
+  initialTab = null,
+}) {
   const { t } = useTranslation();
   const esSura = variant === 'sura';
   const loginActual = String(localStorage.getItem('login') || '').trim();
@@ -98,7 +107,31 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
-  const [tabActiva, setTabActiva] = useState('datosGenerales');
+  const tabDesdeQuery = (() => {
+    try {
+      return new URLSearchParams(location.search || '').get('tab') || '';
+    } catch {
+      return '';
+    }
+  })();
+  const abrirControlHorasDesdeUrl = (() => {
+    try {
+      const qs = new URLSearchParams(location.search || '');
+      const flag = qs.get('abrirControlHoras') || qs.get('controlHoras');
+      if (flag === '1' || flag === 'true' || flag === 'si') return true;
+      const tab = String(qs.get('tab') || location.state?.tab || '').toLowerCase();
+      return tab === 'control_horas' || tab === 'controlhoras' || location.state?.abrirControlHoras === true;
+    } catch {
+      return Boolean(location.state?.abrirControlHoras);
+    }
+  })();
+  const tabCruda = initialTab || tabDesdeQuery || location.state?.tab || 'datosGenerales';
+  const tabInicial =
+    String(tabCruda).toLowerCase() === 'control_horas' ||
+    String(tabCruda).toLowerCase() === 'controlhoras'
+      ? 'facturacion'
+      : tabCruda;
+  const [tabActiva, setTabActiva] = useState(tabInicial);
   const [moviendoASura, setMoviendoASura] = useState(false);
 
   const FORM_TABS = useMemo(
@@ -1570,8 +1603,15 @@ const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/gerenc
       if (!casoId || !controlHorasTieneDatos(controlHoras)) return false;
 
       try {
+        const usuario =
+          localStorage.getItem('login') || localStorage.getItem('usuario') || 'unknown';
+        const controlConMeta = {
+          ...controlHoras,
+          actualizado_en: new Date().toISOString(),
+          actualizado_por: usuario,
+        };
         const payload = {
-          control_horas: controlHoras,
+          control_horas: controlConMeta,
           fecha_control_horas:
             formData.fecha_control_horas ||
             formData.fcha_control_horas ||
@@ -1588,8 +1628,15 @@ const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/gerenc
         const respuesta = await actualizarCasoPorServicio(casoId, payload);
         datosInicialesAutoSaveRef.current = {
           ...(datosInicialesAutoSaveRef.current || {}),
-          control_horas: respuesta?.control_horas || controlHoras,
+          control_horas: respuesta?.control_horas || controlConMeta,
         };
+        if (setFormData) {
+          setFormData((prev) => ({
+            ...prev,
+            control_horas: respuesta?.control_horas || controlConMeta,
+            fecha_control_horas: payload.fecha_control_horas,
+          }));
+        }
         return true;
       } catch (error) {
         console.error('❌ Error persistiendo control de horas:', error);
@@ -1603,6 +1650,7 @@ const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/gerenc
       initialData?._id,
       id,
       actualizarCasoPorServicio,
+      setFormData,
     ]
   );
 
@@ -3061,6 +3109,10 @@ return;
       descSinstro: pick('descSinstro', 'desc_sinstro', 'descripcion_siniestro'),
       causa_siniestro: formData.causa_siniestro,
       codiEstdo: extraerCodiEstdoParaGuardar(formData),
+      // SURA: el backend debe usar el select (estado/codiEstdo), no solo último comentario.
+      ...(esSura
+        ? { estado: extraerCodiEstdoParaGuardar(formData) || formData.estado || '' }
+        : {}),
       descripcionEstado: formData.descripcionEstado || '',
       ...(esSura ? { estadoFacilitador: formData.estadoFacilitador || '' } : {}),
       observacionesPendientes: formData.observacionesPendientes || '',
@@ -3856,6 +3908,8 @@ if (!onSave) {
             historialDocs={formData.historialDocs}
             updateHistorialDocs={updateHistorialDocs}
             tarifaBloqueada={esSura}
+            seccionInicial="controlHoras"
+            abrirEditorControlHoras={abrirControlHorasDesdeUrl}
           />
         )}
         {tabActiva === 'honorarios' && !esSura && (

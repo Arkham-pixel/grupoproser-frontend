@@ -68,6 +68,7 @@ export default function Facturacion({
   tarifaBloqueada = false,
   layout = 'acordeon',
   seccionInicial = 'controlHoras',
+  abrirEditorControlHoras = false,
 }) {
   const { t } = useTranslation();
   const [enviando, setEnviando] = useState(false);
@@ -78,7 +79,16 @@ export default function Facturacion({
     if (seccionInicial) setTabMenu(seccionInicial);
   }, [seccionInicial]);
   const [controlHorasAbierto, setControlHorasAbierto] = useState(true);
-  const [editorControlHorasAbierto, setEditorControlHorasAbierto] = useState(false);
+  const [editorControlHorasAbierto, setEditorControlHorasAbierto] = useState(
+    Boolean(abrirEditorControlHoras)
+  );
+  useEffect(() => {
+    if (abrirEditorControlHoras) {
+      setEditorControlHorasAbierto(true);
+      setControlHorasAbierto(true);
+      setTabMenu('controlHoras');
+    }
+  }, [abrirEditorControlHoras]);
   const [avisoGuardarCaso, setAvisoGuardarCaso] = useState(false);
   const [avisoCatalogoEmail, setAvisoCatalogoEmail] = useState({ open: false, mensaje: '' });
   const [exportandoExcel, setExportandoExcel] = useState(false);

@@ -1,4 +1,9 @@
 import { resolverTarifaHonorariosPrevisora } from './tarifaHonorariosPrevisora.js';
+import {
+  mensajeTarifaHonorariosSura,
+  resolverTarifaHonorariosSura,
+  VALOR_HORA_SURA,
+} from './tarifaHonorariosSura.js';
 
 /**
  * Tarifas por hora — Control de Horas Complex (cuadro oficial).
@@ -35,8 +40,9 @@ export const TARIFAS_HORA_ASEGURADORAS = [
     etiqueta: 'SURA',
     /** Nombre en clientes / Datos Generales del caso */
     razonSocial: 'SEGUROS GENERALES SURAMERICANA S.A.',
-    valorHora: 187400,
-    modo: 'auto',
+    valorHora: VALOR_HORA_SURA,
+    modo: 'sura_honorarios',
+    nota: 'Topes por tipología (preliminar+final / único / objeción / desistido) y variación por distancia.',
     aliases: [
       'SEGUROS GENERALES SURAMERICANA S.A.',
       'SEGUROS GENERALES SURAMERICANA',
@@ -220,6 +226,8 @@ export const resolverTarifaHora = ({
   nombreCliente = '',
   fchaAsgncion = '',
   reserva = '',
+  formData = null,
+  caso = null,
 } = {}) => {
   const candidatos = [nombreAseguradora, nombreCliente, codiAsgrdra]
     .map(normalizarTexto)
@@ -251,6 +259,25 @@ export const resolverTarifaHora = ({
         mensaje: prev.tieneReserva
           ? `Previsora Tarifa No. 1 — reserva ${formatearValorHora(prev.valorReserva)}: máximo ${prev.maxHoras} h (${formatearValorHora(prev.maxHonorarios)}). Hora ${formatearValorHora(prev.valorHora)} (2,05 SMDLV). Inspección única $370.000.`
           : 'Previsora Tarifa No. 1: indique la reserva del caso. Mientras tanto se aplica el rango de hasta $100.000.000 (12,5 h). Hora $119.645 (2,05 SMDLV).',
+      };
+    }
+
+    if (tarifa.modo === 'sura_honorarios') {
+      const casoSura = caso || formData || {};
+      const sura = resolverTarifaHonorariosSura(casoSura);
+      return {
+        valorHora: sura.valorHora,
+        origen: 'tarifa',
+        tarifaId: tarifa.id,
+        maxHoras: sura.maxHoras,
+        maxHonorarios: sura.maxHonorarios,
+        honorariosSugeridos: sura.honorariosSugeridos,
+        horasSugeridas: sura.horasSugeridas,
+        tipoHonorariosSura: sura.tipo,
+        tipoLiquidadorSura: sura.tipoLiquidador,
+        distanciaKm: sura.distanciaKm,
+        franjaDistancia: sura.franjaLabel,
+        mensaje: mensajeTarifaHonorariosSura(sura),
       };
     }
 

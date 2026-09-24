@@ -1,4 +1,5 @@
 import { resolverTarifaHora } from './tarifasHoraAseguradoras';
+import { escalarHorasPlantillaHaciaObjetivo } from './tarifaHonorariosSura.js';
 import {
   TIPO_ITEM_EXTRA,
   TIPO_ITEM_FIJO,
@@ -271,6 +272,8 @@ export const crearControlHorasInicial = (formData, nombreAseguradora, existente)
     nombreCliente: formData.nombreCliente,
     fchaAsgncion: formData.fchaAsgncion,
     reserva: formData.reserva,
+    formData,
+    caso: formData,
   });
 
   if (existente && typeof existente === 'object' && Array.isArray(existente.filas)) {
@@ -311,14 +314,23 @@ export const crearControlHorasInicial = (formData, nombreAseguradora, existente)
     };
   }
 
-  const tipo = TIPO_LIQUIDADOR_DEFAULT;
+  const tipo =
+    tarifa.tarifaId === 'SURA' && tarifa.tipoLiquidadorSura
+      ? normalizarTipoLiquidadorControlHoras(tarifa.tipoLiquidadorSura)
+      : TIPO_LIQUIDADOR_DEFAULT;
+
+  let filas = crearFilasPlantillaControlHoras(tipo, formData);
+  if (tarifa.tarifaId === 'SURA' && Number(tarifa.horasSugeridas) > 0) {
+    filas = escalarHorasPlantillaHaciaObjetivo(filas, tarifa.horasSugeridas);
+  }
+
   return {
     valor_hora: tarifa.valorHora ?? '',
     valor_hora_origen: tarifa.origen,
     gastos: formData.valor_gastos ?? '',
     tipo_liquidador: tipo,
     horas_extra_autorizadas: false,
-    filas: crearFilasPlantillaControlHoras(tipo, formData),
+    filas,
     _mensajeTarifa: tarifa.mensaje,
   };
 };

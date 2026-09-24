@@ -116,11 +116,23 @@ export default function FormularioCasoSura({
 export function FormularioCasoSuraPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [casoDesdeUrl, setCasoDesdeUrl] = React.useState(null);
+  const [cargandoCasoUrl, setCargandoCasoUrl] = React.useState(false);
+  const [errorCasoUrl, setErrorCasoUrl] = React.useState('');
 
-  const initialData =
+  const searchParams = React.useMemo(
+    () => new URLSearchParams(location.search || ''),
+    [location.search]
+  );
+  const casoIdQuery = searchParams.get('casoId') || searchParams.get('id') || '';
+  const tabQuery = searchParams.get('tab') || location.state?.tab || '';
+
+  const initialDataFromState =
     location.state?.initialData && location.state.initialData._id
       ? location.state.initialData
       : null;
+
+  const initialData = casoDesdeUrl || initialDataFromState;
 
   React.useEffect(() => {
     if (location.pathname !== '/sura/carga') return;
@@ -135,10 +147,78 @@ export function FormularioCasoSuraPage() {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-    if (location.state && !initialData) {
+    if (location.state && !initialDataFromState && !casoIdQuery) {
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.pathname, location.state, navigate, initialData]);
+  }, [location.pathname, location.state, navigate, initialDataFromState, casoIdQuery]);
 
-  return <FormularioCasoSura initialData={initialData} />;
+  React.useEffect(() => {
+    let cancelado = false;
+    if (!casoIdQuery) {
+      setCasoDesdeUrl(null);
+      setErrorCasoUrl('');
+      return undefined;
+    }
+    if (initialDataFromState && String(initialDataFromState._id) === String(casoIdQuery)) {
+      setCasoDesdeUrl(initialDataFromState);
+      return undefined;
+    }
+    setCargandoCasoUrl(true);
+    setErrorCasoUrl('');
+    (async () => {
+      try {
+        const { getCasoSuraById } = await import('../../services/segurosSuraService.js');
+        const caso = await getCasoSuraById(casoIdQuery);
+        if (!cancelado) setCasoDesdeUrl(caso);
+      } catch (error) {
+        if (!cancelado) {
+          setCasoDesdeUrl(null);
+          setErrorCasoUrl(error.message || 'No se pudo cargar el caso SURA.');
+        }
+      } finally {
+        if (!cancelado) setCargandoCasoUrl(false);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [casoIdQuery, initialDataFromState]);
+
+  if (casoIdQuery && cargandoCasoUrl && !initialData) {
+    return (
+      <p className="p-6 font-body text-sm text-gray-600 dark:text-gray-300">
+        Cargando caso…
+      </p>
+    );
+  }
+
+  if (casoIdQuery && errorCasoUrl && !initialData) {
+    return (
+      <div className="space-y-3 p-6">
+        <p className="font-body text-sm text-red-700 dark:text-red-300">{errorCasoUrl}</p>
+        <button
+          type="button"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          onClick={() => navigate('/sura/bandeja-facturacion')}
+        >
+          Volver a bandeja
+        </button>
+      </div>
+    );
+  }
+
+  const volverTrasGuardar =
+    location.state?.returnPath ||
+    (casoIdQuery ? '/sura/bandeja-facturacion' : '/sura/reporte');
+
+  return (
+    <FormularioCasoSura
+      initialData={initialData}
+      initialTab={tabQuery || undefined}
+      onCancel={() => navigate(volverTrasGuardar)}
+      onSaved={async () => {
+        navigate(volverTrasGuardar, { replace: true });
+      }}
+    />
+  );
 }
