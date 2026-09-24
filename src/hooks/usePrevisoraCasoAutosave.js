@@ -11,6 +11,13 @@ import { normalizarTipoInformePrevisora } from '../components/SubcomponentePrevi
 
 const TAB_INFORME = 'informe';
 
+function firmaFilasNsr(items, keys) {
+  if (!Array.isArray(items) || !items.length) return '';
+  return items
+    .map((it) => keys.map((k) => (it == null ? '' : it[k] ?? '')).join('|'))
+    .join(';');
+}
+
 /** Comparación barata: evita JSON.stringify de base64 y del checklist NSR-10. */
 function snapDataParaComparar(tipo, data) {
   if (!data || typeof data !== 'object') return '';
@@ -46,16 +53,29 @@ function snapDataParaComparar(tipo, data) {
       ),
     });
   }
+  const pres = data.evaluacionSismicaNSR10?.presupuesto || {};
+  const cont = data.evaluacionSismicaNSR10?.contenidos || {};
   return JSON.stringify({
     modelo: data.modelo,
+    modoLiquidacion: data.modoLiquidacion || '',
     observaciones: data.observaciones,
     encabezado: data.encabezado,
-    nItemsNsr: Array.isArray(data.evaluacionSismicaNSR10?.presupuesto?.items)
-      ? data.evaluacionSismicaNSR10.presupuesto.items.length
-      : 0,
-    nContenidos: Array.isArray(data.evaluacionSismicaNSR10?.contenidos?.items)
-      ? data.evaluacionSismicaNSR10.contenidos.items.length
-      : 0,
+    aiuPorcentaje: pres.aiuPorcentaje ?? '',
+    imprevistosPorcentaje: pres.imprevistosPorcentaje ?? '',
+    impuestosPorcentaje: pres.impuestosPorcentaje ?? '',
+    itemsNsr: firmaFilasNsr(pres.items, [
+      'catalogoId',
+      'actividad',
+      'cantidad',
+      'valorUnitario',
+      'total',
+    ]),
+    contenidosNsr: firmaFilasNsr(cont.items, [
+      'articulo',
+      'cantidad',
+      'valorUnitario',
+      'total',
+    ]),
     cotizacionPdf: data.cotizacionPdf
       ? {
           archivoPdf: data.cotizacionPdf.archivoPdf?._id || data.cotizacionPdf.archivoPdf || null,
@@ -66,6 +86,7 @@ function snapDataParaComparar(tipo, data) {
       : null,
     liquidacionCatastrofico: data.liquidacionCatastrofico,
     otrosAmparos: Array.isArray(data.otrosAmparos) ? data.otrosAmparos.length : 0,
+    indemnizacionSugerida: data.indemnizacionSugerida || '',
   });
 }
 

@@ -169,6 +169,19 @@ export const RECARGOS_PRESUPUESTO_NSR10_CAT = {
   ocultarImpuestos: true,
 };
 
+export function resolverAiuPorcentajeNsr10(
+  raw,
+  recargos = RECARGOS_PRESUPUESTO_NSR10_CAT
+) {
+  const n = Number(raw);
+  if (Number.isFinite(n)) return n;
+  if (recargos?.aiuFijo != null && Number.isFinite(Number(recargos.aiuFijo))) {
+    return Number(recargos.aiuFijo);
+  }
+  const fallback = recargos?.aiuDefault ?? AIU_PORCENTAJE_DEFAULT_NSR10_CAT;
+  return Number.isFinite(Number(fallback)) ? Number(fallback) : AIU_PORCENTAJE_DEFAULT_NSR10_CAT;
+}
+
 export function aplicarRecargosPresupuestoNsr10(presupuesto = {}, recargos = null) {
   if (!recargos) return presupuesto;
   const next = { ...(presupuesto || {}) };

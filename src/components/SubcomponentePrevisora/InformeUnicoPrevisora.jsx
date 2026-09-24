@@ -34,8 +34,8 @@ import { previsoraArchivosApi } from './previsoraArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import {
-  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
+  resolverAiuPorcentajeNsr10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -786,10 +786,9 @@ export default function InformeUnicoPrevisora({
             modulo="previsora"
             liquidador={liquidador}
             onLiquidadorChange={setLiquidador}
-            aiuPorcentaje={
-              Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
-              AIU_PORCENTAJE_DEFAULT_NSR10_CAT
-            }
+            aiuPorcentaje={resolverAiuPorcentajeNsr10(
+              liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje
+            )}
             disabled={guardandoCaso}
             ocultarToggle
           >

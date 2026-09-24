@@ -15,8 +15,8 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
-  AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
+  resolverAiuPorcentajeNsr10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import CampoTomadorPrevisora from './CampoTomadorPrevisora.jsx';
@@ -441,10 +441,9 @@ export default function LiquidadorPrevisora({
           modulo="previsora"
           liquidador={liquidador}
           onLiquidadorChange={setLiquidador}
-          aiuPorcentaje={
-            Number(liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
-            AIU_PORCENTAJE_DEFAULT_NSR10_CAT
-          }
+          aiuPorcentaje={resolverAiuPorcentajeNsr10(
+            liquidador?.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje
+          )}
           disabled={!!exportando || guardandoCaso}
           ocultarToggle={embeberEnInforme}
         >
