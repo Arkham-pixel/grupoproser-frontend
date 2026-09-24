@@ -175,7 +175,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
   const [videoModal, setVideoModal] = useState(false);
-  // Flag VITE_VIDEOPERITAJE_EN_CAT: listo en código, apagado hasta activarlo.
+  // Videoperitaje en caso CAT: activo (BBVA).
   const puedeVideoperitaje = videoperitajeEnCatHabilitado() && sesionPuedeVideoperitaje();
 
   const casoId = casoBbvaCat?._id || casoIdFromQuery || null;

@@ -235,7 +235,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
   const [videoModal, setVideoModal] = useState(false);
-  // Flag VITE_VIDEOPERITAJE_EN_CAT: listo, apagado hasta activarlo.
+  // Videoperitaje en caso CAT: activo (Alfa).
   const puedeVideoperitaje = videoperitajeEnCatHabilitado() && sesionPuedeVideoperitaje();
 
   const casoId = casoAlfa?._id || casoIdFromQuery || null;
