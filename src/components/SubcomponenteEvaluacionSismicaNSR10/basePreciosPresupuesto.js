@@ -2,7 +2,7 @@
  * Base de precios general para Presupuesto NSR-10.
  * Fuente: public/templates/base-precios-presupuesto-general.xlsx (hoja "BASE DE DATOS").
  * Generado con scripts/generarBasePreciosPresupuesto.js — no editar a mano.
- * Items: 951
+ * Items: 952
  * Orden: mayor a menor valor unitario dentro de cada capítulo.
  */
 
@@ -2070,6 +2070,14 @@ export const BASE_PRECIOS_PRESUPUESTO = Object.freeze([
     "actividad": "NAVE MADERA TRIPLEX 61- 80 (1N-B]",
     "unidad": "und",
     "valorUnitario": 806985.3
+  },
+  {
+    "id": "bp_0952_SUMINISTRO_E_INSTALACION_MESON_EN_GRANITO_PULIDO",
+    "capitulo": "Acabados",
+    "capituloOrigen": "ACABADOS",
+    "actividad": "SUMINISTRO E INSTALACION MESON EN GRANITO PULIDO",
+    "unidad": "ml",
+    "valorUnitario": 750000
   },
   {
     "id": "bp_0429_GRIFO_SANITARIO_PUSH_PARED_ANTIVANDALICO",
