@@ -20,8 +20,9 @@ import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 import { descargarArchiveroBbvaCatZip } from './descargarArchiveroBbvaCatZip.js';
 import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
 
-/** Alineado con multer en bbvaCat / bbvaCatListado (25 MB). */
-const MAX_ARCHIVO_BYTES = 25 * 1024 * 1024;
+/** Alineado con multer en bbvaCat / bbvaCatListado (50 MB). */
+const MAX_ARCHIVO_BYTES = 50 * 1024 * 1024;
+const MAX_ARCHIVO_MB = 50;
 
 const formatBytes = (n) => {
   const num = Number(n);
@@ -180,7 +181,7 @@ export default function ArchiveroBbvaCat({
           ? t('bbvaCat.archive.fileTooLargeMore', { count: demasiadoGrandes.length - 3 })
           : '';
       return t('bbvaCat.archive.fileTooLarge', {
-        maxMb: 25,
+        maxMb: MAX_ARCHIVO_MB,
         files: `${nombres}${extra}`,
       });
     };
@@ -218,7 +219,7 @@ export default function ArchiveroBbvaCat({
         /failed to fetch|networkerror|load failed|network request failed/i.test(msg);
       setError(
         esRed
-          ? t('bbvaCat.archive.uploadNetworkError', { maxMb: 25 })
+          ? t('bbvaCat.archive.uploadNetworkError', { maxMb: MAX_ARCHIVO_MB })
           : msg || t('bbvaCat.archive.uploadError')
       );
       try {
@@ -250,7 +251,7 @@ export default function ArchiveroBbvaCat({
           : '';
       setError(
         t('bbvaCat.archive.fileTooLarge', {
-          maxMb: 25,
+          maxMb: MAX_ARCHIVO_MB,
           files: `${nombres}${extra}`,
         })
       );
