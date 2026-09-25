@@ -185,7 +185,7 @@ export default function BandejaFacturacionModulo({ modulo }) {
     return <Navigate to="/inicio" replace />;
   }
 
-  const colSpan = (cfg.tieneOrigen ? 12 : 11) + (puedeAdministrar ? 1 : 0);
+  const colSpan = (cfg.tieneOrigen ? 14 : 13) + (puedeAdministrar ? 1 : 0);
 
   return (
     <div className={`${expressScope} p-4 sm:p-6`}>
@@ -296,7 +296,7 @@ export default function BandejaFacturacionModulo({ modulo }) {
 
       <div className={`${expressTableWrap} w-full min-w-0`}>
         <div className={expressTableScroll}>
-          <table className="min-w-[1280px] w-full table-auto divide-y divide-gray-200 dark:divide-gray-800">
+          <table className="min-w-[1480px] w-full table-auto divide-y divide-gray-200 dark:divide-gray-800">
             <thead className={expressTableHead}>
               <tr>
                 {cfg.tieneOrigen && (
@@ -308,6 +308,8 @@ export default function BandejaFacturacionModulo({ modulo }) {
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.responsable')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.tipo_envio')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.control')}</th>
+                <th className="px-3 py-3 text-right">{t('complex.ui.bandeja_facturacion.valor_sin_iva')}</th>
+                <th className="px-3 py-3 text-right">{t('complex.ui.bandeja_facturacion.valor_con_iva')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.jefe_destino')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.correo')}</th>
                 <th className="px-3 py-3 text-left">{t('complex.ui.bandeja_facturacion.fecha_envio')}</th>
@@ -352,10 +354,31 @@ export default function BandejaFacturacionModulo({ modulo }) {
                     {fila.tieneControlHoras ? (
                       <span className="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                         {t('complex.ui.bandeja_facturacion.control_hecho')}
+                        {Number(fila.totalHoras) > 0
+                          ? ` · ${Number(fila.totalHoras).toFixed(2)} h`
+                          : ''}
                       </span>
                     ) : (
                       <span className="text-gray-400">—</span>
                     )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right text-sm font-medium tabular-nums">
+                    {Number(fila.valorSinIva) > 0
+                      ? new Intl.NumberFormat('es-CO', {
+                          style: 'currency',
+                          currency: 'COP',
+                          maximumFractionDigits: 0,
+                        }).format(fila.valorSinIva)
+                      : '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right text-sm font-semibold tabular-nums text-fenix-primario">
+                    {Number(fila.valorConIva) > 0
+                      ? new Intl.NumberFormat('es-CO', {
+                          style: 'currency',
+                          currency: 'COP',
+                          maximumFractionDigits: 0,
+                        }).format(fila.valorConIva)
+                      : '—'}
                   </td>
                   <td className="px-3 py-3 text-sm">
                     {fila.pendienteNotificar

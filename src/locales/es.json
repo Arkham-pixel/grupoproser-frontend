@@ -5357,6 +5357,8 @@
         "tipo_envio": "Tipo envío",
         "control": "Control",
         "control_hecho": "Hecho",
+        "valor_sin_iva": "Valor sin IVA",
+        "valor_con_iva": "Valor con IVA",
         "sin_notificar": "Sin notificar",
         "jefe_destino": "Jefe destino",
         "correo": "Correo",
