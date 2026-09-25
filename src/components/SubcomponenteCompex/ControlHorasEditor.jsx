@@ -132,7 +132,6 @@ export default function ControlHorasEditor({
 
   const actualizarFila = (id, campo, valor) => {
     let excedeTope = false;
-    let motivoTope = '';
     setDatos((prev) => {
       const filas = prev.filas.map((f) => {
         if (f.id !== id) return f;
@@ -153,37 +152,20 @@ export default function ControlHorasEditor({
           calc.total_horas > topeHorasPrevisora + 0.001
         ) {
           excedeTope = true;
-          motivoTope = 'previsora';
           return prev;
         }
-        if (topeHonorariosSura && calc.subtotal_honorarios > topeHonorariosSura + 0.5) {
-          excedeTope = true;
-          motivoTope = 'sura';
-          return prev;
-        }
+        // SURA: el tope es orientativo; traslados largos (p. ej. 8 h) pueden superar el monto.
       }
       return next;
     });
     if (excedeTope) {
-      if (motivoTope === 'sura') {
-        mostrarAviso(
-          `El tope SURA para este tipo de gestión es ${new Intl.NumberFormat('es-CO', {
-            style: 'currency',
-            currency: 'COP',
-            maximumFractionDigits: 0,
-          }).format(topeHonorariosSura)}. Ajuste las horas o el tipo de liquidador.`,
-          'Tope honorarios SURA',
-          'warning'
-        );
-      } else {
-        mostrarAviso(
-          t('complex.ui.control_horas_editor.tope_horas_previsora', {
-            max: topeHorasPrevisora,
-          }),
-          t('complex.ui.control_horas_editor.tarifa_previsora'),
-          'warning'
-        );
-      }
+      mostrarAviso(
+        t('complex.ui.control_horas_editor.tope_horas_previsora', {
+          max: topeHorasPrevisora,
+        }),
+        t('complex.ui.control_horas_editor.tarifa_previsora'),
+        'warning'
+      );
     }
   };
 
@@ -323,17 +305,27 @@ export default function ControlHorasEditor({
       return false;
     }
 
-    if (topeHonorariosSura && totales.subtotal_honorarios > topeHonorariosSura + 0.5) {
-      mostrarAviso(
-        `El tope SURA para este tipo de gestión es ${new Intl.NumberFormat('es-CO', {
-          style: 'currency',
-          currency: 'COP',
-          maximumFractionDigits: 0,
-        }).format(topeHonorariosSura)}. Baje horas o gastos de honorarios antes de guardar.`,
-        'Tope honorarios SURA',
-        'warning'
+    if (topeHonorariosSura != null && totales.subtotal_honorarios > topeHonorariosSura + 0.5) {
+      const fmt = new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0,
+      });
+      // Cancelado SURA ($0): no se factura.
+      if (topeHonorariosSura <= 0) {
+        mostrarAviso(
+          'Este caso es Cancelado SURA / sin cobro. No se pueden guardar honorarios.',
+          'Tope honorarios SURA',
+          'warning'
+        );
+        return false;
+      }
+      // Traslados u otras gestiones pueden superar el tope orientativo: confirmar y cobrar completo.
+      const ok = window.confirm(
+        `El total de honorarios (${fmt.format(totales.subtotal_honorarios)}) supera el tope orientativo SURA (${fmt.format(topeHonorariosSura)}).\n\n` +
+          'Si incluye traslados u horas justificadas que deben cobrarse completas, confirme para continuar (guardar / descargar Excel).'
       );
-      return false;
+      if (!ok) return false;
     }
 
     return true;
@@ -504,9 +496,12 @@ export default function ControlHorasEditor({
                 <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">
                   {formatearMoneda(totales?.total)}
                 </p>
-                {esTarifaSura && topeHonorariosSura ? (
+                {esTarifaSura && topeHonorariosSura != null ? (
                   <p className="mt-0.5 font-body text-xs text-gray-500">
-                    Tope SURA {formatearMoneda(topeHonorariosSura)}
+                    Tope orientativo SURA {formatearMoneda(topeHonorariosSura)}
+                    {totales?.subtotal_honorarios > topeHonorariosSura + 0.5
+                      ? ' · excedido (traslados/justificados se pueden cobrar completos)'
+                      : ''}
                     {tarifaCatalogo.honorariosSugeridos
                       ? ` · sugerido ${formatearMoneda(tarifaCatalogo.honorariosSugeridos)}`
                       : ''}
