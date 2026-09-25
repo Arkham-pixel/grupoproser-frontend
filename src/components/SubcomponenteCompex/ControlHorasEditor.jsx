@@ -66,7 +66,10 @@ export default function ControlHorasEditor({
     fchaAsgncion: formData.fchaAsgncion,
     reserva: formData.reserva,
     formData,
-    caso: formData,
+    caso: {
+      ...formData,
+      control_horas: controlHorasGuardado || formData.control_horas || datos || null,
+    },
   };
 
   useEffect(() => {
@@ -305,27 +308,18 @@ export default function ControlHorasEditor({
       return false;
     }
 
-    if (topeHonorariosSura != null && totales.subtotal_honorarios > topeHonorariosSura + 0.5) {
-      const fmt = new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        maximumFractionDigits: 0,
-      });
-      // Cancelado SURA ($0): no se factura.
-      if (topeHonorariosSura <= 0) {
-        mostrarAviso(
-          'Este caso es Cancelado SURA / sin cobro. No se pueden guardar honorarios.',
-          'Tope honorarios SURA',
-          'warning'
-        );
-        return false;
-      }
-      // Traslados u otras gestiones pueden superar el tope orientativo: confirmar y cobrar completo.
-      const ok = window.confirm(
-        `El total de honorarios (${fmt.format(totales.subtotal_honorarios)}) supera el tope orientativo SURA (${fmt.format(topeHonorariosSura)}).\n\n` +
-          'Si incluye traslados u horas justificadas que deben cobrarse completas, confirme para continuar (guardar / descargar Excel).'
+    // Cancelado SURA ($0): no se factura. El resto puede superar el tope sin freno.
+    if (
+      topeHonorariosSura != null &&
+      topeHonorariosSura <= 0 &&
+      totales.subtotal_honorarios > 0.5
+    ) {
+      mostrarAviso(
+        'Este caso es Cancelado SURA / sin cobro. No se pueden guardar honorarios.',
+        'Tope honorarios SURA',
+        'warning'
       );
-      if (!ok) return false;
+      return false;
     }
 
     return true;
@@ -496,12 +490,9 @@ export default function ControlHorasEditor({
                 <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">
                   {formatearMoneda(totales?.total)}
                 </p>
-                {esTarifaSura && topeHonorariosSura != null ? (
+                {esTarifaSura && topeHonorariosSura != null && topeHonorariosSura > 0 ? (
                   <p className="mt-0.5 font-body text-xs text-gray-500">
-                    Tope orientativo SURA {formatearMoneda(topeHonorariosSura)}
-                    {totales?.subtotal_honorarios > topeHonorariosSura + 0.5
-                      ? ' · excedido (traslados/justificados se pueden cobrar completos)'
-                      : ''}
+                    Referencia SURA {formatearMoneda(topeHonorariosSura)}
                     {tarifaCatalogo.honorariosSugeridos
                       ? ` · sugerido ${formatearMoneda(tarifaCatalogo.honorariosSugeridos)}`
                       : ''}

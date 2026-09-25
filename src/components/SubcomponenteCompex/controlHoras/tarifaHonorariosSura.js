@@ -74,17 +74,18 @@ export function esCanceladoSuraSinCobro(caso = {}) {
 export function resolverTipoHonorariosSura(caso = {}) {
   if (esCanceladoSuraSinCobro(caso)) return 'cancelado_sura';
 
-  const estado = norm(caso.estado || caso.descripcionEstado || caso.estadoFacilitador);
-  if (estado.includes('DESIST')) return 'desistido';
-  if (estado.includes('OBJET')) return 'objetado';
-
-  // Tipología ya resuelta (p. ej. Excel Control Facturación).
+  // Tipología ya guardada en el control (Excel / tarifario) manda sobre comentarios libres.
   const tipoguardado = String(caso.control_horas?._tipo_honorarios || caso._tipo_honorarios || '')
     .toLowerCase()
     .trim();
   if (tipoguardado && TOPES_HONORARIOS_SURA[tipoguardado] != null) {
     return tipoguardado;
   }
+
+  // Solo el estado operativo (no el "último comentario" libre).
+  const estado = norm(caso.estado || caso.estadoFacilitador);
+  if (estado.includes('DESIST')) return 'desistido';
+  if (estado.includes('OBJET')) return 'objetado';
 
   const tipoInf = String(caso.informeUnico?.tipoInforme || caso.tipoInforme || '')
     .toLowerCase()
