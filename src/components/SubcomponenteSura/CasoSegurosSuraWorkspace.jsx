@@ -698,6 +698,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             </div>
             <FormularioCasoSura
               embed
+              initialTab="datosGenerales"
               initialData={casoSura}
               onClose={() => setGestionarAbierto(false)}
               onSaved={async (guardado) => {

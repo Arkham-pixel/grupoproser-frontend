@@ -217,6 +217,7 @@ export default function InformeUnicoSegurosSuraPage() {
             </div>
             <FormularioCasoSura
               embed
+              initialTab="datosGenerales"
               initialData={casoSura}
               onClose={() => setGestionarAbierto(false)}
               onSaved={async (guardado) => {

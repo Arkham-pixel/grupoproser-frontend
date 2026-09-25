@@ -126,11 +126,25 @@ export default function FormularioCasoComplex({
     }
   })();
   const tabCruda = initialTab || tabDesdeQuery || location.state?.tab || 'datosGenerales';
-  const tabInicial =
+  const tabNormalizada =
     String(tabCruda).toLowerCase() === 'control_horas' ||
     String(tabCruda).toLowerCase() === 'controlhoras'
       ? 'facturacion'
       : tabCruda;
+  // Pestañas del caso Complex/SURA (no confundir con tabs del workspace: informe-agil, fotos…).
+  const TABS_FORMULARIO_CASO = new Set([
+    'datosGenerales',
+    'valores',
+    'trazabilidad',
+    'facturacion',
+    'honorarios',
+    'seguimiento',
+    'observacionesPendientes',
+    'observaciones',
+  ]);
+  const tabInicial = TABS_FORMULARIO_CASO.has(String(tabNormalizada))
+    ? String(tabNormalizada)
+    : 'datosGenerales';
   const [tabActiva, setTabActiva] = useState(tabInicial);
   const [moviendoASura, setMoviendoASura] = useState(false);
 
@@ -167,6 +181,11 @@ export default function FormularioCasoComplex({
       ...(!puedeFacturacionSura ? ['facturacion'] : []),
     ]);
     if (esSura && tabsOcultasSura.has(tabActiva)) {
+      setTabActiva('datosGenerales');
+      return;
+    }
+    // Si la URL trae tab del workspace (p. ej. informe-agil), no hay contenido que mostrar.
+    if (!TABS_FORMULARIO_CASO.has(String(tabActiva))) {
       setTabActiva('datosGenerales');
     }
   }, [esSura, tabActiva, puedeFacturacionSura]);
