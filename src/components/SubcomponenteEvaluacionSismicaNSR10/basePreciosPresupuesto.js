@@ -2,7 +2,7 @@
  * Base de precios general para Presupuesto NSR-10.
  * Fuente: public/templates/base-precios-presupuesto-general.xlsx (hoja "BASE DE DATOS").
  * Generado con scripts/generarBasePreciosPresupuesto.js — no editar a mano.
- * Items: 952
+ * Items: 953
  * Orden: mayor a menor valor unitario dentro de cada capítulo.
  */
 
@@ -2958,6 +2958,14 @@ export const BASE_PRECIOS_PRESUPUESTO = Object.freeze([
     "actividad": "GRAVA LAVADA",
     "unidad": "m²",
     "valorUnitario": 101271.5
+  },
+  {
+    "id": "bp_0953_SUMINISTRO_E_INSTALACION_PAPEL_DE_COLGADURA",
+    "capitulo": "Acabados",
+    "capituloOrigen": "ACABADOS",
+    "actividad": "SUMINISTRO E INSTALACION PAPEL DE COLGADURA",
+    "unidad": "m²",
+    "valorUnitario": 99500
   },
   {
     "id": "bp_0335_REPINTE_NAVE_METALICA_H_2_2M_A_1_0M_2C",
