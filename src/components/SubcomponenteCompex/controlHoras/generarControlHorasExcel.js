@@ -5,7 +5,6 @@ import {
   calcularTotalesControlHoras,
   formatearFechaDisplay,
 } from './controlHorasUtils';
-import { esFilaFijaControlHoras } from './catalogoControlHoras';
 import { descargarBlob as descargarArchivoBlob } from '../../../utils/descargarArchivo.js';
 
 const FUENTE = 'Arial';
@@ -264,10 +263,6 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     const largoNombre = String(fila.nombre_funcionario || '').length;
     const maxLen = Math.max(largoDesc, largoNombre);
     row.height = maxLen > 80 ? 48 : maxLen > 45 ? 36 : 26;
-    const esFija = esFilaFijaControlHoras(fila);
-    const esVariable = !esFija && fila.tipo_item === 'variable';
-    const fillFijo = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
-    const fillVariable = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
 
     const valoresTexto = [
       formatearFechaDisplay(fila.fecha),
@@ -278,10 +273,7 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     valoresTexto.forEach((val, i) => {
       const cell = row.getCell(i + 1);
       cell.value = val ?? '';
-      cell.style = {
-        ...estiloCeldaTabla,
-        ...(esFija ? { fill: fillFijo } : esVariable ? { fill: fillVariable } : {}),
-      };
+      cell.style = estiloCeldaTabla;
     });
 
     const horas = [
@@ -293,10 +285,7 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     horas.forEach((val, i) => {
       const cell = row.getCell(5 + i);
       cell.value = val;
-      cell.style = {
-        ...estiloCeldaNumero,
-        ...(esFija ? { fill: fillFijo } : esVariable ? { fill: fillVariable } : {}),
-      };
+      cell.style = estiloCeldaNumero;
     });
 
     const totalFilaExcel = horas.reduce((acc, n) => acc + n, 0);
@@ -304,10 +293,7 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
       row.getCell(9),
       `SUM(E${rowIdx}:H${rowIdx})`,
       totalFilaExcel,
-      {
-        ...estiloCeldaNumero,
-        ...(esFija ? { fill: fillFijo } : esVariable ? { fill: fillVariable } : {}),
-      }
+      estiloCeldaNumero
     );
 
     rowIdx += 1;
@@ -389,29 +375,8 @@ export async function generarControlHorasExcel({ formData, controlHoras, nombreA
     Number(totales.total || 0),
     estiloTotalFinal
   );
-  rowIdx += 2;
 
-  const notaFijas = sheet.getRow(rowIdx);
-  notaFijas.getCell(3).value = 'ACTIVIDADES EN COLOR AMARILLO SON FIJAS Y LAS HORAS TAMBIÉN SON FIJAS';
-  notaFijas.getCell(3).font = { name: FUENTE, size: 9, italic: true };
-  notaFijas.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
-  notaFijas.getCell(5).value = 'TODOS LOS SINIESTROS DEBEN TENERLAS POR DEFECTO';
-  notaFijas.getCell(5).font = { name: FUENTE, size: 9 };
-  rowIdx += 2;
-
-  const notaVar = sheet.getRow(rowIdx);
-  notaVar.getCell(3).value = 'Pueden variar actividades y horas';
-  notaVar.getCell(3).font = { name: FUENTE, size: 9, italic: true };
-  notaVar.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } };
-  rowIdx += 2;
-
-  const notaExtra = sheet.getRow(rowIdx);
-  notaExtra.getCell(3).value = 'NOTA';
-  notaExtra.getCell(3).font = { name: FUENTE, size: 9, bold: true };
-  notaExtra.getCell(4).value = 'SE PUEDE AGREGAR OTRA ACTIVIDAD SI EL SINIESTRO LO REQUIERE';
-  notaExtra.getCell(5).value = 'EJEMPLO: ESTUDIO ESTRUCTURALISTA, AVALÚO U OTROS';
-  notaExtra.getCell(4).font = { name: FUENTE, size: 9 };
-  notaExtra.getCell(5).font = { name: FUENTE, size: 9 };
+  // Sin notas internas (actividades fijas / ejemplos) — solo van al Excel operativo interno.
 
   ajustarAnchosColumnas(sheet, filas, meta);
 
