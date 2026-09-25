@@ -458,7 +458,11 @@ export default function InformeUnicoBbvaCat({
           </div>
           <div>
             <dt className="text-gray-500">{t('bbvaCat.fields.numeroPoliza')}</dt>
-            <dd className="font-medium">{casoBbvaCat?.numeroPoliza || '—'}</dd>
+            <dd className="font-medium">
+              {casoBbvaCat?.numeroPoliza ||
+                liquidador?.encabezado?.poliza ||
+                '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('bbvaCat.fields.fechaInicioPoliza')}</dt>
@@ -612,6 +616,12 @@ export default function InformeUnicoBbvaCat({
             setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))
           }
           onAiuChange={(aiuPorcentaje) => setLiquidador((prev) => ({ ...prev, aiuPorcentaje }))}
+          onOtrosAmparosChange={(filas) =>
+            setLiquidador((prev) => ({
+              ...prev,
+              otrosAmparos: filas,
+            }))
+          }
         />
       </section>
 

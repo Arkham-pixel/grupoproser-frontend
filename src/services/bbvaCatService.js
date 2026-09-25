@@ -358,6 +358,11 @@ export const guardarInformeUnicoEnCasoBbvaCat = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
+    ...camposValoresDesdeLiquidadorBbvaCat(
+      casoBase.liquidador || {},
+      {},
+      casoBase
+    ),
     informeUnico: sanitizarInformeUnicoBbvaCat(informeUnico || {}),
   };
 

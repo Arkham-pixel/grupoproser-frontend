@@ -447,6 +447,12 @@ export default function LiquidadorBbvaCat({
         onFirmaClienteChange={(v) => setLiquidador((prev) => ({ ...prev, firmaCliente: v }))}
         onNombreFirmanteChange={(v) => setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))}
         onAiuChange={(aiuPorcentaje) => setLiquidador((prev) => ({ ...prev, aiuPorcentaje }))}
+        onOtrosAmparosChange={(filas) =>
+          setLiquidador((prev) => ({
+            ...prev,
+            otrosAmparos: filas,
+          }))
+        }
       />
     </div>
   );

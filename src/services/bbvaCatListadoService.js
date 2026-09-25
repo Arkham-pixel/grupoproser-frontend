@@ -187,6 +187,11 @@ export const guardarInformeUnicoEnCasoBbvaCatListado = async ({
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
   return actualizarCasoBbvaCatListado(casoId, {
     ...omitirMeta(casoBase),
+    ...camposValoresDesdeLiquidadorBbvaCat(
+      casoBase.liquidador || {},
+      {},
+      casoBase
+    ),
     informeUnico: sanitizarInformeUnicoBbvaCat(informeUnico || {}),
   });
 };

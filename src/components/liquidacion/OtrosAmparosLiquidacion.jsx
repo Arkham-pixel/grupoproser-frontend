@@ -24,6 +24,8 @@ export default function OtrosAmparosLiquidacion({
   otrosAmparos = [],
   onChange,
   className = '',
+  titulo,
+  hint,
 } = {}) {
   const filas = Array.isArray(otrosAmparos) && otrosAmparos.length
     ? otrosAmparos
@@ -52,11 +54,11 @@ export default function OtrosAmparosLiquidacion({
     <div className={`space-y-2 ${className}`}>
       <div>
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-          Otros amparos (sin deducible)
+          {titulo || 'Otros amparos (sin deducible)'}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Marque Aplica y complete cantidad y valor unitario. El Valor se calcula solo
-          (cantidad × valor unitario). No aplica deducible ni AIU.
+          {hint ||
+            'Marque Aplica y complete cantidad y valor unitario. El Valor se calcula solo (cantidad × valor unitario). No aplica deducible ni AIU.'}
         </p>
       </div>
       <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">

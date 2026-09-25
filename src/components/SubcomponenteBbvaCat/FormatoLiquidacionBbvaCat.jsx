@@ -1,5 +1,10 @@
 import React, { useMemo } from 'react';
 import LetrerosBbvaCat from './LetrerosBbvaCat.jsx';
+import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
+import {
+  nuevoOtroAmparo,
+  sumarOtrosAmparos,
+} from '../liquidacion/otrosAmparosLiquidacion.js';
 import {
   formatMilesInputNsr10,
   formatMilesNsr10,
@@ -25,6 +30,21 @@ import {
 } from './formatoLiquidacionBbvaCat.js';
 import { inferirTipoLiquidadorBbvaCat, TIPOS_LIQUIDADOR_BBVA_CAT } from './deduciblesBbvaCat.js';
 import { bbvaCatInput, bbvaCatShell } from './bbvaCatFormUi.js';
+
+function filaOtraAmparoVaciaBbva() {
+  const fila = nuevoOtroAmparo({
+    tipo: 'otro',
+    cantidad: '',
+    valorUnitario: '',
+    valor: '',
+    aplica: true,
+  });
+  fila.nombre = '';
+  fila.cantidad = '';
+  fila.valorUnitario = '';
+  fila.valor = '';
+  return fila;
+}
 
 const bbvaCatInputEditable = `${bbvaCatInput} rounded hover:bg-[#EEF5FB] focus:bg-white focus:ring-1 focus:ring-[#004481] dark:hover:bg-gray-800`;
 
@@ -89,6 +109,7 @@ export default function FormatoLiquidacionBbvaCat({
   onFirmaClienteChange,
   onNombreFirmanteChange,
   onAiuChange,
+  onOtrosAmparosChange,
 }) {
   const tipo = inferirTipoLiquidadorBbvaCat({
     tipoLiquidador: liquidador.tipoLiquidador,
@@ -120,6 +141,14 @@ export default function FormatoLiquidacionBbvaCat({
   const ramo = encabezado.ramoAfectado || 'TERREMOTO';
   const smmlvHint = String(smmlvUi === '' || smmlvUi == null ? ded.smmlv ?? 3 : smmlvUi);
   const pctHint = pctUi === '' ? formatoPorcentajeDeducibleUiBbva(ded.porcentaje) || '2' : pctUi;
+  const otrosAmparos = Array.isArray(liquidador.otrosAmparos)
+    ? liquidador.otrosAmparos
+    : [filaOtraAmparoVaciaBbva()];
+  const totalOtrosAmparos = useMemo(() => sumarOtrosAmparos(otrosAmparos), [otrosAmparos]);
+  const valorAIndemnizarConOtros = Math.max(
+    0,
+    Math.round((Number(excel.valorAIndemnizar || 0) + totalOtrosAmparos) * 100) / 100
+  );
 
   const patchEnc = (campo, valor) => {
     if (soloLectura) return;
@@ -752,12 +781,36 @@ export default function FormatoLiquidacionBbvaCat({
             <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
               $ {formatearMonto(excel.deduciblePoliza ?? excel.tiposDeducible?.aplicable)}
             </div>
+            {totalOtrosAmparos > 0 ? (
+              <>
+                <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
+                  Gastos fuera de deducible
+                </div>
+                <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
+                  $ {formatearMonto(totalOtrosAmparos)}
+                </div>
+              </>
+            ) : null}
             <div className={`${labelExcel} justify-end pr-3`}>Valor a indemnizar</div>
             <div className={`${cellExcel} text-right font-bold`}>
-              $ {formatearMonto(excel.valorAIndemnizar)}
+              $ {formatearMonto(valorAIndemnizarConOtros)}
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="border-t border-gray-200 px-3 py-3 dark:border-gray-700">
+        <OtrosAmparosLiquidacion
+          titulo="Gastos fuera de deducible"
+          hint="Celdas vacías para arriendo, escombros u otros gastos que no llevan deducible. Use «+ Agregar amparo» para crear más filas."
+          otrosAmparos={otrosAmparos}
+          onChange={(filas) => {
+            if (soloLectura) return;
+            onOtrosAmparosChange?.(
+              Array.isArray(filas) && filas.length ? filas : [filaOtraAmparoVaciaBbva()]
+            );
+          }}
+        />
       </div>
 
       <div className="border-t border-gray-200 px-3 py-3 dark:border-gray-700">

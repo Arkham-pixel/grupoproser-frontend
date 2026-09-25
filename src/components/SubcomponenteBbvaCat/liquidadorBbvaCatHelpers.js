@@ -15,7 +15,7 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
-import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import { nuevoOtroAmparo } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
 import {
   fotosCotizacionDesdeLiquidador,
@@ -176,6 +176,12 @@ export function camposValoresDesdeLiquidadorBbvaCat(liquidador = {}, totales = {
   );
   out.valorALiquidar = Math.round(liquidado);
 
+  /** Póliza del liquidador/informe → ficha Gestionar (numeroPoliza / tipoPoliza). */
+  const poliza = String(enc.poliza || '').trim();
+  if (poliza) out.numeroPoliza = poliza;
+  const tipoPoliza = String(enc.tipoPoliza || '').trim();
+  if (tipoPoliza) out.tipoPoliza = tipoPoliza;
+
   return out;
 }
 
@@ -309,6 +315,26 @@ export function prefillNsrDesdecasoBbvaCat(caso = {}, encabezado = {}) {
   };
 }
 
+export function defaultOtrosAmparosVaciosBbvaCat() {
+  const fila = nuevoOtroAmparo({
+    tipo: 'otro',
+    cantidad: '',
+    valorUnitario: '',
+    valor: '',
+    aplica: true,
+  });
+  fila.nombre = '';
+  fila.cantidad = '';
+  fila.valorUnitario = '';
+  fila.valor = '';
+  return [fila];
+}
+
+export function normalizarOtrosAmparosBbvaCat(lista) {
+  if (!Array.isArray(lista) || !lista.length) return defaultOtrosAmparosVaciosBbvaCat();
+  return lista.map((it) => nuevoOtroAmparo(it));
+}
+
 export const DEFAULT_LIQUIDADOR_BbvaCat = {
   modelo: 'nsr10',
   encabezado: {
@@ -358,6 +384,7 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
   },
   cotizacionPdf: null,
   liquidacionCotizacionPdf: null,
+  otrosAmparos: defaultOtrosAmparosVaciosBbvaCat(),
 };
 
 export function esLiquidadorNsrBbvaCat(liquidador = {}) {
@@ -550,7 +577,7 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     liquidadoPor: caso.ajustador || '',
     areaLiquidador: 'Indemnizaciones Seguros Generales',
     datosFiniquito: datosFiniquitoDefault,
-    otrosAmparos: defaultOtrosAmparos(),
+    otrosAmparos: defaultOtrosAmparosVaciosBbvaCat(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
         ? formatMiles(caso.valorReclamado)
@@ -584,8 +611,8 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
       liquidacionCotizacionPdf: guardado.liquidacionCotizacionPdf || null,
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
       otrosAmparos: Array.isArray(guardado.otrosAmparos)
-        ? normalizarOtrosAmparos(guardado.otrosAmparos)
-        : defaultOtrosAmparos(),
+        ? normalizarOtrosAmparosBbvaCat(guardado.otrosAmparos)
+        : defaultOtrosAmparosVaciosBbvaCat(),
     };
   }
 
@@ -649,8 +676,8 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     liquidacionCatastrofico: liqFusion,
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
-      ? normalizarOtrosAmparos(guardado.otrosAmparos)
-      : defaultOtrosAmparos(),
+      ? normalizarOtrosAmparosBbvaCat(guardado.otrosAmparos)
+      : defaultOtrosAmparosVaciosBbvaCat(),
     detalleLiquidacionCat: Array.isArray(guardado.detalleLiquidacionCat)
       ? guardado.detalleLiquidacionCat
       : resolverDetalleLiquidacionBbvaCat({

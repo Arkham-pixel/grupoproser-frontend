@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaFolderOpen, FaSave, FaVideo } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaFolderOpen, FaSave, FaVideo } from 'react-icons/fa';
 import LiquidadorBbvaCat from './LiquidadorBbvaCat.jsx';
 import InspeccionCatBbvaCat from './InspeccionCatBbvaCat.jsx';
 import InformeUnicoBbvaCat from './InformeUnicoBbvaCat.jsx';
 import ArchiveroBbvaCat from './ArchiveroBbvaCat.jsx';
+import FormularioBbvaCat from './FormularioBbvaCat.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -28,7 +29,10 @@ import {
   guardarInformeUnicoEnCasoBbvaCatListado,
   guardarLiquidadorEnCasoBbvaCatListado,
 } from '../../services/bbvaCatListadoService.js';
-import { calcularLiquidacionBbvaCat } from './liquidadorBbvaCatHelpers.js';
+import {
+  calcularLiquidacionBbvaCat,
+  mapcasoBbvaCatALiquidador,
+} from './liquidadorBbvaCatHelpers.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
@@ -172,6 +176,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
   const [archiveroAbierto, setArchiveroAbierto] = useState(false);
+  const [gestionarAbierto, setGestionarAbierto] = useState(false);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
   const [videoModal, setVideoModal] = useState(false);
@@ -267,6 +272,52 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
     }
     return t(esModuloListado ? 'bbvaCat.workspace.subtitleListado' : 'bbvaCat.workspace.subtitle');
   }, [casoBbvaCat, t, esModuloListado]);
+
+  const aplicarFichaAlWorkspace = useCallback((fresco, prevCaso) => {
+    const merged = {
+      ...(prevCaso || {}),
+      ...(fresco || {}),
+      liquidador: fresco?.liquidador || prevCaso?.liquidador,
+      informeUnico: fresco?.informeUnico || prevCaso?.informeUnico,
+      archivos: Array.isArray(fresco?.archivos) ? fresco.archivos : prevCaso?.archivos,
+    };
+    setCasoBbvaCat(merged);
+    setLiquidadorState((prev) => {
+      if (!prev) return mapcasoBbvaCatALiquidador(merged);
+      const base = mapcasoBbvaCatALiquidador(merged);
+      return {
+        ...prev,
+        encabezado: {
+          ...(prev.encabezado || {}),
+          ...(base.encabezado || {}),
+          poliza:
+            String(base.encabezado?.poliza || '').trim() ||
+            String(prev.encabezado?.poliza || '').trim() ||
+            '',
+          tipoPoliza:
+            String(base.encabezado?.tipoPoliza || '').trim() ||
+            String(prev.encabezado?.tipoPoliza || '').trim() ||
+            '',
+        },
+      };
+    });
+    setRestoreNonce((n) => n + 1);
+    return merged;
+  }, []);
+
+  const abrirGestionar = async () => {
+    if (casoId) {
+      try {
+        const fresco = esModuloListado
+          ? await getCasoBbvaCatListadoById(casoId)
+          : await getCasoBbvaCatById(casoId);
+        aplicarFichaAlWorkspace(fresco, casoBbvaCat);
+      } catch {
+        /* se abre con lo que hay en memoria */
+      }
+    }
+    setGestionarAbierto(true);
+  };
 
   const casosFiltradosPicker = useMemo(() => {
     const q = String(busquedaCaso || '')
@@ -478,6 +529,15 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
               <button
                 type="button"
                 className={expressBtnGhost}
+                onClick={() => abrirGestionar()}
+              >
+                <FaEdit /> {t('bbvaCat.report.manage')}
+              </button>
+            )}
+            {casoId && (
+              <button
+                type="button"
+                className={expressBtnGhost}
                 onClick={() => setArchiveroAbierto(true)}
               >
                 <FaFolderOpen /> {t('bbvaCat.report.archive')}
@@ -662,6 +722,37 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
             setMensaje('Informe actualizado con IA. Revise y guarde.');
           }}
         />
+      )}
+      {gestionarAbierto && casoBbvaCat && (
+        <ExpressModal
+          open
+          onClose={() => setGestionarAbierto(false)}
+          title={t('bbvaCat.page.editCase', { caseNumber: casoBbvaCat.consecutivo || '' })}
+          wide
+        >
+          <div className="p-4 sm:p-6">
+            <FormularioBbvaCat
+              embed
+              origen={esModuloListado ? 'listado' : 'cat'}
+              initialData={casoBbvaCat}
+              onClose={() => setGestionarAbierto(false)}
+              onSaved={async (guardado) => {
+                aplicarFichaAlWorkspace(guardado, casoBbvaCat);
+                try {
+                  const fresco = esModuloListado
+                    ? await getCasoBbvaCatListadoById(casoId)
+                    : await getCasoBbvaCatById(casoId);
+                  aplicarFichaAlWorkspace(fresco, {
+                    ...(casoBbvaCat || {}),
+                    ...(guardado || {}),
+                  });
+                } catch {
+                  /* ya aplicamos el guardado */
+                }
+              }}
+            />
+          </div>
+        </ExpressModal>
       )}
       {archiveroAbierto && casoBbvaCat && (
         <ExpressModal
