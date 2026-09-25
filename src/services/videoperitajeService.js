@@ -173,8 +173,8 @@ export async function archivarPlantillaVideoperitaje(id) {
   return parseJson(response);
 }
 
-export async function obtenerSesionPublica(token) {
-  const response = await fetch(`${API}/public/${encodeURIComponent(token)}`);
+export async function obtenerSesionPublica(token, { signal } = {}) {
+  const response = await fetch(`${API}/public/${encodeURIComponent(token)}`, { signal });
   return parseJson(response);
 }
 

@@ -241,12 +241,24 @@ export default function PortalVideoperitajeUnirse() {
   const [callEnded, setCallEnded] = useState(false);
 
   const cargar = useCallback(async () => {
-    const r = await obtenerSesionPublica(token);
-    setSesion(r.data);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const r = await obtenerSesionPublica(token, { signal: ctrl.signal });
+      setSesion(r.data);
+    } finally {
+      clearTimeout(timer);
+    }
   }, [token]);
 
   useEffect(() => {
-    cargar().catch((err) => setError(err.message));
+    cargar().catch((err) => {
+      const msg =
+        err?.name === 'AbortError'
+          ? 'La conexión tardó demasiado. Abra el enlace en Chrome o Safari (fuera de WhatsApp).'
+          : err.message || 'No se pudo cargar la sesión';
+      setError(msg);
+    });
   }, [cargar]);
 
   useEffect(() => {
