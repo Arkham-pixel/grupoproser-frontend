@@ -25,7 +25,9 @@ export default function AgendaCatastroficoMenu() {
 
   useEffect(() => {
     cargar();
-    const intervalo = setInterval(cargar, POLL_MS);
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === 'visible') cargar();
+    }, POLL_MS);
     const onVis = () => {
       if (document.visibilityState === 'visible') cargar();
     };

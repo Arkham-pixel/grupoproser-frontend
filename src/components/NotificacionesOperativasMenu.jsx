@@ -13,7 +13,7 @@ import {
 } from '../utils/timbreNotificacion.js';
 import { rutaNotificacionAReporte } from '../utils/filtroCasoExclusivo.js';
 
-const POLL_MS = 8 * 1000;
+const POLL_MS = 45 * 1000;
 
 function tiempoRelativo(fecha, t) {
   const ms = Date.now() - new Date(fecha).getTime();
@@ -69,7 +69,9 @@ export default function NotificacionesOperativasMenu() {
 
   useEffect(() => {
     cargar();
-    const intervalo = setInterval(cargar, POLL_MS);
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === 'visible') cargar();
+    }, POLL_MS);
     const onVis = () => {
       if (document.visibilityState === 'visible') cargar();
     };
