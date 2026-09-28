@@ -856,8 +856,11 @@ export default function LiquidadorSegurosAlfa({
         }}
         onLiquidadorChange={setLiquidador}
         aiuPorcentaje={
-          Number(liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje) ||
-          AIU_PORCENTAJE_DEFAULT_ALFA
+          Number.isFinite(
+            Number(liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje)
+          )
+            ? Number(liquidador.evaluacionSismicaNSR10.presupuesto.aiuPorcentaje)
+            : AIU_PORCENTAJE_DEFAULT_ALFA
         }
         disabled={!!exportando || guardandoCaso}
         onAfterChange={(liq) =>

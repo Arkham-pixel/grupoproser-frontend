@@ -588,7 +588,7 @@ export default function InformeUnicoZurich({
         </button>
       </div>
       <p className="mt-2 text-xs text-blue-800/80 dark:text-blue-200/80">
-        Visible solo para Lady Andrea Escalante y Oscar Atencia. Reemplaza las filas del
+        Visible para Lady Andrea Escalante, Oscar Atencia y Giselle Osorio. Reemplaza las filas del
         preliminar y recalcula la reserva.
       </p>
     </div>

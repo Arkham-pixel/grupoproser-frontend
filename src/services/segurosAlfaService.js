@@ -9,6 +9,7 @@ import {
   liquidadorAlfaParaPersistir,
   parsearNumero,
   montosCasoDesdeLiquidadorAlfa,
+  camposControlLiquidacionDesdeLiquidadorAlfa,
   pesosEnterosAlfa,
 } from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
 import { authFetch } from './authFetch.js';
@@ -37,6 +38,7 @@ export const normalizeAlfaItem = (item = {}) => {
   const liquidadorObj = item.liquidador && typeof item.liquidador === 'object';
   const informeObj = item.informeUnico && typeof item.informeUnico === 'object';
   const montos = montosCasoDesdeLiquidadorAlfa(item.liquidador);
+  const control = camposControlLiquidacionDesdeLiquidadorAlfa(item.liquidador);
   const numeros = {};
   for (const clave of CAMPOS_NUMERICOS_ALFA) {
     if (item[clave] == null || item[clave] === '') continue;
@@ -52,6 +54,11 @@ export const normalizeAlfaItem = (item = {}) => {
   }
   if (montos?.valorReclamado != null) numeros.valorReclamado = montos.valorReclamado;
   if (montos?.valorLiquidado != null) numeros.valorLiquidado = montos.valorLiquidado;
+  if (control) {
+    for (const [clave, valor] of Object.entries(control)) {
+      if (valor != null) numeros[clave] = valor;
+    }
+  }
   return {
     ...item,
     ...numeros,
@@ -570,10 +577,18 @@ export const guardarLiquidadorEnCasoAlfa = async ({
     liquidadorSeguro,
     totales
   );
-  const sidLiquidador = parsearNumero(
-    liquidadorSeguro?.encabezado?.valorAseguradoSid ??
-      liquidadorSeguro?.liquidacionCatastrofico?.valorAsegurado
+  // Con cotización PDF el SID del deducible vive en liquidacionCotizacionPdf.
+  // Preferirlo evita persistir un SID ×2 en el caso y que el reporte se descuadre.
+  const sidCotiz = parsearNumero(
+    liquidadorSeguro?.liquidacionCotizacionPdf?.valorAseguradoSid
   );
+  const sidEnc =
+    parsearNumero(liquidadorSeguro?.encabezado?.valorAseguradoSid) ||
+    parsearNumero(liquidadorSeguro?.liquidacionCatastrofico?.valorAsegurado);
+  let sidLiquidador = sidCotiz || sidEnc;
+  if (sidCotiz > 0 && sidEnc > 0 && Math.abs(sidEnc / sidCotiz - 2) < 0.02) {
+    sidLiquidador = sidCotiz;
+  }
 
   const payload = {
     ...casoBase,

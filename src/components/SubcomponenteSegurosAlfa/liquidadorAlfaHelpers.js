@@ -97,6 +97,8 @@ export function elegirMontoSinInflarAlfa(candidato, referencia) {
     const cerca = (factor) => Math.abs(a / factor - b) / Math.max(b, 1) < 0.2;
     if (ratio > 50 && ratio < 150 && cerca(100)) return b;
     if (ratio > 5 && ratio < 15 && cerca(10)) return b;
+    // Candidato = referencia × 1.2 → AIU 20% fantasma (liquidador con AIU 0%).
+    if (Math.abs(ratio - 1.2) < 0.03) return b;
   }
   if (Number.isFinite(a) && a > 0) return a;
   if (Number.isFinite(b) && b > 0) return b;
@@ -730,7 +732,7 @@ export function calcularLiquidacionAlfa(liquidador = {}, opciones = {}) {
     totalIndemnizar,
     totalIndemnizable: totalIndemnizar,
     totalPerdida: totalDaniosCat,
-    totalReclamado: elegirMontoSinInflarAlfa(liquidador.valorReclamadoCaso, totalDaniosCat),
+    totalReclamado: totalDaniosCat,
     deducibleAplicado: dedAlfa.deducibleAplicado,
     deducibleRequiereValorAsegurado: Boolean(dedAlfa.requiereValorAsegurado),
     deducibleTexto: dedAlfa.texto,
@@ -1085,10 +1087,26 @@ export function liquidadorAlfaParaPersistir(liquidador = {}) {
     liquidador?.cotizacionesPdf,
     liquidador
   );
+  const rawCotiz =
+    liquidador?.liquidacionCotizacionPdf && typeof liquidador.liquidacionCotizacionPdf === 'object'
+      ? liquidador.liquidacionCotizacionPdf
+      : null;
+  let liquidacionCotizacionPdf = rawCotiz;
+  if (rawCotiz) {
+    const normalizado = normalizarLiquidacionCotizacionPdfAlfa(liquidador);
+    // Si el payload omitió AIU, no inventar 20% aquí: el BE conserva el 0% guardado.
+    if (rawCotiz.aiuPorcentaje == null || rawCotiz.aiuPorcentaje === '') {
+      const { aiuPorcentaje: _omit, ...rest } = normalizado;
+      liquidacionCotizacionPdf = rest;
+    } else {
+      liquidacionCotizacionPdf = normalizado;
+    }
+  }
   return {
     ...liquidador,
     cotizacionesPdf: serializadas,
     cotizacionPdf: serializadas.completo,
+    ...(liquidacionCotizacionPdf != null ? { liquidacionCotizacionPdf } : {}),
   };
 }
 
