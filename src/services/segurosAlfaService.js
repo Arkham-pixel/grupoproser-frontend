@@ -11,6 +11,7 @@ import {
   montosCasoDesdeLiquidadorAlfa,
   camposControlLiquidacionDesdeLiquidadorAlfa,
   pesosEnterosAlfa,
+  liquidadorAlfaTieneBaseIndemnizacion,
 } from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
 import { authFetch } from './authFetch.js';
 
@@ -37,8 +38,11 @@ const jsonHeaders = () => ({
 export const normalizeAlfaItem = (item = {}) => {
   const liquidadorObj = item.liquidador && typeof item.liquidador === 'object';
   const informeObj = item.informeUnico && typeof item.informeUnico === 'object';
-  const montos = montosCasoDesdeLiquidadorAlfa(item.liquidador);
-  const control = camposControlLiquidacionDesdeLiquidadorAlfa(item.liquidador);
+  // Listado/reporte: no recalcular desde liquidador incompleto (slim).
+  // Solo en detalle con base real (ítems/detalle/cotiz) se sobrescriben planos.
+  const puedeRecalc = liquidadorAlfaTieneBaseIndemnizacion(item.liquidador);
+  const montos = puedeRecalc ? montosCasoDesdeLiquidadorAlfa(item.liquidador) : null;
+  const control = puedeRecalc ? camposControlLiquidacionDesdeLiquidadorAlfa(item.liquidador) : null;
   const numeros = {};
   for (const clave of CAMPOS_NUMERICOS_ALFA) {
     if (item[clave] == null || item[clave] === '') continue;
@@ -62,6 +66,7 @@ export const normalizeAlfaItem = (item = {}) => {
   return {
     ...item,
     ...numeros,
+    liquidador: puedeRecalc ? item.liquidador : undefined,
     siniestro: item.siniestro ?? '',
     identificacion: item.identificacion ?? '',
     tomador: item.tomador ?? '',
