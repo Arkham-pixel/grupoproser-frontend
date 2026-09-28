@@ -35,6 +35,37 @@ import {
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { scoreContenidoLiquidadorNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
+/**
+ * True si hay base de indemnización (ítems NSR / detalle CAT / cotización PDF).
+ * El listado trae liquidador “slim” solo con otrosAmparos: no recalcular totales ahí.
+ */
+export function liquidadorAlfaTieneBaseIndemnizacion(liquidador = {}) {
+  if (!liquidador || typeof liquidador !== 'object') return false;
+  const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
+  if (
+    Array.isArray(items) &&
+    items.some((it) => {
+      const txt = String(it?.actividad || it?.componente || it?.descripcion || '').trim();
+      const tot = Number(it?.total) || Number(it?.valorUnitario) || 0;
+      return Boolean(txt) || tot > 0;
+    })
+  ) {
+    return true;
+  }
+  const detalle = liquidador?.detalleLiquidacionCat;
+  if (
+    Array.isArray(detalle) &&
+    detalle.some((it) => {
+      const txt = String(it?.actividad || it?.componente || it?.descripcion || '').trim();
+      return Boolean(txt) || Number(it?.valorPerdida) > 0;
+    })
+  ) {
+    return true;
+  }
+  const cotiz = resumenCotizacionesPdfAlfa(liquidador);
+  return Boolean(cotiz?.usaComoBase);
+}
+
 /** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
 export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.2;
 export const IMPREVISTOS_PORCENTAJE_DEFAULT_ALFA = 0;
@@ -783,10 +814,12 @@ export function resolverMontoIndemnizarAlfa(liquidador = {}, totalesDesfasados =
 
 /**
  * Reclamado / liquidado oficiales del liquidador (números, no texto con puntos).
- * Null si el liquidador está vacío.
+ * Null si el liquidador está vacío o es “slim” (solo otrosAmparos, sin ítems/detalle/cotiz):
+ * en ese caso el listado/reporte debe conservar los planos del caso.
  */
 export function montosCasoDesdeLiquidadorAlfa(liquidador = {}) {
   if (scoreContenidoLiquidadorNsr(liquidador) === 0) return null;
+  if (!liquidadorAlfaTieneBaseIndemnizacion(liquidador)) return null;
   const { totales, totalIndemnizar } = resolverMontoIndemnizarAlfa(liquidador);
   const reclamado = elegirMontoSinInflarAlfa(totales.totalReclamado, totales.totalDanios);
   const liquidado = Number(totalIndemnizar);
@@ -799,6 +832,7 @@ export function montosCasoDesdeLiquidadorAlfa(liquidador = {}) {
 /** Campos de control de liquidación (terremoto, deducible, coberturas adicionales, total a pagar). */
 export function camposControlLiquidacionDesdeLiquidadorAlfa(liquidador = {}) {
   if (scoreContenidoLiquidadorNsr(liquidador) === 0) return null;
+  if (!liquidadorAlfaTieneBaseIndemnizacion(liquidador)) return null;
   const { totales, totalIndemnizar } = resolverMontoIndemnizarAlfa(liquidador);
   const hospedaje = Number(totales?.diagrama?.gastosHospedaje) || 0;
   return {
