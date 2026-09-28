@@ -44,6 +44,17 @@ function soltarMediosLocales(room) {
   }
 }
 
+function attachRemoteAudio(track) {
+  if (!track) return null;
+  const el = track.attach();
+  if (el) {
+    el.autoplay = true;
+    el.setAttribute('playsinline', '');
+    el.play?.().catch(() => {});
+  }
+  return el;
+}
+
 export default function useVideoperitajeRoom({
   token,
   url,
@@ -230,7 +241,7 @@ export default function useVideoperitajeRoom({
           }
         });
         p.audioTrackPublications.forEach((pub) => {
-          if (pub.track) pub.track.attach();
+          if (pub.track) attachRemoteAudio(pub.track);
         });
       });
       if (hasVideo) setRemotePresent(true);
@@ -274,7 +285,8 @@ export default function useVideoperitajeRoom({
     const onTrack = (track, participant) => {
       if (participant?.isLocal) return;
       if (track.kind === Track.Kind.Audio) {
-        track.attach();
+        attachRemoteAudio(track);
+        room.startAudio?.().catch(() => {});
       }
       if (track.kind === Track.Kind.Video) {
         attachRemote(track);
@@ -311,13 +323,28 @@ export default function useVideoperitajeRoom({
     try {
       await room.connect(url, token);
       setConnected(true);
+      // Desbloquear audio remoto (Chrome/Safari bloquean autoplay sin gesto / startAudio).
+      try {
+        await room.startAudio();
+      } catch {
+        /* el usuario puede tocar la pantalla luego */
+      }
       syncRemotes(room);
+
+      // Micrófono independiente de la cámara: si apagan cámara, el cliente sigue oyendo.
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true);
+      } catch (micErr) {
+        setError(
+          micErr?.message ||
+            'Permita el micrófono en el navegador; si no, el asegurado no lo escucha.'
+        );
+      }
+
       const preview = previewStreamRef.current || (await previewPromise);
       if (preview && room.state && room.localParticipant) {
         try {
-          for (const track of preview.getAudioTracks()) {
-            await room.localParticipant.publishTrack(track);
-          }
+          // No republicar audio del preview (ya va con setMicrophoneEnabled).
           for (const track of preview.getVideoTracks()) {
             await room.localParticipant.publishTrack(track);
           }
@@ -475,14 +502,20 @@ export default function useVideoperitajeRoom({
     }
     const preview = previewStreamRef.current;
     if (preview) {
-      preview.getTracks().forEach((t) => {
+      // Solo video: detener el audio del preview mataría el mic del asegurado.
+      preview.getVideoTracks().forEach((t) => {
         try {
           t.stop();
         } catch {
           /* ignore */
         }
       });
-      previewStreamRef.current = null;
+      const audioVivos = preview.getAudioTracks().filter((t) => t.readyState === 'live');
+      if (audioVivos.length) {
+        previewStreamRef.current = new MediaStream(audioVivos);
+      } else {
+        previewStreamRef.current = null;
+      }
     }
   }, []);
 
@@ -549,6 +582,12 @@ export default function useVideoperitajeRoom({
           }
         }
         apagarCamaraLocal();
+        // Mantener mic activo: el asegurado debe seguir oyendo al ajustador.
+        try {
+          await room.localParticipant.setMicrophoneEnabled(true);
+        } catch {
+          /* ignore */
+        }
         setCameraOn(false);
         setError('');
         return;
