@@ -38,8 +38,9 @@ const jsonHeaders = () => ({
 export const normalizeAlfaItem = (item = {}) => {
   const liquidadorObj = item.liquidador && typeof item.liquidador === 'object';
   const informeObj = item.informeUnico && typeof item.informeUnico === 'object';
-  // Listado/reporte: no recalcular desde liquidador incompleto (slim).
-  // Solo en detalle con base real (ítems/detalle/cotiz) se sobrescriben planos.
+  // Solo recalcular montos si hay base real (ítems/detalle/cotiz).
+  // Si solo hay otrosAmparos (o listado sin liquidador), conservar planos del caso.
+  // NUNCA borrar item.liquidador aquí: el detalle/guardado lo necesita (p. ej. solo coberturas).
   const puedeRecalc = liquidadorAlfaTieneBaseIndemnizacion(item.liquidador);
   const montos = puedeRecalc ? montosCasoDesdeLiquidadorAlfa(item.liquidador) : null;
   const control = puedeRecalc ? camposControlLiquidacionDesdeLiquidadorAlfa(item.liquidador) : null;
@@ -66,7 +67,6 @@ export const normalizeAlfaItem = (item = {}) => {
   return {
     ...item,
     ...numeros,
-    liquidador: puedeRecalc ? item.liquidador : undefined,
     siniestro: item.siniestro ?? '',
     identificacion: item.identificacion ?? '',
     tomador: item.tomador ?? '',
