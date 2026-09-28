@@ -379,14 +379,14 @@ export default function useVideoperitajeRoom({
     attachRemote(remoteTrackRef.current);
   }, [remotePresent, attachRemote]);
 
-  // Rescate: si el asegurado ya publica y el evento se perdió, re-sincronizar.
+  // Rescate solo si aún no hay video remoto (evita trabajo extra en la llamada).
   useEffect(() => {
-    if (!connected) return undefined;
+    if (!connected || remotePresent) return undefined;
     const tick = () => syncRemotes(roomRef.current);
     tick();
     const id = setInterval(tick, 2000);
     return () => clearInterval(id);
-  }, [connected, syncRemotes]);
+  }, [connected, remotePresent, syncRemotes]);
 
   useEffect(() => {
     if (connected) return;

@@ -59,8 +59,10 @@ export async function resolverUrlArchivo(ref) {
       ? new URL(raw, BASE_URL).searchParams.get('ref') || raw
       : raw;
 
+    // Firmada S3 para <img>/video (no necesita CORS). proxy solo si el caller lo pide
+    // o si STORAGE_BROWSER_PREFER_PROXY=true (fetch con Authorization).
     const res = await authFetch(
-      `${BASE_URL}/api/storage/signed-url?ref=${encodeURIComponent(refParam)}&prefer=proxy`
+      `${BASE_URL}/api/storage/signed-url?ref=${encodeURIComponent(refParam)}&prefer=signed`
     );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || !payload?.url) {

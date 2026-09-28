@@ -347,9 +347,17 @@ export default function VideoperitajeSala() {
 
   useEffect(() => {
     cargar();
-    const timer = setInterval(cargar, 3000);
-    return () => clearInterval(timer);
   }, [cargar]);
+
+  // Solo sondear en vivo (presencia del asegurado). En finalizada NO: hidratar 47 fotos
+  // cada 3s saturaba S3/API y Arnald se “desincronizaba”.
+  useEffect(() => {
+    if (!sesion) return undefined;
+    const viva = sesion.estado === 'pendiente' || sesion.estado === 'en_proceso';
+    if (!viva) return undefined;
+    const timer = setInterval(cargar, 5000);
+    return () => clearInterval(timer);
+  }, [cargar, sesion?.estado]);
 
   if (error && !sesion) {
     return (

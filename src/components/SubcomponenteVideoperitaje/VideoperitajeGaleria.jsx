@@ -45,6 +45,10 @@ function Miniatura({ url, video, alt }) {
 export default function VideoperitajeGaleria({ medias, tituloBloque = 'Videoperitaje' }) {
   const { t } = useTranslation();
   const lista = useMemo(() => medias || [], [medias]);
+  const listaKey = useMemo(
+    () => lista.map((m) => `${m._id || ''}:${m.ruta || ''}`).join('|'),
+    [lista]
+  );
   const [urls, setUrls] = useState({});
   const [abierta, setAbierta] = useState(-1);
   const [zipBusy, setZipBusy] = useState(false);
@@ -54,14 +58,19 @@ export default function VideoperitajeGaleria({ medias, tituloBloque = 'Videoperi
     (async () => {
       const next = {};
       for (const m of lista) {
-        next[m._id] = m.url || (await resolverUrlArchivo(m.ruta)) || '';
+        const id = m._id || m.ruta;
+        const previa = typeof m.url === 'string' && /^https?:\/\//i.test(m.url) ? m.url : '';
+        // Nunca usar m.url tipo "s3:…" (rompe <img> en prod). Resolver por proxy/firma.
+        next[id] = previa || (await resolverUrlArchivo(m.ruta)) || '';
       }
       if (alive) setUrls(next);
     })();
     return () => {
       alive = false;
     };
-  }, [lista]);
+    // listaKey evita re-firmar en cada render si el array es nueva referencia con mismas rutas
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listaKey]);
 
   useEffect(() => {
     if (abierta < 0) return undefined;
@@ -82,7 +91,7 @@ export default function VideoperitajeGaleria({ medias, tituloBloque = 'Videoperi
   if (!lista.length) return null;
 
   const actual = abierta >= 0 ? lista[abierta] : null;
-  const urlActual = actual ? urls[actual._id] : '';
+  const urlActual = actual ? urls[actual._id || actual.ruta] : '';
   const ir = (dir) => {
     setAbierta((i) => {
       const n = lista.length;
@@ -195,7 +204,7 @@ export default function VideoperitajeGaleria({ medias, tituloBloque = 'Videoperi
                 }`}
                 aria-label={tituloMedia(m, i)}
               >
-                <Miniatura url={urls[m._id]} video={esVideo(m)} alt="" />
+                <Miniatura url={urls[m._id || m.ruta]} video={esVideo(m)} alt="" />
               </button>
             ))}
           </nav>
@@ -226,7 +235,7 @@ export default function VideoperitajeGaleria({ medias, tituloBloque = 'Videoperi
             className="relative aspect-square overflow-hidden rounded-md bg-zinc-100 outline-none ring-offset-2 hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[#c8102e]"
             aria-label={tituloMedia(m, i)}
           >
-            <Miniatura url={urls[m._id]} video={esVideo(m)} alt={tituloMedia(m, i)} />
+            <Miniatura url={urls[m._id || m.ruta]} video={esVideo(m)} alt={tituloMedia(m, i)} />
           </button>
         ))}
       </div>
