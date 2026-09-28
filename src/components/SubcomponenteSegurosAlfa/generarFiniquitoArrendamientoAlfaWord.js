@@ -17,6 +17,7 @@ import { saveAs } from 'file-saver';
 import {
   formatearMonto,
   FECHA_TERREMOTO_ALFA_LARGA,
+  pesosEnterosAlfa,
   resolverMontoIndemnizarAlfa,
   sumarOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
@@ -207,7 +208,8 @@ export async function descargarFiniquitoArrendamientoAlfaWord(liquidador = {}, t
   const cedula = formatearCedula(enc.identificacion || enc.cedula);
   const ciudad = enc.ciudad || enc.ciudadFirma || banco.ciudadFirma || 'CALI';
   const firma = partesFechaFirma(enc.fechaImpreso || new Date());
-  const montoNum = formatearMonto(monto, { decimals: 0 });
+  const montoEntero = pesosEnterosAlfa(monto) ?? Math.round(Number(monto) || 0);
+  const montoNum = formatearMonto(montoEntero, { decimals: 0 });
 
   const logosTable = await buildLogoAlfaHeader();
   const firmasCliente = await parrafosFirmaClienteAlfa({

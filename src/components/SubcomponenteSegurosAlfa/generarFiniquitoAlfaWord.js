@@ -18,6 +18,7 @@ import { montoALetrasFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdm
 import {
   formatearMonto,
   FECHA_TERREMOTO_ALFA_LARGA,
+  pesosEnterosAlfa,
   resolverMontoIndemnizarAlfa,
 } from './liquidadorAlfaHelpers.js';
 import { parrafosFirmaClienteAlfa } from './firmaClienteAlfaWord.js';
@@ -201,8 +202,11 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
   const fechaEventoLarga = FECHA_TERREMOTO_ALFA_LARGA;
   const firma = partesFechaFirma(enc.fechaImpreso || new Date());
 
-  const montoNum = formatearMonto(totalIndemnizar, { decimals: 2 });
-  const montoLetras = letrasFiniquito(totalIndemnizar);
+  // Redondeo a pesos enteros (igual tipificación / valorLiquidado / Excel).
+  const montoEntero =
+    pesosEnterosAlfa(totalIndemnizar) ?? Math.round(Number(totalIndemnizar) || 0);
+  const montoNum = formatearMonto(montoEntero, { decimals: 0 });
+  const montoLetras = letrasFiniquito(montoEntero);
 
   const logosTable = await buildLogosHeader();
   const firmasCliente = await parrafosFirmaClienteAlfa({

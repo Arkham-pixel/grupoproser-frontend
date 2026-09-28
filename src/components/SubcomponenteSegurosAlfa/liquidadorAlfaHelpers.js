@@ -759,7 +759,11 @@ export function calcularLiquidacionAlfa(liquidador = {}, opciones = {}) {
  */
 export function resolverMontoIndemnizarAlfa(liquidador = {}, totalesDesfasados = null) {
   const totales = calcularLiquidacionAlfa(liquidador);
-  const totalIndemnizar = Math.max(0, Number(totales.totalIndemnizar) || 0);
+  // Pesos enteros: finiquito / tipificación / Excel deben coincidir (sin centavos).
+  const totalIndemnizar = Math.max(
+    0,
+    pesosEnterosAlfa(totales.totalIndemnizar) ?? Math.round(Number(totales.totalIndemnizar) || 0)
+  );
   const stale = Number(
     totalesDesfasados?.totalIndemnizar ?? totalesDesfasados?.totalIndemnizable
   );
