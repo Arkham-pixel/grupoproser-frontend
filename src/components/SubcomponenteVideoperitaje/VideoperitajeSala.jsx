@@ -43,17 +43,23 @@ function SalaLivePerito({ sesion, onRefresh }) {
       const r = await tokenLivekitPerito(sesion._id);
       if (!r?.token || !livekitUsableEnEstaPagina(r?.url)) {
         setLk(null);
+        setLkError(
+          r?.configured === false || !r?.token
+            ? t('videoperitaje.livekitHint')
+            : 'No se recibió URL de video válida. Verifique LIVEKIT_PUBLIC_URL.'
+        );
         return;
       }
       setLk(r);
     } catch (err) {
       if (err.code === 'LIVEKIT_NOT_CONFIGURED' || err.status === 503) {
         setLk(null);
+        setLkError(t('videoperitaje.livekitHint'));
         return;
       }
       setLkError(err.message);
     }
-  }, [sesion._id]);
+  }, [sesion._id, t]);
 
   useEffect(() => {
     conectar();
@@ -218,10 +224,11 @@ function SalaLivePerito({ sesion, onRefresh }) {
             ref={room.remoteVideoRef}
             autoPlay
             playsInline
+            muted
             className={
               room.remotePresent
                 ? 'mx-auto block h-[min(70vh,720px)] w-full max-w-md bg-black object-contain [transform:none] [-webkit-transform:none]'
-                : 'pointer-events-none absolute h-px w-px opacity-0'
+                : 'pointer-events-none absolute inset-0 h-full w-full opacity-0'
             }
             style={
               room.remotePresent
@@ -232,7 +239,7 @@ function SalaLivePerito({ sesion, onRefresh }) {
                     transform: 'none',
                     WebkitTransform: 'none',
                   }
-                : undefined
+                : { objectFit: 'contain' }
             }
           />
           <video
@@ -307,14 +314,14 @@ function SalaLivePerito({ sesion, onRefresh }) {
             {room.cameraOn ? t('videoperitaje.cameraOff') : t('videoperitaje.cameraOn')}
           </button>
         </div>
-        {lkError &&
-          !/livekit|7880|coolify|url pública|localhost|videollamada/i.test(lkError) && (
-          <p className="mt-2 text-sm text-amber-700">{lkError}</p>
+        {lkError && <p className="mt-2 text-sm text-amber-700">{lkError}</p>}
+        {room.error && <p className="mt-2 text-sm text-red-600">{room.error}</p>}
+        {lk && !room.connected && !room.error && (
+          <p className="mt-2 text-sm text-gray-500">Conectando al servidor de video…</p>
         )}
-        {room.error &&
-          !/signal|timed out|websocket|failed to fetch|establish|servidor de video|content.security.policy/i.test(
-            room.error
-          ) && <p className="mt-2 text-sm text-red-600">{room.error}</p>}
+        {lk && room.connected && !room.remotePresent && aseguradoEnPortal && (
+          <p className="mt-2 text-sm text-amber-700">{t('videoperitaje.clientNoVideo')}</p>
+        )}
     </div>
   );
 }

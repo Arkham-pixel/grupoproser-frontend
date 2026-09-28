@@ -9,7 +9,13 @@ import {
   createLocalVideoTrack,
 } from 'livekit-client';
 
-const SIN_RECONEXION = { nextRetryDelayInMs: () => null };
+/** Reintentos cortos: sin esto, un blip de red deja al asegurado fuera y el ajustador sin video. */
+const RECONEXION_LIMITADA = {
+  nextRetryDelayInMs: (ctx) => {
+    if (!ctx || ctx.retryCount > 8) return null;
+    return Math.min(800 * 2 ** ctx.retryCount, 8000);
+  },
+};
 
 function soltarMediosLocales(room) {
   const p = room?.localParticipant;
@@ -52,6 +58,7 @@ export default function useVideoperitajeRoom({
   const roomRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteTrackRef = useRef(null);
   const previewStreamRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
@@ -103,21 +110,30 @@ export default function useVideoperitajeRoom({
   };
 
   const attachRemote = useCallback((track) => {
+    if (!track || track.kind !== Track.Kind.Video) return;
+    remoteTrackRef.current = track;
+    setRemotePresent(true);
     const el = remoteVideoRef.current;
-    if (!el || !track) return;
+    if (!el) return;
     track.attach(el);
     // contain = encuadre completo del celular (sin zoom/recorte en pantalla).
     el.removeAttribute('width');
     el.removeAttribute('height');
+    el.muted = true;
+    el.playsInline = true;
     el.style.objectFit = 'contain';
     el.style.objectPosition = 'center';
     el.style.transform = 'none';
     el.style.webkitTransform = 'none';
+    const play = () => el.play?.().catch(() => {});
+    if (el.readyState >= 2) play();
+    else el.onloadedmetadata = play;
     requestAnimationFrame(() => {
       if (!remoteVideoRef.current) return;
       remoteVideoRef.current.style.transform = 'none';
       remoteVideoRef.current.style.webkitTransform = 'none';
       remoteVideoRef.current.style.objectFit = 'contain';
+      play();
     });
   }, []);
 
@@ -195,18 +211,53 @@ export default function useVideoperitajeRoom({
     return null;
   }, [publishAudio, publishVideo, attachLocalPreview]);
 
+  const syncRemotes = useCallback(
+    (room) => {
+      if (!room) return;
+      let hasVideo = false;
+      room.remoteParticipants.forEach((p) => {
+        p.videoTrackPublications.forEach((pub) => {
+          if (pub.kind === Track.Kind.Video && pub.setSubscribed && !pub.isSubscribed) {
+            try {
+              pub.setSubscribed(true);
+            } catch {
+              /* ignore */
+            }
+          }
+          if (pub.track) {
+            hasVideo = true;
+            attachRemote(pub.track);
+          }
+        });
+        p.audioTrackPublications.forEach((pub) => {
+          if (pub.track) pub.track.attach();
+        });
+      });
+      if (hasVideo) setRemotePresent(true);
+      else if (room.remoteParticipants.size === 0) {
+        remoteTrackRef.current = null;
+        setRemotePresent(false);
+      }
+    },
+    [attachRemote]
+  );
+
   const connect = useCallback(async () => {
-    await mostrarPreviewLocal();
     if (!token || !url) return;
-    if (!livekitUsableEnEstaPagina(url)) return;
+    if (!livekitUsableEnEstaPagina(url)) {
+      setError('URL de video no usable desde esta página.');
+      return;
+    }
     setError('');
+    // Cámara en paralelo: no bloquear la entrada a LiveKit (si no, se pierde el track del asegurado).
+    const previewPromise = mostrarPreviewLocal();
     const res = resolucionDe();
     const room = new Room({
       adaptiveStream: false,
       dynacast: true,
       stopLocalTrackOnUnpublish: true,
       disconnectOnPageLeave: true,
-      reconnectPolicy: SIN_RECONEXION,
+      reconnectPolicy: RECONEXION_LIMITADA,
       videoCaptureDefaults: {
         facingMode,
         ...(res ? { resolution: res } : {}),
@@ -220,29 +271,30 @@ export default function useVideoperitajeRoom({
     });
     roomRef.current = room;
 
-    const onTrack = (track, publication, participant) => {
-      if (participant.isLocal) return;
+    const onTrack = (track, participant) => {
+      if (participant?.isLocal) return;
       if (track.kind === Track.Kind.Audio) {
         track.attach();
       }
       if (track.kind === Track.Kind.Video) {
-        setRemotePresent(true);
         attachRemote(track);
       }
     };
     const onUnpublish = (_pub, participant) => {
-      if (!participant.isLocal) {
-        const still = Array.from(room.remoteParticipants.values()).some((p) =>
-          Array.from(p.videoTrackPublications.values()).some((pub) => pub.track)
-        );
-        setRemotePresent(still);
-      }
+      if (!participant?.isLocal) syncRemotes(room);
     };
 
-    room.on(RoomEvent.TrackSubscribed, onTrack);
+    room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => onTrack(track, participant));
     room.on(RoomEvent.TrackUnsubscribed, onUnpublish);
+    room.on(RoomEvent.TrackPublished, (_pub, participant) => {
+      if (!participant?.isLocal) syncRemotes(room);
+    });
+    room.on(RoomEvent.ParticipantConnected, () => syncRemotes(room));
+    room.on(RoomEvent.ParticipantDisconnected, () => syncRemotes(room));
+    room.on(RoomEvent.Reconnected, () => syncRemotes(room));
     room.on(RoomEvent.Disconnected, (reason) => {
       setConnected(false);
+      remoteTrackRef.current = null;
       setRemotePresent(false);
       const preview = previewStreamRef.current;
       const el = localVideoRef.current;
@@ -258,8 +310,10 @@ export default function useVideoperitajeRoom({
 
     try {
       await room.connect(url, token);
-      const preview = previewStreamRef.current || (await mostrarPreviewLocal());
-      if (preview) {
+      setConnected(true);
+      syncRemotes(room);
+      const preview = previewStreamRef.current || (await previewPromise);
+      if (preview && room.state && room.localParticipant) {
         try {
           for (const track of preview.getAudioTracks()) {
             await room.localParticipant.publishTrack(track);
@@ -281,24 +335,28 @@ export default function useVideoperitajeRoom({
           setError(pubErr.message || 'No se pudo publicar la cámara');
         }
       }
-      room.remoteParticipants.forEach((p) => {
-        p.videoTrackPublications.forEach((pub) => {
-          if (pub.track) attachRemote(pub.track);
-        });
-        p.audioTrackPublications.forEach((pub) => {
-          if (pub.track) pub.track.attach();
-        });
-      });
-      setConnected(true);
+      syncRemotes(room);
     } catch (err) {
-      const raw = String(err.message || '');
-      if (/signal|timed out|websocket|failed to fetch|establish|content.security.policy|refused to connect/i.test(raw)) {
-        setError('');
-        return;
-      }
-      setError(raw || 'No se pudo conectar a la sala');
+      const raw = String(err.message || err || '');
+      setError(
+        /signal|timed out|websocket|failed to fetch|establish|content.security.policy|refused to connect/i.test(
+          raw
+        )
+          ? 'No se pudo conectar al servidor de video. Recargue la sala o verifique LiveKit.'
+          : raw || 'No se pudo conectar a la sala'
+      );
     }
-  }, [token, url, publishAudio, publishVideo, attachRemote, mostrarPreviewLocal]);
+  }, [
+    token,
+    url,
+    facingMode,
+    publishAudio,
+    publishVideo,
+    attachRemote,
+    attachLocalPreview,
+    mostrarPreviewLocal,
+    syncRemotes,
+  ]);
 
   useEffect(() => {
     connect();
@@ -314,6 +372,21 @@ export default function useVideoperitajeRoom({
       }
     };
   }, [connect]);
+
+  // Re-enganchar video remoto si el <video> cambió de tamaño/clase (antes era 1×1 px y Chrome no decodifica).
+  useEffect(() => {
+    if (!remotePresent || !remoteTrackRef.current) return;
+    attachRemote(remoteTrackRef.current);
+  }, [remotePresent, attachRemote]);
+
+  // Rescate: si el asegurado ya publica y el evento se perdió, re-sincronizar.
+  useEffect(() => {
+    if (!connected) return undefined;
+    const tick = () => syncRemotes(roomRef.current);
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => clearInterval(id);
+  }, [connected, syncRemotes]);
 
   useEffect(() => {
     if (connected) return;
@@ -347,6 +420,7 @@ export default function useVideoperitajeRoom({
     soltarMediosLocales(room);
     room.disconnect();
     roomRef.current = null;
+    remoteTrackRef.current = null;
     setConnected(false);
     setRemotePresent(false);
   }, []);
