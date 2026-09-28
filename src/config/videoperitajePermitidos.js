@@ -1,6 +1,6 @@
 /**
- * Módulo de videoperitaje: abierto a todos los usuarios autenticados.
- * Admin (vaciar / cupo): VITE_LOGINS_VIDEOPERITAJE_ADMIN o rol admin.
+ * Módulo de videoperitaje: abierto a todos los autenticados.
+ * Historial: cada uno ve solo las suyas; admin ve todas / vacía / cupo.
  * Debe coincidir con backend/config/videoperitajePermitidos.js
  */
 
