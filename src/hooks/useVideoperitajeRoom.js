@@ -91,8 +91,15 @@ export default function useVideoperitajeRoom({
     };
   };
 
-  const aplicarVideoEl = (el, { espejo = false } = {}) => {
+  const aplicarVideoEl = (el, { espejo = false, fill = true } = {}) => {
     if (!el) return;
+    // Evitar que LiveKit deje width/height fijos y estire el video en escritorio.
+    el.removeAttribute('width');
+    el.removeAttribute('height');
+    if (fill) {
+      el.style.width = '100%';
+      el.style.height = '100%';
+    }
     el.style.objectFit = 'cover';
     el.style.objectPosition = 'center';
     // Vista previa local: espejo (como un espejo). Remota: orientación real.
@@ -101,14 +108,13 @@ export default function useVideoperitajeRoom({
     el.style.webkitTransform = t;
   };
 
-  const forzarContain = (el) => aplicarVideoEl(el, { espejo: false });
-
   const attachRemote = useCallback((track) => {
     const el = remoteVideoRef.current;
     if (!el || !track) return;
     track.attach(el);
-    aplicarVideoEl(el, { espejo: false });
-    requestAnimationFrame(() => aplicarVideoEl(el, { espejo: false }));
+    aplicarVideoEl(el, { espejo: false, fill: true });
+    requestAnimationFrame(() => aplicarVideoEl(el, { espejo: false, fill: true }));
+    setTimeout(() => aplicarVideoEl(el, { espejo: false, fill: true }), 120);
   }, []);
 
   const attachLocalPreview = useCallback((el) => {
