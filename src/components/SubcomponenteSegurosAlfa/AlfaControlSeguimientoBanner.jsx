@@ -50,6 +50,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [flushing, setFlushing] = useState(false);
+  const [flushProgress, setFlushProgress] = useState(null);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -179,11 +180,38 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     [openUpdatesModal, openNoChangesModal]
   );
 
+  const applyOutboundProgressFromStatus = useCallback((data) => {
+    const p = data?.outboundProgress;
+    if (!p) return;
+    const busy = Boolean(data?.outboundBusy || p.running);
+    const recentlyFinished =
+      !p.running &&
+      p.finishedAt &&
+      Date.now() - new Date(p.finishedAt).getTime() < 12_000;
+    if (!busy && !recentlyFinished) {
+      setFlushProgress((prev) => (prev && prev.pct >= 100 ? null : prev));
+      return;
+    }
+    const who =
+      p.startedByName || p.startedByLogin
+        ? ` · iniciado por ${p.startedByName || p.startedByLogin}`
+        : '';
+    setFlushProgress({
+      pct: Number(p.pct) || 0,
+      done: Number(p.done) || 0,
+      total: Number(p.peakTotal) || 0,
+      left: Number(p.left) || 0,
+      label: `${p.label || (busy ? 'Enviando a Excel…' : 'Envío finalizado')}${who}`,
+      running: busy,
+    });
+  }, []);
+
   const load = useCallback(async () => {
     try {
       setError(null);
       const data = await getControlSeguimientoAlfaStatus();
       setStatus(data);
+      applyOutboundProgressFromStatus(data);
       if (data?.source?.notification?.pending) {
         setToast(
           data.source.notification.message || 'Hay nuevas actualizaciones de Seguros Alfa'
@@ -204,7 +232,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyOutboundProgressFromStatus]);
 
   useEffect(() => {
     if (!puedeActualizar) {
@@ -212,9 +240,19 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
       return undefined;
     }
     load();
-    const id = setInterval(load, 60_000);
+    const busy =
+      Boolean(status?.outboundBusy) ||
+      Boolean(status?.outboundProgress?.running) ||
+      flushing;
+    const id = setInterval(load, busy ? 2000 : 60_000);
     return () => clearInterval(id);
-  }, [load, puedeActualizar]);
+  }, [
+    load,
+    puedeActualizar,
+    flushing,
+    status?.outboundBusy,
+    status?.outboundProgress?.running,
+  ]);
 
   // Auto: hay actualizaciones
   useEffect(() => {
@@ -304,9 +342,19 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     if (!puedeActualizar) return;
     setFlushing(true);
     setError(null);
+    setSuccessMsg(null);
+    setFlushProgress({
+      pct: 1,
+      done: 0,
+      total: Number(status?.outboundPending || 0),
+      left: Number(status?.outboundPending || 0),
+      label: 'Preparando cola ARNALD → Excel…',
+      running: true,
+    });
+
     try {
       const data = await flushOutboundControlSeguimientoAlfa({
-        maxRounds: 10,
+        maxRounds: 15,
         forceResync: true,
         onlyWithMoney: true,
         enqueueLimit: 150,
@@ -316,16 +364,19 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
         data.flush?.pendingLeft ??
         data.outboundQueue?.total ??
         0;
+      const synced = Number(data.flush?.synced || 0);
+      applyOutboundProgressFromStatus(data);
       setStatus((prev) =>
         prev
           ? {
               ...prev,
               outboundPending: left,
               outboundQueue: data.outboundQueue || prev.outboundQueue,
+              outboundProgress: data.outboundProgress || prev.outboundProgress,
+              outboundBusy: false,
             }
           : prev
       );
-      const synced = Number(data.flush?.synced || 0);
       setSuccessMsg(
         data.message ||
           (synced > 0
@@ -335,7 +386,12 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
       setExecuteSummary(null);
       await load();
     } catch (err) {
-      setError(err.message || 'No se pudo enviar a Excel');
+      if (err.message?.includes('en curso') || String(err.message || '').includes('OUTBOUND')) {
+        setError('Ya hay un envío en curso (otro usuario). La barra mostrará el avance.');
+        await load();
+      } else {
+        setError(err.message || 'No se pudo enviar a Excel');
+      }
     } finally {
       setFlushing(false);
     }
@@ -525,12 +581,19 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
               <button
                 type="button"
                 className={outboundPending > 0 ? expressBtnPrimary : expressBtnGhost}
-                disabled={checking || flushing}
+                disabled={
+                  checking ||
+                  flushing ||
+                  Boolean(status?.outboundBusy) ||
+                  Boolean(status?.outboundProgress?.running)
+                }
                 onClick={handleFlushOutbound}
                 title="Alinea Excel con ARNALD: tipificaciones pendientes + diferencias reales en columnas amarillas. Excel→ARNALD va con Revisar/Actualizar."
               >
-                {flushing
-                  ? 'Enviando a Excel…'
+                {flushing || status?.outboundBusy || status?.outboundProgress?.running
+                  ? flushProgress?.pct != null
+                    ? `Enviando… ${flushProgress.pct}%`
+                    : 'Enviando a Excel…'
                   : outboundPending > 0
                     ? `Enviar a Excel (${outboundPending})`
                     : 'Enviar a Excel'}
@@ -556,6 +619,36 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
             )}
           </div>
         </div>
+        {flushProgress && (
+          <div className="mt-3 space-y-1.5" aria-live="polite">
+            <div className="flex items-center justify-between gap-2 text-xs font-medium">
+              <span>{flushProgress.label}</span>
+              <span className="tabular-nums">{flushProgress.pct}%</span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/15">
+              <div
+                className={`h-full rounded-full transition-[width] duration-500 ease-out ${
+                  flushProgress.pct >= 100
+                    ? 'bg-emerald-500'
+                    : flushProgress.running || flushing || status?.outboundBusy
+                      ? 'bg-sky-500'
+                      : 'bg-amber-500'
+                }`}
+                style={{ width: `${Math.max(2, Math.min(100, flushProgress.pct))}%` }}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={flushProgress.pct}
+              />
+            </div>
+            {flushProgress.total > 0 && (
+              <p className="text-[11px] opacity-80">
+                {flushProgress.done}/{flushProgress.total} procesados
+                {flushProgress.left > 0 ? ` · ${flushProgress.left} pendientes` : ''}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <ModalActualizacionesSegurosAlfa
