@@ -389,34 +389,52 @@ export default function useVideoperitajeRoom({
     }
   }, [attachLocalPreview]);
 
+  const apagarCamaraLocal = useCallback(() => {
+    const el = localVideoRef.current;
+    if (el) {
+      try {
+        el.pause?.();
+      } catch {
+        /* ignore */
+      }
+      el.srcObject = null;
+    }
+    const preview = previewStreamRef.current;
+    if (preview) {
+      preview.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* ignore */
+        }
+      });
+      previewStreamRef.current = null;
+    }
+  }, []);
+
   const toggleCamera = useCallback(async () => {
     const next = !cameraOn;
     const room = roomRef.current;
     try {
       if (room) {
         if (next) {
-          // Liberar preview para que LiveKit pueda abrir la cámara sin "Device in use".
-          const preview = previewStreamRef.current;
-          if (preview) {
-            preview.getTracks().forEach((t) => {
-              try {
-                t.stop();
-              } catch {
-                /* ignore */
-              }
-            });
-            previewStreamRef.current = null;
-            if (localVideoRef.current?.srcObject === preview) {
-              localVideoRef.current.srcObject = null;
-            }
-          }
+          // Liberar preview previo y encender de nuevo.
+          apagarCamaraLocal();
           try {
             await room.localParticipant.setCameraEnabled(true, {
               resolution: VideoPresets.h720.resolution,
               facingMode: facingRef.current,
             });
+            // Mostrar en el PIP lo que LiveKit publicó.
+            const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
+            const pub = pubs.find((p) => p.track);
+            if (pub?.track && localVideoRef.current) {
+              pub.track.attach(localVideoRef.current);
+              localVideoRef.current.muted = true;
+              attachLocalPreview(localVideoRef.current);
+              localVideoRef.current.play?.().catch(() => {});
+            }
           } catch {
-            // Fallback: abrir cámara con constraints suaves y publicarla.
             const stream = await navigator.mediaDevices.getUserMedia({
               video: constraintsVideo('media'),
               audio: false,
@@ -434,23 +452,43 @@ export default function useVideoperitajeRoom({
               }
             }
           }
-        } else {
-          await room.localParticipant.setCameraEnabled(false);
+          setCameraOn(true);
+          setError('');
+          return;
         }
-        setCameraOn(next);
+
+        // Apagar: quitar publicación LiveKit + detener preview (si no, sigue viéndose).
+        try {
+          await room.localParticipant.setCameraEnabled(false);
+        } catch {
+          /* ignore */
+        }
+        const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
+        for (const pub of pubs) {
+          try {
+            if (pub.track) {
+              await room.localParticipant.unpublishTrack(pub.track);
+              pub.track.stop();
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        apagarCamaraLocal();
+        setCameraOn(false);
         setError('');
         return;
       }
-      const preview = previewStreamRef.current;
-      if (preview) {
-        preview.getVideoTracks().forEach((t) => {
-          t.enabled = next;
-        });
-        setCameraOn(next);
-        setError('');
-      } else if (next) {
+
+      if (next) {
         await mostrarPreviewLocal();
+        setCameraOn(true);
+        setError('');
+        return;
       }
+      apagarCamaraLocal();
+      setCameraOn(false);
+      setError('');
     } catch (err) {
       const raw = String(err?.message || err || '');
       if (/Could not start video source|NotReadableError|Device in use|NotAllowedError/i.test(raw)) {
@@ -460,9 +498,10 @@ export default function useVideoperitajeRoom({
       } else {
         setError(raw || 'No se pudo cambiar la cámara');
       }
+      apagarCamaraLocal();
       setCameraOn(false);
     }
-  }, [cameraOn, attachLocalPreview, mostrarPreviewLocal]);
+  }, [cameraOn, attachLocalPreview, mostrarPreviewLocal, apagarCamaraLocal]);
 
   const sendCaptureCommand = useCallback(async () => {
     const room = roomRef.current;

@@ -242,8 +242,12 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute right-3 top-3 z-10 w-28 rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
-                : 'aspect-video w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
+                ? `absolute right-3 top-3 z-10 w-28 rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)] ${
+                    room.cameraOn ? '' : 'opacity-40'
+                  }`
+                : `aspect-video w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)] ${
+                    room.cameraOn ? '' : 'opacity-40'
+                  }`
             }
             style={
               room.remotePresent
@@ -251,6 +255,18 @@ function SalaLivePerito({ sesion, onRefresh }) {
                 : { transform: 'scaleX(-1)' }
             }
           />
+          {room.remotePresent && !room.cameraOn && (
+            <p className="pointer-events-none absolute right-3 top-3 z-20 flex aspect-[3/4] w-28 items-center justify-center rounded-lg bg-black/75 text-center text-[10px] font-semibold leading-tight text-white">
+              Cámara
+              <br />
+              apagada
+            </p>
+          )}
+          {!room.remotePresent && !room.cameraOn && (
+            <p className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/60 text-sm font-semibold text-white">
+              Cámara apagada
+            </p>
+          )}
           {grabando && (
             <p className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white">
               <FaCircle className="animate-pulse text-[8px]" />
