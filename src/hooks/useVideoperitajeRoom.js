@@ -91,18 +91,15 @@ export default function useVideoperitajeRoom({
     };
   };
 
-  const aplicarVideoEl = (el, { espejo = false, fill = true } = {}) => {
+  const aplicarVideoEl = (el, { espejo = false } = {}) => {
     if (!el) return;
-    // Evitar que LiveKit deje width/height fijos y estire el video en escritorio.
+    // Quitar attrs/inline que LiveKit pone (deforman o colapsan el layout).
     el.removeAttribute('width');
     el.removeAttribute('height');
-    if (fill) {
-      el.style.width = '100%';
-      el.style.height = '100%';
-    }
+    el.style.removeProperty('width');
+    el.style.removeProperty('height');
     el.style.objectFit = 'cover';
     el.style.objectPosition = 'center';
-    // Vista previa local: espejo (como un espejo). Remota: orientación real.
     const t = espejo ? 'scaleX(-1)' : 'none';
     el.style.transform = t;
     el.style.webkitTransform = t;
@@ -112,13 +109,23 @@ export default function useVideoperitajeRoom({
     const el = remoteVideoRef.current;
     if (!el || !track) return;
     track.attach(el);
-    aplicarVideoEl(el, { espejo: false, fill: true });
-    requestAnimationFrame(() => aplicarVideoEl(el, { espejo: false, fill: true }));
-    setTimeout(() => aplicarVideoEl(el, { espejo: false, fill: true }), 120);
+    // Contenedor 9:16 + object-contain: se ve el celular completo sin estirar.
+    el.style.objectFit = 'contain';
+    el.style.objectPosition = 'center';
+    el.removeAttribute('width');
+    el.removeAttribute('height');
+    el.style.removeProperty('width');
+    el.style.removeProperty('height');
+    el.style.transform = 'none';
+    el.style.webkitTransform = 'none';
+    requestAnimationFrame(() => {
+      el.style.objectFit = 'contain';
+      el.style.removeProperty('width');
+      el.style.removeProperty('height');
+    });
   }, []);
 
   const attachLocalPreview = useCallback((el) => {
-    // Frontal: espejo. Trasera: real (mapa / fachada).
     const espejo = facingRef.current !== 'environment';
     aplicarVideoEl(el, { espejo });
     requestAnimationFrame(() => aplicarVideoEl(el, { espejo }));

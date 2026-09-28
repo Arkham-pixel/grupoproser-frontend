@@ -216,7 +216,7 @@ function SalaLivePerito({ sesion, onRefresh }) {
         <div
           className={
             room.remotePresent
-              ? 'relative mx-auto h-[min(70vh,720px)] w-auto max-w-[min(100%,405px)] overflow-hidden rounded-2xl bg-black aspect-[9/16]'
+              ? 'relative mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl bg-zinc-950 aspect-[9/16]'
               : 'relative overflow-hidden rounded-2xl bg-black'
           }
         >
@@ -226,19 +226,8 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute inset-0 h-full w-full bg-black object-cover [transform:none]'
+                ? 'absolute inset-0 h-full w-full bg-zinc-950 object-contain'
                 : 'pointer-events-none absolute h-px w-px opacity-0'
-            }
-            style={
-              room.remotePresent
-                ? {
-                    objectFit: 'cover',
-                    objectPosition: 'center',
-                    transform: 'none',
-                    width: '100%',
-                    height: '100%',
-                  }
-                : undefined
             }
           />
           <video
@@ -248,13 +237,8 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute right-3 top-3 z-10 w-[28%] max-w-[120px] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
+                ? 'absolute bottom-3 right-3 z-10 h-36 w-[6.75rem] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
                 : 'aspect-video w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
-            }
-            style={
-              room.remotePresent
-                ? { aspectRatio: '3 / 4', objectFit: 'cover', transform: 'scaleX(-1)' }
-                : { transform: 'scaleX(-1)' }
             }
           />
           {grabando && (
