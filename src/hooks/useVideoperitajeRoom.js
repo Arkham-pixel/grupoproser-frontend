@@ -62,11 +62,11 @@ export default function useVideoperitajeRoom({
   const portraitRef = useRef(portrait);
   portraitRef.current = portrait;
   const [facing, setFacing] = useState(facingMode);
-  // Escritorio: 720p ideal (muchas webcams fallan con min 1080).
-  // Celular: pedir alta resolución para fotos (solo ideal, sin min duro).
+  // Escritorio: 720p. Celular: 720×1280 (FOV amplio).
+  // Pedir 1080×1920 / 4K hace que muchos teléfonos recorten el sensor (cara gigante).
   const resolucionDe = () =>
     portraitRef.current
-      ? { width: 1080, height: 1920 }
+      ? { width: 720, height: 1280 }
       : VideoPresets.h720.resolution;
 
   const constraintsVideo = (nivel = 'alta') => {
@@ -83,19 +83,28 @@ export default function useVideoperitajeRoom({
       };
     }
     const res = resolucionDe();
-    return {
+    const base = {
       facingMode: { ideal: facing },
       width: { ideal: res.width },
       height: { ideal: res.height },
       frameRate: { ideal: 24 },
     };
+    // Sin recorte digital del UA cuando el navegador lo soporta.
+    if (facing === 'user' || facing?.ideal === 'user') {
+      return {
+        ...base,
+        resizeMode: 'none',
+        advanced: [{ zoom: 1.0 }],
+      };
+    }
+    return base;
   };
 
-  const aplicarVideoEl = (el, { espejo = false } = {}) => {
+  const aplicarVideoEl = (el, { espejo = false, fit = 'cover' } = {}) => {
     if (!el) return;
     el.removeAttribute('width');
     el.removeAttribute('height');
-    el.style.objectFit = 'cover';
+    el.style.objectFit = fit;
     el.style.objectPosition = 'center';
     const t = espejo ? 'scaleX(-1)' : 'none';
     el.style.transform = t;
@@ -106,10 +115,10 @@ export default function useVideoperitajeRoom({
     const el = remoteVideoRef.current;
     if (!el || !track) return;
     track.attach(el);
-    // Cliente: orientación real (sin espejo). Solo el PIP local lleva scaleX(-1).
+    // contain = encuadre completo del celular (sin zoom/recorte en pantalla).
     el.removeAttribute('width');
     el.removeAttribute('height');
-    el.style.objectFit = 'cover';
+    el.style.objectFit = 'contain';
     el.style.objectPosition = 'center';
     el.style.transform = 'none';
     el.style.webkitTransform = 'none';
@@ -117,7 +126,7 @@ export default function useVideoperitajeRoom({
       if (!remoteVideoRef.current) return;
       remoteVideoRef.current.style.transform = 'none';
       remoteVideoRef.current.style.webkitTransform = 'none';
-      remoteVideoRef.current.style.objectFit = 'cover';
+      remoteVideoRef.current.style.objectFit = 'contain';
     });
   }, []);
 
@@ -213,7 +222,7 @@ export default function useVideoperitajeRoom({
       },
       videoPublishDefaults: {
         videoEncoding: {
-          maxBitrate: portraitRef.current ? 4_000_000 : 5_000_000,
+          maxBitrate: portraitRef.current ? 2500000 : 3500000,
           maxFramerate: portraitRef.current ? 24 : 30,
         },
       },

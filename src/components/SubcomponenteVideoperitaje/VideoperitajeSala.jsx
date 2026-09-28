@@ -220,14 +220,14 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'mx-auto block h-[min(70vh,720px)] w-full max-w-md bg-black object-cover [transform:none] [-webkit-transform:none]'
+                ? 'mx-auto block h-[min(70vh,720px)] w-full max-w-md bg-black object-contain [transform:none] [-webkit-transform:none]'
                 : 'pointer-events-none absolute h-px w-px opacity-0'
             }
             style={
               room.remotePresent
                 ? {
                     aspectRatio: '9 / 16',
-                    objectFit: 'cover',
+                    objectFit: 'contain',
                     objectPosition: 'center',
                     transform: 'none',
                     WebkitTransform: 'none',

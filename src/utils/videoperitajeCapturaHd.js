@@ -49,11 +49,11 @@ async function blobDesdeTakePhoto(mediaStreamTrack) {
     let photoSettings;
     try {
       const caps = await ic.getPhotoCapabilities?.();
-      if (caps?.imageWidth?.max && caps?.imageHeight?.max) {
-        photoSettings = {
-          imageWidth: caps.imageWidth.max,
-          imageHeight: caps.imageHeight.max,
-        };
+      // No pedir el máximo del sensor: en frontales suele ser un recorte (cara gigante).
+      if (caps?.imageWidth && caps?.imageHeight) {
+        const idealW = Math.min(1920, caps.imageWidth.max || 1920);
+        const idealH = Math.min(2560, caps.imageHeight.max || 2560);
+        photoSettings = { imageWidth: idealW, imageHeight: idealH };
       }
     } catch {
       /* capabilities opcionales */
