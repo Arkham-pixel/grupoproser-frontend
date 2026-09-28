@@ -106,12 +106,15 @@ export function pistaVideoDeSala(room) {
 }
 
 /**
- * Prioridad: still de cámara (takePhoto) → frame HD → canvas del <video>.
- * takePhoto usa el sensor (varios MP); grabFrame solo la resolución del stream.
+ * Prioridad:
+ * - En llamada (soloStream): grabFrame / canvas del <video> — takePhoto congela el stream (pantalla negra).
+ * - Fuera de llamada: still takePhoto → grabFrame → canvas.
  */
-export async function capturarFotoHd({ videoEl, mediaStreamTrack } = {}) {
-  const still = await blobDesdeTakePhoto(mediaStreamTrack);
-  if (still) return still;
+export async function capturarFotoHd({ videoEl, mediaStreamTrack, soloStream = false } = {}) {
+  if (!soloStream) {
+    const still = await blobDesdeTakePhoto(mediaStreamTrack);
+    if (still) return still;
+  }
 
   const frame = await blobDesdeGrabFrame(mediaStreamTrack);
   if (frame) return frame;

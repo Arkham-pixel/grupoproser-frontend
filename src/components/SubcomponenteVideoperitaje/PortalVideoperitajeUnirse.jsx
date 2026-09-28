@@ -82,6 +82,7 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         const blob = await capturarFotoHd({
           videoEl: room.localVideoRef.current,
           mediaStreamTrack: room.getLocalVideoTrack() || pistaVideoDeSala(room.roomRef.current),
+          soloStream: true,
         });
         if (blob) {
           await subirFotoPublicaVideoperitaje(token, blob, {
@@ -92,6 +93,19 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         /* el ajustador reintenta con fallback */
       } finally {
         setTimeout(() => setFlash(false), 180);
+        // Por si el track se congeló: reenganchar preview local.
+        try {
+          const lk = room.roomRef.current;
+          const pubs = lk?.localParticipant?.videoTrackPublications;
+          const pub = pubs && [...pubs.values()].find((p) => p.track);
+          if (pub?.track && room.localVideoRef.current) {
+            pub.track.attach(room.localVideoRef.current);
+            room.localVideoRef.current.muted = true;
+            room.localVideoRef.current.play?.().catch(() => {});
+          }
+        } catch {
+          /* ignore */
+        }
       }
     });
   }, [room.connected, token]);
