@@ -213,21 +213,26 @@ function SalaLivePerito({ sesion, onRefresh }) {
           ? t('videoperitaje.clientCamera')
           : t('videoperitaje.adjusterCamera')}
       </p>
-        <div
-          className={
-            room.remotePresent
-              ? 'relative mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl bg-zinc-950 aspect-[9/16]'
-              : 'relative overflow-hidden rounded-2xl bg-black'
-          }
-        >
+        <div className="relative overflow-hidden rounded-2xl bg-black">
           <video
             ref={room.remoteVideoRef}
             autoPlay
             playsInline
             className={
               room.remotePresent
-                ? 'absolute inset-0 h-full w-full bg-zinc-950 object-contain'
+                ? 'mx-auto block h-[min(70vh,720px)] w-full max-w-md bg-black object-cover [transform:none] [-webkit-transform:none]'
                 : 'pointer-events-none absolute h-px w-px opacity-0'
+            }
+            style={
+              room.remotePresent
+                ? {
+                    aspectRatio: '9 / 16',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    transform: 'none',
+                    WebkitTransform: 'none',
+                  }
+                : undefined
             }
           />
           <video
@@ -237,8 +242,13 @@ function SalaLivePerito({ sesion, onRefresh }) {
             playsInline
             className={
               room.remotePresent
-                ? 'absolute bottom-3 right-3 z-10 h-36 w-[6.75rem] rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
+                ? 'absolute right-3 top-3 z-10 w-28 rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
                 : 'aspect-video w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]'
+            }
+            style={
+              room.remotePresent
+                ? { aspectRatio: '3 / 4', objectFit: 'cover', transform: 'scaleX(-1)' }
+                : { transform: 'scaleX(-1)' }
             }
           />
           {grabando && (

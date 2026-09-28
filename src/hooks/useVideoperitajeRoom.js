@@ -93,11 +93,8 @@ export default function useVideoperitajeRoom({
 
   const aplicarVideoEl = (el, { espejo = false } = {}) => {
     if (!el) return;
-    // Quitar attrs/inline que LiveKit pone (deforman o colapsan el layout).
     el.removeAttribute('width');
     el.removeAttribute('height');
-    el.style.removeProperty('width');
-    el.style.removeProperty('height');
     el.style.objectFit = 'cover';
     el.style.objectPosition = 'center';
     const t = espejo ? 'scaleX(-1)' : 'none';
@@ -109,23 +106,23 @@ export default function useVideoperitajeRoom({
     const el = remoteVideoRef.current;
     if (!el || !track) return;
     track.attach(el);
-    // Contenedor 9:16 + object-contain: se ve el celular completo sin estirar.
-    el.style.objectFit = 'contain';
-    el.style.objectPosition = 'center';
+    // Cliente: orientación real (sin espejo). Solo el PIP local lleva scaleX(-1).
     el.removeAttribute('width');
     el.removeAttribute('height');
-    el.style.removeProperty('width');
-    el.style.removeProperty('height');
+    el.style.objectFit = 'cover';
+    el.style.objectPosition = 'center';
     el.style.transform = 'none';
     el.style.webkitTransform = 'none';
     requestAnimationFrame(() => {
-      el.style.objectFit = 'contain';
-      el.style.removeProperty('width');
-      el.style.removeProperty('height');
+      if (!remoteVideoRef.current) return;
+      remoteVideoRef.current.style.transform = 'none';
+      remoteVideoRef.current.style.webkitTransform = 'none';
+      remoteVideoRef.current.style.objectFit = 'cover';
     });
   }, []);
 
   const attachLocalPreview = useCallback((el) => {
+    // Frontal: espejo. Trasera: real.
     const espejo = facingRef.current !== 'environment';
     aplicarVideoEl(el, { espejo });
     requestAnimationFrame(() => aplicarVideoEl(el, { espejo }));
