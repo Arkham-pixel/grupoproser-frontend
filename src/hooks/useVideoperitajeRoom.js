@@ -83,21 +83,12 @@ export default function useVideoperitajeRoom({
       };
     }
     const res = resolucionDe();
-    const base = {
+    return {
       facingMode: { ideal: facing },
       width: { ideal: res.width },
       height: { ideal: res.height },
       frameRate: { ideal: 24 },
     };
-    // Sin recorte digital del UA cuando el navegador lo soporta.
-    if (facing === 'user' || facing?.ideal === 'user') {
-      return {
-        ...base,
-        resizeMode: 'none',
-        advanced: [{ zoom: 1.0 }],
-      };
-    }
-    return base;
   };
 
   const aplicarVideoEl = (el, { espejo = false, fit = 'cover' } = {}) => {
