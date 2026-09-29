@@ -17,7 +17,6 @@ import {
   buildAlfaCsNoChangesKey,
   isCompleteAlfaCsModalKey,
   shouldAutoOpenAlfaCsModal,
-  shouldAutoOpenAlfaCsNoChangesModal,
   wasAlfaCsModalSeen,
   markAlfaCsModalSeen,
   successMessageAfterAlfaSync,
@@ -254,7 +253,9 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     status?.outboundProgress?.running,
   ]);
 
-  // Auto: hay actualizaciones
+  // Auto: hay actualizaciones (Excel → ARNALD). El popup “sin actualizaciones”
+  // NO se abre solo: al enviar ARNALD→Excel el eTag cambia y reaparecía a cada rato.
+  // Solo se muestra al pulsar «Revisar» / búsqueda manual (handleCheck → openResultForStatus).
   useEffect(() => {
     if (!puedeActualizar) return;
     const ui = status?.uiStatus;
@@ -285,32 +286,6 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     modalOpen,
     noChangesOpen,
     loadPreviewRows,
-    puedeActualizar,
-  ]);
-
-  // Auto: sin actualizaciones (una vez por eTag)
-  useEffect(() => {
-    if (!puedeActualizar) return;
-    const ui = status?.uiStatus;
-    const seen = wasAlfaCsModalSeen(window.localStorage, noChangesKey);
-    const should = shouldAutoOpenAlfaCsNoChangesModal({
-      uiStatus: ui,
-      noChangesKey,
-      wasSeen: seen,
-      alreadyAutoOpenedForKey: autoOpenedNoChangesKey === noChangesKey,
-      anyModalOpen: modalOpen || noChangesOpen,
-    });
-    if (!should) return;
-
-    setAutoOpenedNoChangesKey(noChangesKey);
-    markAlfaCsModalSeen(window.localStorage, noChangesKey);
-    setNoChangesOpen(true);
-  }, [
-    status?.uiStatus,
-    noChangesKey,
-    autoOpenedNoChangesKey,
-    modalOpen,
-    noChangesOpen,
     puedeActualizar,
   ]);
 
@@ -348,46 +323,79 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
       done: 0,
       total: Number(status?.outboundPending || 0),
       left: Number(status?.outboundPending || 0),
-      label: 'Preparando cola ARNALD → Excel…',
+      label: 'Iniciando envío ARNALD → Excel…',
       running: true,
     });
 
     try {
       const data = await flushOutboundControlSeguimientoAlfa({
-        maxRounds: 15,
+        maxRounds: 20,
         forceResync: true,
         onlyWithMoney: true,
         enqueueLimit: 150,
       });
-      const left =
-        data.outboundPending ??
-        data.flush?.pendingLeft ??
-        data.outboundQueue?.total ??
-        0;
-      const synced = Number(data.flush?.synced || 0);
       applyOutboundProgressFromStatus(data);
       setStatus((prev) =>
         prev
           ? {
               ...prev,
-              outboundPending: left,
+              outboundPending:
+                data.outboundPending ?? prev.outboundPending,
               outboundQueue: data.outboundQueue || prev.outboundQueue,
               outboundProgress: data.outboundProgress || prev.outboundProgress,
-              outboundBusy: false,
+              outboundBusy: true,
             }
           : prev
       );
       setSuccessMsg(
         data.message ||
-          (synced > 0
-            ? `Enviados ${synced} cambio(s) a Excel.`
-            : 'Envío a Excel finalizado')
+          'Envío iniciado. Espere a que la barra llegue al 100%.'
       );
-      setExecuteSummary(null);
-      await load();
+
+      // El backend trabaja en background: sondear hasta que termine.
+      const deadline = Date.now() + 40 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const st = await load();
+        const busy =
+          Boolean(st?.outboundBusy) ||
+          Boolean(st?.outboundProgress?.running);
+        applyOutboundProgressFromStatus(st);
+        if (!busy) {
+          const left = Number(st?.outboundPending || 0);
+          const synced = Number(st?.outboundProgress?.synced || 0);
+          const label = st?.outboundProgress?.label || '';
+          setSuccessMsg(
+            label ||
+              (synced > 0
+                ? `Enviados ${synced} cambio(s) a Excel.`
+                : left > 0
+                  ? `Envío parcial: quedan ${left}. Pulse de nuevo.`
+                  : 'Envío a Excel finalizado')
+          );
+          const nk = buildAlfaCsNoChangesKey({
+            itemId: st?.source?.itemId || source?.itemId,
+            eTag:
+              st?.source?.eTag ||
+              st?.source?.lastPreviewedEtag ||
+              source?.eTag ||
+              source?.lastPreviewedEtag,
+          });
+          if (isCompleteAlfaCsModalKey(nk)) {
+            markAlfaCsModalSeen(window.localStorage, nk);
+            setAutoOpenedNoChangesKey(nk);
+          }
+          setNoChangesOpen(false);
+          break;
+        }
+      }
     } catch (err) {
-      if (err.message?.includes('en curso') || String(err.message || '').includes('OUTBOUND')) {
-        setError('Ya hay un envío en curso (otro usuario). La barra mostrará el avance.');
+      if (
+        err.code === 'OUTBOUND_BUSY' ||
+        err.message?.includes('en curso') ||
+        String(err.message || '').includes('OUTBOUND')
+      ) {
+        setError('Ya hay un envío en curso. La barra mostrará el avance.');
         await load();
       } else {
         setError(err.message || 'No se pudo enviar a Excel');

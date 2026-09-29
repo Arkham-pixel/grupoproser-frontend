@@ -365,10 +365,11 @@ export const checkControlSeguimientoAlfa = async ({ force = false } = {}) => {
 };
 
 /** Envía cola ARNALD → Excel SharePoint (botón manual; cron OFF).
+ * El backend acepta el job (202) y procesa en segundo plano.
  * forceResync alinea Excel con ARNALD solo donde las amarillas difieren.
  */
 export const flushOutboundControlSeguimientoAlfa = async ({
-  maxRounds = 8,
+  maxRounds = 20,
   batchSize,
   forceResync = true,
   consecutivos = [],
@@ -388,7 +389,16 @@ export const flushOutboundControlSeguimientoAlfa = async ({
     }),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.success === false) {
+  // 202 = aceptado en background; 200 legacy sync; 409 = ya en curso
+  if (response.status === 409) {
+    const err = new Error(
+      payload?.error || 'Ya hay un envío a Excel en curso. Espere un momento.'
+    );
+    err.code = 'OUTBOUND_BUSY';
+    err.outboundProgress = payload?.outboundProgress;
+    throw err;
+  }
+  if ((!response.ok && response.status !== 202) || payload?.success === false) {
     throw new Error(payload?.error || `Error al enviar a Excel (${response.status})`);
   }
   return payload;
