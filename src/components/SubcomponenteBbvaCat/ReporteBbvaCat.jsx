@@ -297,7 +297,7 @@ export default function ReporteBbvaCat() {
     window.addEventListener('focus', onFocus);
     const intervalo = window.setInterval(() => {
       if (document.visibilityState === 'visible') recargar({ silencioso: true });
-    }, 25000);
+    }, 60000);
     return () => {
       document.removeEventListener('visibilitychange', alVolverVisible);
       window.removeEventListener('focus', onFocus);
@@ -665,8 +665,12 @@ export default function ReporteBbvaCat() {
                       >
                         <AccionesBbvaCatMenu
                           docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico || !!item.historialCatastroficoId}
+                          tieneLiquidador={!!item.tieneLiquidador || !!item.liquidador}
+                          tieneInforme={
+                            !!item.tieneInforme ||
+                            !!item.informeUnico ||
+                            !!item.historialCatastroficoId
+                          }
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>

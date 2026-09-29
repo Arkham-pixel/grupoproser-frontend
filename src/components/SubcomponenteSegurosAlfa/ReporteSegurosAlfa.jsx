@@ -23,6 +23,7 @@ import {
   ALFA_REPORTE_PAGE_SIZE,
   ESTADOS_ALFA,
   ESTADOS_GESTION_ALFA,
+  TIPOS_PERDIDA_ALFA,
   buildOpcionesFiltro,
   cargarColumnasReporteAlfa,
   FILTROS_REPORTE_ALFA_DEFAULT,
@@ -38,6 +39,7 @@ import {
   guardarFiltrosReporteAlfa,
   homologarEstadoGestionAlfa,
   homologarEstadoSiniestroAlfa,
+  homologarTipoPerdidaAlfa,
   etiquetaEstadoAlfaReporte,
   sincronizarGestionConCierreSiniestroAlfa,
   limpiarFiltrosReporteAlfaStorage,
@@ -388,6 +390,9 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const [filtroCanal, setFiltroCanal] = useState(filtrosIniciales.filtroCanal);
   const [filtroEstadoPago, setFiltroEstadoPago] = useState(filtrosIniciales.filtroEstadoPago);
   const [filtroZona, setFiltroZona] = useState(filtrosIniciales.filtroZona);
+  const [filtroTipoPerdida, setFiltroTipoPerdida] = useState(
+    filtrosIniciales.filtroTipoPerdida || ''
+  );
   const [tipoFecha, setTipoFecha] = useState(filtrosIniciales.tipoFecha || 'fechaSiniestro');
   const [fechaInicio, setFechaInicio] = useState(filtrosIniciales.fechaInicio);
   const [fechaFin, setFechaFin] = useState(filtrosIniciales.fechaFin);
@@ -506,6 +511,29 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const canales = useMemo(() => buildOpcionesFiltro(casos, 'canalRadicacion'), [casos]);
   const estadosPago = useMemo(() => buildOpcionesFiltro(casos, 'estadoPagoPrimas'), [casos]);
   const zonas = useMemo(() => buildOpcionesFiltro(casos, 'zonaAsignada'), [casos]);
+  const tiposPerdida = useMemo(() => {
+    const counts = {
+      PARCIAL: 0,
+      TOTAL: 0,
+      INHABITABLE: 0,
+      SIN_CLASIFICAR: 0,
+    };
+    for (const c of casos) {
+      const tipo = homologarTipoPerdidaAlfa(c.tipoPerdida);
+      if (tipo && counts[tipo] != null) counts[tipo] += 1;
+      else counts.SIN_CLASIFICAR += 1;
+    }
+    return [
+      ...TIPOS_PERDIDA_ALFA.map((op) => ({
+        value: op.id,
+        label: `${op.label} (${counts[op.id] || 0})`,
+      })),
+      {
+        value: 'SIN_CLASIFICAR',
+        label: `Sin clasificar (${counts.SIN_CLASIFICAR})`,
+      },
+    ];
+  }, [casos]);
   const kpisGestion = useMemo(() => {
     const fuente = colaFechaLlamada
       ? casos.filter((c) => !casoAlfaTieneFechaLlamada(c))
@@ -563,6 +591,14 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       if (!coincideFiltroTexto(c.canalRadicacion, filtroCanal)) return false;
       if (!coincideFiltroTexto(c.estadoPagoPrimas, filtroEstadoPago)) return false;
       if (!coincideFiltroTexto(c.zonaAsignada, filtroZona)) return false;
+      if (filtroTipoPerdida) {
+        const tipo = homologarTipoPerdidaAlfa(c.tipoPerdida);
+        if (filtroTipoPerdida === 'SIN_CLASIFICAR') {
+          if (tipo) return false;
+        } else if (tipo !== filtroTipoPerdida) {
+          return false;
+        }
+      }
       if (fechaInicio || fechaFin) {
         const fechaRef = c[campoFecha] || c.fechaSiniestro || c.createdAt;
         if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
@@ -1143,6 +1179,19 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
               >
                 <option value="">{t('segurosAlfa.report.all')}</option>
                 {estadosPago.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.tipoPerdida', { defaultValue: 'Tipo de pérdida' })}>
+              <SelectFenix
+                value={filtroTipoPerdida}
+                onChange={(e) => setFiltroTipoPerdida(e.target.value)}
+              >
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {tiposPerdida.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

@@ -298,7 +298,7 @@ export default function ReportePrevisora() {
     window.addEventListener('focus', onFocus);
     const intervalo = window.setInterval(() => {
       if (document.visibilityState === 'visible') recargar({ silencioso: true });
-    }, 25000);
+    }, 60000);
     return () => {
       document.removeEventListener('visibilitychange', alVolverVisible);
       window.removeEventListener('focus', onFocus);

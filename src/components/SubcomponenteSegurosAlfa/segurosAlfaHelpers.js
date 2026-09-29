@@ -973,6 +973,8 @@ export const ALFA_REPORTE_FILTROS_STORAGE_KEY = 'alfa-reporte-filtros-v1';
 /** v4: orden fijo de columnas de control de liquidación en reporte/Excel. */
 export const ALFA_COLUMNAS_STORAGE_KEY = 'alfa-reporte-columnas-v4';
 
+const TIPOS_PERDIDA_ALFA_SET = new Set(TIPOS_PERDIDA_ALFA.map((t) => t.id));
+
 export const FILTROS_REPORTE_ALFA_DEFAULT = {
   busqueda: '',
   filtroCiudad: '',
@@ -988,6 +990,7 @@ export const FILTROS_REPORTE_ALFA_DEFAULT = {
   filtroCanal: '',
   filtroEstadoPago: '',
   filtroZona: '',
+  filtroTipoPerdida: '',
   filtroDocumento: '',
   tipoFecha: 'fechaSiniestro',
   fechaInicio: '',

@@ -320,7 +320,7 @@ export default function ReporteZurich() {
     window.addEventListener('focus', onFocus);
     const intervalo = window.setInterval(() => {
       if (document.visibilityState === 'visible') recargar({ silencioso: true });
-    }, 25000);
+    }, 60000);
     return () => {
       document.removeEventListener('visibilitychange', alVolverVisible);
       window.removeEventListener('focus', onFocus);
@@ -703,8 +703,12 @@ export default function ReporteZurich() {
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesZurichMenu
                           docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico || !!item.historialCatastroficoId}
+                          tieneLiquidador={!!item.tieneLiquidador || !!item.liquidador}
+                          tieneInforme={
+                            !!item.tieneInforme ||
+                            !!item.informeUnico ||
+                            !!item.historialCatastroficoId
+                          }
                           onGestionar={() => abrirEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>

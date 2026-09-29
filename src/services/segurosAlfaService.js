@@ -77,6 +77,7 @@ export const normalizeAlfaItem = (item = {}) => {
     zonaAsignada: item.zonaAsignada ?? '',
     fueraDeZona: Boolean(item.fueraDeZona),
     noAceptacionOferta: Boolean(item.noAceptacionOferta),
+    tipoPerdida: item.tipoPerdida ?? '',
     grupoReclamacion: item.grupoReclamacion ?? '',
     fechaLlamada: item.fechaLlamada ?? null,
     observacionLlamada: item.observacionLlamada ?? '',

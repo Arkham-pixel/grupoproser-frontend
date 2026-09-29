@@ -45,6 +45,7 @@ import {
   heredarInformePreliminarZurich,
   extraerSnapshotPreliminarZurich,
   patchDeducibleReservaZurich,
+  deducibleReservaDesdeLiquidadorZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
   totalesPresupuestoPreliminarZurich,
@@ -544,11 +545,14 @@ export default function InformeUnicoZurich({
     }
     const filas = filasPresupuestoPreliminarDesdeLiquidadorZurich(liquidador);
     const aiuPct = aiuPorcentajePreliminarDesdeLiquidadorZurich(liquidador);
+    const deducibleReserva = deducibleReservaDesdeLiquidadorZurich(liquidador);
     setInforme((prev) => {
       const base = {
         ...prev,
         tipoInforme: 'preliminar',
         aiuPorcentajePreliminar: aiuPct,
+        deducibleConfigReserva: deducibleReserva,
+        porcentajeDeducibleReserva: String(deducibleReserva.porcentaje ?? ''),
       };
       return conReservaDesdePresupuesto(base, filas);
     });

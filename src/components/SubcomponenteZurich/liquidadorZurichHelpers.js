@@ -1569,6 +1569,7 @@ export function formatearPorcentajeLibreZurich(valor) {
 /**
  * Reserva preliminar: el mayor entre % sobre valor asegurado, % sobre la pérdida
  * y el mínimo SMMLV/SMDLV, con tope en la pérdida.
+ * Devuelve lo guardado tal cual (permite vaciar campos). El cálculo aplica 3%/3 SMMLV si falta.
  */
 export function configDeducibleReservaZurich(info = {}) {
   const raw =
@@ -1583,7 +1584,7 @@ export function configDeducibleReservaZurich(info = {}) {
         ? info.porcentajeDeducibleReserva
         : '';
   return {
-    porcentaje,
+    porcentaje: porcentaje === '' || porcentaje == null ? '' : porcentaje,
     tipoMinimo,
     cantidadSMMLV: raw.cantidadSMMLV ?? '',
     cantidadSMDLV: raw.cantidadSMDLV ?? '',
@@ -1592,14 +1593,45 @@ export function configDeducibleReservaZurich(info = {}) {
 }
 
 export function patchDeducibleReservaZurich(info = {}, patch = {}) {
-  const cfg = { ...configDeducibleReservaZurich(info), ...patch };
+  const prev = configDeducibleReservaZurich(info);
+  const cfg = { ...prev, ...patch };
   if (patch.tipoMinimo === 'SMDLV') cfg.tipoMinimo = 'SMDLV';
   else if (patch.tipoMinimo) cfg.tipoMinimo = 'SMMLV';
+  if (Object.prototype.hasOwnProperty.call(patch, 'porcentaje')) {
+    cfg.porcentaje = patch.porcentaje === '' || patch.porcentaje == null ? '' : patch.porcentaje;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'cantidadSMMLV')) {
+    cfg.cantidadSMMLV =
+      patch.cantidadSMMLV === '' || patch.cantidadSMMLV == null ? '' : patch.cantidadSMMLV;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'cantidadSMDLV')) {
+    cfg.cantidadSMDLV =
+      patch.cantidadSMDLV === '' || patch.cantidadSMDLV == null ? '' : patch.cantidadSMDLV;
+  }
   return {
     ...info,
     deducibleConfigReserva: cfg,
     porcentajeDeducibleReserva:
       cfg.porcentaje == null || cfg.porcentaje === '' ? '' : String(cfg.porcentaje),
+  };
+}
+
+/** Copia % / mínimo / base del liquidador al deducible de la reserva preliminar. */
+export function deducibleReservaDesdeLiquidadorZurich(liquidador = {}) {
+  const cfgLiq = configDeduciblePresupuestoParaCalculoZurich(liquidador) || {};
+  const tipoMinimo = cfgLiq.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  return {
+    porcentaje:
+      cfgLiq.porcentaje != null && cfgLiq.porcentaje !== ''
+        ? cfgLiq.porcentaje
+        : REGLA_TERREMOTO.porcentaje,
+    tipoMinimo,
+    cantidadSMMLV:
+      cfgLiq.cantidadSMMLV != null && cfgLiq.cantidadSMMLV !== ''
+        ? cfgLiq.cantidadSMMLV
+        : REGLA_TERREMOTO.cantidadSMMLV,
+    cantidadSMDLV: cfgLiq.cantidadSMDLV ?? '',
+    basePctDeducible: cfgLiq.basePctDeducible || cfgLiq.baseDeducible || '',
   };
 }
 
@@ -1626,27 +1658,16 @@ export function desgloseReservaPreliminarZurich(info = {}, extras = {}) {
       ? Math.round(parsearNumero(perdidaOverride) || 0)
       : totPpto.total;
   const cfg = configDeducibleReservaZurich(info);
-  const cfgLiq = extras.liquidador
-    ? configDeduciblePresupuestoParaCalculoZurich(extras.liquidador)
-    : null;
-  const tipoMinimoCfg = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : cfgLiq?.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
   const porcentaje =
-    parsearPorcentajeLibreZurich(cfg.porcentaje) ||
-    parsearPorcentajeLibreZurich(cfgLiq?.porcentaje);
+    parsearPorcentajeLibreZurich(cfg.porcentaje) || REGLA_TERREMOTO.porcentaje;
   const valorAsegurado = Math.round(valorAseguradoReservaZurich(info, extras));
-  const tipoMinimo = tipoMinimoCfg;
   const cantRaw = tipoMinimo === 'SMDLV' ? cfg.cantidadSMDLV : cfg.cantidadSMMLV;
-  const cantLiq =
-    tipoMinimo === 'SMDLV' ? cfgLiq?.cantidadSMDLV : cfgLiq?.cantidadSMMLV;
   const cantidadMinimo =
-    parsearPorcentajeLibreZurich(cantRaw) || parsearPorcentajeLibreZurich(cantLiq);
+    parsearPorcentajeLibreZurich(cantRaw) ||
+    (tipoMinimo === 'SMMLV' ? REGLA_TERREMOTO.cantidadSMMLV : 0);
   const basePct = basePctDeducibleZurich(
-    {
-      basePctDeducible:
-        extras.perdida != null && cfgLiq
-          ? cfgLiq.basePctDeducible || cfg.basePctDeducible
-          : cfg.basePctDeducible || cfgLiq?.basePctDeducible,
-    },
+    { basePctDeducible: cfg.basePctDeducible },
     valorAsegurado
   );
   const valorSMMLV = SMMLV_DEFAULT;
@@ -2310,12 +2331,12 @@ export function defaultInformeUnicoZurich(caso = {}) {
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
     reservaSugerida: caso.reserva != null && caso.reserva !== '' ? String(caso.reserva) : '',
-    porcentajeDeducibleReserva: '',
+    porcentajeDeducibleReserva: String(REGLA_TERREMOTO.porcentaje),
     aiuPorcentajePreliminar: '',
     deducibleConfigReserva: {
-      porcentaje: '',
+      porcentaje: REGLA_TERREMOTO.porcentaje,
       tipoMinimo: 'SMMLV',
-      cantidadSMMLV: '',
+      cantidadSMMLV: REGLA_TERREMOTO.cantidadSMMLV,
       cantidadSMDLV: '',
     },
     filasDanios: plantillaFilasDaniosZurich(),

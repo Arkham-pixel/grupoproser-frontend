@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual de uso — Videoperitaje | ARNALD Data Flow</title>
+  <style>
+    :root {
+      --rojo: #c8102e;
+      --fondo: #0f1419;
+      --card: #1a222d;
+      --texto: #f3f4f6;
+      --muted: #9ca3af;
+      --borde: #2d3748;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--fondo);
+      color: var(--texto);
+      line-height: 1.55;
+    }
+    header.hero {
+      background: linear-gradient(135deg, #1a0a0e 0%, #141414 50%, #0b1220 100%);
+      border-bottom: 1px solid var(--borde);
+      padding: 2.5rem 1.5rem 2rem;
+      text-align: center;
+    }
+    header.hero .brand {
+      color: var(--rojo);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin: 0 0 0.5rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
+    }
+    header.hero p {
+      margin: 0 auto;
+      max-width: 40rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav.toc {
+      max-width: 880px;
+      margin: 1.5rem auto;
+      padding: 1.25rem 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+    }
+    nav.toc h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    nav.toc ol { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { color: #93c5fd; text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+    main {
+      max-width: 880px;
+      margin: 0 auto 3rem;
+      padding: 0 1rem;
+    }
+    section.paso {
+      background: var(--card);
+      border: 1px solid var(--borde);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin: 1.25rem 0;
+    }
+    section.paso h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.25rem;
+      color: #fff;
+    }
+    section.paso .rol {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: rgba(200, 16, 46, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(200, 16, 46, 0.45);
+      border-radius: 999px;
+      padding: 0.2rem 0.65rem;
+      margin-bottom: 0.75rem;
+    }
+    section.paso .rol.cliente {
+      background: rgba(37, 99, 235, 0.2);
+      color: #93c5fd;
+      border-color: rgba(59, 130, 246, 0.45);
+    }
+    section.paso ol, section.paso ul {
+      margin: 0.5rem 0 1rem;
+      padding-left: 1.25rem;
+    }
+    section.paso li { margin: 0.35rem 0; }
+    figure {
+      margin: 1rem 0 0;
+      padding: 0;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--borde);
+      background: #000;
+    }
+    figure.phone img {
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    figcaption {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .tip, .warn {
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin: 1rem 0 0;
+      font-size: 0.9rem;
+    }
+    .tip {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #a7f3d0;
+    }
+    .warn {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fde68a;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      padding: 2rem 1rem 3rem;
+      border-top: 1px solid var(--borde);
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      section.paso, nav.toc { break-inside: avoid; background: #fff; border-color: #ddd; }
+      .tip, .warn { color: #111; }
+      a { color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <p class="brand">Grupo Proser · ARNALD Data Flow</p>
+    <h1>Manual de uso — Videoperitaje</h1>
+    <p>
+      Guía paso a paso para iniciar una videollamada desde un caso (BBVA CAT u otros módulos),
+      invitar al asegurado y capturar evidencias. Incluye la vista del ajustador y del cliente.
+    </p>
+  </header>
+
+  <nav class="toc">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#paso1">Abrir el caso asignado</a></li>
+      <li><a href="#paso2">Entrar al caso e iniciar videoperitaje</a></li>
+      <li><a href="#paso3">Completar el formulario de invitación</a></li>
+      <li><a href="#paso4">Programar fecha y hora (opcional)</a></li>
+      <li><a href="#paso5">Crear e invitar</a></li>
+      <li><a href="#paso6">Correo que recibe el asegurado</a></li>
+      <li><a href="#paso7">Vista del asegurado: bienvenida</a></li>
+      <li><a href="#paso8">Permisos de cámara y micrófono</a></li>
+      <li><a href="#paso9">Videollamada en el celular</a></li>
+      <li><a href="#paso10">Controles en la sala del ajustador</a></li>
+      <li><a href="#paso11">Finalizar y adjuntar al caso</a></li>
+      <li><a href="#paso12">Sesión finalizada</a></li>
+      <li><a href="#paso13">Pantalla de gracias (asegurado)</a></li>
+      <li><a href="#tips">Consejos y solución de problemas</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section class="paso" id="paso1">
+      <span class="rol">Ajustador</span>
+      <h2>1. Abrir el caso asignado</h2>
+      <ol>
+        <li>Inicie sesión en <strong>ARNALD Data Flow</strong>.</li>
+        <li>En el menú, abra el módulo (ejemplo: <strong>BBVA CAT</strong>).</li>
+        <li>Entre a <strong>Mis Casos Asignados</strong> (o el listado equivalente).</li>
+        <li>Localice el expediente y en <strong>Acciones</strong> elija <strong>Gestionar</strong>.</li>
+      </ol>
+      <figure>
+        <img src="img/01-casos-asignados.png" alt="Listado Mis Casos Asignados BBVA CAT con menú Acciones" />
+        <figcaption>Listado de casos — menú Acciones → Gestionar</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso2">
+      <span class="rol">Ajustador</span>
+      <h2>2. Entrar al caso e iniciar videoperitaje</h2>
+      <ol>
+        <li>Dentro del caso verá pestañas como <strong>Liquidador</strong> e <strong>Informe único</strong>.</li>
+        <li>En la barra superior pulse el botón rojo <strong>Iniciar videoperitaje</strong> (icono de cámara).</li>
+      </ol>
+      <figure>
+        <img src="img/02-caso-informe.png" alt="Caso BBVA CAT con botón Iniciar videoperitaje" />
+        <figcaption>Ficha del caso — botón «Iniciar videoperitaje»</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso3">
+      <span class="rol">Ajustador</span>
+      <h2>3. Completar el formulario de invitación</h2>
+      <ol>
+        <li>Elija el tipo: <strong>Videollamada</strong> (en vivo) o <strong>Autoinspección</strong>.</li>
+        <li>Verifique <strong>Módulo</strong>, <strong>Expediente</strong>, <strong>Asegurado</strong>, <strong>Celular</strong> y <strong>Correo</strong> (se rellenan desde el caso).</li>
+        <li>Corrija celular o correo si hace falta antes de enviar.</li>
+      </ol>
+      <figure>
+        <img src="img/03-modal-iniciar.png" alt="Modal Iniciar videoperitaje con datos del asegurado" />
+        <figcaption>Modal «Iniciar videoperitaje» — datos de contacto</figcaption>
+      </figure>
+      <p class="tip">
+        Los enlaces de correo y WhatsApp apuntan al portal de Arnald
+        (<code>arnaldbackend.grupoproser.com.co</code>). «Probar como asegurado» abre el portal en este mismo equipo.
+      </p>
+    </section>
+
+    <section class="paso" id="paso4">
+      <span class="rol">Ajustador</span>
+      <h2>4. Programar fecha y hora (opcional)</h2>
+      <ol>
+        <li>Si la llamada es inmediata, deje la fecha vacía.</li>
+        <li>Si es programada, seleccione día y hora en el calendario.</li>
+      </ol>
+      <figure>
+        <img src="img/04-fecha-hora.png" alt="Selector de fecha y hora de la videollamada" />
+        <figcaption>Programación — ventana de 15 min antes y 60 min después</figcaption>
+      </figure>
+      <p class="tip">
+        <strong>Vacío = se puede iniciar de inmediato.</strong>
+        Si programa hora, el asegurado solo podrá entrar en esa ventana.
+      </p>
+    </section>
+
+    <section class="paso" id="paso5">
+      <span class="rol">Ajustador</span>
+      <h2>5. Crear e invitar</h2>
+      <ol>
+        <li>Pulse <strong>Crear e invitar</strong> (botón rojo).</li>
+        <li>Use <strong>Cancelar</strong> si no desea crear la sesión.</li>
+        <li>Al confirmar, el sistema envía correo y/o WhatsApp y deja lista la sala.</li>
+      </ol>
+      <figure>
+        <img src="img/05-crear-invitar.png" alt="Botones Cancelar y Crear e invitar" />
+        <figcaption>Confirmación — Crear e invitar</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso6">
+      <span class="rol cliente">Asegurado</span>
+      <h2>6. Correo que recibe el asegurado</h2>
+      <ol>
+        <li>El asegurado recibe un correo de <strong>Videoperitaje Grupo Proser</strong>.</li>
+        <li>Debe pulsar <strong>Entrar a la inspección</strong> o abrir el enlace de respaldo.</li>
+        <li>
+          <strong>Importante:</strong> abrir en <strong>Chrome o Safari</strong> del celular
+          (no dentro de Gmail/WhatsApp si es posible).
+        </li>
+      </ol>
+      <figure>
+        <img src="img/06-correo-invitacion.png" alt="Correo de invitación al videoperitaje" />
+        <figcaption>Invitación por correo — botón Entrar a la inspección</figcaption>
+      </figure>
+      <p class="warn">
+        Si abre el enlace solo dentro de WhatsApp o Gmail, la cámara puede fallar o quedarse en «Cargando…».
+        En el menú ⋮ elija <strong>Abrir en Chrome</strong> / Safari.
+      </p>
+    </section>
+
+    <section class="paso" id="paso7">
+      <span class="rol cliente">Asegurado</span>
+      <h2>7. Pantalla de bienvenida</h2>
+      <ol>
+        <li>Verá el saludo con su nombre y el número de expediente.</li>
+        <li>Pulse <strong>Entrar a la videollamada</strong>.</li>
+      </ol>
+      <figure class="phone">
+        <img src="img/10-portal-bienvenida.png" alt="Portal móvil de bienvenida al videoperitaje" />
+        <figcaption>Portal del asegurado — Entrar a la videollamada</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso8">
+      <span class="rol cliente">Asegurado</span>
+      <h2>8. Permitir cámara y micrófono</h2>
+      <ol>
+        <li>El navegador pedirá permiso para cámara y micrófono.</li>
+        <li>Pulse <strong>Permitir</strong>.</li>
+        <li>Si elige «No permitir», la videollamada no podrá continuar.</li>
+      </ol>
+      <figure class="phone">
+        <img src="img/11-permisos-camara.png" alt="Diálogo de permisos de cámara y micrófono en iPhone" />
+        <figcaption>Permisos del navegador — Permitir cámara y micrófono</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso9">
+      <span class="rol cliente">Asegurado</span>
+      <h2>9. Durante la videollamada (celular)</h2>
+      <ul>
+        <li>La pantalla grande muestra su cámara (vista previa).</li>
+        <li>Puede tocar el icono para cambiar entre <strong>cámara frontal</strong> y <strong>trasera</strong>.</li>
+        <li>El ajustador toma las fotos desde su lado; el asegurado solo mantiene la cámara estable.</li>
+      </ul>
+      <figure class="phone">
+        <img src="img/12-videollamada-cliente.png" alt="Videollamada en el celular del asegurado" />
+        <figcaption>Videollamada en el celular — cambiar cámara frontal/trasera</figcaption>
+      </figure>
+      <p class="tip">
+        Para fachadas o daños use la <strong>cámara trasera</strong>. La frontal es para identificarse;
+        si se ve muy cerca, aléjese un poco del teléfono.
+      </p>
+    </section>
+
+    <section class="paso" id="paso10">
+      <span class="rol">Ajustador</span>
+      <h2>10. Controles en la sala (plataforma)</h2>
+      <p>Cuando el asegurado está conectado, en la sala del ajustador podrá:</p>
+      <ul>
+        <li><strong>Capturar foto</strong> — toma evidencia desde la cámara del asegurado.</li>
+        <li><strong>Grabar llamada</strong> — inicia/detiene la grabación de la sesión.</li>
+        <li><strong>Apagar cámara</strong> — silencia su propia cámara (la del ajustador).</li>
+      </ul>
+      <figure>
+        <img src="img/07-controles-sala.png" alt="Botones Capturar foto, Grabar llamada y Apagar cámara" />
+        <figcaption>Controles de la sala del ajustador</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso11">
+      <span class="rol">Ajustador</span>
+      <h2>11. Finalizar y adjuntar al caso</h2>
+      <ol>
+        <li>Si el asegurado no entró, puede <strong>Reenviar enlace</strong>.</li>
+        <li>Al terminar, pulse <strong>Finalizar y adjuntar al caso</strong>.</li>
+        <li>Las fotos/videos quedan vinculados al expediente (archivero / informe).</li>
+      </ol>
+      <figure>
+        <img src="img/08-finalizar.png" alt="Botones Reenviar enlace y Finalizar y adjuntar al caso" />
+        <figcaption>Cierre de la sesión — Finalizar y adjuntar</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso12">
+      <span class="rol">Ajustador</span>
+      <h2>12. Sesión finalizada</h2>
+      <p>
+        Tras finalizar verá el estado <strong>Finalizada</strong> y el mensaje
+        «Esta sesión ya no está en vivo». Las coordenadas GPS del asegurado pueden aparecer en el encabezado.
+      </p>
+      <figure>
+        <img src="img/09-sesion-finalizada.png" alt="Sesión de videoperitaje finalizada" />
+        <figcaption>Sala — sesión finalizada</figcaption>
+      </figure>
+      <figure>
+        <img src="img/13-sesion-no-en-vivo.png" alt="Mensaje Esta sesión ya no está en vivo" />
+        <figcaption>Indicador de sesión no en vivo</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="paso13">
+      <span class="rol cliente">Asegurado</span>
+      <h2>13. Pantalla de gracias</h2>
+      <p>
+        Al colgar o finalizar, el asegurado ve la pantalla <strong>¡Gracias!</strong>
+        y puede cerrar la ventana. Las evidencias quedan en el expediente.
+      </p>
+      <figure class="phone">
+        <img src="img/14-gracias.png" alt="Pantalla de gracias del portal del asegurado" />
+        <figcaption>Fin del flujo para el asegurado</figcaption>
+      </figure>
+    </section>
+
+    <section class="paso" id="tips">
+      <h2>Consejos y solución de problemas</h2>
+      <ul>
+        <li>
+          <strong>Queda en «Cargando…»:</strong> abrir el enlace en Chrome/Safari (fuera de WhatsApp/Gmail)
+          y permitir cámara/micrófono.
+        </li>
+        <li>
+          <strong>Cara muy grande / zoom:</strong> pedir al asegurado alejarse o cambiar a cámara trasera;
+          preferir luz frontal.
+        </li>
+        <li>
+          <strong>No llega el correo:</strong> revisar spam; usar <strong>Reenviar enlace</strong> o WhatsApp.
+        </li>
+        <li>
+          <strong>Fuera de ventana horaria:</strong> si programó fecha/hora, solo se puede entrar
+          15 min antes y 60 min después.
+        </li>
+        <li>
+          <strong>Probar usted mismo:</strong> en el modal use «Probar como asegurado» o abra el enlace
+          público en el celular.
+        </li>
+      </ul>
+      <p class="tip">
+        Para imprimir o compartir: abra este archivo <code>index.html</code> en el navegador
+        (Archivo → Imprimir → Guardar como PDF). Las imágenes se incluyen en el PDF.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    Grupo Proser · ARNALD Data Flow · Manual Videoperitaje · Sep 2026
+  </footer>
+</body>
+</html>

@@ -206,7 +206,8 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
 
   if (estadoSiniestro === 'DESISTIDO') return 'desistimientos';
   if (estadoSiniestro === 'OBJETADO') return 'objetados';
-  if (tipoPerdida === 'TOTAL') return 'perdidasTotales';
+  // Pago / cerrado antes que pérdida total: la fila AJ «PROCESO DE PAGO»
+  // cuenta todos esos casos; si TOTAL gana primero, la tarjeta queda corta.
   if (
     estadoSiniestro === 'PAGADO' ||
     estadoSiniestro === 'CERRADO' ||
@@ -214,6 +215,7 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   ) {
     return 'pendientesPagoAlfa';
   }
+  if (tipoPerdida === 'TOTAL') return 'perdidasTotales';
   if (estadoGestion === 'SIN PÓLIZA') return 'pendientesPagoAlfa';
   if (
     estadoSiniestro === 'PENDIENTE ACEPTACION CIFRAS' ||

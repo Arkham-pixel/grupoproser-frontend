@@ -29,7 +29,7 @@ import {
   guardarInformeUnicoEnCasoZurichListado,
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
-import { calcularLiquidacionZurich, defaultInformeUnicoZurich, desgloseReservaPreliminarZurich, extraerSnapshotPreliminarZurich, filasPresupuestoPreliminarDesdeLiquidadorZurich, aiuPorcentajePreliminarDesdeLiquidadorZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, heredarInformePreliminarZurich, liquidadorTienePresupuestoParaPreliminarZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich, valorAseguradoPresupuestoZurich } from './liquidadorZurichHelpers.js';
+import { calcularLiquidacionZurich, defaultInformeUnicoZurich, desgloseReservaPreliminarZurich, deducibleReservaDesdeLiquidadorZurich, extraerSnapshotPreliminarZurich, filasPresupuestoPreliminarDesdeLiquidadorZurich, aiuPorcentajePreliminarDesdeLiquidadorZurich, fusionarEncabezadoDesdeFichaZurich, etiquetaArchivoInformeZurich, heredarInformePreliminarZurich, liquidadorTienePresupuestoParaPreliminarZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich, valorAseguradoPresupuestoZurich } from './liquidadorZurichHelpers.js';
 import { esSesionPuedeImportarPptPreliminarZurich } from '../../utils/permisosCasoPorRol.js';
 import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
@@ -395,11 +395,14 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
       if (!liquidadorTienePresupuestoParaPreliminarZurich(liq)) return false;
       const filas = filasPresupuestoPreliminarDesdeLiquidadorZurich(liq);
       const actual = informeState || defaultInformeUnicoZurich(casoZurich || {});
+      const deducibleReserva = deducibleReservaDesdeLiquidadorZurich(liq);
       const nextBase = {
         ...actual,
         tipoInforme: 'preliminar',
         filasPresupuestoPreliminar: filas,
         aiuPorcentajePreliminar: aiuPorcentajePreliminarDesdeLiquidadorZurich(liq),
+        deducibleConfigReserva: deducibleReserva,
+        porcentajeDeducibleReserva: String(deducibleReserva.porcentaje ?? ''),
       };
       const extras = {
         caso: casoZurich || {},
