@@ -742,18 +742,31 @@ function filaContenidoConDatoZurich(it = {}) {
 
 /**
  * Parte contenidos por amparo y aplica el deducible de terremoto a cada uno
- * (mayor entre % sobre VA del amparo y mínimo SMMLV/SMDLV, tope = pérdida).
+ * (mayor entre % sobre VA del amparo o la pérdida, y mínimo SMMLV/SMDLV, tope = pérdida).
+ * Respeta % / mínimo / base que el ajustador digitó en «Regla de deducible».
  */
 export function liquidarContenidosPorAmparoZurich(liquidador = {}, opts = {}) {
   const evalData = opts.evalData || liquidador.evaluacionSismicaNSR10 || {};
   const items = Array.isArray(evalData?.contenidos?.items) ? evalData.contenidos.items : [];
   const valores = opts.valores || valoresAsegurablesDesdeLiquidador(liquidador);
-  const cfgBase = normalizarDeducibleCatastrofico({
-    deducibleConfig:
-      liquidador.liquidacionCatastrofico?.deducibleConfigContenidos ||
-      liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto ||
-      configDeducibleParaCalculoZurich(liquidador),
-  });
+  const rawCfg =
+    liquidador.liquidacionCatastrofico?.deducibleConfigContenidos ||
+    liquidador.liquidacionCatastrofico?.deducibleConfig ||
+    null;
+  const cfgGuardado =
+    rawCfg && typeof rawCfg === 'object' && Object.keys(rawCfg).length > 0 ? rawCfg : null;
+  /** Default PDF Zurich contenidos: 2% VA / mín. 60 SMDLV (editable). */
+  const cfgBase = {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    porcentaje: 2,
+    tipoMinimo: 'SMDLV',
+    cantidadSMMLV: 3,
+    cantidadSMDLV: 60,
+    modo: 'max_pct_minimo',
+    aplica: true,
+    ...(cfgGuardado || {}),
+  };
+  const cfgBaseNorm = normalizarDeducibleCatastrofico({ deducibleConfig: cfgBase });
 
   const buckets = new Map();
   items.filter(filaContenidoConDatoZurich).forEach((it) => {
@@ -786,18 +799,21 @@ export function liquidarContenidosPorAmparoZurich(liquidador = {}, opts = {}) {
         filas.reduce((acc, row) => acc + (Number(totalFilaContenido(row)) || 0), 0) * 100
       ) / 100;
     const va = vaDe(id);
-    // Zurich: el % va siempre sobre VA del amparo (como el PDF: «2% del valor asegurable»).
-    // Si no hay VA, el % queda en 0 y gana el mínimo (p. ej. 60 SMDLV).
+    const basePct = basePctDeducibleZurich(cfgBaseNorm, va);
     const cfg = {
-      ...cfgBase,
-      baseDeducible: 'valor_asegurable',
-      basePctDeducible: 'valor_asegurable',
+      ...cfgBaseNorm,
+      baseDeducible: basePct,
+      basePctDeducible: basePct,
     };
     const calc = calcularDeducibleSobreBaseConfig(cfg, {
       perdida,
       valorAsegurado: va,
     });
-    const montoPct = Math.round((Number(calc.montoPctVa) || Number(calc.deduciblePorcentaje) || 0) * 100) / 100;
+    const montoPctVa =
+      Math.round((Number(calc.montoPctVa) || Number(calc.deduciblePorcentaje) || 0) * 100) / 100;
+    const montoPctPerdida =
+      Math.round((Number(calc.montoPctPerdida) || 0) * 100) / 100;
+    const montoPct = basePct === 'perdida' ? montoPctPerdida : montoPctVa;
     const montoMin =
       Math.round(
         (Number(
@@ -809,12 +825,13 @@ export function liquidarContenidosPorAmparoZurich(liquidador = {}, opts = {}) {
       Math.round((Number(calc.deducibleAplicado) || 0) * 100) / 100
     );
     const neto = Math.max(0, Math.round((perdida - deducible) * 100) / 100);
-    const tipoMin = calc.tipoMinimo || cfgBase.tipoMinimo || 'SMMLV';
+    const tipoMin = calc.tipoMinimo || cfgBaseNorm.tipoMinimo || 'SMDLV';
     const cantMin =
       tipoMin === 'SMDLV'
-        ? Number(calc.cantidadSMDLV) || Number(cfgBase.cantidadSMDLV) || 0
-        : Number(calc.cantidadSMMLV) || Number(cfgBase.cantidadSMMLV) || 0;
-    const pct = Number(calc.porcentaje) || Number(cfgBase.porcentaje) || 0;
+        ? Number(calc.cantidadSMDLV) || Number(cfgBaseNorm.cantidadSMDLV) || 0
+        : Number(calc.cantidadSMMLV) || Number(cfgBaseNorm.cantidadSMMLV) || 0;
+    const pct = Number(calc.porcentaje) || Number(cfgBaseNorm.porcentaje) || 0;
+    const etiquetaBase = basePct === 'perdida' ? 'la pérdida' : 'el valor asegurable';
     return {
       id,
       cobertura: etiquetaAmparoZurich(id),
@@ -824,11 +841,13 @@ export function liquidarContenidosPorAmparoZurich(liquidador = {}, opts = {}) {
       neto,
       valorAsegurado: va,
       montoPct,
+      montoPctVa,
+      montoPctPerdida,
       montoMin,
       usaMinimo: Boolean(calc.usaMinimo) || (montoMin > montoPct && montoMin > 0),
-      etiquetaPct: `${pct}% del valor asegurable`,
+      etiquetaPct: `${pct}% de ${etiquetaBase}`,
       etiquetaMin: `Mínimo ${cantMin} ${tipoMin}`,
-      etiquetaDeducible: `Deducible terremoto (${pct}% VA / mínimo ${cantMin} ${tipoMin})`,
+      etiquetaDeducible: `Deducible terremoto (${pct}% / mínimo ${cantMin} ${tipoMin})`,
       calc,
     };
   });

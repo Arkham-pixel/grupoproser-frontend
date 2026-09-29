@@ -956,13 +956,23 @@ export default function ChecklistEvaluacionSismicaNSR10({
     const base =
       deducibleCfgInput && typeof deducibleCfgInput === 'object' && Object.keys(deducibleCfgInput).length
         ? deducibleCfgInput
-        : deducibleCfg;
+        : {
+            porcentaje: simplificarDeducible ? 2 : 10,
+            tipoMinimo: simplificarDeducible ? 'SMDLV' : 'SMMLV',
+            cantidadSMMLV: simplificarDeducible ? 3 : 4,
+            cantidadSMDLV: simplificarDeducible ? 60 : 10,
+            modo: 'max_pct_minimo',
+            aplica: true,
+          };
     const nextModo = patch.modo != null ? patch.modo : base.modo;
     const nextCfg = {
       ...base,
       ...patch,
-      aplica: nextModo === 'no_aplica' ? false : patch.aplica !== false,
+      aplica: nextModo === 'no_aplica' ? false : base.aplica !== false,
     };
+    if (Object.prototype.hasOwnProperty.call(patch, 'aplica')) {
+      nextCfg.aplica = patch.aplica !== false;
+    }
     actualizarLiquidacion({
       deducibleConfig: nextCfg,
       deducibleConfigContenidos: nextCfg,
@@ -3421,6 +3431,60 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 <h4 className="font-semibold" style={{ color: textPrimary }}>
                   Regla de deducible (aplica a cada amparo)
                 </h4>
+                <p className="text-xs" style={{ color: textSecondary }}>
+                  Puede cambiar % , mínimo y si el % va sobre el valor asegurable o sobre la
+                  pérdida de cada amparo.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      (deducibleCfgInput.basePctDeducible ||
+                        deducibleCfg.basePctDeducible ||
+                        'valor_asegurable') !== 'perdida'
+                        ? 'border-blue-500 text-blue-600'
+                        : ''
+                    }`}
+                    style={
+                      (deducibleCfgInput.basePctDeducible ||
+                        deducibleCfg.basePctDeducible ||
+                        'valor_asegurable') !== 'perdida'
+                        ? undefined
+                        : { borderColor, color: textSecondary }
+                    }
+                    onClick={() =>
+                      actualizarDeducibleConfig({
+                        basePctDeducible: 'valor_asegurable',
+                        baseDeducible: 'valor_asegurable',
+                      })
+                    }
+                  >
+                    % sobre valor asegurado
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      (deducibleCfgInput.basePctDeducible || deducibleCfg.basePctDeducible) ===
+                      'perdida'
+                        ? 'border-blue-500 text-blue-600'
+                        : ''
+                    }`}
+                    style={
+                      (deducibleCfgInput.basePctDeducible || deducibleCfg.basePctDeducible) ===
+                      'perdida'
+                        ? undefined
+                        : { borderColor, color: textSecondary }
+                    }
+                    onClick={() =>
+                      actualizarDeducibleConfig({
+                        basePctDeducible: 'perdida',
+                        baseDeducible: 'perdida',
+                      })
+                    }
+                  >
+                    % sobre la pérdida
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -3459,16 +3523,20 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     <input
                       type="text"
                       inputMode="decimal"
-                    className={`${inputClass} mt-1`}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                       value={valorInputDeducible(deducibleCfgInput.porcentaje, 2)}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const raw = String(e.target.value ?? '')
+                          .replace(',', '.')
+                          .replace(/[^\d.]/g, '');
+                        if ((raw.match(/\./g) || []).length > 1) return;
                         actualizarDeducibleConfig({
-                          porcentaje: e.target.value === '' ? '' : Number(e.target.value),
-                        })
-                      }
-                  />
-                </label>
+                          porcentaje: raw === '' ? '' : raw,
+                        });
+                      }}
+                    />
+                  </label>
                   <label className="block text-xs" style={{ color: textSecondary }}>
                     Año SMMLV
                     <select
@@ -3502,11 +3570,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           className={`${inputClass} mt-1`}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                           value={valorInputDeducible(deducibleCfgInput.cantidadSMMLV, 3)}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const raw = String(e.target.value ?? '')
+                              .replace(',', '.')
+                              .replace(/[^\d.]/g, '');
+                            if ((raw.match(/\./g) || []).length > 1) return;
                             actualizarDeducibleConfig({
-                              cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
-                            })
-                          }
+                              cantidadSMMLV: raw === '' ? '' : raw,
+                            });
+                          }}
                         />
                       </label>
                       <label className="block text-xs" style={{ color: textSecondary }}>
@@ -3539,11 +3611,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           className={`${inputClass} mt-1`}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                           value={valorInputDeducible(deducibleCfgInput.cantidadSMDLV, 60)}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const raw = String(e.target.value ?? '')
+                              .replace(',', '.')
+                              .replace(/[^\d.]/g, '');
+                            if ((raw.match(/\./g) || []).length > 1) return;
                             actualizarDeducibleConfig({
-                              cantidadSMDLV: e.target.value === '' ? '' : Number(e.target.value),
-                            })
-                          }
+                              cantidadSMDLV: raw === '' ? '' : raw,
+                            });
+                          }}
                         />
                       </label>
                       <label className="block text-xs" style={{ color: textSecondary }}>
@@ -3563,11 +3639,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       </label>
                     </>
                   )}
-              </div>
+                </div>
                 <p className="text-xs" style={{ color: textSecondary }}>
                   Cada amparo (muebles, eléctrico, maquinaria…) tiene su propio cuadro: pérdida −
-                  deducible individual (mayor entre % del VA de ese amparo y el mínimo). Como en el
-                  PDF.
+                  deducible individual (mayor entre % y el mínimo). Como en el PDF.
                 </p>
               </div>
 
@@ -3595,7 +3670,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           className={`${inputClass} mt-1`}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                           value={displayMiles(vaRaw)}
-                          placeholder="Obligatorio para el 2% sobre VA"
+                          placeholder="VA del amparo (si % va sobre valor asegurado)"
                           onChange={(e) =>
                             actualizarValorAseguradoAmparo(campoVa, e.target.value)
                           }
@@ -3654,11 +3729,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         </table>
                       </div>
                       <p className="text-[11px]" style={{ color: textSecondary }}>
-                        {Number(amparo.valorAsegurado) > 0
-                          ? amparo.usaMinimo
-                            ? 'Se aplica el mínimo porque supera el % sobre VA.'
-                            : 'Se aplica el % sobre el valor asegurable de este amparo.'
-                          : 'Sin VA del amparo el % queda en $0 y se aplica el mínimo. Digite el valor asegurable arriba (p. ej. muebles → 2% VA = $4.600.000).'}
+                        {amparo.usaMinimo
+                          ? 'Se aplica el mínimo porque supera el %.'
+                          : Number(amparo.valorAsegurado) > 0 ||
+                              String(amparo.etiquetaPct || '').includes('pérdida')
+                            ? `Se aplica ${amparo.etiquetaPct || 'el %'}.`
+                            : 'Sin VA del amparo, si el % va sobre valor asegurado queda en $0 y gana el mínimo. Digite el VA arriba o cambie la base a «pérdida».'}
                       </p>
                     </div>
                   );
