@@ -56,13 +56,14 @@ export const SURA_LOGINS_PERMISO_LIDER = Object.freeze(['72288319']);
 
 /**
  * Zurich: importar presupuesto del liquidador NSR al informe preliminar.
- * Lady Andrea Escalante Bossio (1041899782), Oscar Atencia (1065012991)
- * y Giselle Marcela Osorio Sierra (1015418630).
+ * Lady Andrea Escalante Bossio (1041899782), Oscar Atencia (1065012991),
+ * Giselle Marcela Osorio Sierra (1015418630) y Sergio Diaz (1044210888).
  */
 export const ZURICH_LOGINS_IMPORTAR_PPT_PRELIMINAR = Object.freeze([
   '1041899782',
   '1065012991',
   '1015418630',
+  '1044210888',
 ]);
 
 export function esLoginImportarPptPreliminarZurich(login) {

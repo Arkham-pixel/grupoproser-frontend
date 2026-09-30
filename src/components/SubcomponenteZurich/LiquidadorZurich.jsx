@@ -332,7 +332,7 @@ export default function LiquidadorZurich({
             Enviar al informe preliminar
           </button>
           <p className="mt-2 text-xs text-blue-800/80 dark:text-blue-200/80">
-            Lady Andrea Escalante, Oscar Atencia y Giselle Osorio.
+            Lady Andrea Escalante, Oscar Atencia, Giselle Osorio y Sergio Diaz.
           </p>
         </div>
       ) : null}
