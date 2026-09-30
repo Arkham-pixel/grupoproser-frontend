@@ -190,8 +190,9 @@ function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
       // Espera a la foto del celular (takePhoto = varios MP). Solo si no llega, usamos el stream.
       let llegóCliente = false;
       if (room.connected && room.remotePresent) {
-        for (let i = 0; i < 8; i += 1) {
-          await new Promise((r) => setTimeout(r, 280));
+        const limite = Date.now() + 15000;
+        while (Date.now() < limite) {
+          await new Promise((r) => setTimeout(r, 700));
           const r = await onRefresh?.();
           if ((r?.medias?.length || 0) > antes) {
             llegóCliente = true;
