@@ -14,24 +14,18 @@ function esAndroid() {
   return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
 }
 
-/** Publicación HD en 1080p con bitrate alto sin simulcast para máxima nitidez (llamada 1 a 1). */
+/** Publicación HD: VP8 universal compatible con Android, iPhone y PC. */
 const PUBLICACION_HD = {
-  simulcast: false,
-  videoCodec: 'h264',
-  videoEncoding: {
-    maxBitrate: 3500000,
-    maxFramerate: 30,
-  },
+  simulcast: true,
+  videoCodec: 'vp8',
+  videoSimulcastLayers: [VideoPresets.h1080, VideoPresets.h720, VideoPresets.h360],
   audioPreset: { maxBitrate: 64000 },
 };
 
 const PUBLICACION_ANDROID = {
-  simulcast: false,
+  simulcast: true,
   videoCodec: 'vp8',
-  videoEncoding: {
-    maxBitrate: 2800000,
-    maxFramerate: 30,
-  },
+  videoSimulcastLayers: [VideoPresets.h720, VideoPresets.h360],
   audioPreset: { maxBitrate: 64000 },
 };
 
@@ -293,8 +287,8 @@ export default function useVideoperitajeRoom({
     const previewPromise = mostrarPreviewLocal();
     const esCliente = portraitRef.current;
     const room = new Room({
-      adaptiveStream: false,
-      dynacast: false,
+      adaptiveStream: true,
+      dynacast: true,
       stopLocalTrackOnUnpublish: true,
       // En el celular, bloquear la pantalla o cambiar de app no es colgar.
       disconnectOnPageLeave: !esCliente,
@@ -349,10 +343,7 @@ export default function useVideoperitajeRoom({
     });
 
     try {
-      await room.connect(url, token, {
-        peerConnectionTimeout: 30000,
-        maxRetries: 3,
-      });
+      await room.connect(url, token);
       setConnected(true);
       // Desbloquear audio remoto (Chrome/Safari bloquean autoplay sin gesto / startAudio).
       try {
