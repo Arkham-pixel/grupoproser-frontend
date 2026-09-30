@@ -183,24 +183,40 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     const p = data?.outboundProgress;
     if (!p) return;
     const busy = Boolean(data?.outboundBusy || p.running);
+    const finishedAtMs = p.finishedAt ? new Date(p.finishedAt).getTime() : 0;
     const recentlyFinished =
-      !p.running &&
-      p.finishedAt &&
-      Date.now() - new Date(p.finishedAt).getTime() < 12_000;
+      !busy && finishedAtMs > 0 && Date.now() - finishedAtMs < 15_000;
+
+    // Si el servidor ya no está enviando, no dejar la barra “Enviando… 70%” eternamente.
     if (!busy && !recentlyFinished) {
-      setFlushProgress((prev) => (prev && prev.pct >= 100 ? null : prev));
+      setFlushProgress(null);
       return;
     }
+
     const who =
       p.startedByName || p.startedByLogin
         ? ` · iniciado por ${p.startedByName || p.startedByLogin}`
         : '';
+    const left = Number(p.left) || 0;
+    const done = Number(p.done) || 0;
+    const total = Number(p.peakTotal) || 0;
+    const labelBase = busy
+      ? p.label || 'Enviando a Excel…'
+      : p.label ||
+        (left > 0
+          ? `Envío parcial: quedan ${left} en cola`
+          : 'Envío a Excel completado');
+
     setFlushProgress({
-      pct: Number(p.pct) || 0,
-      done: Number(p.done) || 0,
-      total: Number(p.peakTotal) || 0,
-      left: Number(p.left) || 0,
-      label: `${p.label || (busy ? 'Enviando a Excel…' : 'Envío finalizado')}${who}`,
+      pct: busy
+        ? Number(p.pct) || 0
+        : left > 0
+          ? Math.min(99, Number(p.pct) || 0)
+          : 100,
+      done,
+      total,
+      left,
+      label: `${labelBase}${who}`,
       running: busy,
     });
   }, []);

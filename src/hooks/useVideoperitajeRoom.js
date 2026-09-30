@@ -9,11 +9,34 @@ import {
   createLocalVideoTrack,
 } from 'livekit-client';
 
-/** Reintentos cortos: sin esto, un blip de red deja al asegurado fuera y el ajustador sin video. */
+function esAndroid() {
+  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
+}
+
+/** Publicación HD en escritorio e iPhone. Android: VP8 y 720p, si no la imagen sale negra. */
+const PUBLICACION_HD = {
+  simulcast: true,
+  videoCodec: 'vp9',
+  videoSimulcastLayers: [VideoPresets.h1080, VideoPresets.h720, VideoPresets.h360],
+  audioPreset: { maxBitrate: 64000 },
+};
+
+const PUBLICACION_ANDROID = {
+  simulcast: true,
+  videoCodec: 'vp8',
+  videoSimulcastLayers: [VideoPresets.h720, VideoPresets.h360],
+  audioPreset: { maxBitrate: 48000 },
+};
+
+function publicacionDe() {
+  return esAndroid() ? PUBLICACION_ANDROID : PUBLICACION_HD;
+}
+
+/** Reintentos largos: un blip de red o un cambio de app no debe cerrar la sala. */
 const RECONEXION_LIMITADA = {
   nextRetryDelayInMs: (ctx) => {
-    if (!ctx || ctx.retryCount > 8) return null;
-    return Math.min(800 * 2 ** ctx.retryCount, 8000);
+    if (!ctx || ctx.retryCount > 14) return null;
+    return Math.min(1000 * 2 ** Math.min(ctx.retryCount, 3), 8000);
   },
 };
 
@@ -75,17 +98,14 @@ export default function useVideoperitajeRoom({
   const [error, setError] = useState('');
   const [remotePresent, setRemotePresent] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   const facingRef = useRef(facingMode);
   const portraitRef = useRef(portrait);
   portraitRef.current = portrait;
   const [facing, setFacing] = useState(facingMode);
-  // Escritorio: 720p. Celular: 720×1280 (FOV amplio).
-  // Pedir 1080×1920 / 4K hace que muchos teléfonos recorten el sensor (cara gigante).
   const resolucionDe = () =>
-    portraitRef.current
-      ? { width: 720, height: 1280 }
-      : VideoPresets.h720.resolution;
+    esAndroid() ? { width: 1280, height: 720, frameRate: 24 } : VideoPresets.h1080.resolution;
 
   const constraintsVideo = (nivel = 'alta') => {
     const facing = facingRef.current;
@@ -105,7 +125,7 @@ export default function useVideoperitajeRoom({
       facingMode: { ideal: facing },
       width: { ideal: res.width },
       height: { ideal: res.height },
-      frameRate: { ideal: 24 },
+      frameRate: { ideal: res.frameRate || 30 },
     };
   };
 
@@ -150,7 +170,7 @@ export default function useVideoperitajeRoom({
 
   const attachLocalPreview = useCallback((el) => {
     // Frontal: espejo. Trasera: real.
-    const espejo = facingRef.current !== 'environment';
+    const espejo = !portraitRef.current && facingRef.current !== 'environment';
     aplicarVideoEl(el, { espejo });
     requestAnimationFrame(() => aplicarVideoEl(el, { espejo }));
   }, []);
@@ -262,23 +282,19 @@ export default function useVideoperitajeRoom({
     setError('');
     // Cámara en paralelo: no bloquear la entrada a LiveKit (si no, se pierde el track del asegurado).
     const previewPromise = mostrarPreviewLocal();
-    const res = resolucionDe();
+    const esCliente = portraitRef.current;
     const room = new Room({
-      adaptiveStream: false,
+      adaptiveStream: true,
       dynacast: true,
       stopLocalTrackOnUnpublish: true,
-      disconnectOnPageLeave: true,
+      // En el celular, bloquear la pantalla o cambiar de app no es colgar.
+      disconnectOnPageLeave: !esCliente,
       reconnectPolicy: RECONEXION_LIMITADA,
       videoCaptureDefaults: {
         facingMode,
-        ...(res ? { resolution: res } : {}),
+        resolution: resolucionDe(),
       },
-      videoPublishDefaults: {
-        videoEncoding: {
-          maxBitrate: portraitRef.current ? 2500000 : 3500000,
-          maxFramerate: portraitRef.current ? 24 : 30,
-        },
-      },
+      publishDefaults: publicacionDe(),
     });
     roomRef.current = room;
 
@@ -346,7 +362,7 @@ export default function useVideoperitajeRoom({
         try {
           // No republicar audio del preview (ya va con setMicrophoneEnabled).
           for (const track of preview.getVideoTracks()) {
-            await room.localParticipant.publishTrack(track);
+            await room.localParticipant.publishTrack(track, publicacionDe());
           }
           const el = localVideoRef.current;
           if (el) {
@@ -455,12 +471,23 @@ export default function useVideoperitajeRoom({
   const switchCamera = useCallback(async () => {
     const room = roomRef.current;
     if (!room) return;
+    const trackActual = getLocalVideoTrack();
+    if (trackActual) {
+      try {
+        await trackActual.applyConstraints({ advanced: [{ torch: false }] });
+      } catch {
+        /* el flash no estaba encendido */
+      }
+    }
+    setTorchOn(false);
     const next = facingRef.current === 'environment' ? 'user' : 'environment';
+    const anterior = facingRef.current;
+    facingRef.current = next;
     try {
       const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
       const current = pubs.find((p) => p.track)?.track;
+      const res = resolucionDe();
       if (current && typeof current.restartTrack === 'function') {
-        const res = resolucionDe();
         await current.restartTrack({
           facingMode: next,
           ...(res ? { resolution: res } : {}),
@@ -470,22 +497,22 @@ export default function useVideoperitajeRoom({
           await room.localParticipant.unpublishTrack(current);
           current.stop();
         }
-        const res = resolucionDe();
         const videoTrack = await createLocalVideoTrack({
           facingMode: next,
           ...(res ? { resolution: res } : {}),
         });
-        await room.localParticipant.publishTrack(videoTrack);
+        await room.localParticipant.publishTrack(videoTrack, publicacionDe());
         if (localVideoRef.current) {
           videoTrack.attach(localVideoRef.current);
           facingRef.current = next;
           attachLocalPreview(localVideoRef.current);
         }
       }
-      facingRef.current = next;
       attachLocalPreview(localVideoRef.current);
       setFacing(next);
     } catch (err) {
+      facingRef.current = anterior;
+      setFacing(anterior);
       setError(err.message || 'No se pudo cambiar de cámara');
     }
   }, [attachLocalPreview]);
@@ -528,10 +555,14 @@ export default function useVideoperitajeRoom({
           // Liberar preview previo y encender de nuevo.
           apagarCamaraLocal();
           try {
-            await room.localParticipant.setCameraEnabled(true, {
-              resolution: VideoPresets.h720.resolution,
-              facingMode: facingRef.current,
-            });
+            await room.localParticipant.setCameraEnabled(
+              true,
+              {
+                resolution: resolucionDe(),
+                facingMode: facingRef.current,
+              },
+              publicacionDe()
+            );
             // Mostrar en el PIP lo que LiveKit publicó.
             const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
             const pub = pubs.find((p) => p.track);
@@ -549,7 +580,7 @@ export default function useVideoperitajeRoom({
             previewStreamRef.current = stream;
             const track = stream.getVideoTracks()[0];
             if (track) {
-              await room.localParticipant.publishTrack(track);
+              await room.localParticipant.publishTrack(track, publicacionDe());
               const el = localVideoRef.current;
               if (el) {
                 el.srcObject = stream;
@@ -616,12 +647,16 @@ export default function useVideoperitajeRoom({
     }
   }, [cameraOn, attachLocalPreview, mostrarPreviewLocal, apagarCamaraLocal]);
 
-  const sendCaptureCommand = useCallback(async () => {
+  const sendData = useCallback(async (msg) => {
     const room = roomRef.current;
     if (!room) return;
-    const payload = new TextEncoder().encode(JSON.stringify({ type: 'CAPTURE' }));
+    const payload = new TextEncoder().encode(JSON.stringify(msg));
     await room.localParticipant.publishData(payload, { reliable: true });
   }, []);
+
+  const sendCaptureCommand = useCallback(async () => {
+    await sendData({ type: 'CAPTURE' });
+  }, [sendData]);
 
   const onData = useCallback((handler) => {
     const room = roomRef.current;
@@ -639,6 +674,26 @@ export default function useVideoperitajeRoom({
     return () => room.off(RoomEvent.DataReceived, listener);
   }, []);
 
+  const reengancharCamaraLocal = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room?.localParticipant) return;
+    const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
+    const current = pubs.find((p) => p.track)?.track;
+    const res = resolucionDe();
+    if (current && typeof current.restartTrack === 'function') {
+      await current.restartTrack({
+        facingMode: facingRef.current,
+        ...(res ? { resolution: res } : {}),
+      });
+    }
+    if (current && localVideoRef.current) {
+      current.attach(localVideoRef.current);
+      localVideoRef.current.muted = true;
+      attachLocalPreview(localVideoRef.current);
+      localVideoRef.current.play?.().catch(() => {});
+    }
+  }, [attachLocalPreview]);
+
   const getLocalVideoTrack = useCallback(() => {
     const room = roomRef.current;
     const pubs = room?.localParticipant?.videoTrackPublications;
@@ -651,6 +706,26 @@ export default function useVideoperitajeRoom({
     return previewStreamRef.current?.getVideoTracks().find((t) => t.readyState === 'live') || null;
   }, []);
 
+  const toggleTorch = useCallback(async () => {
+    if (facingRef.current !== 'environment') {
+      setError('El flash solo funciona con la cámara trasera.');
+      return false;
+    }
+    const track = getLocalVideoTrack();
+    if (!track) return false;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next }] });
+      setTorchOn(next);
+      setError('');
+      return next;
+    } catch {
+      setTorchOn(false);
+      setError('Este celular no enciende el flash en la videollamada.');
+      return false;
+    }
+  }, [torchOn, getLocalVideoTrack]);
+
   return {
     roomRef,
     localVideoRef,
@@ -660,8 +735,12 @@ export default function useVideoperitajeRoom({
     remotePresent,
     cameraOn,
     facing,
+    torchOn,
     toggleCamera,
     switchCamera,
+    toggleTorch,
+    reengancharCamaraLocal,
+    sendData,
     sendCaptureCommand,
     onData,
     getLocalVideoTrack,

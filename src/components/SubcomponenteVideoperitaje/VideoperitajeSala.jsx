@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FaCamera, FaCheck, FaCircle, FaDownload, FaStop, FaVideoSlash } from 'react-icons/fa';
+import { FaCamera, FaCheck, FaCircle, FaDownload, FaLightbulb, FaStop, FaSyncAlt, FaVideoSlash } from 'react-icons/fa';
 import useVideoperitajeRoom from '../../hooks/useVideoperitajeRoom.js';
 import {
   capturarFrameDeVideo,
@@ -25,7 +25,7 @@ import {
   vpWrap,
 } from './videoperitajeUi.js';
 
-function SalaLivePerito({ sesion, onRefresh }) {
+function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
   const { t } = useTranslation();
   const [lk, setLk] = useState(null);
   const [lkError, setLkError] = useState('');
@@ -36,6 +36,7 @@ function SalaLivePerito({ sesion, onRefresh }) {
   const timerRef = useRef(null);
   const flushPromiseRef = useRef(null);
   const [subiendoVideo, setSubiendoVideo] = useState(false);
+  const [flashCliente, setFlashCliente] = useState(false);
 
   const conectar = useCallback(async () => {
     setLkError('');
@@ -213,115 +214,166 @@ function SalaLivePerito({ sesion, onRefresh }) {
   };
 
   return (
-    <div>
-      <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
-        {room.remotePresent
-          ? t('videoperitaje.clientCamera')
-          : t('videoperitaje.adjusterCamera')}
-      </p>
-        <div className="relative overflow-hidden rounded-2xl bg-black">
-          <video
-            ref={room.remoteVideoRef}
-            autoPlay
-            playsInline
-            muted
-            className={
-              room.remotePresent
-                ? 'mx-auto block h-[min(70vh,720px)] w-full max-w-md bg-black object-contain [transform:none] [-webkit-transform:none]'
-                : 'pointer-events-none absolute inset-0 h-full w-full opacity-0'
-            }
-            style={
-              room.remotePresent
-                ? {
-                    aspectRatio: '9 / 16',
-                    objectFit: 'contain',
-                    objectPosition: 'center',
-                    transform: 'none',
-                    WebkitTransform: 'none',
-                  }
-                : { objectFit: 'contain' }
-            }
-          />
-          <video
-            ref={room.localVideoRef}
-            muted
-            autoPlay
-            playsInline
-            className={
-              room.remotePresent
-                ? `absolute right-3 top-3 z-10 w-28 rounded-lg border-2 border-white bg-gray-900 object-cover shadow-lg [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)] ${
-                    room.cameraOn ? '' : 'opacity-40'
-                  }`
-                : `aspect-video w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)] ${
-                    room.cameraOn ? '' : 'opacity-40'
-                  }`
-            }
-            style={
-              room.remotePresent
-                ? { aspectRatio: '3 / 4', objectFit: 'cover', transform: 'scaleX(-1)' }
-                : { transform: 'scaleX(-1)' }
-            }
-          />
-          {room.remotePresent && !room.cameraOn && (
-            <p className="pointer-events-none absolute right-3 top-3 z-20 flex aspect-[3/4] w-28 items-center justify-center rounded-lg bg-black/75 text-center text-[10px] font-semibold leading-tight text-white">
-              Cámara
-              <br />
-              apagada
-            </p>
-          )}
-          {!room.remotePresent && !room.cameraOn && (
-            <p className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/60 text-sm font-semibold text-white">
-              Cámara apagada
-            </p>
-          )}
-          {grabando && (
-            <p className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white">
-              <FaCircle className="animate-pulse text-[8px]" />
-              {t('videoperitaje.recording')} {Math.floor(segGrabacion / 60)}:
-              {String(segGrabacion % 60).padStart(2, '0')}
-            </p>
-          )}
-          {subiendoVideo && (
-            <p className="absolute inset-x-3 bottom-3 z-10 rounded-lg bg-black/70 px-3 py-2 text-center text-xs font-semibold text-white">
-              {t('videoperitaje.savingRecording')}
-            </p>
-          )}
-          {!room.remotePresent && (
-            <p className="pointer-events-none absolute inset-x-0 bottom-3 z-10 px-3 text-center text-sm text-white/90">
-              {aseguradoEnPortal ? t('videoperitaje.clientNoVideo') : t('videoperitaje.waitingClient')}
-            </p>
-          )}
-          {aseguradoEnPortal && !room.remotePresent && (
-            <p className="absolute left-3 top-3 z-10 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
-              {t('videoperitaje.clientOnLink')}
-            </p>
-          )}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className={vpBtnPrimary} onClick={capturar} disabled={busy}>
-            <FaCamera /> {busy ? t('videoperitaje.capturing') : t('videoperitaje.capture')}
-          </button>
-          {grabando ? (
-            <button type="button" className={vpBtnGhost} onClick={detenerGrabacion}>
-              <FaStop /> {t('videoperitaje.stopRecording')}
+    <div className="w-full">
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-950 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:h-[min(82vh,860px)] lg:min-h-[580px]">
+          {/* Cámara del asegurado (Izquierda / Principal) */}
+          <div className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-black lg:min-h-0">
+            <video
+              ref={room.remoteVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={
+                room.remotePresent
+                  ? 'h-full w-full object-contain [transform:none] [-webkit-transform:none]'
+                  : 'pointer-events-none absolute inset-0 h-full w-full opacity-0'
+              }
+              style={
+                room.remotePresent
+                  ? {
+                      objectFit: 'contain',
+                      objectPosition: 'center',
+                      transform: 'none',
+                      WebkitTransform: 'none',
+                    }
+                  : undefined
+              }
+            />
+            {grabando && (
+              <p className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow">
+                <FaCircle className="animate-pulse text-[8px]" />
+                {t('videoperitaje.recording')} {Math.floor(segGrabacion / 60)}:
+                {String(segGrabacion % 60).padStart(2, '0')}
+              </p>
+            )}
+            {subiendoVideo && (
+              <p className="absolute inset-x-3 bottom-3 z-10 rounded-lg bg-black/75 px-3 py-2 text-center text-xs font-semibold text-white">
+                {t('videoperitaje.savingRecording')}
+              </p>
+            )}
+            {!room.remotePresent && (
+              <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 px-3 text-center text-sm font-medium text-white/90">
+                {aseguradoEnPortal ? t('videoperitaje.clientNoVideo') : t('videoperitaje.waitingClient')}
+              </p>
+            )}
+            {aseguradoEnPortal && !room.remotePresent && (
+              <p className="absolute left-3 top-3 z-10 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow">
+                {t('videoperitaje.clientOnLink')}
+              </p>
+            )}
+          </div>
+
+          {/* Columna Derecha: 4 Botones + Cámara del Ajustador debajo */}
+          <div className="flex w-full flex-col gap-2.5 lg:w-[290px] xl:w-[310px] lg:flex-shrink-0">
+            <button
+              type="button"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#f04461] hover:bg-[#d6304d] px-3 text-sm font-bold text-white shadow-sm transition"
+              onClick={grabando ? detenerGrabacion : iniciarGrabacion}
+            >
+              {grabando ? (
+                <>
+                  <FaStop className="text-xs" /> Detener grabación
+                </>
+              ) : (
+                <>
+                  <FaCircle className="text-[9px]" /> Iniciar grabación
+                </>
+              )}
             </button>
-          ) : (
-            <button type="button" className={vpBtnGhost} onClick={iniciarGrabacion}>
-              <FaCircle className="text-red-600" /> {t('videoperitaje.recordCall')}
+
+            <button
+              type="button"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#c2185b] hover:bg-[#a0134a] px-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50"
+              disabled={!room.remotePresent}
+              onClick={() => room.sendData?.({ type: 'SWITCH_CAMERA' }).catch(() => {})}
+            >
+              <FaSyncAlt className="text-xs" /> Cambiar cámara
             </button>
-          )}
-          <button type="button" className={vpBtnGhost} onClick={room.toggleCamera}>
-            {room.cameraOn ? t('videoperitaje.cameraOff') : t('videoperitaje.cameraOn')}
-          </button>
+
+            <button
+              type="button"
+              className={`flex h-11 w-full items-center justify-center gap-2 rounded-md px-3 text-sm font-bold shadow-sm transition disabled:opacity-50 ${
+                flashCliente
+                  ? 'bg-[#ffeb3b] text-gray-900'
+                  : 'bg-[#f5c518] hover:bg-[#e0b010] text-gray-900'
+              }`}
+              disabled={!room.remotePresent}
+              onClick={() => {
+                setFlashCliente((v) => !v);
+                room.sendData?.({ type: 'TORCH' }).catch(() => setFlashCliente(false));
+              }}
+            >
+              <FaLightbulb className="text-xs" /> {flashCliente ? 'Flash encendido' : 'Flash apagado'}
+            </button>
+
+            {/* Espacio central intermedio gris como en la competencia */}
+            <div className="flex-1 min-h-[40px] rounded-lg bg-[#383838] dark:bg-gray-900/60" />
+
+            {/* Bloque inferior: Botón Hacer foto + Cámara del Ajustador pequeña (aspect 4:3) */}
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <button
+                type="button"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#00a0e9] hover:bg-[#008ecb] px-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50"
+                onClick={capturar}
+                disabled={busy || !room.connected}
+              >
+                <FaCamera className="text-xs" /> {busy ? t('videoperitaje.capturing') : 'Hacer foto'}
+              </button>
+
+              <div className="relative aspect-[4/3] w-full max-h-[220px] overflow-hidden rounded-xl border border-gray-200 bg-black dark:border-gray-800">
+                <video
+                  ref={room.localVideoRef}
+                  muted
+                  autoPlay
+                  playsInline
+                  className={`h-full w-full object-cover ${room.cameraOn ? '' : 'opacity-0'}`}
+                  style={{ objectFit: 'cover', transform: 'scaleX(-1)' }}
+                />
+                {!room.cameraOn && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-xs font-semibold text-gray-400">
+                    Cámara apagada
+                  </div>
+                )}
+              </div>
+
+              {onFinalizar && (
+                <button
+                  type="button"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#f04461] hover:bg-[#d6304d] px-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50"
+                  disabled={cerrando}
+                  onClick={onFinalizar}
+                >
+                  <FaCheck className="text-xs" /> Finalizar sesión
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-        {lkError && <p className="mt-2 text-sm text-amber-700">{lkError}</p>}
-        {room.error && <p className="mt-2 text-sm text-red-600">{room.error}</p>}
-        {lk && !room.connected && !room.error && (
-          <p className="mt-2 text-sm text-gray-500">Conectando al servidor de video…</p>
-        )}
-        {lk && room.connected && !room.remotePresent && aseguradoEnPortal && (
-          <p className="mt-2 text-sm text-amber-700">{t('videoperitaje.clientNoVideo')}</p>
-        )}
+
+        {/* Barra inferior: Botón Apagar/Encender cámara a la izq y Sincronizado a la der */}
+        <div className="flex items-center justify-between pt-1">
+          <button
+            type="button"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+            onClick={room.toggleCamera}
+          >
+            {room.cameraOn ? 'Apagar cámara' : 'Encender cámara'}
+          </button>
+          <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Sincronizado
+          </span>
+        </div>
+      </div>
+
+      {lkError && <p className="mt-2 text-sm text-amber-700">{lkError}</p>}
+      {room.error && <p className="mt-2 text-sm text-red-600">{room.error}</p>}
+      {lk && !room.connected && !room.error && (
+        <p className="mt-2 text-sm text-gray-500">Conectando al servidor de video…</p>
+      )}
+      {lk && room.connected && !room.remotePresent && aseguradoEnPortal && (
+        <p className="mt-2 text-sm text-amber-700">{t('videoperitaje.clientNoVideo')}</p>
+      )}
     </div>
   );
 }
@@ -344,6 +396,26 @@ export default function VideoperitajeSala() {
       return null;
     }
   }, [id]);
+
+  const finalizarSesion = useCallback(async () => {
+    if (cerrando) return;
+    setCerrando(true);
+    setAviso('');
+    try {
+      if (typeof window.__vpFlushGrabacion === 'function') {
+        window.__vpFlushGrabacion({ waitUpload: false });
+      }
+      if (typeof window.__vpHangupLive === 'function') {
+        window.__vpHangupLive();
+      }
+      await finalizarSesionVideoperitaje(sesion?._id);
+      await cargar();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCerrando(false);
+    }
+  }, [cerrando, sesion?._id, cargar]);
 
   useEffect(() => {
     cargar();
@@ -375,10 +447,11 @@ export default function VideoperitajeSala() {
   }
 
   const abierta = sesion.estado === 'pendiente' || sesion.estado === 'en_proceso';
+  const esLiveActiva = sesion.tipo === 'live' && (abierta || cerrando);
 
   return (
     <div className={vpPage}>
-      <div className={vpWrap}>
+      <div className={esLiveActiva ? 'mx-auto w-full max-w-[1720px] px-2 sm:px-4' : vpWrap}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link to="/videoperitaje" className="text-sm text-fenix-primario">
@@ -412,25 +485,7 @@ export default function VideoperitajeSala() {
                 type="button"
                 className={vpBtnPrimary}
                 disabled={cerrando}
-                onClick={async () => {
-                  if (cerrando) return;
-                  setCerrando(true);
-                  setAviso('');
-                  try {
-                    if (typeof window.__vpFlushGrabacion === 'function') {
-                      window.__vpFlushGrabacion({ waitUpload: false });
-                    }
-                    if (typeof window.__vpHangupLive === 'function') {
-                      window.__vpHangupLive();
-                    }
-                    await finalizarSesionVideoperitaje(sesion._id);
-                    await cargar();
-                  } catch (err) {
-                    setError(err.message);
-                  } finally {
-                    setCerrando(false);
-                  }
-                }}
+                onClick={finalizarSesion}
               >
                 <FaCheck /> {t('videoperitaje.finish')}
               </button>
@@ -439,56 +494,71 @@ export default function VideoperitajeSala() {
         </div>
         {aviso && <p className="mb-3 break-all text-sm text-green-700">{aviso}</p>}
 
-        <div className={vpCard}>
-          {sesion.tipo === 'live' && (abierta || cerrando) ? (
-            <SalaLivePerito sesion={sesion} onRefresh={cargar} />
-          ) : sesion.tipo === 'live' && !abierta ? (
-            <p className="flex items-center gap-2 text-sm text-gray-500">
-              <FaVideoSlash /> {t('videoperitaje.sessionClosed')}
-            </p>
-          ) : (
-            <div>
-              <h2 className="font-semibold text-gray-800 dark:text-gray-100">
-                {sesion.plantillaTitulo || t('videoperitaje.typeGuided')}
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm">
-                {(sesion.pasos || []).map((p) => {
-                  const delPaso = (sesion.medias || []).filter((m) => m.pasoId === p.id);
-                  const n = delPaso.length;
-                  const ok = (sesion.pasosCumplidos || []).includes(p.id);
-                  return (
-                    <li key={p.id} className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">{p.titulo}</span>
-                        <span className={ok ? 'text-green-600' : 'text-gray-500'}>
-                          {n}/{p.maxFotos} {ok ? '✓' : ''}
-                        </span>
-                      </div>
-                      <p className="text-gray-500">{p.instruccion}</p>
-                      {n > 0 && (
-                        <button
-                          type="button"
-                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-700"
-                          onClick={() =>
-                            descargarBloqueVideoperitaje(delPaso, {
-                              nombre: `${sesion.expediente || 'Videoperitaje'}_${p.titulo}`,
-                            }).catch((err) => window.alert(err.message))
-                          }
-                        >
-                          <FaDownload /> {t('videoperitaje.downloadBlock')}
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+        {esLiveActiva ? (
+          <div>
+            <SalaLivePerito
+              sesion={sesion}
+              onRefresh={cargar}
+              onFinalizar={finalizarSesion}
+              cerrando={cerrando}
+            />
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950 sm:p-6">
+              <VideoperitajeGaleria
+                medias={sesion.medias}
+                tituloBloque={`Videoperitaje_${sesion.expediente || sesion._id}`}
+              />
             </div>
-          )}
-          <VideoperitajeGaleria
-            medias={sesion.medias}
-            tituloBloque={`Videoperitaje_${sesion.expediente || sesion._id}`}
-          />
-        </div>
+          </div>
+        ) : (
+          <div className={vpCard}>
+            {sesion.tipo === 'live' ? (
+              <p className="flex items-center gap-2 text-sm text-gray-500">
+                <FaVideoSlash /> {t('videoperitaje.sessionClosed')}
+              </p>
+            ) : (
+              <div>
+                <h2 className="font-semibold text-gray-800 dark:text-gray-100">
+                  {sesion.plantillaTitulo || t('videoperitaje.typeGuided')}
+                </h2>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {(sesion.pasos || []).map((p) => {
+                    const delPaso = (sesion.medias || []).filter((m) => m.pasoId === p.id);
+                    const n = delPaso.length;
+                    const ok = (sesion.pasosCumplidos || []).includes(p.id);
+                    return (
+                      <li key={p.id} className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">{p.titulo}</span>
+                          <span className={ok ? 'text-green-600' : 'text-gray-500'}>
+                            {n}/{p.maxFotos} {ok ? '✓' : ''}
+                          </span>
+                        </div>
+                        <p className="text-gray-500">{p.instruccion}</p>
+                        {n > 0 && (
+                          <button
+                            type="button"
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-700"
+                            onClick={() =>
+                              descargarBloqueVideoperitaje(delPaso, {
+                                nombre: `${sesion.expediente || 'Videoperitaje'}_${p.titulo}`,
+                              }).catch((err) => window.alert(err.message))
+                            }
+                          >
+                            <FaDownload /> {t('videoperitaje.downloadBlock')}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            <VideoperitajeGaleria
+              medias={sesion.medias}
+              tituloBloque={`Videoperitaje_${sesion.expediente || sesion._id}`}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

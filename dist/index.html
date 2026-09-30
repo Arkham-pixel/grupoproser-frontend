@@ -16,9 +16,29 @@
     connect-src 'self' data: blob:
                 http://localhost:3000
                 http://127.0.0.1:3000
+                http://localhost:7880
+                http://127.0.0.1:7880
+                http://localhost:7881
+                http://127.0.0.1:7881
+                ws://localhost:7880
+                ws://127.0.0.1:7880
+                wss://localhost:7880
+                wss://127.0.0.1:7880
+                https://*.livekit.cloud
+                wss://*.livekit.cloud
+                https://livekit.cloud
+                wss://livekit.cloud
+                https://*.trycloudflare.com
+                wss://*.trycloudflare.com
+                http://*.trycloudflare.com
+                ws://*.trycloudflare.com
                 https://arnaldbackend.grupoproser.com.co
                 https://aplicacion.grupoproser.com.co
                 https://arnald.grupoproser.com.co
+                https://livekit.grupoproser.com.co
+                wss://livekit.grupoproser.com.co
+                https://*.grupoproser.com.co
+                wss://*.grupoproser.com.co
                 https://api.grupoproser.com.co
                 https://*.amazonaws.com
                 https://*.s3.amazonaws.com
@@ -41,6 +61,7 @@
                 https://khms2.googleapis.com
                 https://khms3.googleapis.com
                 https://*.google.com
+                blob:
                 ws: wss:;
     img-src 'self' data: blob:
              http://localhost:3000
@@ -78,12 +99,14 @@
                 https://accounts.google.com
                 https://www.gstatic.com
                 https://*.gstatic.com;
+    media-src 'self' blob: mediastream: data:;
     worker-src 'self' blob:;
     child-src 'self' blob:;
     font-src 'self' data:
              https://fonts.gstatic.com
              https://*.googleapis.com;
-    frame-src https://accounts.google.com
+    frame-src 'self' blob:
+              https://accounts.google.com
               https://*.googleusercontent.com
               https://content.googleapis.com
               https://*.firebaseapp.com
@@ -93,6 +116,7 @@
 
 
     <title>Arnald DataFlow - Panel de Control</title>
+    <script src="/arnald-cache-bust.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <!-- Script para aplicar el tema antes de que React cargue (evita flash) -->
     <script>
@@ -110,8 +134,8 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-C5HcKjKz.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DzCNanO2.css">
+    <script type="module" crossorigin src="/assets/index-DHQuHocc.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BqzYY2GB.css">
   <link rel="manifest" href="/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>

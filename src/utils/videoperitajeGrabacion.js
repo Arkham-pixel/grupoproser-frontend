@@ -15,8 +15,18 @@ function drawContain(ctx, video, x, y, w, h) {
 function medidasLienzo(video) {
   const vw = video?.videoWidth || 0;
   const vh = video?.videoHeight || 0;
-  if (vw && vh && vw > vh) return { width: 1280, height: 720 };
-  return { width: 720, height: 1280 };
+  if (!vw || !vh) return { width: 720, height: 1280 };
+  const largo = Math.max(vw, vh);
+  const scale = largo > 1920 ? 1920 / largo : 1;
+  return {
+    width: Math.max(2, Math.round((vw * scale) / 2) * 2),
+    height: Math.max(2, Math.round((vh * scale) / 2) * 2),
+  };
+}
+
+function bitrateVideo(size) {
+  const largo = Math.max(size?.width || 0, size?.height || 0);
+  return largo >= 1600 ? 4_000_000 : 2_500_000;
 }
 
 function pistasDeSala(room) {
@@ -99,10 +109,10 @@ function mezclarAudio(audios) {
   }
 }
 
-function crearRecorder(stream, mime) {
+function crearRecorder(stream, mime, videoBitsPerSecond = 2_500_000) {
   const rec = new MediaRecorder(stream, {
     mimeType: mime,
-    videoBitsPerSecond: 2_500_000,
+    videoBitsPerSecond,
     audioBitsPerSecond: 96_000,
   });
   const chunks = [];
@@ -180,7 +190,8 @@ export function iniciarGrabacionLlamada({ localVideo, remoteVideo, room }) {
   const streamCanvas = canvas.captureStream(30);
   const tracksCanvas = [...streamCanvas.getVideoTracks()];
   if (audioMix.track) tracksCanvas.push(audioMix.track);
-  recWrap = crearRecorder(new MediaStream(tracksCanvas), mime);
+  const bits = bitrateVideo(size);
+  recWrap = crearRecorder(new MediaStream(tracksCanvas), mime, bits);
 
   const cambiarAPistaCruda = () => {
     if (!running || usandoPistaCruda || !pistaMain) return;
@@ -194,7 +205,7 @@ export function iniciarGrabacionLlamada({ localVideo, remoteVideo, room }) {
     }
     const crudos = [pistaMain];
     if (audioMix.track) crudos.push(audioMix.track);
-    recWrap = crearRecorder(new MediaStream(crudos), mime);
+    recWrap = crearRecorder(new MediaStream(crudos), mime, bits);
   };
 
   const watchdog = setTimeout(() => {

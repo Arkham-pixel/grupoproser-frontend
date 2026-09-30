@@ -58,7 +58,8 @@ export default function VideoperitajeHistorial() {
         estado,
         casoId,
         modulo,
-        limit: 50,
+        // Historial admin puede pasar de 50; sin paginación aún pedimos un tope alto.
+        limit: 500,
       });
       setRows(r.data || []);
       setTotal(r.total || 0);

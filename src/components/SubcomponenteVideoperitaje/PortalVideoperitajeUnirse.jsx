@@ -64,7 +64,7 @@ function LiveGuest({ livekit, token, onCallEnded }) {
   const room = useVideoperitajeRoom({
     token: livekit?.token,
     url: livekit?.url,
-    facingMode: 'user',
+    facingMode: 'environment',
     publishVideo: true,
     publishAudio: true,
     portrait: true,
@@ -76,13 +76,23 @@ function LiveGuest({ livekit, token, onCallEnded }) {
   useEffect(() => {
     if (!room.connected || !token) return undefined;
     return room.onData(async (msg) => {
+      if (msg?.type === 'SWITCH_CAMERA') {
+        await room.switchCamera();
+        return;
+      }
+      if (msg?.type === 'TORCH') {
+        await room.toggleTorch();
+        return;
+      }
       if (msg?.type !== 'CAPTURE') return;
       try {
         setFlash(true);
+        const trasera = room.facing === 'environment';
         const blob = await capturarFotoHd({
           videoEl: room.localVideoRef.current,
           mediaStreamTrack: room.getLocalVideoTrack() || pistaVideoDeSala(room.roomRef.current),
-          soloStream: true,
+          // Trasera: foto del sensor para el informe. Frontal: cuadro del video (no recorta la cara).
+          soloStream: !trasera,
         });
         if (blob) {
           await subirFotoPublicaVideoperitaje(token, blob, {
@@ -93,22 +103,25 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         /* el ajustador reintenta con fallback */
       } finally {
         setTimeout(() => setFlash(false), 180);
-        // Por si el track se congeló: reenganchar preview local.
         try {
-          const lk = room.roomRef.current;
-          const pubs = lk?.localParticipant?.videoTrackPublications;
-          const pub = pubs && [...pubs.values()].find((p) => p.track);
-          if (pub?.track && room.localVideoRef.current) {
-            pub.track.attach(room.localVideoRef.current);
-            room.localVideoRef.current.muted = true;
-            room.localVideoRef.current.play?.().catch(() => {});
+          if (room.facing === 'environment') {
+            await room.reengancharCamaraLocal?.();
+          } else {
+            const lk = room.roomRef.current;
+            const pubs = lk?.localParticipant?.videoTrackPublications;
+            const pub = pubs && [...pubs.values()].find((p) => p.track);
+            if (pub?.track && room.localVideoRef.current) {
+              pub.track.attach(room.localVideoRef.current);
+              room.localVideoRef.current.muted = true;
+              room.localVideoRef.current.play?.().catch(() => {});
+            }
           }
         } catch {
           /* ignore */
         }
       }
     });
-  }, [room.connected, token]);
+  }, [room.connected, room.facing, token]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black">
@@ -117,14 +130,14 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         autoPlay
         muted
         playsInline
-        className="absolute inset-0 h-full w-full bg-black object-cover [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]"
-        style={{ objectFit: 'cover', objectPosition: 'center', transform: 'scaleX(-1)' }}
+        className="absolute inset-0 h-full w-full bg-black object-cover"
+        style={{ objectFit: 'cover', objectPosition: 'center', transform: 'none' }}
       />
       <video
         ref={room.remoteVideoRef}
         autoPlay
         playsInline
-        className="absolute bottom-6 right-3 z-10 h-[150px] w-[112px] rounded-lg border-2 border-white bg-black object-cover shadow-lg [transform:none]"
+        className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(0.75rem,env(safe-area-inset-right))] z-10 aspect-[3/4] w-[min(30vw,120px)] rounded-lg border-2 border-white bg-black object-cover shadow-lg [transform:none]"
         style={{ objectFit: 'cover', objectPosition: 'center', transform: 'none' }}
       />
       <p className="pointer-events-none absolute left-3 top-3 z-20 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/80">
@@ -144,7 +157,7 @@ function LiveGuest({ livekit, token, onCallEnded }) {
       <button
         type="button"
         onClick={room.switchCamera}
-        className="absolute left-3 top-8 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg"
+        className="absolute left-[max(0.75rem,env(safe-area-inset-left))] top-[max(2rem,env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg"
         aria-label={frontal ? 'Cambiar a cámara trasera' : 'Cambiar a cámara frontal'}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -157,7 +170,16 @@ function LiveGuest({ livekit, token, onCallEnded }) {
           <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2" />
         </svg>
       </button>
-      <p className="absolute left-16 top-[2.65rem] z-20 text-[10px] text-white/80">
+      <button
+        type="button"
+        onClick={room.toggleTorch}
+        className={`absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(2rem,env(safe-area-inset-top))] z-20 h-11 rounded-full px-3 text-sm font-bold shadow-lg ${
+          room.torchOn ? 'bg-yellow-400 text-gray-900' : 'bg-white/90 text-gray-900'
+        }`}
+      >
+        {room.torchOn ? 'Flash encendido' : 'Flash apagado'}
+      </button>
+      <p className="absolute left-16 top-[max(2.15rem,env(safe-area-inset-top))] z-20 text-[10px] text-white/80">
         {frontal ? 'Cámara frontal' : 'Cámara trasera'}
       </p>
     </div>
