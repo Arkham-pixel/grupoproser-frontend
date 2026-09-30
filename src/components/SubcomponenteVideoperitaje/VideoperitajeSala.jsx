@@ -173,39 +173,55 @@ function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
     []
   );
 
+  const esperarAckCaptura = (ms) =>
+    new Promise((resolve) => {
+      let off = () => {};
+      const timer = setTimeout(() => {
+        off();
+        resolve(false);
+      }, ms);
+      off = room.onData((msg) => {
+        if (msg?.type !== 'CAPTURE_ACK') return;
+        clearTimeout(timer);
+        off();
+        resolve(true);
+      });
+    });
+
+  const refrescarGaleriaEnSegundoPlano = (antes) => {
+    const limite = Date.now() + 30000;
+    const tick = async () => {
+      const r = await onRefresh?.();
+      if ((r?.medias?.length || 0) > antes || Date.now() > limite) return;
+      setTimeout(tick, 1500);
+    };
+    setTimeout(tick, 1200);
+  };
+
   const capturar = async () => {
     setBusy(true);
     setLkError('');
     try {
       const antes = (sesion.medias || []).length;
-      // Dispara captura en el celular (una foto HD desde su cámara).
-      if (room.connected) {
-        room.sendCaptureCommand().catch(() => {});
-      }
       const fuente = room.remoteVideoRef.current?.videoWidth
         ? room.remoteVideoRef.current
         : room.localVideoRef.current;
-      const blobLocal = await capturarFrameDeVideo(fuente);
-
-      // Espera a la foto del celular (takePhoto = varios MP). Solo si no llega, usamos el stream.
-      let llegóCliente = false;
+      // El celular toma la foto HD y la sube directo a S3; aquí solo confirmamos que recibió la orden.
+      let ack = false;
       if (room.connected && room.remotePresent) {
-        const limite = Date.now() + 15000;
-        while (Date.now() < limite) {
-          await new Promise((r) => setTimeout(r, 700));
-          const r = await onRefresh?.();
-          if ((r?.medias?.length || 0) > antes) {
-            llegóCliente = true;
-            break;
-          }
-        }
+        const espera = esperarAckCaptura(2500);
+        room.sendCaptureCommand().catch(() => {});
+        ack = await espera;
       }
-
-      if (!llegóCliente && blobLocal) {
-        await subirFotoPeritoVideoperitaje(sesion._id, blobLocal, {
-          descripcion: 'Captura videoperitaje',
-        });
-        await onRefresh?.();
+      if (ack) {
+        refrescarGaleriaEnSegundoPlano(antes);
+        return;
+      }
+      const blobLocal = await capturarFrameDeVideo(fuente);
+      if (blobLocal) {
+        subirFotoPeritoVideoperitaje(sesion._id, blobLocal, { descripcion: 'Captura videoperitaje' })
+          .then(() => onRefresh?.())
+          .catch((err) => setLkError(err.message));
       }
     } catch (err) {
       setLkError(err.message);

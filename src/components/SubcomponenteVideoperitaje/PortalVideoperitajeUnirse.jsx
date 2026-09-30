@@ -85,6 +85,7 @@ function LiveGuest({ livekit, token, onCallEnded }) {
         return;
       }
       if (msg?.type !== 'CAPTURE') return;
+      room.sendData?.({ type: 'CAPTURE_ACK' }).catch(() => {});
       try {
         setFlash(true);
         const trasera = room.facing === 'environment';
