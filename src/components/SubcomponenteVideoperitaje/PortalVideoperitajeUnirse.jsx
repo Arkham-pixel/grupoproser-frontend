@@ -156,22 +156,6 @@ function LiveGuest({ livekit, token, onCallEnded }) {
       )}
       <button
         type="button"
-        onClick={room.switchCamera}
-        className="absolute left-[max(0.75rem,env(safe-area-inset-left))] top-[max(2rem,env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg"
-        aria-label={frontal ? 'Cambiar a cámara trasera' : 'Cambiar a cámara frontal'}
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M16 4h2a2 2 0 0 1 2 2v2M8 20H6a2 2 0 0 1-2-2v-2M20 16v2a2 2 0 0 1-2 2h-2M4 8V6a2 2 0 0 1 2-2h2"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2" />
-        </svg>
-      </button>
-      <button
-        type="button"
         onClick={room.toggleTorch}
         className={`absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(2rem,env(safe-area-inset-top))] z-20 h-11 rounded-full px-3 text-sm font-bold shadow-lg ${
           room.torchOn ? 'bg-yellow-400 text-gray-900' : 'bg-white/90 text-gray-900'
@@ -179,9 +163,6 @@ function LiveGuest({ livekit, token, onCallEnded }) {
       >
         {room.torchOn ? 'Flash encendido' : 'Flash apagado'}
       </button>
-      <p className="absolute left-16 top-[max(2.15rem,env(safe-area-inset-top))] z-20 text-[10px] text-white/80">
-        {frontal ? 'Cámara frontal' : 'Cámara trasera'}
-      </p>
     </div>
   );
 }

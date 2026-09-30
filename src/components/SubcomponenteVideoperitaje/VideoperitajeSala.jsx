@@ -216,9 +216,9 @@ function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-950 sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:h-[min(82vh,860px)] lg:min-h-[580px]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:h-[560px]">
           {/* Cámara del asegurado (Izquierda / Principal) */}
-          <div className="relative flex min-h-[52vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-black lg:min-h-0">
+          <div className="relative flex min-h-[48vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-black lg:min-h-0">
             <video
               ref={room.remoteVideoRef}
               autoPlay
@@ -265,7 +265,7 @@ function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
           </div>
 
           {/* Columna Derecha: 4 Botones + Cámara del Ajustador debajo */}
-          <div className="flex w-full flex-col gap-2.5 lg:w-[290px] xl:w-[310px] lg:flex-shrink-0">
+          <div className="flex w-full flex-col gap-2.5 lg:w-[280px] lg:flex-shrink-0">
             <button
               type="button"
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#f04461] hover:bg-[#d6304d] px-3 text-sm font-bold text-white shadow-sm transition"
@@ -451,7 +451,7 @@ export default function VideoperitajeSala() {
 
   return (
     <div className={vpPage}>
-      <div className={esLiveActiva ? 'mx-auto w-full max-w-[1720px] px-2 sm:px-4' : vpWrap}>
+      <div className={esLiveActiva ? 'mx-auto w-full max-w-[1100px] px-2 sm:px-4' : vpWrap}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link to="/videoperitaje" className="text-sm text-fenix-primario">

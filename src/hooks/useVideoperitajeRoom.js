@@ -105,18 +105,21 @@ export default function useVideoperitajeRoom({
   portraitRef.current = portrait;
   const [facing, setFacing] = useState(facingMode);
   const resolucionDe = () =>
-    esAndroid() ? { width: 1280, height: 720, frameRate: 24 } : VideoPresets.h1080.resolution;
+    esAndroid()
+      ? { width: 1280, height: 960, frameRate: 24 }
+      : { width: 1280, height: 960, frameRate: 30 };
 
   const constraintsVideo = (nivel = 'alta') => {
     const facing = facingRef.current;
     if (nivel === 'basica') {
-      return { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } };
+      return { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 }, aspectRatio: { ideal: 4 / 3 } };
     }
     if (nivel === 'media') {
       return {
         facingMode: { ideal: facing },
-        width: { ideal: 1280 },
+        width: { ideal: 960 },
         height: { ideal: 720 },
+        aspectRatio: { ideal: 4 / 3 },
         frameRate: { ideal: 24 },
       };
     }
@@ -125,6 +128,7 @@ export default function useVideoperitajeRoom({
       facingMode: { ideal: facing },
       width: { ideal: res.width },
       height: { ideal: res.height },
+      aspectRatio: { ideal: 4 / 3 },
       frameRate: { ideal: res.frameRate || 30 },
     };
   };
