@@ -6,6 +6,7 @@ import {
   RoomEvent,
   Track,
   VideoPresets,
+  VideoQuality,
   createLocalVideoTrack,
 } from 'livekit-client';
 
@@ -13,19 +14,25 @@ function esAndroid() {
   return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
 }
 
-/** Publicación HD en escritorio e iPhone. Android: VP8 y 720p, si no la imagen sale negra. */
+/** Publicación HD en 1080p con bitrate alto sin simulcast para máxima nitidez (llamada 1 a 1). */
 const PUBLICACION_HD = {
-  simulcast: true,
-  videoCodec: 'vp9',
-  videoSimulcastLayers: [VideoPresets.h1080, VideoPresets.h720, VideoPresets.h360],
+  simulcast: false,
+  videoCodec: 'h264',
+  videoEncoding: {
+    maxBitrate: 3500000,
+    maxFramerate: 30,
+  },
   audioPreset: { maxBitrate: 64000 },
 };
 
 const PUBLICACION_ANDROID = {
-  simulcast: true,
+  simulcast: false,
   videoCodec: 'vp8',
-  videoSimulcastLayers: [VideoPresets.h720, VideoPresets.h360],
-  audioPreset: { maxBitrate: 48000 },
+  videoEncoding: {
+    maxBitrate: 2800000,
+    maxFramerate: 30,
+  },
+  audioPreset: { maxBitrate: 64000 },
 };
 
 function publicacionDe() {
@@ -106,20 +113,19 @@ export default function useVideoperitajeRoom({
   const [facing, setFacing] = useState(facingMode);
   const resolucionDe = () =>
     esAndroid()
-      ? { width: 1280, height: 960, frameRate: 24 }
-      : { width: 1280, height: 960, frameRate: 30 };
+      ? { width: 1280, height: 720, frameRate: 30 }
+      : { width: 1920, height: 1080, frameRate: 30 };
 
   const constraintsVideo = (nivel = 'alta') => {
     const facing = facingRef.current;
     if (nivel === 'basica') {
-      return { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 }, aspectRatio: { ideal: 4 / 3 } };
+      return { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } };
     }
     if (nivel === 'media') {
       return {
         facingMode: { ideal: facing },
-        width: { ideal: 960 },
+        width: { ideal: 1280 },
         height: { ideal: 720 },
-        aspectRatio: { ideal: 4 / 3 },
         frameRate: { ideal: 24 },
       };
     }
@@ -128,7 +134,6 @@ export default function useVideoperitajeRoom({
       facingMode: { ideal: facing },
       width: { ideal: res.width },
       height: { ideal: res.height },
-      aspectRatio: { ideal: 4 / 3 },
       frameRate: { ideal: res.frameRate || 30 },
     };
   };
@@ -288,8 +293,8 @@ export default function useVideoperitajeRoom({
     const previewPromise = mostrarPreviewLocal();
     const esCliente = portraitRef.current;
     const room = new Room({
-      adaptiveStream: true,
-      dynacast: true,
+      adaptiveStream: false,
+      dynacast: false,
       stopLocalTrackOnUnpublish: true,
       // En el celular, bloquear la pantalla o cambiar de app no es colgar.
       disconnectOnPageLeave: !esCliente,
@@ -302,13 +307,16 @@ export default function useVideoperitajeRoom({
     });
     roomRef.current = room;
 
-    const onTrack = (track, participant) => {
+    const onTrack = (track, pub, participant) => {
       if (participant?.isLocal) return;
       if (track.kind === Track.Kind.Audio) {
         attachRemoteAudio(track);
         room.startAudio?.().catch(() => {});
       }
       if (track.kind === Track.Kind.Video) {
+        if (pub && typeof pub.setVideoQuality === 'function') {
+          pub.setVideoQuality(VideoQuality.HIGH);
+        }
         attachRemote(track);
       }
     };
@@ -316,7 +324,7 @@ export default function useVideoperitajeRoom({
       if (!participant?.isLocal) syncRemotes(room);
     };
 
-    room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => onTrack(track, participant));
+    room.on(RoomEvent.TrackSubscribed, (track, pub, participant) => onTrack(track, pub, participant));
     room.on(RoomEvent.TrackUnsubscribed, onUnpublish);
     room.on(RoomEvent.TrackPublished, (_pub, participant) => {
       if (!participant?.isLocal) syncRemotes(room);
@@ -341,7 +349,10 @@ export default function useVideoperitajeRoom({
     });
 
     try {
-      await room.connect(url, token);
+      await room.connect(url, token, {
+        peerConnectionTimeout: 30000,
+        maxRetries: 3,
+      });
       setConnected(true);
       // Desbloquear audio remoto (Chrome/Safari bloquean autoplay sin gesto / startAudio).
       try {
