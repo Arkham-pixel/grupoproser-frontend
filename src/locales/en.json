@@ -77,7 +77,7 @@
     "recordCall": "Record call",
     "stopRecording": "Stop recording",
     "recording": "Recording",
-    "savingRecording": "Saving the recording to S3…",
+    "savingRecording": "Preparing the video download…",
     "playRecording": "Play recording",
     "waitToRecord": "Wait until the insured joins with camera before recording.",
     "livekitHint": "No video-server token. Check LIVEKIT_URL / LIVEKIT_API_KEY on the backend.",

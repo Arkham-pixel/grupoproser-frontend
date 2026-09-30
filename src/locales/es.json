@@ -77,7 +77,7 @@
     "recordCall": "Grabar llamada",
     "stopRecording": "Detener grabación",
     "recording": "Grabando",
-    "savingRecording": "Guardando la grabación en S3…",
+    "savingRecording": "Preparando la descarga del video…",
     "playRecording": "Ver grabación",
     "waitToRecord": "Espere a que el asegurado entre con cámara para grabar.",
     "livekitHint": "No hay token del servidor de video. Revise LIVEKIT_URL / LIVEKIT_API_KEY en el backend.",

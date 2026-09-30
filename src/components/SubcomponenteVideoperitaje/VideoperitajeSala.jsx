@@ -91,29 +91,29 @@ function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
     }
     setGrabando(false);
     if (!rec) return null;
-    const sesionId = sesion._id;
+    const nombreBase = `Videoperitaje_${sesion.expediente || sesion._id}`.replace(/[^\w.-]+/g, '_');
     const job = (async () => {
       setSubiendoVideo(true);
       try {
         const blob = await rec.stop();
         if (blob && blob.size > 4000) {
-          await subirFotoPeritoVideoperitaje(sesionId, blob, {
-            descripcion: 'Grabación de la videollamada',
-            tipo: 'video',
-            filename: `grabacion-${Date.now()}.webm`,
-          });
-          try {
-            await onRefresh?.();
-          } catch {
-            /* sala ya cerrada */
-          }
+          const ext = String(blob.type || rec.mime || '').includes('mp4') ? 'mp4' : 'webm';
+          const sello = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${nombreBase}_${sello}.${ext}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
         }
       } catch (err) {
         if (waitUpload) {
           setLkError(err.message);
           throw err;
         }
-        console.warn('[videoperitaje] subida de grabación en segundo plano:', err?.message || err);
+        console.warn('[videoperitaje] descarga de grabación:', err?.message || err);
       } finally {
         setSubiendoVideo(false);
       }
@@ -124,7 +124,7 @@ function SalaLivePerito({ sesion, onRefresh, onFinalizar, cerrando }) {
     });
     if (waitUpload) await job;
     return null;
-  }, [sesion._id, onRefresh]);
+  }, [sesion._id, sesion.expediente]);
 
   const iniciarGrabacion = async () => {
     setLkError('');
