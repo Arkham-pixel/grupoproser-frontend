@@ -784,7 +784,10 @@ if (casoData && casoData._id) {
               normalizados.departamentoCiudad =
                 casoData.departamentoCiudad || casoData.departamento || '';
               normalizados.fchaSinstro = casoData.fchaSinstro || casoData.fechaSiniestro || '';
-              normalizados.fchaInspccion = casoData.fchaInspccion || casoData.fechaInspeccion || '';
+              normalizados.fchaInspccion =
+                casoData.fchaInspccion ||
+                (!casoData.fchaProgInspeccion ? casoData.fechaInspeccion : '') ||
+                '';
               normalizados.fechaInspeccion =
                 casoData.fechaInspeccion ||
                 casoData.fchaProgInspeccion ||
@@ -915,7 +918,11 @@ if (casoData && casoData._id) {
               fechaFinPoliza: formatearFechaParaInput(
                 casoData.fechaFinPoliza || normalizados.fechaFinPoliza
               ),
-              fchaInspccion: formatearCampoParaInput('fchaInspccion', casoData.fchaInspccion),
+              fchaInspccion: formatearCampoParaInput(
+                'fchaInspccion',
+                casoData.fchaInspccion ||
+                  (!casoData.fchaProgInspeccion ? casoData.fechaInspeccion : null)
+              ),
               fchaContIni: formatearCampoParaInput('fchaContIni', casoData.fchaContIni),
               fchaSoliDocu: fchaSoliDocuFormateada,
               fchaInfoPrelm: fchaInfoPrelmFormateada,

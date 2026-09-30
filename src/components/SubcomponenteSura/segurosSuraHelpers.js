@@ -353,12 +353,16 @@ export const formatDate = (value) => {
   return `${day}/${month}/${year}`;
 };
 
-/** YYYY-MM-DD para inputs date */
+/** YYYY-MM-DD para inputs date (día calendario Colombia si hay hora UTC). */
 export const formatDateIso = (value) => {
   const date = crearFechaLocal(value);
   if (!date) return '';
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value.trim())) {
-    return value.trim().slice(0, 10);
+  // Solo fecha sin hora: respetar el día literal (no aplicar TZ).
+  if (typeof value === 'string') {
+    const s = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10)) && !/[T ]\d{2}:\d{2}/.test(s)) {
+      return s.slice(0, 10);
+    }
   }
   try {
     const parts = new Intl.DateTimeFormat('en-CA', {

@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom';
 import {
   FaCheck,
+  FaEdit,
   FaFileExcel,
-  FaSync,
   FaTimes,
   FaUpload,
 } from 'react-icons/fa';
@@ -11,10 +11,10 @@ import {
   actualizarFacilitadorSura,
   importarFacilitadoresSura,
   listarFacilitadoresSura,
-  sugerirFacilitadoresDesdeArnald,
 } from '../../services/suraFacilitadoresService.js';
+import { getCasoSuraById } from '../../services/segurosSuraService.js';
 import { esSesionFacilitadoresSura } from '../../utils/permisosCasoPorRol.js';
-import { fechaParaInput } from './segurosSuraHelpers.js';
+import FormularioCasoSura from './FormularioCasoSura.jsx';
 import {
   CRITERIOS_FACILITADOR,
   deduplicarFilasFacilitadores,
@@ -41,7 +41,7 @@ import {
   expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import { ExpressAvisoModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { ExpressAvisoModal, ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -49,9 +49,6 @@ const navLink =
   'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
 const navActive =
   'inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm';
-
-const inputSm =
-  'w-full min-w-[7rem] rounded-md border border-gray-200 bg-white px-2 py-1.5 font-body text-xs text-gray-800 dark:border-gray-700 dark:bg-[#0F0F0F] dark:text-gray-200';
 
 /** Solo Visita se edita con chulo / X; vacío se trata como NO. */
 function MarcaVisitaEditable({ value, disabled, onPick }) {
@@ -95,12 +92,9 @@ function Dato({ children }) {
   );
 }
 
-function hoyIso() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function labelCriterio(valor) {
+  const v = String(valor || '').trim();
+  return CRITERIOS_FACILITADOR.find((c) => c.value === v)?.label || v || '';
 }
 
 export default function ReporteFacilitadoresSura() {
@@ -114,29 +108,46 @@ export default function ReporteFacilitadoresSura() {
   const [soloInvalidos, setSoloInvalidos] = useState(false);
   const [aviso, setAviso] = useState(null);
   const [guardandoId, setGuardandoId] = useState('');
+  const [casoEdicion, setCasoEdicion] = useState(null);
 
-  const recargar = useCallback(async () => {
+  const recargar = useCallback(async (opts = {}) => {
     if (!permitido) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!opts?.silencioso) setLoading(true);
     try {
       const data = await listarFacilitadoresSura();
       setFilas(deduplicarFilasFacilitadores(data).map(filaParaInput));
     } catch (err) {
-      setAviso({
-        tipo: 'error',
-        titulo: 'Error',
-        mensaje: err.message || 'No se pudo cargar la plantilla de facilitadores.',
-      });
+      if (!opts?.silencioso) {
+        setAviso({
+          tipo: 'error',
+          titulo: 'Error',
+          mensaje: err.message || 'No se pudo cargar la plantilla de facilitadores.',
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silencioso) setLoading(false);
     }
   }, [permitido]);
 
   useEffect(() => {
     recargar();
+    const alVolverVisible = () => {
+      if (document.visibilityState === 'visible') recargar({ silencioso: true });
+    };
+    const onFocus = () => recargar({ silencioso: true });
+    document.addEventListener('visibilitychange', alVolverVisible);
+    window.addEventListener('focus', onFocus);
+    const intervalo = window.setInterval(() => {
+      if (document.visibilityState === 'visible') recargar({ silencioso: true });
+    }, 60000);
+    return () => {
+      document.removeEventListener('visibilitychange', alVolverVisible);
+      window.removeEventListener('focus', onFocus);
+      window.clearInterval(intervalo);
+    };
   }, [recargar]);
 
   const resumen = useMemo(() => {
@@ -196,27 +207,6 @@ export default function ReporteFacilitadoresSura() {
     }
   };
 
-  const onSugerir = async () => {
-    setBusy('sugerir');
-    try {
-      const result = await sugerirFacilitadoresDesdeArnald();
-      setFilas(deduplicarFilasFacilitadores(result.data || []).map(filaParaInput));
-      setAviso({
-        tipo: 'success',
-        titulo: 'Actualizado desde gestionar',
-        mensaje: `Se tomaron datos de los casos SURA (visita, informe, cierre). Filas tocadas: ${result.filled || 0}.`,
-      });
-    } catch (err) {
-      setAviso({
-        tipo: 'error',
-        titulo: 'Completar desde Arnald',
-        mensaje: err.message || 'No se pudo completar desde Arnald.',
-      });
-    } finally {
-      setBusy('');
-    }
-  };
-
   const onExportar = async () => {
     if (!filas.length) {
       setAviso({
@@ -270,18 +260,39 @@ export default function ReporteFacilitadoresSura() {
   const marcarVisita = (fila, marca) => {
     const patch = { visitaRealizada: marca };
     if (marca === 'SI') {
-      patch.fechaVisita = fila.fechaVisita || hoyIso();
+      patch.fechaVisita = fila.fechaVisita || '';
     } else {
       patch.fechaVisita = '';
     }
     setFilas((prev) =>
       prev.map((f) =>
         f._id === fila._id
-          ? { ...f, visitaRealizada: marca, fechaVisita: patch.fechaVisita || '' }
+          ? { ...f, visitaRealizada: marca, fechaVisita: patch.fechaVisita }
           : f
       )
     );
     void guardarDetalleVisita(fila._id, patch);
+  };
+
+  const abrirGestionar = async (fila) => {
+    const casoId = fila?.casoSuraId;
+    if (!casoId) {
+      setAviso({
+        tipo: 'warning',
+        titulo: 'Sin caso vinculado',
+        mensaje: 'Esta reclamación aún no tiene caso SURA vinculado para gestionar.',
+      });
+      return;
+    }
+    try {
+      setCasoEdicion(await getCasoSuraById(casoId));
+    } catch (err) {
+      setAviso({
+        tipo: 'error',
+        titulo: 'No se pudo abrir Gestionar',
+        mensaje: err.message || 'Error al cargar el caso.',
+      });
+    }
   };
 
   return (
@@ -293,9 +304,8 @@ export default function ReporteFacilitadoresSura() {
             <div>
               <h1 className={expressPageTitle}>Plantilla Facilitadores SURA</h1>
               <p className={expressPageSubtitle}>
-                Lo demás lo alimentan el Excel y Gestionar. Aquí solo se edita el detalle de visita:
-                chulo = hecha (SI), X = no. Se guarda al marcar; no hace falta botón Guardar.
-                También puede fijar la fecha y el criterio (Crítico / Medio / Bajo).
+                Datos, fechas, criterio y estado se sincronizan desde Gestionar. Aquí puede marcar
+                la visita (SI/NO) o abrir Gestionar en cada fila.
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
@@ -331,15 +341,6 @@ export default function ReporteFacilitadoresSura() {
             >
               <FaUpload />
               {busy === 'import' ? 'Importando…' : 'Cargar plantilla SURA'}
-            </button>
-            <button
-              type="button"
-              className={expressBtnSecondary}
-              disabled={Boolean(busy) || !filas.length}
-              onClick={onSugerir}
-            >
-              <FaSync />
-              {busy === 'sugerir' ? 'Actualizando…' : 'Actualizar desde casos'}
             </button>
             <button
               type="button"
@@ -407,6 +408,7 @@ export default function ReporteFacilitadoresSura() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
+                  <th className="px-3 py-3 text-left">Acciones</th>
                   <th className="px-3 py-3 text-left">Reclamación</th>
                   <th className="px-3 py-3 text-left">Asignación</th>
                   <th className="px-3 py-3 text-left">1.er contacto</th>
@@ -430,13 +432,13 @@ export default function ReporteFacilitadoresSura() {
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={18} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={19} className="px-4 py-8 text-center text-sm text-gray-500">
                       Cargando plantilla…
                     </td>
                   </tr>
                 ) : visibles.length === 0 ? (
                   <tr>
-                    <td colSpan={18} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={19} className="px-4 py-8 text-center text-sm text-gray-500">
                       {filas.length
                         ? 'No hay filas con esos filtros.'
                         : 'Cargue la plantilla SURA o actualice desde los casos.'}
@@ -451,6 +453,22 @@ export default function ReporteFacilitadoresSura() {
                         key={fila._id}
                         className="align-middle hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                       >
+                        <td className="px-3 py-3">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1 font-body text-xs font-semibold text-fenix-primario transition hover:border-fenix-primario/40 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                            disabled={!fila.casoSuraId || busyRow}
+                            title={
+                              fila.casoSuraId
+                                ? 'Abrir Gestionar'
+                                : 'Sin caso SURA vinculado'
+                            }
+                            onClick={() => void abrirGestionar(fila)}
+                          >
+                            <FaEdit className="text-[10px]" />
+                            Gestionar
+                          </button>
+                        </td>
                         <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-gray-800 dark:text-gray-200">
                           {fila.reclamacion}
                         </td>
@@ -468,62 +486,10 @@ export default function ReporteFacilitadoresSura() {
                           />
                         </td>
                         <td className="px-3 py-3">
-                          {sinoConDefault(fila.visitaRealizada, { permitirNA: false }) === 'SI' ? (
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="YYYY-MM-DD"
-                              title="Fecha visita (año-mes-día)"
-                              className={inputSm}
-                              disabled={busyRow}
-                              value={fechaParaInput(fila.fechaVisita)}
-                              onChange={(e) => {
-                                const fechaVisita = e.target.value;
-                                setFilas((prev) =>
-                                  prev.map((f) =>
-                                    f._id === fila._id ? { ...f, fechaVisita } : f
-                                  )
-                                );
-                              }}
-                              onBlur={(e) => {
-                                const raw = String(e.target.value || '').trim();
-                                const fechaVisita = fechaParaInput(raw) || raw;
-                                setFilas((prev) =>
-                                  prev.map((f) =>
-                                    f._id === fila._id ? { ...f, fechaVisita } : f
-                                  )
-                                );
-                                void guardarDetalleVisita(fila._id, {
-                                  visitaRealizada: 'SI',
-                                  fechaVisita,
-                                });
-                              }}
-                            />
-                          ) : (
-                            <Dato>{fechaOFaltaGestionar(fila.fechaVisita)}</Dato>
-                          )}
+                          <Dato>{fechaOFaltaGestionar(fila.fechaVisita)}</Dato>
                         </td>
                         <td className="px-3 py-3">
-                          <select
-                            className={inputSm}
-                            disabled={busyRow}
-                            value={fila.criterioDetalle || 'Medio'}
-                            onChange={(e) => {
-                              const criterioDetalle = e.target.value || 'Medio';
-                              setFilas((prev) =>
-                                prev.map((f) =>
-                                  f._id === fila._id ? { ...f, criterioDetalle } : f
-                                )
-                              );
-                              void guardarDetalleVisita(fila._id, { criterioDetalle });
-                            }}
-                          >
-                            {CRITERIOS_FACILITADOR.map((c) => (
-                              <option key={c.value} value={c.value}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
+                          <Dato>{labelCriterio(fila.criterioDetalle)}</Dato>
                         </td>
                         <td className="max-w-[14rem] px-3 py-3">
                           <Dato>{textoOFaltaGestionar(fila.ultimoComentario)}</Dato>
@@ -592,6 +558,31 @@ export default function ReporteFacilitadoresSura() {
           </div>
         </div>
       </div>
+
+      {casoEdicion && (
+        <ExpressModal
+          open
+          onClose={() => {
+            setCasoEdicion(null);
+            void recargar({ silencioso: true });
+          }}
+          title={`Gestionar · ${casoEdicion.consecutivo || casoEdicion.siniestro || ''}`}
+          wide
+        >
+          <FormularioCasoSura
+            embed
+            initialData={casoEdicion}
+            onClose={() => {
+              setCasoEdicion(null);
+              void recargar({ silencioso: true });
+            }}
+            onSaved={async () => {
+              setCasoEdicion(null);
+              await recargar({ silencioso: true });
+            }}
+          />
+        </ExpressModal>
+      )}
 
       {aviso && (
         <ExpressAvisoModal
