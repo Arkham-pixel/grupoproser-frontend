@@ -10,27 +10,25 @@ import {
   createLocalVideoTrack,
 } from 'livekit-client';
 
-function esAndroid() {
-  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
-}
-
-/** Publicación HD: VP8 universal compatible con Android, iPhone y PC. */
-const PUBLICACION_HD = {
-  simulcast: true,
+/** Ajustador: su cámara solo se ve en miniatura en el celular del asegurado. */
+const PUBLICACION_PERITO = {
+  simulcast: false,
   videoCodec: 'vp8',
-  videoSimulcastLayers: [VideoPresets.h1080, VideoPresets.h720, VideoPresets.h360],
-  audioPreset: { maxBitrate: 64000 },
+  videoEncoding: { maxBitrate: 500_000, maxFramerate: 24 },
+  audioPreset: { maxBitrate: 48_000 },
 };
 
-const PUBLICACION_ANDROID = {
+/** Asegurado: ~1 Mbps es lo que un 4G sostiene de subida sin jitter. */
+const PUBLICACION_ASEGURADO = {
   simulcast: true,
   videoCodec: 'vp8',
-  videoSimulcastLayers: [VideoPresets.h720, VideoPresets.h360],
-  audioPreset: { maxBitrate: 64000 },
+  videoEncoding: { maxBitrate: 1_000_000, maxFramerate: 24 },
+  videoSimulcastLayers: [VideoPresets.h180],
+  audioPreset: { maxBitrate: 48_000 },
 };
 
-function publicacionDe() {
-  return esAndroid() ? PUBLICACION_ANDROID : PUBLICACION_HD;
+function publicacionDe(esCliente) {
+  return esCliente ? PUBLICACION_ASEGURADO : PUBLICACION_PERITO;
 }
 
 /** Reintentos largos: un blip de red o un cambio de app no debe cerrar la sala. */
@@ -106,9 +104,9 @@ export default function useVideoperitajeRoom({
   portraitRef.current = portrait;
   const [facing, setFacing] = useState(facingMode);
   const resolucionDe = () =>
-    esAndroid()
-      ? { width: 1280, height: 720, frameRate: 30 }
-      : { width: 1920, height: 1080, frameRate: 30 };
+    portraitRef.current
+      ? { width: 1280, height: 960, frameRate: 24 }
+      : { width: 640, height: 480, frameRate: 24 };
 
   const constraintsVideo = (nivel = 'alta') => {
     const facing = facingRef.current;
@@ -297,7 +295,7 @@ export default function useVideoperitajeRoom({
         facingMode,
         resolution: resolucionDe(),
       },
-      publishDefaults: publicacionDe(),
+      publishDefaults: publicacionDe(portraitRef.current),
     });
     roomRef.current = room;
 
@@ -368,7 +366,7 @@ export default function useVideoperitajeRoom({
         try {
           // No republicar audio del preview (ya va con setMicrophoneEnabled).
           for (const track of preview.getVideoTracks()) {
-            await room.localParticipant.publishTrack(track, publicacionDe());
+            await room.localParticipant.publishTrack(track, publicacionDe(portraitRef.current));
           }
           const el = localVideoRef.current;
           if (el) {
@@ -507,7 +505,7 @@ export default function useVideoperitajeRoom({
           facingMode: next,
           ...(res ? { resolution: res } : {}),
         });
-        await room.localParticipant.publishTrack(videoTrack, publicacionDe());
+        await room.localParticipant.publishTrack(videoTrack, publicacionDe(portraitRef.current));
         if (localVideoRef.current) {
           videoTrack.attach(localVideoRef.current);
           facingRef.current = next;
@@ -567,7 +565,7 @@ export default function useVideoperitajeRoom({
                 resolution: resolucionDe(),
                 facingMode: facingRef.current,
               },
-              publicacionDe()
+              publicacionDe(portraitRef.current)
             );
             // Mostrar en el PIP lo que LiveKit publicó.
             const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
@@ -586,7 +584,7 @@ export default function useVideoperitajeRoom({
             previewStreamRef.current = stream;
             const track = stream.getVideoTracks()[0];
             if (track) {
-              await room.localParticipant.publishTrack(track, publicacionDe());
+              await room.localParticipant.publishTrack(track, publicacionDe(portraitRef.current));
               const el = localVideoRef.current;
               if (el) {
                 el.srcObject = stream;
