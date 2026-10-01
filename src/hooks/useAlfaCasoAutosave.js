@@ -11,9 +11,9 @@ import { scoreContenidoLiquidadorNsr } from '../components/SubcomponenteEvaluaci
 const TAB_INFORME = 'informe';
 
 /**
- * Autoguardado del workspace Seguros Alfa (liquidador / informe)
- * hacia la API, actualizando el indicador de sincronización.
- * El liquidador NSR también se guarda si se edita desde el informe único.
+ * Autoguardado del workspace Seguros Alfa (liquidador / informe).
+ * Generación (seq): un PUT en vuelo con snapshot viejo no pisa uno más nuevo
+ * (p. ej. borrar ítems mientras aún guardaba la versión anterior).
  */
 export default function useAlfaCasoAutosave({
   casoId,
@@ -31,25 +31,127 @@ export default function useAlfaCasoAutosave({
   const lastLiqSnap = useRef('');
   const lastInfSnap = useRef('');
   const readyRef = useRef(false);
+  const liqGenRef = useRef(0);
+  const infGenRef = useRef(0);
+  const liquidadorRef = useRef(liquidadorState);
+  const informeRef = useRef(informeState);
 
   casoRef.current = casoAlfa;
+  liquidadorRef.current = liquidadorState;
+  informeRef.current = informeState;
 
   useEffect(() => {
     readyRef.current = false;
     lastLiqSnap.current = '';
     lastInfSnap.current = '';
+    liqGenRef.current = 0;
+    infGenRef.current = 0;
+    pendingFlushRef.current = null;
   }, [casoId]);
+
+  useEffect(() => {
+    if (liquidadorState) liqGenRef.current += 1;
+  }, [liquidadorState]);
+
+  useEffect(() => {
+    if (informeState) infGenRef.current += 1;
+  }, [informeState]);
 
   useEffect(() => {
     if (!enabled || !casoId) return undefined;
 
     const timers = [];
 
+    const persist = async (payload, genAtSchedule) => {
+      if (!payload?.data) return;
+      const isInf = payload.tipo === 'informe';
+      const genNow = () => (isInf ? infGenRef.current : liqGenRef.current);
+      // Ya hay una edición más nueva: descartar este snapshot
+      if (genAtSchedule !== genNow()) return;
+
+      if (savingRef.current) {
+        pendingFlushRef.current = { payload, gen: genAtSchedule };
+        return;
+      }
+
+      const online = await checkConnectivity();
+      if (!online) {
+        setAutosaveUiStatus({
+          state: 'offline',
+          message: 'Sin conexión — cambios pendientes de guardar',
+        });
+        pendingFlushRef.current = { payload, gen: genAtSchedule };
+        return;
+      }
+
+      if (genAtSchedule !== genNow()) return;
+
+      savingRef.current = true;
+      setAutosaveUiStatus({ state: 'saving', message: 'Guardando…' });
+      try {
+        const base = casoRef.current || {};
+        let actualizado;
+        if (isInf) {
+          actualizado = await guardarInformeUnicoEnCasoAlfa({
+            casoId,
+            informeUnico: payload.data,
+            casoBase: {
+              ...base,
+              liquidador: liquidadorRef.current || base.liquidador,
+            },
+          });
+        } else if (scoreContenidoLiquidadorNsr(payload.data) === 0) {
+          lastLiqSnap.current = JSON.stringify(payload.data);
+          setAutosaveUiStatus({ state: 'idle', message: '' });
+          return;
+        } else {
+          actualizado = await guardarLiquidadorEnCasoAlfa({
+            casoId,
+            liquidador: payload.data,
+            totales: payload.totales || {},
+            casoBase: {
+              ...base,
+              informeUnico: informeRef.current || base.informeUnico,
+            },
+          });
+        }
+
+        if (genAtSchedule !== genNow()) {
+          // Llegó tarde: no actualizar snap ni caso (el pendiente/nuevo guardado manda)
+          return;
+        }
+
+        if (isInf) lastInfSnap.current = JSON.stringify(payload.data);
+        else lastLiqSnap.current = JSON.stringify(payload.data);
+
+        onCasoActualizado?.(actualizado);
+        setAutosaveUiStatus({
+          state: 'synced',
+          pendingCount: 0,
+          message: 'Sincronizado',
+        });
+      } catch (err) {
+        console.error('Autoguardado Alfa:', err);
+        setAutosaveUiStatus({
+          state: 'error',
+          message: err?.message || 'Error al sincronizar',
+        });
+      } finally {
+        savingRef.current = false;
+        const pending = pendingFlushRef.current;
+        pendingFlushRef.current = null;
+        if (pending?.payload && pending.gen === genNow()) {
+          timers.push(setTimeout(() => persist(pending.payload, pending.gen), 0));
+        }
+      }
+    };
+
     const scheduleSave = (payload) => {
       if (!payload?.data) return;
       const snap = JSON.stringify(payload.data);
       const isInf = payload.tipo === 'informe';
       const prevSnap = isInf ? lastInfSnap.current : lastLiqSnap.current;
+      const genAtSchedule = isInf ? infGenRef.current : liqGenRef.current;
 
       if (!readyRef.current) {
         readyRef.current = true;
@@ -61,73 +163,12 @@ export default function useAlfaCasoAutosave({
       }
       if (snap === prevSnap) return;
 
-      const timer = setTimeout(async () => {
-        if (savingRef.current) {
-          pendingFlushRef.current = payload;
-          return;
-        }
-        const online = await checkConnectivity();
-        if (!online) {
-          setAutosaveUiStatus({
-            state: 'offline',
-            message: 'Sin conexión — cambios pendientes de guardar',
-          });
-          pendingFlushRef.current = payload;
-          return;
-        }
-        savingRef.current = true;
-        setAutosaveUiStatus({ state: 'saving', message: 'Guardando…' });
-        try {
-          const base = casoRef.current || {};
-          let actualizado;
-          if (payload.tipo === 'informe') {
-            actualizado = await guardarInformeUnicoEnCasoAlfa({
-              casoId,
-              informeUnico: payload.data,
-              casoBase: {
-                ...base,
-                liquidador: liquidadorState || base.liquidador,
-              },
-            });
-            lastInfSnap.current = JSON.stringify(payload.data);
-          } else {
-            // Cascarón vacío: no spamear error ni pisar BD
-            if (scoreContenidoLiquidadorNsr(payload.data) === 0) {
-              lastLiqSnap.current = JSON.stringify(payload.data);
-              setAutosaveUiStatus({ state: 'idle', message: '' });
-              return;
-            }
-            actualizado = await guardarLiquidadorEnCasoAlfa({
-              casoId,
-              liquidador: payload.data,
-              totales: payload.totales || {},
-              casoBase: {
-                ...base,
-                informeUnico: informeState || base.informeUnico,
-              },
-            });
-            lastLiqSnap.current = JSON.stringify(payload.data);
-          }
-          onCasoActualizado?.(actualizado);
-          setAutosaveUiStatus({
-            state: 'synced',
-            pendingCount: 0,
-            message: 'Sincronizado',
-          });
-        } catch (err) {
-          console.error('Autoguardado Alfa:', err);
-          setAutosaveUiStatus({
-            state: 'error',
-            message: err?.message || 'Error al sincronizar',
-          });
-        } finally {
-          savingRef.current = false;
-        }
+      const timer = setTimeout(() => {
+        persist(payload, genAtSchedule);
       }, AUTOSAVE_DEBOUNCE_MS);
       timers.push(timer);
     };
 
-    // Siempre vigilar liquidador (también desde tab informe con modoLiquidador)
     if (liquidadorState) {
       scheduleSave({
         tipo: 'liquidador',
@@ -154,42 +195,51 @@ export default function useAlfaCasoAutosave({
     if (!enabled || !casoId) return undefined;
     const onOnline = async () => {
       const ok = await checkConnectivity({ force: true });
-      if (!ok || !pendingFlushRef.current || savingRef.current) return;
-      const payload = pendingFlushRef.current;
+      const pending = pendingFlushRef.current;
+      if (!ok || !pending?.payload || savingRef.current) return;
       pendingFlushRef.current = null;
+      const { payload, gen } = pending;
+      const isInf = payload.tipo === 'informe';
+      const genNow = isInf ? infGenRef.current : liqGenRef.current;
+      if (gen !== genNow) return;
+
       savingRef.current = true;
       setAutosaveUiStatus({ state: 'syncing', message: 'Sincronizando…' });
       try {
         const base = casoRef.current || {};
         let actualizado;
-        if (payload.tipo === 'informe') {
+        if (isInf) {
           actualizado = await guardarInformeUnicoEnCasoAlfa({
             casoId,
             informeUnico: payload.data,
             casoBase: {
               ...base,
-              liquidador: liquidadorState || base.liquidador,
+              liquidador: liquidadorRef.current || base.liquidador,
             },
           });
-          lastInfSnap.current = JSON.stringify(payload.data);
-        } else {
-          if (scoreContenidoLiquidadorNsr(payload.data) === 0) {
-            lastLiqSnap.current = JSON.stringify(payload.data);
-            setAutosaveUiStatus({ state: 'idle', message: '' });
-            return;
+          if (gen === infGenRef.current) {
+            lastInfSnap.current = JSON.stringify(payload.data);
+            onCasoActualizado?.(actualizado);
           }
+        } else if (scoreContenidoLiquidadorNsr(payload.data) === 0) {
+          lastLiqSnap.current = JSON.stringify(payload.data);
+          setAutosaveUiStatus({ state: 'idle', message: '' });
+          return;
+        } else {
           actualizado = await guardarLiquidadorEnCasoAlfa({
             casoId,
             liquidador: payload.data,
             totales: payload.totales || {},
             casoBase: {
               ...base,
-              informeUnico: informeState || base.informeUnico,
+              informeUnico: informeRef.current || base.informeUnico,
             },
           });
-          lastLiqSnap.current = JSON.stringify(payload.data);
+          if (gen === liqGenRef.current) {
+            lastLiqSnap.current = JSON.stringify(payload.data);
+            onCasoActualizado?.(actualizado);
+          }
         }
-        onCasoActualizado?.(actualizado);
         setAutosaveUiStatus({
           state: 'synced',
           pendingCount: 0,
@@ -206,5 +256,5 @@ export default function useAlfaCasoAutosave({
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [casoId, enabled, onCasoActualizado, liquidadorState, informeState]);
+  }, [casoId, enabled, onCasoActualizado]);
 }

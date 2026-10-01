@@ -23,7 +23,7 @@ import {
   defaultLiquidacionCotizacionPdfAlfa,
 } from './liquidadorAlfaHelpers.js';
 import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
-import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { liquidadorParaPersistir } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import { filasDetalleAlfaDesdeExpress } from '../SubcomponenteLiquidadorCatExpress/liquidadorCatExpressHelpers.js';
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
@@ -71,12 +71,12 @@ export default function LiquidadorSegurosAlfa({
   liquidadorInicial = null,
 } = {}) {
   const { t } = useTranslation();
-  const [liquidador, setLiquidador] = useState(() =>
-    fusionarLiquidadorSinPerderPresupuestoNsr(
-      liquidadorInicial || mapCasoAlfaALiquidador(casoAlfa || {}),
-      mapCasoAlfaALiquidador(casoAlfa || {})
-    )
-  );
+  const [liquidador, setLiquidador] = useState(() => {
+    const desdeCaso = mapCasoAlfaALiquidador(casoAlfa || {});
+    const inicial = liquidadorInicial || desdeCaso;
+    // Si la pantalla ya tiene contenido (p. ej. tras quitar ítems), no reinyectar el del caso.
+    return liquidadorParaPersistir(inicial, desdeCaso) || inicial;
+  });
   const [casoLocal, setCasoLocal] = useState(() => ({ ...(casoAlfa || {}) }));
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -87,10 +87,8 @@ export default function LiquidadorSegurosAlfa({
 
   useEffect(() => {
     const desdeCaso = mapCasoAlfaALiquidador(casoAlfa || {});
-    // Preferir el más completo: evita que un liquidadorInicial vacío tape el del servidor
-    setLiquidador(
-      fusionarLiquidadorSinPerderPresupuestoNsr(liquidadorInicial || desdeCaso, desdeCaso)
-    );
+    const inicial = liquidadorInicial || desdeCaso;
+    setLiquidador(liquidadorParaPersistir(inicial, desdeCaso) || inicial);
     setCasoLocal({ ...(casoAlfa || {}) });
     // Solo al cambiar de caso (el remount del workspace ya trae liquidadorInicial hidratado)
     // eslint-disable-next-line react-hooks/exhaustive-deps

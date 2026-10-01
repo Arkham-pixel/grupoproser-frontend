@@ -97,11 +97,21 @@ export function fusionarLiquidadorSinPerderPresupuestoNsr(propuesto, actual) {
   let evalOut = evalNew;
   let protegio = false;
 
-  if (contarItemsPresupuestoNsr(actual) > contarItemsPresupuestoNsr(propuesto) && evalOld.presupuesto) {
+  // Solo reinyectar presupuesto/contenidos si el propuesto los OMITIÓ.
+  // Si manda array (aunque con menos ítems), es borrado/edición intencional.
+  if (
+    !Array.isArray(evalNew.presupuesto?.items) &&
+    contarItemsPresupuestoNsr(actual) > 0 &&
+    evalOld.presupuesto
+  ) {
     evalOut = { ...evalOut, presupuesto: evalOld.presupuesto };
     protegio = true;
   }
-  if (contarItemsContenidosNsr(actual) > contarItemsContenidosNsr(propuesto) && evalOld.contenidos) {
+  if (
+    !Array.isArray(evalNew.contenidos?.items) &&
+    contarItemsContenidosNsr(actual) > 0 &&
+    evalOld.contenidos
+  ) {
     evalOut = { ...evalOut, contenidos: evalOld.contenidos };
     protegio = true;
   }
@@ -111,15 +121,17 @@ export function fusionarLiquidadorSinPerderPresupuestoNsr(propuesto, actual) {
     : { ...propuesto };
 
   if (
-    contarItemsDetalleCat(actual) > contarItemsDetalleCat(propuesto) &&
-    Array.isArray(actual.detalleLiquidacionCat)
+    !Array.isArray(propuesto.detalleLiquidacionCat) &&
+    Array.isArray(actual.detalleLiquidacionCat) &&
+    contarItemsDetalleCat(actual) > 0
   ) {
     next = { ...next, detalleLiquidacionCat: actual.detalleLiquidacionCat };
   }
 
   if (
-    contarOtrosAmparosAlfa(actual) > contarOtrosAmparosAlfa(next) &&
-    Array.isArray(actual.otrosAmparos)
+    !Array.isArray(propuesto.otrosAmparos) &&
+    Array.isArray(actual.otrosAmparos) &&
+    contarOtrosAmparosAlfa(actual) > 0
   ) {
     next = { ...next, otrosAmparos: actual.otrosAmparos };
   }

@@ -166,7 +166,8 @@ function liquidadorPersistidoOk(enviado, enDb) {
 
   const itemsA = Math.max(a.nDetalle, a.nPresup);
   const itemsB = Math.max(b.nDetalle, b.nPresup);
-  if (itemsA > 0 && itemsB > 0 && Math.abs(itemsA - itemsB) > 1) return false;
+  // Contar ítems debe coincidir: si el usuario borró filas, BD no puede quedarse con más.
+  if (itemsA > 0 && itemsB > 0 && itemsA !== itemsB) return false;
 
   const sumaA = a.sumaDetalle > 0 ? a.sumaDetalle : a.sumaPresup;
   const sumaB = b.sumaDetalle > 0 ? b.sumaDetalle : b.sumaPresup;
