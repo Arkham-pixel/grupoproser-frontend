@@ -55,10 +55,15 @@ function valorFechaCampo(formData, name) {
 }
 
 /**
- * Comprueba si la fecha nueva rompe la secuencia (día estrictamente posterior
- * a la anterior llena y estrictamente anterior a la siguiente llena).
+ * Comprueba si la fecha nueva rompe la secuencia.
+ * Se permite el mismo día; la anterior llena debe ser igual o inferior a la nueva,
+ * y la nueva igual o inferior a la siguiente llena.
  * Saltar hitos vacíos está permitido.
  */
+function fmtFechaUi(iso) {
+  return String(iso || '').split('-').reverse().join('/');
+}
+
 function evaluarSaltoFecha({ formData, name, nuevaFechaIso }) {
   const idx = CADENA_FECHAS_SURA.findIndex((c) => c.name === name);
   if (idx < 0) return { ok: true };
@@ -84,25 +89,21 @@ function evaluarSaltoFecha({ formData, name, nuevaFechaIso }) {
     }
   }
 
-  const motivos = [];
-  if (prev && !(nueva > prev.fecha)) {
-    motivos.push(
-      `debe ser un día estrictamente posterior a «${prev.label}» (${prev.fecha.split('-').reverse().join('/')})`
-    );
+  // Misma regla: cada fecha anterior debe ser igual o inferior a la siguiente.
+  if (prev && nueva < prev.fecha) {
+    return {
+      ok: false,
+      mensaje: `La fecha que está intentando ingresar no es válida. Debe ser igual o inferior: «${prev.label}» (${fmtFechaUi(prev.fecha)}) debe quedar igual o inferior a la fecha que intenta ingresar. Por favor, asegúrese de que las fechas se ingresen en orden cronológico.`,
+    };
   }
-  if (next && !(nueva < next.fecha)) {
-    motivos.push(
-      `debe ser un día estrictamente anterior a «${next.label}» (${next.fecha.split('-').reverse().join('/')})`
-    );
+  if (next && nueva > next.fecha) {
+    return {
+      ok: false,
+      mensaje: `La fecha que está intentando ingresar no es válida. Debe ser igual o inferior a «${next.label}» (${fmtFechaUi(next.fecha)}). Por favor, asegúrese de que las fechas se ingresen en orden cronológico.`,
+    };
   }
 
-  if (!motivos.length) return { ok: true };
-
-  const labelActual = CADENA_FECHAS_SURA[idx]?.label || name;
-  return {
-    ok: false,
-    mensaje: `La fecha de «${labelActual}» no sigue la secuencia: ${motivos.join('; ')}. Ajuste la fecha para que respete el orden del caso.`,
-  };
+  return { ok: true };
 }
 
 /**
@@ -178,8 +179,8 @@ export default function FechasTrazabilidadSura({ formData = {}, handleChange }) 
         <h2 className={complexSectionTitle}>Fechas del caso</h2>
         <p className={complexHint}>
           Puede dejar hitos vacíos (por ejemplo pasar de Asignación a Inspección programada).
-          Las fechas que sí complete deben ir en orden y en un día estrictamente posterior a la
-          anterior llena. Si alguna no encaja en la secuencia, se mostrará un aviso y no se
+          Las fechas que sí complete deben ir en orden cronológico (la anterior igual o inferior
+          a la siguiente; mismo día permitido). Si alguna no encaja, se mostrará un aviso y no se
           aplicará el cambio. En la inspección programada elija la franja del ajustador o
           inspector (asigne primero el equipo en Datos generales).
         </p>
