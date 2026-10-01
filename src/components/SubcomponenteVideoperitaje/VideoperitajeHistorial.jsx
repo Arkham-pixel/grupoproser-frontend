@@ -12,6 +12,7 @@ import {
 } from '../../services/videoperitajeService.js';
 import VideoperitajeIniciarModal from './VideoperitajeIniciarModal.jsx';
 import VideoperitajeAsignarCasoModal from './VideoperitajeAsignarCasoModal.jsx';
+import VideoperitajeReprogramarModal from './VideoperitajeReprogramarModal.jsx';
 import {
   etiquetaEstado,
   etiquetaTipo,
@@ -24,6 +25,7 @@ import {
   vpWrap,
 } from './videoperitajeUi.js';
 import { sesionEsAdminVideoperitaje } from '../../config/videoperitajePermitidos.js';
+import { formatFechaHoraBogota } from '../../utils/videoperitajeFecha.js';
 
 function sesionSinCaso(s) {
   return !s?.casoId || !s?.modulo || s.modulo === 'independiente';
@@ -40,6 +42,7 @@ export default function VideoperitajeHistorial() {
   const [error, setError] = useState('');
   const [modal, setModal] = useState(false);
   const [asignarSesion, setAsignarSesion] = useState(null);
+  const [reprogramarSesion, setReprogramarSesion] = useState(null);
   const [aviso, setAviso] = useState('');
   const [cupo, setCupo] = useState(null);
   const [cupoError, setCupoError] = useState('');
@@ -235,6 +238,7 @@ export default function VideoperitajeHistorial() {
                     <th className="py-2 pr-3">Caso</th>
                     <th className="py-2 pr-3">{t('videoperitaje.type')}</th>
                     <th className="py-2 pr-3">{t('videoperitaje.status')}</th>
+                    <th className="py-2 pr-3">Programada</th>
                     <th className="py-2 pr-3">{t('videoperitaje.created')}</th>
                     <th className="py-2">{t('videoperitaje.actions')}</th>
                   </tr>
@@ -256,6 +260,9 @@ export default function VideoperitajeHistorial() {
                       </td>
                       <td className="py-2 pr-3">{etiquetaTipo(s.tipo)}</td>
                       <td className="py-2 pr-3">{etiquetaEstado(s.estado)}</td>
+                      <td className="py-2 pr-3 text-xs">
+                        {s.programadaAt ? formatFechaHoraBogota(s.programadaAt) : '—'}
+                      </td>
                       <td className="py-2 pr-3">
                         {s.createdAt ? new Date(s.createdAt).toLocaleString() : '—'}
                       </td>
@@ -273,6 +280,13 @@ export default function VideoperitajeHistorial() {
                           )}
                           {(s.estado === 'pendiente' || s.estado === 'en_proceso') && (
                             <>
+                              <button
+                                type="button"
+                                className={vpBtnGhost}
+                                onClick={() => setReprogramarSesion(s)}
+                              >
+                                Reprogramar
+                              </button>
                               <button
                                 type="button"
                                 className={vpBtnGhost}
@@ -359,6 +373,22 @@ export default function VideoperitajeHistorial() {
           setAviso(r.mensaje || 'Sesión asignada al caso');
           cargar();
           cargarCupo();
+        }}
+      />
+      <VideoperitajeReprogramarModal
+        open={Boolean(reprogramarSesion)}
+        sesion={reprogramarSesion}
+        onClose={() => setReprogramarSesion(null)}
+        onDone={(r) => {
+          setAviso(
+            r?.programadaAt
+              ? `Reprogramada: ${formatFechaHoraBogota(r.programadaAt)}`
+              : 'Programación actualizada (sin hora fija)'
+          );
+          if (r?.urlPublica) {
+            setAviso((a) => `${a} · ${urlPortalAsegurado(r.urlPublica)}`);
+          }
+          cargar();
         }}
       />
     </div>

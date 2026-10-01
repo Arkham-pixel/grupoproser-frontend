@@ -92,6 +92,15 @@ export async function reenviarInvitacionVideoperitaje(id) {
   return parseJson(response);
 }
 
+export async function reprogramarSesionVideoperitaje(id, payload = {}) {
+  const response = await fetch(`${API}/sesiones/${id}/reprogramar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response);
+}
+
 export async function listarModulosCasoVideoperitaje() {
   const response = await fetch(`${API}/casos/modulos`, { headers: authHeaders() });
   return parseJson(response);

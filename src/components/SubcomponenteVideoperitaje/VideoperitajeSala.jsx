@@ -13,7 +13,9 @@ import {
 } from '../../services/videoperitajeService.js';
 import { iniciarGrabacionLlamada } from '../../utils/videoperitajeGrabacion.js';
 import { descargarBloqueVideoperitaje } from '../../utils/videoperitajeDescargaBloque.js';
+import { formatFechaHoraBogota } from '../../utils/videoperitajeFecha.js';
 import VideoperitajeGaleria from './VideoperitajeGaleria.jsx';
+import VideoperitajeReprogramarModal from './VideoperitajeReprogramarModal.jsx';
 import {
   etiquetaEstado,
   livekitUsableEnEstaPagina,
@@ -402,6 +404,7 @@ export default function VideoperitajeSala() {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [cerrando, setCerrando] = useState(false);
+  const [reprogramarOpen, setReprogramarOpen] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -479,12 +482,24 @@ export default function VideoperitajeSala() {
             </h1>
             <p className="text-sm text-gray-500">
               {sesion.aseguradoNombre} · {etiquetaEstado(sesion.estado)}
+              {sesion.programadaAt
+                ? ` · Programada: ${formatFechaHoraBogota(sesion.programadaAt)}`
+                : ''}
               {sesion.geo?.lat
                 ? ` · ${Number(sesion.geo.lat).toFixed(5)}, ${Number(sesion.geo.lng).toFixed(5)}`
                 : ''}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {abierta && (
+              <button
+                type="button"
+                className={vpBtnGhost}
+                onClick={() => setReprogramarOpen(true)}
+              >
+                Reprogramar
+              </button>
+            )}
             {abierta && (
               <button
                 type="button"
@@ -577,6 +592,19 @@ export default function VideoperitajeSala() {
           </div>
         )}
       </div>
+      <VideoperitajeReprogramarModal
+        open={reprogramarOpen}
+        sesion={sesion}
+        onClose={() => setReprogramarOpen(false)}
+        onDone={(r) => {
+          setAviso(
+            r?.programadaAt
+              ? `Reprogramada: ${formatFechaHoraBogota(r.programadaAt)}`
+              : 'Programación actualizada'
+          );
+          cargar();
+        }}
+      />
     </div>
   );
 }

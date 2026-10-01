@@ -10,6 +10,7 @@ import {
   subirFotoPublicaVideoperitaje,
 } from '../../services/videoperitajeService.js';
 import { capturarFotoHd, pistaVideoDeSala } from '../../utils/videoperitajeCapturaHd.js';
+import { formatFechaHoraBogota } from '../../utils/videoperitajeFecha.js';
 
 const btn =
   'inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#c8102e] px-4 py-3 text-base font-semibold text-white disabled:opacity-50';
@@ -321,6 +322,11 @@ export default function PortalVideoperitajeUnirse() {
               Hola{sesion.aseguradoNombre ? ` ${sesion.aseguradoNombre}` : ''}. Un ajustador de Grupo Proser lo espera
               {sesion.expediente ? ` para el expediente ${sesion.expediente}` : ''}.
             </p>
+            {sesion.programadaAt && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+                Fecha y hora (Colombia): {formatFechaHoraBogota(sesion.programadaAt)}
+              </p>
+            )}
             <p className="text-xs text-gray-500">
               Es una videollamada. Permita cámara y micrófono. El ajustador tomará las fotos.
             </p>

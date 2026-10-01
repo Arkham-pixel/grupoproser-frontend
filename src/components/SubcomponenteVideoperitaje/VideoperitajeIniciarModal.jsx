@@ -12,6 +12,10 @@ import {
   vpInput,
   vpLabel,
 } from './videoperitajeUi.js';
+import {
+  datetimeLocalBogotaToIso,
+  formatFechaHoraBogota,
+} from '../../utils/videoperitajeFecha.js';
 
 const MODULOS = [
   { id: 'independiente', label: 'Independiente (sin caso)' },
@@ -95,7 +99,7 @@ export default function VideoperitajeIniciarModal({
         email: form.email,
         aseguradoNombre: form.aseguradoNombre,
         plantillaId: tipo === 'guided' ? form.plantillaId : undefined,
-        programadaAt: form.programadaAt ? new Date(form.programadaAt).toISOString() : null,
+        programadaAt: form.programadaAt ? datetimeLocalBogotaToIso(form.programadaAt) : null,
       });
       setResultado(r);
       onCreated?.(r);
@@ -182,7 +186,7 @@ export default function VideoperitajeIniciarModal({
               />
             </label>
             <label className="block">
-              <span className={vpLabel}>Fecha y hora de la videollamada</span>
+              <span className={vpLabel}>Fecha y hora de la videollamada (Colombia)</span>
               <input
                 className={vpInput}
                 type="datetime-local"
@@ -190,7 +194,15 @@ export default function VideoperitajeIniciarModal({
                 onChange={(e) => setForm((f) => ({ ...f, programadaAt: e.target.value }))}
               />
               <span className="mt-1 block text-xs text-gray-500">
-                Ventana: 15 min antes y 60 min después. Vacío = se puede iniciar de inmediato.
+                Hora de Colombia (Bogotá). Ventana: 15 min antes y 60 min después. Vacío = se puede
+                iniciar de inmediato.
+                {form.programadaAt ? (
+                  <>
+                    {' '}
+                    Se programará:{' '}
+                    <strong>{formatFechaHoraBogota(datetimeLocalBogotaToIso(form.programadaAt))}</strong>
+                  </>
+                ) : null}
               </span>
             </label>
             {tipo === 'guided' && (
