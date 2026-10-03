@@ -250,6 +250,9 @@ export const subirArchivoEquidadCat = async (casoId, file, etiqueta = 'GENERAL',
   if (extras?.descripcion != null) {
     formData.append('descripcion', String(extras.descripcion));
   }
+  if (extras?.replaceSameSlot === false) {
+    formData.append('replaceSameSlot', 'false');
+  }
   const response = await fetchEquidadCat(`${API_URL}/${casoId}/archivos`, {
     method: 'POST',
     headers: { ...authHeaders() },

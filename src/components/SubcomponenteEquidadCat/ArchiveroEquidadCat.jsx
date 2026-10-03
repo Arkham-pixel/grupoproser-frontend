@@ -30,6 +30,7 @@ export default function ArchiveroEquidadCat({ caso, onClose, onChanged }) {
   const [archivos, setArchivos] = useState(() => caso?.archivos || []);
   const [etiqueta, setEtiqueta] = useState('GENERAL');
   const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState(null);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
 
@@ -40,22 +41,47 @@ export default function ArchiveroEquidadCat({ caso, onClose, onChanged }) {
     return actualizado;
   };
 
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const subirLista = async (files) => {
+    if (!files.length) return;
     setError(null);
     setExito(null);
     setSubiendo(true);
+    const fallos = [];
+    let ok = 0;
     try {
-      await subirArchivoEquidadCat(caso._id, file, etiqueta);
-      await refrescar();
-      setExito(t('equidadCat.archive.uploadOk'));
-    } catch (err) {
-      setError(err.message || t('equidadCat.archive.uploadError'));
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        setProgreso({ current: i + 1, total: files.length });
+        try {
+          await subirArchivoEquidadCat(caso._id, file, etiqueta, {
+            replaceSameSlot: files.length > 1 ? false : undefined,
+          });
+          ok += 1;
+        } catch (err) {
+          fallos.push(
+            `${file.name}: ${err.message || t('equidadCat.archive.uploadError')}`
+          );
+        }
+      }
+      if (ok > 0) {
+        await refrescar();
+        setExito(
+          ok === 1
+            ? t('equidadCat.archive.uploadOk')
+            : t('equidadCat.archive.uploadOkMultiple', { count: ok })
+        );
+      }
+      if (fallos.length) setError(fallos.join(' · '));
     } finally {
       setSubiendo(false);
+      setProgreso(null);
     }
+  };
+
+  const handleUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    subirLista(files);
   };
 
   const handleDelete = async (archivoId) => {
@@ -90,7 +116,7 @@ export default function ArchiveroEquidadCat({ caso, onClose, onChanged }) {
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <Campo label={t('equidadCat.archive.label')}>
           <SelectFenix value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)}>
             {ETIQUETAS_ARCHIVO_EQUIDAD_CAT.map((op) => (
@@ -104,6 +130,7 @@ export default function ArchiveroEquidadCat({ caso, onClose, onChanged }) {
           ref={inputRef}
           type="file"
           className="hidden"
+          multiple
           onChange={handleUpload}
         />
         <button
@@ -113,8 +140,15 @@ export default function ArchiveroEquidadCat({ caso, onClose, onChanged }) {
           onClick={() => inputRef.current?.click()}
         >
           <FaUpload />
-          {subiendo ? t('equidadCat.archive.uploading') : t('equidadCat.archive.upload')}
+          {subiendo
+            ? progreso
+              ? t('equidadCat.archive.uploadingCount', progreso)
+              : t('equidadCat.archive.uploading')
+            : t('equidadCat.archive.upload')}
         </button>
+        <p className="w-full font-body text-xs text-gray-500 dark:text-gray-400">
+          {t('equidadCat.archive.uploadHint')}
+        </p>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
