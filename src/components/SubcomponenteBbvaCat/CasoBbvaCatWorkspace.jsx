@@ -41,7 +41,7 @@ import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { STORAGE_ORIGEN_LISTADO_BBVA_CAT } from './bbvaCatHelpers.js';
+import { STORAGE_ORIGEN_LISTADO_BBVA_CAT, coincideBusquedaBbvaCat } from './bbvaCatHelpers.js';
 import { esRolSoloBbva } from '../../config/roles.js';
 import VideoperitajeIniciarModal from '../SubcomponenteVideoperitaje/VideoperitajeIniciarModal.jsx';
 import { sesionPuedeVideoperitaje } from '../../config/videoperitajePermitidos.js';
@@ -320,27 +320,24 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   };
 
   const casosFiltradosPicker = useMemo(() => {
-    const q = String(busquedaCaso || '')
-      .trim()
-      .toLowerCase();
-    if (!q) return listaCasos;
-    return listaCasos.filter((c) => {
-      const blob = [
-        c.consecutivo,
-        c.asegurado,
-        c.tomador,
-        c.siniestro,
-        c.identificacion,
-        c.tipoIdentificacion,
-        c.ciudad,
-        c.numeroPoliza,
-        c.tipoPoliza,
-        c.causa,
-      ]
-        .map((v) => String(v || '').toLowerCase())
-        .join(' ');
-      return blob.includes(q);
-    });
+    if (!String(busquedaCaso || '').trim()) return listaCasos;
+    return listaCasos.filter((c) =>
+      coincideBusquedaBbvaCat(
+        [
+          c.consecutivo,
+          c.asegurado,
+          c.tomador,
+          c.siniestro,
+          c.identificacion,
+          c.tipoIdentificacion,
+          c.ciudad,
+          c.numeroPoliza,
+          c.tipoPoliza,
+          c.causa,
+        ],
+        busquedaCaso
+      )
+    );
   }, [listaCasos, busquedaCaso]);
 
   const handleGuardarLiquidador = async (liqArg, totArg) => {

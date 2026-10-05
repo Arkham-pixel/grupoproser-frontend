@@ -728,6 +728,47 @@ export const normTexto = (value) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
+/** Typos cortos (Edifinio ↔ Edificio). */
+function distanciaLevenshteinCorta(a, b, max = 1) {
+  if (a === b) return 0;
+  const la = a.length;
+  const lb = b.length;
+  if (Math.abs(la - lb) > max) return max + 1;
+  if (!la) return lb;
+  if (!lb) return la;
+  let prev = Array.from({ length: lb + 1 }, (_, i) => i);
+  for (let i = 1; i <= la; i += 1) {
+    const cur = [i];
+    let minRow = i;
+    for (let j = 1; j <= lb; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      cur[j] = v;
+      if (v < minRow) minRow = v;
+    }
+    if (minRow > max) return max + 1;
+    prev = cur;
+  }
+  return prev[lb];
+}
+
+/** AND por palabras + 1 typo. “Edificio Fénix Telesentinel” encuentra Edifinio / Fenix. */
+export function coincideBusquedaBbvaCat(campos, busqueda) {
+  const q = normTexto(busqueda);
+  if (!q) return true;
+  const blob = (Array.isArray(campos) ? campos : [campos]).map(normTexto).join(' ');
+  if (!blob) return false;
+  if (blob.includes(q)) return true;
+  const tokens = q.split(' ').filter((t) => t.length >= 2);
+  if (!tokens.length) return true;
+  const palabras = blob.split(/[^A-Z0-9]+/).filter(Boolean);
+  return tokens.every((token) => {
+    if (blob.includes(token)) return true;
+    if (token.length < 5) return false;
+    return palabras.some((w) => distanciaLevenshteinCorta(w, token, 1) <= 1);
+  });
+}
+
 /** Unifica Cali / Pereira y variantes de Excel para listados y dashboard. */
 export const homologarCiudadBbvaCat = (valor) => {
   const texto = String(valor ?? '')

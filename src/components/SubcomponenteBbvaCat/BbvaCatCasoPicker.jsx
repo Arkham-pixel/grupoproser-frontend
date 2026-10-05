@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { casoTieneArchivosAnalistaBbvaCat } from './bbvaCatHelpers.js';
+import { casoTieneArchivosAnalistaBbvaCat, coincideBusquedaBbvaCat } from './bbvaCatHelpers.js';
 
 export default function BbvaCatCasoPicker({
   casos = [],
@@ -30,19 +30,19 @@ export default function BbvaCatCasoPicker({
       .filter((c) => {
         if (soloConArchivos && !casoTieneArchivosAnalistaBbvaCat(c)) return false;
         if (!q) return true;
-        const blob = [
-          c.consecutivo,
-          c.asegurado,
-          c.tomador,
-          c.siniestro,
-          c.identificacion,
-          c.ciudad,
-          c.numeroPoliza,
-          c.zc,
-        ]
-          .map((v) => String(v || '').toLowerCase())
-          .join(' ');
-        return blob.includes(q);
+        return coincideBusquedaBbvaCat(
+          [
+            c.consecutivo,
+            c.asegurado,
+            c.tomador,
+            c.siniestro,
+            c.identificacion,
+            c.ciudad,
+            c.numeroPoliza,
+            c.zc,
+          ],
+          busqueda
+        );
       })
       .sort((a, b) => {
         const da = Number(a.nArchivos) || a.archivos?.length || 0;

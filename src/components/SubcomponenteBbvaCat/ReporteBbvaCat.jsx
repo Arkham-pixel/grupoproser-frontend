@@ -17,6 +17,7 @@ import {
   buildOpcionesFiltro,
   coincideFiltroCiudadBbvaCat,
   coincideFiltroTexto,
+  coincideBusquedaBbvaCat,
   fechaEnRango,
   formatCurrency,
   formatDate,
@@ -316,7 +317,7 @@ export default function ReporteBbvaCat() {
     return casos.filter((c) => {
       if (!coincideCasoUrl(c)) return false;
       if (casoIdUrl) return true;
-      if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
+      if (idsBloque.size > 0 && !q && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroCiudadBbvaCat(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
@@ -325,32 +326,32 @@ export default function ReporteBbvaCat() {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
       }
       if (!q) return true;
-      const blob = [
-        c.consecutivo,
-        c.siniestro,
-        c.tipoIdentificacion,
-        c.identificacion,
-        c.asegurado,
-        c.tomador,
-        c.ajustadorLider,
-        c.ajustador,
-        c.numeroPoliza,
-        c.tipoPoliza,
-        c.causa,
-        c.numeroCredito,
-        c.ciudad,
-        c.departamento,
-        c.estado,
-        c.informacionContacto,
-        c.correo,
-        c.celular,
-        c.canalRadicacion,
-        c.direccionPredio,
-        c.observaciones,
-      ]
-        .map(normTexto)
-        .join(' ');
-      return blob.includes(q);
+      return coincideBusquedaBbvaCat(
+        [
+          c.consecutivo,
+          c.siniestro,
+          c.tipoIdentificacion,
+          c.identificacion,
+          c.asegurado,
+          c.tomador,
+          c.ajustadorLider,
+          c.ajustador,
+          c.numeroPoliza,
+          c.tipoPoliza,
+          c.causa,
+          c.numeroCredito,
+          c.ciudad,
+          c.departamento,
+          c.estado,
+          c.informacionContacto,
+          c.correo,
+          c.celular,
+          c.canalRadicacion,
+          c.direccionPredio,
+          c.observaciones,
+        ],
+        busqueda
+      );
     });
   }, [
     casos,

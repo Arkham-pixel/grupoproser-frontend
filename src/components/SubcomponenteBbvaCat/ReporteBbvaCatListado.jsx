@@ -25,11 +25,12 @@ import {
   coincideFiltroCiudadBbvaCat,
   coincideFiltroTexto,
   etiquetaTipoPolizaBbvaCat,
+  coincideBusquedaBbvaCat,
+  normTexto,
   fechaEnRango,
   formatCurrency,
   formatDate,
   liquidadorGuardadoBbvaCat,
-  normTexto,
   numeroGuardadoBbvaCat,
 } from './bbvaCatHelpers.js';
 import {
@@ -249,7 +250,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
           if (!q) return false;
         }
       }
-      if (bloqueSeleccionadoId) {
+      if (bloqueSeleccionadoId && !q) {
         if (siniestrosBloque.size === 0) return false;
         const keys = [c.siniestro, c.zc].map((v) => String(v || '').trim()).filter(Boolean);
         if (!keys.some((k) => siniestrosBloque.has(k))) return false;
@@ -261,31 +262,31 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
         if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
       }
       if (!q) return true;
-      const blob = [
-        c.consecutivo,
-        c.zc,
-        c.siniestro,
-        c.tipoIdentificacion,
-        c.identificacion,
-        c.numeroPoliza,
-        c.tipoPoliza,
-        c.tipoPolizaOtro,
-        c.causa,
-        c.asegurado,
-        c.intermediario,
-        c.correoIntermediario,
-        c.telefonoIntermediario,
-        c.telefonoAsegurado,
-        c.correoAsegurado,
-        c.ciudad,
-        c.estado,
-        c.ajustadorLider,
-        c.ajustador,
-        c.observaciones,
-      ]
-        .map(normTexto)
-        .join(' ');
-      return blob.includes(q);
+      return coincideBusquedaBbvaCat(
+        [
+          c.consecutivo,
+          c.zc,
+          c.siniestro,
+          c.tipoIdentificacion,
+          c.identificacion,
+          c.numeroPoliza,
+          c.tipoPoliza,
+          c.tipoPolizaOtro,
+          c.causa,
+          c.asegurado,
+          c.intermediario,
+          c.correoIntermediario,
+          c.telefonoIntermediario,
+          c.telefonoAsegurado,
+          c.correoAsegurado,
+          c.ciudad,
+          c.estado,
+          c.ajustadorLider,
+          c.ajustador,
+          c.observaciones,
+        ],
+        busqueda
+      );
     });
   }, [
     casos,
