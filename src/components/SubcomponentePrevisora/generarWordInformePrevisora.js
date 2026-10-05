@@ -42,8 +42,17 @@ import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
 import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
 
-/** Bordes estilo informe catastrófico / Puertos */
-const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
+/** Estética informe Previsora: misma plantilla limpia que Zurich (Calibri, fichas suaves) */
+const COLOR_PREVISORA = '002060';
+const COLOR_TEXT = '1E293B';
+const COLOR_MUTED = '64748B';
+const COLOR_BORDER = 'CBD5E1';
+const COLOR_HEADER_BG = 'E8EEF5';
+const COLOR_LABEL_BG = 'F1F5F9';
+const COLOR_TOTAL_BG = 'ECFDF5';
+const COLOR_WHITE = 'FFFFFF';
+
+const borderCuadro = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
 const bordersCuadro = {
   top: borderCuadro,
   bottom: borderCuadro,
@@ -52,24 +61,45 @@ const bordersCuadro = {
   insideHorizontal: borderCuadro,
   insideVertical: borderCuadro,
 };
-const thin = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+const thin = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
-const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+const none = { style: BorderStyle.NONE, size: 0, color: COLOR_WHITE };
 const noBorders = { top: none, bottom: none, left: none, right: none };
 const bordesEncabezado = {
-  top: borderCuadro,
-  bottom: borderCuadro,
-  left: borderCuadro,
-  right: borderCuadro,
-  insideHorizontal: borderCuadro,
-  insideVertical: borderCuadro,
+  top: none,
+  bottom: none,
+  left: none,
+  right: none,
+  insideHorizontal: none,
+  insideVertical: none,
+};
+/** Ficha label|valor: borde exterior + líneas horizontales, sin verticales agresivas */
+const borderFicha = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
+const bordersFicha = {
+  top: borderFicha,
+  bottom: borderFicha,
+  left: borderFicha,
+  right: borderFicha,
+  insideHorizontal: borderFicha,
+  insideVertical: none,
 };
 
-const FONT = 'Arial';
-/** Tamaño Word: half-points → 24 = 12 pt */
-const SIZE_12 = 24;
-const SIZE_META = 20;
-const SIZE_NSR = 14; // 7 pt — tabla presupuesto completa en landscape
+const FONT = 'Calibri';
+/** Tamaño Word: half-points → 22 = 11 pt */
+const SIZE_12 = 22;
+const SIZE_TITLE = 32; // 16 pt
+const SIZE_HEADING = 26; // 13 pt
+const SIZE_META = 18; // 9 pt
+const SIZE_NSR = 16; // 8 pt — tabla presupuesto landscape
+
+const PAGE_W_PORTRAIT = 9360;
+const PAGE_W_LANDSCAPE = 15200;
+/** Fotos de inspección: grilla 2×2 = 4 por página */
+const FOTOS_POR_PAGINA = 4;
+const FOTOS_COLS = 2;
+const FOTO_GRID_ANCHO = 280;
+const FOTO_GRID_ALTO = 200;
+const FOTO_CELL_W = Math.floor(PAGE_W_PORTRAIT / FOTOS_COLS);
 
 /** Anchos DXA del presupuesto NSR-10 completo (landscape ≈ 15.200 útil). */
 const NSR_COLS = {
@@ -135,10 +165,10 @@ async function loadLogoBytes(url) {
 }
 
 /**
- * Encabezado formal (fórmula Catastrófico / Motorysa):
- * Logo Proser | Título + subtítulo + código/versión/fecha | Logo Previsora
+ * Encabezado limpio (plantilla Zurich): Logo Proser | marca + tipo + siniestro/fecha | Logo Previsora
+ * `landscape` usa el ancho de página horizontal para que no se desplace el header.
  */
-async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
+async function crearEncabezadoPrevisora({ caso = {}, informe = {}, landscape = false } = {}) {
   const base = import.meta.env.BASE_URL || '/';
   let proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
@@ -148,26 +178,16 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
 
   const siniestro = txt(caso.siniestro || caso.consecutivo, '—');
   const fecha = fmtFechaCorta(informe.fechaInforme || new Date());
-
-  const celdaMeta = (texto) =>
-    new TableCell({
-      borders,
-      margins: { top: 40, bottom: 40, left: 60, right: 60 },
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({ text: texto, font: FONT, size: SIZE_META, color: '333333' }),
-          ],
-        }),
-      ],
-    });
+  const pageW = landscape ? PAGE_W_LANDSCAPE : PAGE_W_PORTRAIT;
+  const sideW = landscape ? 2800 : 2200;
+  const midW = pageW - sideW * 2;
 
   const logoCell = (logo, fallbackText, align = AlignmentType.CENTER) =>
     new TableCell({
-      borders: bordesEncabezado,
-      width: { size: 2200, type: WidthType.DXA },
+      borders: noBorders,
+      width: { size: sideW, type: WidthType.DXA },
       verticalAlign: VerticalAlign.CENTER,
-      margins: { top: 80, bottom: 80, left: 80, right: 80 },
+      margins: { top: 40, bottom: 40, left: 40, right: 40 },
       children: [
         new Paragraph({
           alignment: align,
@@ -189,6 +209,7 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
                   bold: true,
                   font: FONT,
                   size: SIZE_12,
+                  color: COLOR_PREVISORA,
                 }),
               ],
         }),
@@ -198,51 +219,57 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
   return new Header({
     children: [
       new Table({
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [2200, 4960, 2200],
+        width: { size: pageW, type: WidthType.DXA },
+        columnWidths: [sideW, midW, sideW],
         borders: bordesEncabezado,
         rows: [
           new TableRow({
             children: [
               logoCell(proser, 'GRUPO PROSER', AlignmentType.LEFT),
               new TableCell({
-                borders: bordesEncabezado,
-                width: { size: 4960, type: WidthType.DXA },
+                borders: noBorders,
+                width: { size: midW, type: WidthType.DXA },
                 verticalAlign: VerticalAlign.CENTER,
-                margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                margins: { top: 40, bottom: 40, left: 120, right: 120 },
                 children: [
                   new Paragraph({
-                    spacing: { after: 40 },
+                    spacing: { after: 20 },
                     children: [
                       new TextRun({
                         text: 'Previsora',
                         font: FONT,
-                        size: SIZE_12,
+                        size: SIZE_HEADING,
                         bold: true,
-                        color: '0066CC',
+                        color: COLOR_PREVISORA,
                       }),
                     ],
                   }),
                   new Paragraph({
-                    spacing: { after: 60 },
+                    spacing: { after: 40 },
                     children: [
                       new TextRun({
                         text: etiquetaEncabezadoInformePrevisora(informe.tipoInforme),
                         font: FONT,
-                        size: SIZE_12,
-                        color: '333333',
+                        size: SIZE_META,
+                        color: COLOR_MUTED,
                       }),
                     ],
                   }),
-                  new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    borders,
-                    rows: [
-                      new TableRow({
-                        children: [
-                          celdaMeta(`SINIESTRO: ${siniestro}`),
-                          celdaMeta(`FECHA: ${fecha}`),
-                        ],
+                  new Paragraph({
+                    spacing: { after: 0 },
+                    children: [
+                      new TextRun({
+                        text: `SINIESTRO ${siniestro}`,
+                        font: FONT,
+                        size: SIZE_META,
+                        bold: true,
+                        color: COLOR_TEXT,
+                      }),
+                      new TextRun({
+                        text: `   ·   FECHA ${fecha}`,
+                        font: FONT,
+                        size: SIZE_META,
+                        color: COLOR_MUTED,
                       }),
                     ],
                   }),
@@ -254,9 +281,9 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
         ],
       }),
       new Paragraph({
-        spacing: { before: 80, after: 0 },
+        spacing: { before: 60, after: 0 },
         border: {
-          bottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 4 },
+          bottom: { style: BorderStyle.SINGLE, size: 18, color: COLOR_PREVISORA, space: 1 },
         },
         children: [],
       }),
@@ -264,34 +291,34 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con ÚNICO o FINAL subrayado (fórmula SURA / Catastrófico). */
+/** Título centrado con tipo de informe subrayado (misma fórmula Zurich). */
 function crearTituloInformeUnico(info = {}) {
   const tipo = etiquetaTituloInformePrevisora(info.tipoInforme);
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 120, after: 200 },
+    spacing: { before: 160, after: 200 },
     children: [
       new TextRun({
         text: 'INFORME ',
         bold: true,
-        size: SIZE_12,
+        size: SIZE_TITLE,
         font: FONT,
-        color: '0070C0',
+        color: COLOR_PREVISORA,
       }),
       new TextRun({
         text: tipo,
         bold: true,
-        size: SIZE_12,
+        size: SIZE_TITLE,
         font: FONT,
-        color: '0070C0',
+        color: COLOR_PREVISORA,
         underline: {},
       }),
       new TextRun({
-        text: '  DE SINIESTRO',
+        text: ' DE SINIESTRO',
         bold: true,
-        size: SIZE_12,
+        size: SIZE_TITLE,
         font: FONT,
-        color: '0070C0',
+        color: COLOR_PREVISORA,
       }),
     ],
   });
@@ -300,60 +327,80 @@ function crearTituloInformeUnico(info = {}) {
 const p = (text, opts = {}) =>
   new Paragraph({
     alignment: opts.alignment || AlignmentType.LEFT,
-    spacing: { before: opts.before ?? 0, after: opts.after ?? 80 },
+    spacing: { before: opts.before ?? 0, after: opts.after ?? 100 },
     children: [
       new TextRun({
         text: String(text ?? ''),
         font: FONT,
         size: opts.size || SIZE_12,
         bold: !!opts.bold,
-        color: opts.color || '000000',
+        color: opts.color || COLOR_TEXT,
       }),
     ],
   });
 
 const heading = (text) =>
   new Paragraph({
-    spacing: { before: 280, after: 140 },
+    spacing: { before: 280, after: 120 },
+    border: {
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: COLOR_BORDER, space: 4 },
+    },
     children: [
       new TextRun({
         text: String(text),
         font: FONT,
-        size: SIZE_12,
+        size: SIZE_HEADING,
         bold: true,
-        color: '000000',
+        color: COLOR_PREVISORA,
       }),
     ],
   });
 
-const cell = (text, opts = {}) =>
-  new TableCell({
-    borders: opts.cuadro ? bordersCuadro : borders,
+const cell = (text, opts = {}) => {
+  const lines = String(text ?? '').split(/\n/);
+  const isHeader = Boolean(opts.header);
+  const isTotal = Boolean(opts.total);
+  const fill = opts.shading
+    ? opts.shading
+    : isHeader
+      ? COLOR_HEADER_BG
+      : isTotal
+        ? COLOR_TOTAL_BG
+        : opts.label
+          ? COLOR_LABEL_BG
+          : COLOR_WHITE;
+  return new TableCell({
+    borders: opts.noBorder ? noBorders : opts.cuadro ? bordersCuadro : borders,
     width: { size: opts.width || 2300, type: WidthType.DXA },
     columnSpan: opts.columnSpan || 1,
     margins: {
-      top: opts.compact ? 40 : 80,
-      bottom: opts.compact ? 40 : 80,
-      left: opts.compact ? 40 : 100,
-      right: opts.compact ? 40 : 100,
+      top: opts.compact ? 36 : 60,
+      bottom: opts.compact ? 36 : 60,
+      left: opts.compact ? 40 : 90,
+      right: opts.compact ? 40 : 90,
     },
+    shading: { fill },
     verticalAlign: opts.verticalAlign || VerticalAlign.CENTER,
-    children: [
-      new Paragraph({
-        alignment: opts.alignment || AlignmentType.LEFT,
-        children: [
-          new TextRun({
-            text: String(text ?? ''),
-            font: FONT,
-            size: opts.size || SIZE_12,
-            bold: !!opts.bold,
-          }),
-        ],
-      }),
-    ],
+    children: lines.map(
+      (line) =>
+        new Paragraph({
+          alignment: opts.alignment || AlignmentType.LEFT,
+          spacing: { after: 0 },
+          children: [
+            new TextRun({
+              text: line,
+              font: FONT,
+              size: opts.size || SIZE_12,
+              bold: isHeader || isTotal || !!opts.bold,
+              color: opts.color || COLOR_TEXT,
+            }),
+          ],
+        })
+    ),
   });
+};
 
-/** Fila etiqueta | valor — cuadro formal negro (sin relleno de color) */
+/** Fila etiqueta | valor — ficha limpia con label sombreado */
 const campoFila = (label, value, opts = {}) =>
   new TableRow({
     children: [
@@ -362,17 +409,22 @@ const campoFila = (label, value, opts = {}) =>
         width: opts.labelW || 4200,
         size: opts.size || SIZE_12,
         cuadro: true,
+        label: !opts.total,
+        total: !!opts.total,
+        shading: opts.labelShading || (opts.total ? undefined : COLOR_LABEL_BG),
       }),
       cell(String(value ?? '—'), {
         width: opts.valueW || 5160,
         size: opts.size || SIZE_12,
-        bold: !!opts.boldValue,
+        bold: !!opts.boldValue || !!opts.total,
         cuadro: true,
+        total: !!opts.total,
+        shading: opts.valueShading,
       }),
     ],
   });
 
-/** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
+/** Cuadro ficha principal del siniestro (plantilla limpia tipo Zurich). */
 function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {} } = {}) {
   const vigencia =
     caso.fechaInicioPoliza || caso.fechaFinPoliza
@@ -417,15 +469,30 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
     columnWidths: [4200, 5160],
-    borders: bordersCuadro,
-    rows: filas.map(([etiqueta, valor]) =>
-      new TableRow({
+    borders: bordersFicha,
+    rows: filas.map(([etiqueta, valor]) => {
+      const esTotal =
+        /INDEMNIZACIÓN|RESERVA SUGERIDA|RESERVA PRELIMINAR/i.test(String(etiqueta));
+      return new TableRow({
         children: [
-          cell(etiqueta, { bold: true, width: 4200, size: SIZE_12, cuadro: true }),
-          cell(valor, { width: 5160, size: SIZE_12, cuadro: true }),
+          cell(etiqueta, {
+            bold: true,
+            width: 4200,
+            size: SIZE_12,
+            cuadro: true,
+            label: true,
+            total: esTotal,
+          }),
+          cell(valor, {
+            width: 5160,
+            size: SIZE_12,
+            cuadro: true,
+            bold: esTotal,
+            total: esTotal,
+          }),
         ],
-      })
-    ),
+      });
+    }),
   });
 }
 
@@ -442,11 +509,18 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
           columnSpan: 3,
           width: { size: 4500, type: WidthType.DXA },
           margins: { top: 60, bottom: 60, left: 80, right: 80 },
+          shading: { fill: COLOR_HEADER_BG },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [
-                new TextRun({ text: titulo, font: FONT, size: SIZE_12, bold: true }),
+                new TextRun({
+                  text: titulo,
+                  font: FONT,
+                  size: SIZE_12,
+                  bold: true,
+                  color: COLOR_TEXT,
+                }),
               ],
             }),
           ],
@@ -455,10 +529,17 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
     }),
     new TableRow({
       children: [
-        cell('N°', { bold: true, width: 500, alignment: AlignmentType.CENTER, cuadro: true }),
-        cell('ITEM', { bold: true, width: 2800, cuadro: true }),
+        cell('N°', {
+          bold: true,
+          header: true,
+          width: 500,
+          alignment: AlignmentType.CENTER,
+          cuadro: true,
+        }),
+        cell('ITEM', { bold: true, header: true, width: 2800, cuadro: true }),
         cell('VALOR', {
           bold: true,
+          header: true,
           width: 1200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
@@ -493,12 +574,13 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
     new TableRow({
       children: [
         cell('', { width: 500, cuadro: true }),
-        cell('SUBTOTAL', { bold: true, width: 2800, cuadro: true }),
+        cell('SUBTOTAL', { bold: true, width: 2800, cuadro: true, total: true }),
         cell(money(subtotal), {
           bold: true,
           width: 1200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
+          total: true,
         }),
       ],
     })
@@ -642,6 +724,91 @@ function extraerLatLngTexto(texto) {
   return { latitud: '', longitud: '' };
 }
 
+/** Celda de grilla fotográfica: imagen centrada + leyenda debajo. */
+function celdaFotoInspeccion(foto, { width = FOTO_CELL_W } = {}) {
+  const children = [];
+  if (foto?.img) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 60, after: 40 },
+        children: [
+          new ImageRun({
+            data: foto.img.bytes,
+            transformation: { width: FOTO_GRID_ANCHO, height: FOTO_GRID_ALTO },
+            type: foto.img.type,
+          }),
+        ],
+      })
+    );
+  }
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [
+        new TextRun({
+          text: String(foto?.leyenda || '—'),
+          font: FONT,
+          size: SIZE_META,
+          color: COLOR_MUTED,
+        }),
+      ],
+    })
+  );
+  return new TableCell({
+    borders: noBorders,
+    width: { size: width, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.TOP,
+    margins: { top: 40, bottom: 40, left: 60, right: 60 },
+    children,
+  });
+}
+
+/**
+ * Arma las fotos en páginas de 4 (grilla 2×2).
+ * Entre cada bloque de 4 inserta salto de página.
+ */
+function construirParrafosFotosInspeccion(fotosCargadas = []) {
+  const lista = Array.isArray(fotosCargadas) ? fotosCargadas.filter(Boolean) : [];
+  if (!lista.length) return [];
+
+  const out = [];
+  for (let i = 0; i < lista.length; i += FOTOS_POR_PAGINA) {
+    const bloque = lista.slice(i, i + FOTOS_POR_PAGINA);
+    if (i > 0) {
+      out.push(new Paragraph({ children: [], pageBreakBefore: true, spacing: { after: 0 } }));
+    }
+    const filas = [];
+    for (let r = 0; r < bloque.length; r += FOTOS_COLS) {
+      const fila = bloque.slice(r, r + FOTOS_COLS);
+      while (fila.length < FOTOS_COLS) fila.push(null);
+      filas.push(
+        new TableRow({
+          children: fila.map((foto) =>
+            foto
+              ? celdaFotoInspeccion(foto)
+              : new TableCell({
+                  borders: noBorders,
+                  width: { size: FOTO_CELL_W, type: WidthType.DXA },
+                  children: [new Paragraph({ children: [] })],
+                })
+          ),
+        })
+      );
+    }
+    out.push(
+      new Table({
+        width: { size: PAGE_W_PORTRAIT, type: WidthType.DXA },
+        columnWidths: [FOTO_CELL_W, FOTO_CELL_W],
+        borders: noBorders,
+        rows: filas,
+      })
+    );
+  }
+  return out;
+}
+
 /** Página: descripción de daños + mapa de ubicación + coordenadas. */
 async function construirBloqueDaniosUbicacionPrevisora({ info = {}, caso = {} } = {}) {
   const bloques = [];
@@ -690,7 +857,7 @@ async function construirBloqueDaniosUbicacionPrevisora({ info = {}, caso = {} } 
       p('Sin captura de mapa. Use «Actualizar captura» en el informe para generarla.', {
         alignment: AlignmentType.CENTER,
         after: 100,
-        color: '666666',
+        color: COLOR_MUTED,
       })
     );
   }
@@ -703,7 +870,11 @@ async function construirBloqueDaniosUbicacionPrevisora({ info = {}, caso = {} } 
         alignment: AlignmentType.CENTER,
         after: idx === pieMapa.length - 1 ? 120 : 50,
         size: esFuente ? SIZE_META : SIZE_12,
-        color: esFuente ? '666666' : (linea.startsWith('Coordenadas:') ? '0070C0' : undefined),
+        color: esFuente
+          ? COLOR_MUTED
+          : linea.startsWith('Coordenadas:')
+            ? COLOR_PREVISORA
+            : undefined,
       })
     );
   });
@@ -738,17 +909,18 @@ async function construirZonaFirmasPrevisora({ info = {} } = {}) {
 
   return [
     heading('FIRMAS'),
-    new Paragraph({ spacing: { before: 280, after: 80 }, children: [] }),
+    new Paragraph({ spacing: { before: 120, after: 40 }, children: [] }),
     pLeft(
       [
         new TextRun({
           text: 'FIRMA DEL AJUSTADOR',
           font: FONT,
-          size: SIZE_12,
+          size: SIZE_META,
           bold: true,
+          color: COLOR_MUTED,
         }),
       ],
-      { after: 100 }
+      { after: 80 }
     ),
     imgAjustador
       ? pLeft(
@@ -770,7 +942,7 @@ async function construirZonaFirmasPrevisora({ info = {} } = {}) {
               text: '________________________',
               font: FONT,
               size: SIZE_12,
-              color: '000000',
+              color: COLOR_TEXT,
             }),
           ],
           { before: 40, after: 80 }
@@ -783,21 +955,22 @@ async function construirZonaFirmasPrevisora({ info = {} } = {}) {
           size: SIZE_12,
           bold: true,
           underline: {},
+          color: COLOR_TEXT,
         }),
       ],
       { after: 40 }
     ),
     pLeft([
-      new TextRun({ text: 'Cargo: ', font: FONT, size: SIZE_12, bold: true }),
-      new TextRun({ text: cargoAjustador, font: FONT, size: SIZE_12 }),
+      new TextRun({ text: 'Cargo: ', font: FONT, size: SIZE_12, bold: true, color: COLOR_TEXT }),
+      new TextRun({ text: cargoAjustador, font: FONT, size: SIZE_12, color: COLOR_TEXT }),
     ]),
     pLeft([
-      new TextRun({ text: 'E-Mail: ', font: FONT, size: SIZE_12, bold: true }),
+      new TextRun({ text: 'E-Mail: ', font: FONT, size: SIZE_12, bold: true, color: COLOR_TEXT }),
       new TextRun({
         text: emailAjustador,
         font: FONT,
         size: SIZE_12,
-        color: '0066CC',
+        color: COLOR_PREVISORA,
       }),
     ]),
     pLeft(
@@ -807,7 +980,7 @@ async function construirZonaFirmasPrevisora({ info = {} } = {}) {
           font: FONT,
           size: SIZE_12,
           bold: true,
-          color: 'C00000',
+          color: 'B91C1C',
         }),
       ],
       { before: 40, after: 40 }
@@ -822,26 +995,29 @@ function tablaAnalisisPolizaPrevisora(filas = []) {
       String(f?.analisis || '').trim() ||
       String(f?.conclusion || '').trim()
   );
-  const wConcepto = 2200;
-  const wAnalisis = 4360;
-  const wConclusion = 2800;
+  const wConcepto = 2000;
+  const wAnalisis = 5360;
+  const wConclusion = 2000;
   const rows = [
     new TableRow({
       children: [
         cell('CONCEPTO', {
           bold: true,
+          header: true,
           width: wConcepto,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('ANÁLISIS', {
           bold: true,
+          header: true,
           width: wAnalisis,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('CONCLUSIÓN', {
           bold: true,
+          header: true,
           width: wConclusion,
           cuadro: true,
           alignment: AlignmentType.CENTER,
@@ -882,7 +1058,6 @@ function tablaAnalisisPolizaPrevisora(filas = []) {
               bold: true,
               width: wConclusion,
               cuadro: true,
-              alignment: AlignmentType.CENTER,
               verticalAlign: VerticalAlign.TOP,
             }),
           ],
@@ -899,8 +1074,8 @@ function tablaAnalisisPolizaPrevisora(filas = []) {
 }
 
 /**
- * Informe preliminar, final o único Previsora — misma fórmula visual que SURA:
- * encabezado formal, título según tipo, cuadro ficha, análisis de póliza.
+ * Informe preliminar, final o único Previsora — plantilla visual alineada a Zurich:
+ * encabezado limpio, título tipográfico, fichas con sombreado suave y bordes slate.
  * Preliminar y final se complementan; el único va aparte.
  * Final y único incluyen el liquidador NSR-10 (pestaña Liquidador / presupuesto).
  */
@@ -948,10 +1123,12 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
 
   const fotoParrafos = [];
   let fotosIncluidas = 0;
-  for (const archivo of fotosParaWord.slice(0, 24)) {
+  const fotosCargadas = [];
+  const fotosFallidas = [];
+  for (const archivo of fotosParaWord.slice(0, 40)) {
     const img = await bytesDesdeFoto(archivo, urlDescargaArchivoPrevisora);
     if (!img) {
-      fotoParrafos.push(
+      fotosFallidas.push(
         p(`• ${archivo.nombreOriginal || archivo.nombre || 'Foto'} (no embebida)`, {
           size: SIZE_12,
         })
@@ -959,25 +1136,18 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       continue;
     }
     fotosIncluidas += 1;
-    fotoParrafos.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 100, after: 40 },
-        children: [
-          new ImageRun({
-            data: img.bytes,
-            transformation: { width: 400, height: 260 },
-            type: img.type,
-          }),
-        ],
-      }),
-      p(archivo.nombreOriginal || archivo.nombre || `Foto ${fotosIncluidas}`, {
-        alignment: AlignmentType.CENTER,
-        size: SIZE_12,
-        after: 120,
-      })
-    );
+    fotosCargadas.push({
+      img,
+      leyenda:
+        String(archivo.descripcion || '').trim() ||
+        String(archivo.nombreOriginal || archivo.nombre || '').trim() ||
+        `Foto ${fotosIncluidas}`,
+    });
   }
+  if (fotosCargadas.length) {
+    fotoParrafos.push(...construirParrafosFotosInspeccion(fotosCargadas));
+  }
+  fotoParrafos.push(...fotosFallidas);
   if (!fotoParrafos.length) {
     fotoParrafos.push(
       p(
@@ -1062,16 +1232,24 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
   const filasCuadro = [
     new TableRow({
       children: [
-        cell('#', { bold: true, width: 600, alignment: AlignmentType.CENTER, cuadro: true }),
-        cell('Concepto', { bold: true, width: 4000, cuadro: true }),
+        cell('#', {
+          bold: true,
+          header: true,
+          width: 600,
+          alignment: AlignmentType.CENTER,
+          cuadro: true,
+        }),
+        cell('Concepto', { bold: true, header: true, width: 4000, cuadro: true }),
         cell('Reclamado', {
           bold: true,
+          header: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
         }),
         cell('Indemnizable', {
           bold: true,
+          header: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
@@ -1121,19 +1299,21 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
   filasCuadro.push(
     new TableRow({
       children: [
-        cell('', { width: 600, cuadro: true }),
-        cell('TOTALES', { bold: true, width: 4000, cuadro: true }),
+        cell('', { width: 600, cuadro: true, total: true }),
+        cell('TOTALES', { bold: true, width: 4000, cuadro: true, total: true }),
         cell(money(totales.totalReclamado), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
+          total: true,
         }),
         cell(money(totales.totalIndemnizable), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
+          total: true,
         }),
       ],
     })
@@ -1146,14 +1326,14 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       new Paragraph({
         alignment: AlignmentType.JUSTIFIED,
         spacing: { after: 100 },
-        children: [new TextRun({ text: l, font: FONT, size: SIZE_12 })],
+        children: [new TextRun({ text: l, font: FONT, size: SIZE_12, color: COLOR_TEXT })],
       })
     );
 
   const baseUrl = import.meta.env.BASE_URL || '/';
-  const mapaEvento = await loadLogoBytes(
-    `${baseUrl}templates/mapa-evento-siniestro-Zurich.png`
-  );
+  const mapaEvento =
+    (await loadLogoBytes(`${baseUrl}templates/mapa-evento-siniestro-Zurich.png`)) ||
+    (await loadLogoBytes(`${baseUrl}templates/mapa-evento-siniestro.png`));
   const mapaEventoParrafos = [];
   if (mapaEvento) {
     mapaEventoParrafos.push(
@@ -1172,12 +1352,17 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
         alignment: AlignmentType.CENTER,
         size: SIZE_META,
         after: 120,
-        color: '555555',
+        color: COLOR_MUTED,
       })
     );
   }
 
-  const header = await crearEncabezadoPrevisora({ caso, informe: info });
+  const header = await crearEncabezadoPrevisora({ caso, informe: info, landscape: false });
+  const headerLandscape = await crearEncabezadoPrevisora({
+    caso,
+    informe: info,
+    landscape: true,
+  });
 
   const polizaRows = [
     campoFila('Tomador', txt(caso.tomador || enc.tomador)),
@@ -1217,6 +1402,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       ? [
           campoFila('Total cotización de reparación', money(totales.cotizacionMonto), {
             boldValue: true,
+            total: true,
             labelW: 5000,
             valueW: 5000,
           }),
@@ -1258,6 +1444,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
     }),
     campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
       boldValue: true,
+      total: true,
       labelW: 5000,
       valueW: 5000,
     }),
@@ -1294,6 +1481,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       : []),
     campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
       boldValue: true,
+      total: true,
       labelW: 5000,
       valueW: 5000,
     }),
@@ -1308,13 +1496,15 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       cuadro: true,
       alignment: opts.alignment || AlignmentType.LEFT,
       bold: !!opts.bold,
+      header: !!opts.header,
+      total: !!opts.total,
       columnSpan: opts.columnSpan || 1,
     });
 
   const filasNsr = [
     new TableRow({
       children: NSR_COLS.labels.map((label, i) =>
-        cellNsr(label, i, { bold: true, alignment: AlignmentType.CENTER })
+        cellNsr(label, i, { bold: true, header: true, alignment: AlignmentType.CENTER })
       ),
     }),
   ];
@@ -1385,6 +1575,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
     ['TOTAL ESTIMADO', money(totales.totalPresupuesto ?? totales.presupuesto?.total)],
   ];
   resumenNsrFilas.forEach(([lab, val]) => {
+    const esTotal = /TOTAL ESTIMADO/i.test(String(lab));
     filasNsr.push(
       new TableRow({
         children: [
@@ -1395,6 +1586,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
             compact: true,
             cuadro: true,
             bold: true,
+            total: esTotal,
             alignment: AlignmentType.RIGHT,
           }),
           cell(val, {
@@ -1403,6 +1595,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
             compact: true,
             cuadro: true,
             bold: true,
+            total: esTotal,
             alignment: AlignmentType.RIGHT,
           }),
           cell('', {
@@ -1411,6 +1604,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
             size: SIZE_NSR,
             compact: true,
             cuadro: true,
+            total: esTotal,
           }),
         ],
       })
@@ -1433,11 +1627,11 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
   const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionPrevisora({ info, caso });
 
   const pagePortrait = {
-    margin: { top: 1400, bottom: 900, left: 900, right: 900 },
+    margin: { top: 1000, bottom: 800, left: 1000, right: 1000 },
     size: { orientation: PageOrientation.PORTRAIT },
   };
   const pageLandscape = {
-    margin: { top: 700, bottom: 700, left: 600, right: 600 },
+    margin: { top: 720, bottom: 720, left: 720, right: 720 },
     size: { orientation: PageOrientation.LANDSCAPE },
   };
 
@@ -1482,7 +1676,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
           bold: true,
           size: SIZE_12,
           after: 160,
-          color: '333333',
+          color: COLOR_MUTED,
         }),
         construirCuadroPrincipal({ caso, enc, info, totales }),
       ],
@@ -1509,7 +1703,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
         new Table({
           width: { size: 9360, type: WidthType.DXA },
           columnWidths: [4200, 5160],
-          borders: bordersCuadro,
+          borders: bordersFicha,
           rows: polizaRows,
         }),
         p('Análisis de póliza y cobertura', { bold: true, before: 200, after: 80, size: SIZE_12 }),
@@ -1528,7 +1722,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
   if (!esPreliminar) {
     sections.push({
       properties: { page: pageLandscape },
-      headers: { default: header },
+      headers: { default: headerLandscape },
       children: [
         heading('4. Liquidación de pérdidas (liquidador)'),
         ...(tieneCotizacionPdf
@@ -1557,7 +1751,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
         new Table({
           width: { size: 10000, type: WidthType.DXA },
           columnWidths: [5000, 5000],
-          borders: bordersCuadro,
+          borders: bordersFicha,
           rows: liquidacionResumen,
         }),
         ...(liq.observaciones
