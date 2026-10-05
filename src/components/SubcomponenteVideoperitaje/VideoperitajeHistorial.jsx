@@ -191,7 +191,7 @@ export default function VideoperitajeHistorial() {
                   ) : (
                     <>
                       Quedan <strong>{cupo.restantes}</strong> de {cupo.limite} videoperitajes
-                      esta semana
+                      {cupo.periodo === 'bolsa' ? ' de la bolsa contratada' : ' esta semana'}
                       <span className="text-gray-500 dark:text-gray-400">
                         {' '}
                         (usadas: {cupo.usadas})
