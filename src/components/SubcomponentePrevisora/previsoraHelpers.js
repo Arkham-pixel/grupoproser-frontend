@@ -13,6 +13,7 @@ export const ESTADOS_PREVISORA = [
   'PRESENTACIÓN DE CIFRAS',
   'OBJECIÓN',
   'DESISTIMIENTO',
+  'ASIGNACIÓN DECLINADA',
   'CASO CERRADO',
   'EN PROCESO DE FACTURACIÓN',
   'FACTURADO',
@@ -37,6 +38,7 @@ export const ESTADOS_PREVISORA_BLOQUE_INSPECCION = Object.freeze([
 export const ESTADOS_PREVISORA_BLOQUE_CIERRE = Object.freeze([
   'OBJECIÓN',
   'DESISTIMIENTO',
+  'ASIGNACIÓN DECLINADA',
   'CASO CERRADO',
   'EN PROCESO DE FACTURACIÓN',
   'FACTURADO',
@@ -59,7 +61,8 @@ export const BLOQUES_SUMA_PREVISORA = Object.freeze([
   {
     id: 'bloque-cierre',
     titulo: 'Objeción, cierre y facturación',
-    subtitulo: 'OBJECIÓN · DESISTIMIENTO · CASO CERRADO · EN PROCESO DE FACTURACIÓN · FACTURADO',
+    subtitulo:
+      'OBJECIÓN · DESISTIMIENTO · ASIGNACIÓN DECLINADA · CASO CERRADO · EN PROCESO DE FACTURACIÓN · FACTURADO',
     estados: [...ESTADOS_PREVISORA_BLOQUE_CIERRE],
   },
 ]);
@@ -76,6 +79,7 @@ export const FECHA_ACCION_POR_ESTADO_PREVISORA = {
   'PRESENTACIÓN DE CIFRAS': 'fechaPresentacionCifras',
   OBJECIÓN: 'fechaObjecion',
   DESISTIMIENTO: 'fechaDesistimiento',
+  'ASIGNACIÓN DECLINADA': 'fechaAsignacionDeclinada',
   'CASO CERRADO': 'fechaCasoCerrado',
   'EN PROCESO DE FACTURACIÓN': 'fechaEnProcesoFacturacion',
   FACTURADO: 'fechaFacturado',
@@ -92,6 +96,7 @@ export const CAMPOS_FECHA_ACCION_PREVISORA = [
   'fechaObjecion',
   'fechaAutorizacionAnalista',
   'fechaDesistimiento',
+  'fechaAsignacionDeclinada',
   'fechaCasoCerrado',
   'fechaCasoParaPago',
   'fechaEnProcesoFacturacion',
@@ -119,6 +124,9 @@ const ESTADOS_PREVISORA_LEGACY = {
   'CERRADO MANUAL': 'CASO CERRADO',
   DESISTIDO: 'DESISTIMIENTO',
   ANULADO: 'DESISTIMIENTO',
+  'ASIGNACION DECLINADA': 'ASIGNACIÓN DECLINADA',
+  'ASIGNACION RECHAZADA': 'ASIGNACIÓN DECLINADA',
+  'ASIGNACIÓN RECHAZADA': 'ASIGNACIÓN DECLINADA',
 };
 
 const claveEstadoPrevisora = (valor) =>
@@ -604,6 +612,7 @@ export const FORM_VACIO_PREVISORA = {
   fechaObjecion: '',
   fechaAutorizacionAnalista: '',
   fechaDesistimiento: '',
+  fechaAsignacionDeclinada: '',
   fechaCasoCerrado: '',
   fechaCasoParaPago: '',
   fechaEnProcesoFacturacion: '',

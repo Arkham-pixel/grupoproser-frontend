@@ -14186,6 +14186,7 @@
       "fechaObjecion": "Fecha OBJECIÓN",
       "fechaAutorizacionAnalista": "Fecha AUTORIZACIÓN ANALISTA",
       "fechaDesistimiento": "Fecha DESISTIMIENTO",
+      "fechaAsignacionDeclinada": "Fecha ASIGNACIÓN DECLINADA",
       "fechaCasoCerrado": "Fecha CASO CERRADO",
       "fechaCasoParaPago": "Fecha CASO CERRADO",
       "fechaEnProcesoFacturacion": "Fecha EN PROCESO DE FACTURACIÓN",

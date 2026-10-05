@@ -118,6 +118,7 @@ const COLUMNAS = [
   { clave: 'fechaPresentacionCifras', labelKey: 'fechaPresentacionCifras' },
   { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
   { clave: 'fechaDesistimiento', labelKey: 'fechaDesistimiento' },
+  { clave: 'fechaAsignacionDeclinada', labelKey: 'fechaAsignacionDeclinada' },
   { clave: 'fechaCasoCerrado', labelKey: 'fechaCasoCerrado' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
@@ -156,6 +157,7 @@ const CAMPOS_FECHA = new Set([
   'fechaPresentacionCifras',
   'fechaObjecion',
   'fechaDesistimiento',
+  'fechaAsignacionDeclinada',
   'fechaCasoCerrado',
   'ultimaGestion',
 ]);
@@ -224,6 +226,7 @@ const buildExportRow = (caso) => ({
   'FECHA PRESENTACIÓN DE CIFRAS': formatDate(caso.fechaPresentacionCifras),
   'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
   'FECHA DESISTIMIENTO': formatDate(caso.fechaDesistimiento),
+  'FECHA ASIGNACIÓN DECLINADA': formatDate(caso.fechaAsignacionDeclinada),
   'FECHA CASO CERRADO': formatDate(caso.fechaCasoCerrado || caso.fechaCasoParaPago),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),

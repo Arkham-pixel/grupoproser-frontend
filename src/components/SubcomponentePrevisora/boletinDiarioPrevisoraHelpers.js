@@ -152,7 +152,7 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   if (textoLibre && /desist/.test(normTexto(textoLibre))) return 'desistimientos';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
   if (estado === 'OBJECIÓN') return 'objetados';
-  if (estado === 'DESISTIMIENTO') return 'desistimientos';
+  if (estado === 'DESISTIMIENTO' || estado === 'ASIGNACIÓN DECLINADA') return 'desistimientos';
   if (estado === 'CASO CERRADO' || estado === 'EN PROCESO DE FACTURACIÓN' || estado === 'FACTURADO') return 'liquidados';
   if (estado === 'AUTORIZACIÓN ANALISTA') return 'liquidados';
   if (
