@@ -8,6 +8,7 @@ export const ESTADOS_PREVISORA = [
   'PROGRAMANDO INSPECCIÓN',
   'CASO INSPECCIONADO',
   'PENDIENTE DE DOCUMENTOS',
+  'EN ANÁLISIS',
   'AUTORIZACIÓN ANALISTA',
   'PRESENTACIÓN DE CIFRAS',
   'OBJECIÓN',
@@ -23,10 +24,11 @@ export const ESTADOS_PREVISORA_BLOQUE_INGRESO = Object.freeze([
   'PROGRAMANDO INSPECCIÓN',
 ]);
 
-/** Bloque 2 · inspección, docs y cifras */
+/** Bloque 2 · inspección, docs, análisis y cifras */
 export const ESTADOS_PREVISORA_BLOQUE_INSPECCION = Object.freeze([
   'CASO INSPECCIONADO',
   'PENDIENTE DE DOCUMENTOS',
+  'EN ANÁLISIS',
   'AUTORIZACIÓN ANALISTA',
   'PRESENTACIÓN DE CIFRAS',
 ]);
@@ -50,7 +52,8 @@ export const BLOQUES_SUMA_PREVISORA = Object.freeze([
   {
     id: 'bloque-inspeccion',
     titulo: 'Inspección, documentos y cifras',
-    subtitulo: 'CASO INSPECCIONADO · PENDIENTE DE DOCUMENTOS · AUTORIZACIÓN ANALISTA · PRESENTACIÓN DE CIFRAS',
+    subtitulo:
+      'CASO INSPECCIONADO · PENDIENTE DE DOCUMENTOS · EN ANÁLISIS · AUTORIZACIÓN ANALISTA · PRESENTACIÓN DE CIFRAS',
     estados: [...ESTADOS_PREVISORA_BLOQUE_INSPECCION],
   },
   {
@@ -68,6 +71,7 @@ export const FECHA_ACCION_POR_ESTADO_PREVISORA = {
   'PROGRAMANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
   'CASO INSPECCIONADO': 'fechaCasoInspeccionado',
   'PENDIENTE DE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'EN ANÁLISIS': 'fechaAnalisisCaso',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
   'PRESENTACIÓN DE CIFRAS': 'fechaPresentacionCifras',
   OBJECIÓN: 'fechaObjecion',
@@ -103,7 +107,9 @@ const ESTADOS_PREVISORA_LEGACY = {
   'PROGRAMANDO INSPECCION': 'PROGRAMANDO INSPECCIÓN',
   INSPECCIONADO: 'CASO INSPECCIONADO',
   'EN AJUSTE': 'PRESENTACIÓN DE CIFRAS',
-  'ANALISIS DEL CASO': 'PRESENTACIÓN DE CIFRAS',
+  'EN ANALISIS': 'EN ANÁLISIS',
+  'ANALISIS DEL CASO': 'EN ANÁLISIS',
+  'ANÁLISIS DEL CASO': 'EN ANÁLISIS',
   DOCUMENTACION: 'PENDIENTE DE DOCUMENTOS',
   'PENDIENTE DE DOCUMENTO': 'PENDIENTE DE DOCUMENTOS',
   LIQUIDADO: 'CASO CERRADO',
@@ -136,7 +142,6 @@ export function homologarEstadoPrevisora(valor) {
 const FECHA_LEGADO_POR_ESTADO = {
   'PROGRAMANDO INSPECCIÓN': ['fechaProgramandoInspeccion'],
   'CASO INSPECCIONADO': ['fechaInspeccion'],
-  'PRESENTACIÓN DE CIFRAS': ['fechaAnalisisCaso'],
   'CASO CERRADO': ['fechaCasoParaPago', 'fechaLiquidado'],
 };
 
@@ -898,10 +903,11 @@ export const construirFormDesdecasoPrevisora = (caso = {}) => {
     base.tipoPoliza = 'OTRO';
   }
   base.estado = homologarEstadoPrevisora(base.estado);
+  if (!base.fechaAnalisisCaso) {
+    base.fechaAnalisisCaso = fechaParaInput(caso.fechaAnalisisCaso);
+  }
   if (!base.fechaPresentacionCifras) {
-    base.fechaPresentacionCifras = fechaParaInput(
-      caso.fechaPresentacionCifras || caso.fechaAnalisisCaso
-    );
+    base.fechaPresentacionCifras = fechaParaInput(caso.fechaPresentacionCifras);
   }
   if (!base.fechaCasoCerrado) {
     base.fechaCasoCerrado = fechaParaInput(caso.fechaCasoCerrado || caso.fechaCasoParaPago);

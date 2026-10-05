@@ -325,8 +325,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
         horaInicioCoordinacion: form.horaInicioCoordinacion,
         horaFinCoordinacion: form.horaFinCoordinacion,
-        fechaPresentacionCifras: form.fechaPresentacionCifras || form.fechaAnalisisCaso,
-        fechaAnalisisCaso: form.fechaPresentacionCifras || form.fechaAnalisisCaso,
+        fechaPresentacionCifras: form.fechaPresentacionCifras,
+        fechaAnalisisCaso: form.fechaAnalisisCaso,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
         fechaObjecion: form.fechaObjecion,
@@ -352,9 +352,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     payload.estado = homologarEstadoPrevisora(payload.estado);
     payload.fechaCasoInspeccionado = form.fechaCasoInspeccionado;
     payload.fechaCoordinandoInspeccion = form.fechaCoordinandoInspeccion;
-    payload.fechaPresentacionCifras =
-      form.fechaPresentacionCifras || form.fechaAnalisisCaso;
-    payload.fechaAnalisisCaso = form.fechaPresentacionCifras || form.fechaAnalisisCaso;
+    payload.fechaPresentacionCifras = form.fechaPresentacionCifras;
+    payload.fechaAnalisisCaso = form.fechaAnalisisCaso;
     payload.fechaCasoCerrado = form.fechaCasoCerrado || form.fechaCasoParaPago;
     payload.fechaCasoParaPago = form.fechaCasoCerrado || form.fechaCasoParaPago;
     payload.solicitudAnticipo = form.solicitudAnticipo;
@@ -750,6 +749,13 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               type="date"
               value={form.fechaRecepcionDocumento}
               onChange={setCampo('fechaRecepcionDocumento')}
+            />
+          </Campo>
+          <Campo label={t('previsora.fields.fechaAnalisisCaso')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAnalisisCaso}
+              onChange={setCampo('fechaAnalisisCaso')}
             />
           </Campo>
           <Campo label={t('previsora.fields.fechaAutorizacionAnalista')}>

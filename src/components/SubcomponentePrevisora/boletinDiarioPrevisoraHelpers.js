@@ -155,7 +155,13 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
   if (estado === 'DESISTIMIENTO') return 'desistimientos';
   if (estado === 'CASO CERRADO' || estado === 'EN PROCESO DE FACTURACIÓN' || estado === 'FACTURADO') return 'liquidados';
   if (estado === 'AUTORIZACIÓN ANALISTA') return 'liquidados';
-  if (estado === 'PRESENTACIÓN DE CIFRAS' || estado === 'PENDIENTE DE DOCUMENTOS') return 'enLiquidacion';
+  if (
+    estado === 'PRESENTACIÓN DE CIFRAS' ||
+    estado === 'EN ANÁLISIS' ||
+    estado === 'PENDIENTE DE DOCUMENTOS'
+  ) {
+    return 'enLiquidacion';
+  }
   if (estado === 'PROGRAMANDO INSPECCIÓN' || estado === 'CASO INSPECCIONADO') return 'enInspeccion';
   return 'verificacion';
 }
@@ -270,7 +276,13 @@ export function clasificarGestionDiscriminada(caso = {}) {
     return 'contactadosSinExito';
   }
 
-  if (estado === 'PRESENTACIÓN DE CIFRAS' || estado === 'AUTORIZACIÓN ANALISTA') return 'enLiquidacion';
+  if (
+    estado === 'PRESENTACIÓN DE CIFRAS' ||
+    estado === 'EN ANÁLISIS' ||
+    estado === 'AUTORIZACIÓN ANALISTA'
+  ) {
+    return 'enLiquidacion';
+  }
   if (estado === 'PENDIENTE DE DOCUMENTOS' || estado === 'OBJECIÓN') return 'pendienteInformacion';
   if (estado === 'PROGRAMANDO INSPECCIÓN' || estado === 'CASO INSPECCIONADO') return 'solicitanInspeccion';
   if (texto) return 'contactadosSinExito';
