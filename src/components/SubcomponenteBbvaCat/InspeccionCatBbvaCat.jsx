@@ -780,24 +780,26 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
 
       <div className="flex flex-wrap gap-2">
         {!soloLectura && (
-        <button
-          type="button"
-          className={expressBtnPrimary}
-          onClick={guardarCat}
-          disabled={guardando || generandoDoc || !casoBbvaCat?._id}
-        >
-          <FaSave className="mr-2 inline" />
-          {guardando ? t('bbvaCat.actions.saving') : t('bbvaCat.cat.saveCat')}
-        </button>
-        <button
-          type="button"
-          className={expressBtnSecondary}
-          onClick={guardarYDesprendible}
-          disabled={guardando || generandoDoc || !casoBbvaCat?._id}
-        >
-          <FaFileWord className="mr-2 inline" />
-          {generandoDoc ? 'Generando…' : 'Guardar y descargar desprendible'}
-        </button>
+          <>
+            <button
+              type="button"
+              className={expressBtnPrimary}
+              onClick={guardarCat}
+              disabled={guardando || generandoDoc || !casoBbvaCat?._id}
+            >
+              <FaSave className="mr-2 inline" />
+              {guardando ? t('bbvaCat.actions.saving') : t('bbvaCat.cat.saveCat')}
+            </button>
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={guardarYDesprendible}
+              disabled={guardando || generandoDoc || !casoBbvaCat?._id}
+            >
+              <FaFileWord className="mr-2 inline" />
+              {generandoDoc ? 'Generando…' : 'Guardar y descargar desprendible'}
+            </button>
+          </>
         )}
         <button
           type="button"
