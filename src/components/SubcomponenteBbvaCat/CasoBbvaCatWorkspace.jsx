@@ -525,7 +525,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
                 <FaVideo /> {t('videoperitaje.startTitle')}
               </button>
             )}
-            {casoId && (
+            {casoId && !soloConsulta && (
               <button
                 type="button"
                 className={expressBtnGhost}

@@ -426,7 +426,7 @@ export default function Layout() {
   const configContractor = obtenerConfigContractor(rolNorm);
   const esContractor = Boolean(configContractor);
   const accesoRestringido = esVisualizador || esPuertos || esContractor || rolNorm === 'externo';
-  const puedeVideoperitaje = sesionPuedeVideoperitaje();
+  const puedeVideoperitaje = sesionPuedeVideoperitaje() && !esRolConsultaBbva(rolNorm);
   const puedeCatalogosExpress = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),

@@ -300,6 +300,7 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
 
   // En prueba: solo logins de videoperitajePermitidos.js
   if (path === '/videoperitaje' || path.startsWith('/videoperitaje/')) {
+    if (r === ROL_CONSULTA_BBVA) return false;
     return sesionPuedeVideoperitaje();
   }
 

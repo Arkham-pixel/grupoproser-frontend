@@ -693,9 +693,11 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
+                  {!soloConsulta && (
                   <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('bbvaCat.report.actions')}
                   </th>
+                  )}
                   {COLUMNAS.map((col) => (
                     <ThOrdenable
                       key={col.clave}
@@ -713,19 +715,19 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={COLUMNAS.length + (soloConsulta ? 0 : 1)} className="px-4 py-8 text-center text-sm text-gray-500">
                       {t('bbvaCat.report.loadingCases')}
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
+                    <td colSpan={COLUMNAS.length + (soloConsulta ? 0 : 1)} className="px-4 py-8 text-center text-sm text-red-600">
                       {error}
                     </td>
                   </tr>
                 ) : filtrados.length === 0 ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={COLUMNAS.length + (soloConsulta ? 0 : 1)} className="px-4 py-8 text-center text-sm text-gray-500">
                       {esAnalista
                         ? t('bbvaCat.listadoReport.noCasesAnalista')
                         : t('bbvaCat.listadoReport.noCasesDocumented')}
@@ -745,6 +747,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                         resaltado ? 'bg-amber-50/80 dark:bg-amber-950/20' : ''
                       }`}
                     >
+                      {!soloConsulta && (
                       <td
                         className={`sticky left-0 z-10 whitespace-nowrap px-4 py-3 ${
                           resaltado
@@ -763,6 +766,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                           onEliminar={() => solicitarEliminar(item)}
                         />
                       </td>
+                      )}
                       {COLUMNAS.map((col) => (
                         <td
                           key={col.clave}

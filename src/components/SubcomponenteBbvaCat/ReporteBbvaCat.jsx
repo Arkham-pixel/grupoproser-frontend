@@ -10,6 +10,7 @@ import {
 import FormularioBbvaCat from './FormularioBbvaCat.jsx';
 import ArchiveroBbvaCat from './ArchiveroBbvaCat.jsx';
 import AccionesBbvaCatMenu from './AccionesBbvaCatMenu.jsx';
+import { esRolConsultaBbva } from '../../config/roles.js';
 import MapaBloquesBbvaCatPanel from './MapaBloquesBbvaCatPanel.jsx';
 import { coordsUbicacionPredio, urlGoogleMaps } from './bbvaCatGeocodeHelpers.js';
 import {
@@ -246,6 +247,7 @@ const buildExportRow = (caso) => ({
 export default function ReporteBbvaCat() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const soloConsulta = esRolConsultaBbva();
   const { casoIdUrl, coincide: coincideCasoUrl, limpiar: limpiarCasoUrl, activo: filtroCasoUrl } =
     useFiltroCasoExclusivo();
   const soloChecklistLleno = false;
@@ -605,9 +607,11 @@ export default function ReporteBbvaCat() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
+                  {!soloConsulta && (
                   <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('bbvaCat.report.actions')}
                   </th>
+                  )}
                   {COLUMNAS.map((col) => (
                     <ThOrdenable
                       key={col.clave}
@@ -627,19 +631,19 @@ export default function ReporteBbvaCat() {
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={COLUMNAS.length + (soloConsulta ? 0 : 1)} className="px-4 py-8 text-center text-sm text-gray-500">
                       {t('bbvaCat.report.loadingCases')}
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
+                    <td colSpan={COLUMNAS.length + (soloConsulta ? 0 : 1)} className="px-4 py-8 text-center text-sm text-red-600">
                       {error}
                     </td>
                   </tr>
                 ) : filtrados.length === 0 ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={COLUMNAS.length + (soloConsulta ? 0 : 1)} className="px-4 py-8 text-center text-sm text-gray-500">
                       {soloChecklistLleno
                         ? t('bbvaCat.report.noCasesChecklist')
                         : t('bbvaCat.report.noCases')}
@@ -659,6 +663,7 @@ export default function ReporteBbvaCat() {
                         resaltado ? 'bg-amber-50/80 dark:bg-amber-950/20' : ''
                       }`}
                     >
+                      {!soloConsulta && (
                       <td
                         className={`sticky left-0 z-10 whitespace-nowrap px-4 py-3 ${
                           resaltado
@@ -694,6 +699,7 @@ export default function ReporteBbvaCat() {
                           onEliminar={() => solicitarEliminar(item)}
                         />
                       </td>
+                      )}
                       {COLUMNAS.map((col) => (
                         <td
                           key={col.clave}
