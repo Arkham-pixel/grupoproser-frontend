@@ -327,6 +327,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
       coincideBusquedaBbvaCat(
         [
           c.consecutivo,
+          c.zc,
           c.asegurado,
           c.tomador,
           c.siniestro,

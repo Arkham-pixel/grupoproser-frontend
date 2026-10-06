@@ -330,6 +330,7 @@ export default function ReporteBbvaCat() {
       return coincideBusquedaBbvaCat(
         [
           c.consecutivo,
+          c.zc,
           c.siniestro,
           c.tipoIdentificacion,
           c.identificacion,

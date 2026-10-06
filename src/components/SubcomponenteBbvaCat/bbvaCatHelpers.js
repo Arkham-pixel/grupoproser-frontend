@@ -752,6 +752,40 @@ function distanciaLevenshteinCorta(a, b, max = 1) {
   return prev[lb];
 }
 
+const soloDigitos = (valor) => String(valor ?? '').replace(/\D/g, '');
+
+/**
+ * Variantes del ID Zurich/BBVA: 10019858 ↔ 100019858 (cero del prefijo 1000).
+ * También quita/agrega un 0 a la izquierda por celdas Excel en texto.
+ */
+export function variantesIdSiniestroBbvaCat(valor) {
+  const d = soloDigitos(valor);
+  if (!d || d.length < 5) return d ? [d] : [];
+  const out = new Set([d]);
+  const sinIzq = d.replace(/^0+/, '');
+  if (sinIzq) out.add(sinIzq);
+  if (sinIzq && sinIzq !== d) out.add(`0${sinIzq}`);
+  // Forma corta 100xxxxx → Zurich 1000xxxxx
+  if (/^100(?!0)\d{5,}$/.test(d)) out.add(`1000${d.slice(3)}`);
+  if (sinIzq && sinIzq !== d && /^100(?!0)\d{5,}$/.test(sinIzq)) {
+    out.add(`1000${sinIzq.slice(3)}`);
+  }
+  // Forma Zurich 1000xxxxx → corta 100xxxxx
+  if (/^1000\d{5,}$/.test(d)) out.add(`100${d.slice(4)}`);
+  if (sinIzq && /^1000\d{5,}$/.test(sinIzq)) out.add(`100${sinIzq.slice(4)}`);
+  return [...out];
+}
+
+function coincideIdSiniestroBbvaCat(token, palabras) {
+  const varsQ = variantesIdSiniestroBbvaCat(token);
+  if (!varsQ.length) return false;
+  return palabras.some((w) => {
+    const varsW = variantesIdSiniestroBbvaCat(w);
+    if (!varsW.length) return false;
+    return varsQ.some((vq) => varsW.includes(vq) || varsW.some((vw) => vw.includes(vq) && vq.length >= 6));
+  });
+}
+
 /** AND por palabras + 1 typo. “Edificio Fénix Telesentinel” encuentra Edifinio / Fenix. */
 export function coincideBusquedaBbvaCat(campos, busqueda) {
   const q = normTexto(busqueda);
@@ -759,11 +793,17 @@ export function coincideBusquedaBbvaCat(campos, busqueda) {
   const blob = (Array.isArray(campos) ? campos : [campos]).map(normTexto).join(' ');
   if (!blob) return false;
   if (blob.includes(q)) return true;
+  // Búsqueda solo numérica: tolerar el cero del prefijo 1000…
+  if (/^[\d\s./-]+$/.test(q) && soloDigitos(q).length >= 5) {
+    const palabrasId = blob.split(/[^A-Z0-9]+/).filter(Boolean);
+    if (coincideIdSiniestroBbvaCat(q, palabrasId)) return true;
+  }
   const tokens = q.split(' ').filter((t) => t.length >= 2);
   if (!tokens.length) return true;
   const palabras = blob.split(/[^A-Z0-9]+/).filter(Boolean);
   return tokens.every((token) => {
     if (blob.includes(token)) return true;
+    if (/^\d{5,}$/.test(token) && coincideIdSiniestroBbvaCat(token, palabras)) return true;
     if (token.length < 5) return false;
     return palabras.some((w) => distanciaLevenshteinCorta(w, token, 1) <= 1);
   });
