@@ -41,6 +41,7 @@ import { AUTOSAVE_DEBOUNCE_MS } from '../../config/autoSaveConfig.js';
 import StorageLazyImage from '../shared/StorageLazyImage.jsx';
 import { resolverUrlImagen } from '../../services/storageSignedUrl.js';
 import { ACCEPT_ARCHIVOS_IMAGEN, asegurarJpeg, esArchivoImagen } from '../../utils/heicToJpeg.js';
+import { esRolConsultaBbva } from '../../config/roles.js';
 
 const SEVERIDAD_MANUAL_CAT = SEVERIDAD_CAT_BBVA.map((s) => ({
   nivel: s.valor,
@@ -89,6 +90,7 @@ const ordenarFotos = (lista) =>
  */
 export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange }) {
   const { t } = useTranslation();
+  const soloLectura = esRolConsultaBbva();
   const inputRef = useRef(null);
   const descripcionTimeoutRef = useRef({});
   const [error, setError] = useState('');
@@ -240,6 +242,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
   };
 
   const subirFotos = async (fileList) => {
+    if (soloLectura) return;
     const files = Array.from(fileList || []).filter(esImagen);
     if (!files.length) {
       setError('Seleccione solo fotos (JPG, PNG, GIF, WEBP o HEIC).');
@@ -294,6 +297,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
   };
 
   const handleDeleteArchivo = async (archivoId) => {
+    if (soloLectura) return;
     if (!window.confirm(t('bbvaCat.archive.confirmDelete'))) return;
     try {
       await eliminarArchivoBbvaCat(casoBbvaCat._id, archivoId);
@@ -323,6 +327,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
   };
 
   const persistirCat = async ({ silencioso = false } = {}) => {
+    if (soloLectura) return;
     if (!casoBbvaCat?._id) {
       if (!silencioso) setError(t('bbvaCat.cat.needSavedCase'));
       return null;
@@ -584,6 +589,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
           onChange={handleFileInputChange}
         />
 
+        {!soloLectura && (
         <div
           role="button"
           tabIndex={0}
@@ -623,6 +629,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
             JPG, PNG, GIF o WEBP — puede subir varias a la vez
           </p>
         </div>
+        )}
 
         {fotos.length === 0 ? (
           <p className="font-body text-sm text-gray-500">
@@ -700,6 +707,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
                         Sin vista previa
                       </div>
                     )}
+                    {!soloLectura && (
                     <div className="absolute right-2 top-2 z-10 flex flex-col gap-1">
                       <button
                         type="button"
@@ -737,6 +745,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
                         <FaTrash className="h-3 w-3" />
                       </button>
                     </div>
+                    )}
                   </div>
 
                   <p className="mt-2 truncate font-body text-sm font-medium text-gray-800 dark:text-gray-100">
@@ -746,6 +755,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
                     value={f.descripcion || ''}
                     rows={3}
                     placeholder="Descripción de la foto (hechos observables)…"
+                    readOnly={soloLectura}
                     className="mt-1 w-full resize-y rounded border border-gray-300 bg-white px-2 py-1.5 font-body text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-fenix-primario dark:border-gray-600 dark:bg-gray-950 dark:text-gray-100"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -769,6 +779,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {!soloLectura && (
         <button
           type="button"
           className={expressBtnPrimary}
@@ -787,6 +798,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
           <FaFileWord className="mr-2 inline" />
           {generandoDoc ? 'Generando…' : 'Guardar y descargar desprendible'}
         </button>
+        )}
         <button
           type="button"
           className={expressBtnGhost}

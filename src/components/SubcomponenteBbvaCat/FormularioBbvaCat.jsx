@@ -65,7 +65,7 @@ import ModalImportarExcelBbvaCat, {
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectorDepartamentoCiudad from '../shared/SelectorDepartamentoCiudad.jsx';
 import SelectBuscable from '../SelectBuscable.jsx';
-import { esRolSoloBbva, obtenerRolAlmacenado } from '../../config/roles.js';
+import { esRolConsultaBbva, esRolSoloBbva, obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
   esRolInspector,
@@ -107,6 +107,8 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
   const rolUsuario = obtenerRolAlmacenado();
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('bbvaCat'), []);
   const soloInspector = esRolInspector(rolUsuario);
+  const soloConsulta = esRolConsultaBbva(rolUsuario);
+  const soloLectura = soloConsulta;
   const esEdicion = Boolean(initialData?._id);
   const esModuloListado = origen === 'listado';
   const puedeImportarExcel = esAdminOSoporteBbvaCat();
@@ -144,7 +146,7 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
     recursoId: initialData?._id || '',
     titulo: 'Caso BBVA CAT',
     formData: form,
-    enabled: true,
+    enabled: !soloLectura,
     onRestoreAvailable: onDraftRestoreAvailable,
   });
 
@@ -421,6 +423,7 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
     e.preventDefault();
     setError(null);
     setExito(null);
+    if (soloLectura) return;
 
     if (esModuloListado) {
       if (!String(form.zc || '').trim() && !String(form.siniestro || '').trim()) {
@@ -718,7 +721,13 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
             />
           </Campo>
         </div>
-        {soloInspector ? (
+        {soloConsulta ? (
+          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+            {t('bbvaCat.permissions.consultaHint', {
+              defaultValue: 'Su rol de consulta solo permite ver el caso; no puede editar nada.',
+            })}
+          </p>
+        ) : soloInspector ? (
           <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
             {t('bbvaCat.permissions.inspectorHint', {
               defaultValue:
@@ -900,13 +909,13 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
             casoId={initialData?._id}
             origen={origen}
             archivosIniciales={initialData?.archivos}
-            disabled={soloInspector}
+            disabled={soloInspector || soloLectura}
           />
         </section>
       )}
 
       <fieldset
-        disabled={soloInspector}
+        disabled={soloInspector || soloLectura}
         className="min-w-0 space-y-5 border-0 p-0 m-0 disabled:opacity-80"
       >
       {!esModuloListado && (
@@ -1242,6 +1251,8 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
             {t('common.close')}
           </button>
         )}
+        {!soloLectura && (
+          <>
         <button type="button" className={expressBtnGhost} onClick={limpiar} disabled={guardando}>
           <FaUndo />
           {esEdicion ? t('bbvaCat.actions.reset') : t('bbvaCat.actions.clear')}
@@ -1254,6 +1265,8 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               ? t('bbvaCat.actions.saveChanges')
               : t('bbvaCat.actions.saveCase')}
         </button>
+          </>
+        )}
       </div>
     </form>
   );
@@ -1300,7 +1313,9 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               <Link
                 to={
                   esModuloListado
-                    ? esRolSoloBbva()
+                    ? esRolConsultaBbva()
+                      ? '/bbva-cat/listado/reporte'
+                      : esRolSoloBbva()
                       ? '/bbva-cat/listado/analista'
                       : '/bbva-cat/listado/reporte'
                     : '/bbva-cat/reporte'
@@ -1308,7 +1323,9 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
                 {esModuloListado
-                  ? esRolSoloBbva()
+                  ? esRolConsultaBbva()
+                    ? t('nav.bbvaCatListadoReport')
+                    : esRolSoloBbva()
                     ? t('nav.bbvaCatListadoAnalista')
                     : t('nav.bbvaCatListadoReport')
                   : t('nav.bbvaCatReport')}

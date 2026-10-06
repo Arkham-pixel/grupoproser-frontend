@@ -42,7 +42,7 @@ import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { STORAGE_ORIGEN_LISTADO_BBVA_CAT, coincideBusquedaBbvaCat } from './bbvaCatHelpers.js';
-import { esRolSoloBbva } from '../../config/roles.js';
+import { esRolConsultaBbva, esRolSoloBbva } from '../../config/roles.js';
 import VideoperitajeIniciarModal from '../SubcomponenteVideoperitaje/VideoperitajeIniciarModal.jsx';
 import { sesionPuedeVideoperitaje } from '../../config/videoperitajePermitidos.js';
 import { videoperitajeEnCatHabilitado } from '../../config/arnaldFeatures.js';
@@ -111,6 +111,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const esModuloListado = origen === 'listado';
   const rutaReporte = (() => {
     if (!esModuloListado) return '/bbva-cat/reporte';
+    if (esRolConsultaBbva()) return '/bbva-cat/listado/reporte';
     if (esRolSoloBbva()) return '/bbva-cat/listado/analista';
     try {
       if (sessionStorage.getItem(STORAGE_ORIGEN_LISTADO_BBVA_CAT) === 'analista') {
@@ -182,6 +183,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const [videoModal, setVideoModal] = useState(false);
   // Videoperitaje en caso CAT: activo (BBVA).
   const puedeVideoperitaje = videoperitajeEnCatHabilitado() && sesionPuedeVideoperitaje();
+  const soloConsulta = esRolConsultaBbva();
 
   const casoId = casoBbvaCat?._id || casoIdFromQuery || null;
 
@@ -469,7 +471,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
     totalesState,
     informeState,
     onCasoActualizado: onCasoDesdeAutosave,
-    enabled: Boolean(casoId) && !cargandoCaso && tabActivo !== TABS_BBVA_CAT.CAT,
+    enabled: Boolean(casoId) && !cargandoCaso && !soloConsulta && tabActivo !== TABS_BBVA_CAT.CAT,
     guardarLiquidador: esModuloListado
       ? guardarLiquidadorEnCasoBbvaCatListado
       : guardarLiquidadorEnCasoBbvaCat,
@@ -492,12 +494,12 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
     recursoId: casoId || '',
     titulo: 'Workspace BBVA CAT',
     formData: draftPayload,
-    enabled: Boolean(casoId) && !cargandoCaso,
+    enabled: Boolean(casoId) && !cargandoCaso && !soloConsulta,
     onRestoreAvailable: onDraftRestoreAvailable,
   });
 
   const mostrarBotonGuardarSuperior =
-    casoId && tabActivo !== TABS_BBVA_CAT.CAT;
+    casoId && !soloConsulta && tabActivo !== TABS_BBVA_CAT.CAT;
 
   return (
     <div className={`${root} ${expressScope}`}>
@@ -513,7 +515,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {casoId && puedeVideoperitaje && (
+            {casoId && puedeVideoperitaje && !soloConsulta && (
               <button
                 type="button"
                 className={expressBtnGhost}
@@ -660,7 +662,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
                   setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
-                onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
+                onGuardarEnCaso={casoId && !soloConsulta ? handleGuardarInforme : undefined}
                 onCasoChange={setCasoBbvaCat}
                 guardandoCaso={guardando}
               />
@@ -684,7 +686,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
                     });
                   }
                 }}
-                onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onGuardarEnCaso={casoId && !soloConsulta ? handleGuardarLiquidador : undefined}
                 onCasoChange={setCasoBbvaCat}
                 guardandoCaso={guardando}
               />
@@ -692,7 +694,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
           </div>
         </div>
       </div>
-      {casoId && (
+      {casoId && !soloConsulta && (
         <AsistenteArnaldPanel
           modulo={esModuloListado ? 'bbva-cat-listado' : 'bbva-cat'}
           casoId={casoId}

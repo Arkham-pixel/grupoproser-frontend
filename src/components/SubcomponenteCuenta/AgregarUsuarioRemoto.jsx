@@ -16,6 +16,7 @@ const ROLES = [
   { value: 'contractor_zurich', label: 'Contractor Zurich' },
   { value: 'contractor_solo_zurich', label: 'Solo Zurich' },
   { value: 'contractor_solo_bbva', label: 'Solo BBVA' },
+  { value: 'contractor_consulta_bbva', label: 'Consulta BBVA CAT' },
   { value: 'contractor_solo_equidad', label: 'Equidad FDM' },
   { value: 'contractor_solo_equidad_cat', label: 'Equidad CAT' },
   { value: 'contractor_solo_express', label: 'Express' },

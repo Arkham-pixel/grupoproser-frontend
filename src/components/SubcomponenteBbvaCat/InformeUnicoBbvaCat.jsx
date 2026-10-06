@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { esRolConsultaBbva } from '../../config/roles.js';
 import { FaFileWord, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
 import {
   Campo,
@@ -74,6 +75,7 @@ export default function InformeUnicoBbvaCat({
   liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
+  const soloLectura = esRolConsultaBbva();
   const api = useMemo(() => bbvaCatArchivosApi(origen), [origen]);
   const [informe, setInforme] = useState(() => defaultInformeUnicoBbvaCat(casoBbvaCat || {}));
   const [liquidador, setLiquidador] = useState(() =>
@@ -330,6 +332,8 @@ export default function InformeUnicoBbvaCat({
       <p className="rounded-md border border-[#004481]/15 bg-sky-50/70 px-3 py-2 font-body text-xs leading-relaxed text-[#004481] dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
         {t('bbvaCat.reportUnique.archiveHint')}
       </p>
+
+      <fieldset disabled={soloLectura} className="space-y-5 border-0 p-0 m-0 disabled:opacity-90">
 
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -687,6 +691,8 @@ export default function InformeUnicoBbvaCat({
         />
       </section>
 
+      </fieldset>
+
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
         <button
           type="button"
@@ -696,7 +702,7 @@ export default function InformeUnicoBbvaCat({
         >
           <FaFileWord /> {t('bbvaCat.reportUnique.downloadWord')}
         </button>
-        {onGuardarEnCaso && (
+        {onGuardarEnCaso && !soloLectura && (
           <button
             type="button"
             className={expressBtnPrimary}

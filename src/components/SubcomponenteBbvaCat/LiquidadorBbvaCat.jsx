@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { esRolConsultaBbva } from '../../config/roles.js';
 import { FaFileExcel, FaFilePdf, FaFileWord } from 'react-icons/fa';
 import {
   expressBtnGhost,
@@ -62,6 +63,7 @@ export default function LiquidadorBbvaCat({
   liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
+  const soloLectura = esRolConsultaBbva();
   const api = useMemo(() => bbvaCatArchivosApi(origen), [origen]);
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {})
@@ -354,7 +356,7 @@ export default function LiquidadorBbvaCat({
             <FaFileWord /> {t('bbvaCat.settlement.downloadFiniquito')}
           </button>
         </div>
-        {onGuardarEnCaso && (
+        {onGuardarEnCaso && !soloLectura && (
           <button
             type="button"
             className={expressBtnPrimary}
@@ -394,14 +396,14 @@ export default function LiquidadorBbvaCat({
               };
             });
           }}
-          disabled={!!exportando || guardandoCaso}
+          disabled={!!exportando || guardandoCaso || soloLectura}
           mostrarUsarComoBase={false}
           usarComoBasePorDefecto={false}
         />
         <LiquidacionCotizacionPdfBbvaCat
           liquidador={liquidador}
           caso={casoBbvaCat || {}}
-          disabled={!!exportando || guardandoCaso}
+          disabled={!!exportando || guardandoCaso || soloLectura}
           onDeducibleChange={(dedPatch) =>
             setLiquidador((prev) =>
               patchLiquidacionCotizacionPdfBbvaCat(prev, { deducibleFormato: dedPatch })
@@ -419,6 +421,7 @@ export default function LiquidadorBbvaCat({
         encabezado={enc}
         liquidador={liquidador}
         itemsDetalle={itemsDetalle}
+        soloLectura={soloLectura}
         onEncabezadoChange={actualizarEncabezado}
         onTipoLiquidadorChange={actualizarTipoLiquidador}
         onDeducibleFormatoChange={(patch) =>

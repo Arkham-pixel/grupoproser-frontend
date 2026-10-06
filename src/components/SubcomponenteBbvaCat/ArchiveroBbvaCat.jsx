@@ -16,6 +16,7 @@ import {
   formatDate,
   resolverOrigenCargaBbvaCat,
 } from './bbvaCatHelpers.js';
+import { esRolConsultaBbva } from '../../config/roles.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 import { descargarArchiveroBbvaCatZip } from './descargarArchiveroBbvaCatZip.js';
 import { abrirODescargarArchivo } from '../../services/storageSignedUrl.js';
@@ -86,8 +87,10 @@ export default function ArchiveroBbvaCat({
   origenCarga: origenCargaProp,
   etiquetas,
   etiquetaInicial = 'GENERAL',
+  soloLectura: soloLecturaProp,
 }) {
   const { t } = useTranslation();
+  const soloLectura = Boolean(soloLecturaProp) || esRolConsultaBbva();
   const inputRef = useRef(null);
   const api = useMemo(() => bbvaCatArchivosApi(origen), [origen]);
   const origenCarga = useMemo(
@@ -234,6 +237,7 @@ export default function ArchiveroBbvaCat({
   };
 
   const recibirArchivos = async (fileList) => {
+    if (soloLectura) return;
     const files = copiarArchivos(fileList);
     if (!files.length || subiendo) return;
 
@@ -298,6 +302,7 @@ export default function ArchiveroBbvaCat({
   };
 
   const handleDelete = async (archivoId) => {
+    if (soloLectura) return;
     if (!archivoId) return;
     if (!window.confirm(t('bbvaCat.archive.confirmDelete'))) return;
     setError(null);
@@ -409,7 +414,11 @@ export default function ArchiveroBbvaCat({
             })}
           </p>
           <p className="mt-1 font-body text-xs text-gray-600 dark:text-gray-300">
-            {origenCarga === 'analista'
+            {soloLectura
+              ? t('bbvaCat.permissions.consultaHint', {
+                  defaultValue: 'Su rol de consulta solo permite ver el caso; no puede editar nada.',
+                })
+              : origenCarga === 'analista'
               ? t('bbvaCat.archive.uploadingAsAnalyst')
               : t('bbvaCat.archive.uploadingAsAdjuster')}
           </p>
@@ -441,6 +450,8 @@ export default function ArchiveroBbvaCat({
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
+      {!soloLectura && (
+      <div className="space-y-4">
       <div
         className={`flex cursor-pointer flex-col items-stretch gap-3 rounded-xl border-2 border-dashed p-4 text-center sm:p-6 ${
           arrastrando
@@ -575,6 +586,8 @@ export default function ArchiveroBbvaCat({
           </div>
         </div>
       )}
+      </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
@@ -662,7 +675,7 @@ export default function ArchiveroBbvaCat({
                                 {t('bbvaCat.archive.download')}
                               </button>
                             )}
-                            {arch._id ? (
+                            {arch._id && !soloLectura ? (
                               <button
                                 type="button"
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"
@@ -728,7 +741,7 @@ export default function ArchiveroBbvaCat({
                                 {t('bbvaCat.archive.download')}
                               </button>
                             )}
-                            {arch._id ? (
+                            {arch._id && !soloLectura ? (
                               <button
                                 type="button"
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40"

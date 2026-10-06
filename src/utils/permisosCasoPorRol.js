@@ -4,6 +4,7 @@
  * - ajustador_lider: edita todo (quien asigna)
  * - ajustador: edita todo excepto ajustadorLider, ajustador, inspector
  * - inspector: solo ve y modifica estado
+ * - contractor_consulta_bbva: solo ve BBVA CAT (call center)
  * - admin / soporte: todo
  * - resto (usuario, etc.): todo (compatibilidad)
  *
@@ -11,7 +12,7 @@
  * Excepción agenda CAT: login 1130615470 ve todos los calendarios generales como admin.
  */
 
-import { normalizarRol, obtenerRolAlmacenado, esRolEra } from '../config/roles.js';
+import { esRolConsultaBbva, esRolEra, normalizarRol, obtenerRolAlmacenado } from '../config/roles.js';
 import { identidadEsLiderDeFuente } from './lideresModuloCatastrofico.js';
 import {
   casoMarcadoFirmaEra,
@@ -340,6 +341,7 @@ export function esCampoAsignacionCaso(campo) {
  */
 export function puedeEditarTodoElCaso(rol = obtenerRolAlmacenado(), opts = {}) {
   const r = normalizarRol(rol);
+  if (esRolConsultaBbva(r)) return false;
   if (esRolAdminOSoporte(r)) return true;
   if (esIdentidadLiderDeModulo(opts, opts.modulo)) return true;
   if (r === ROL_AJUSTADOR_LIDER && !opts.modulo) return true;
@@ -356,6 +358,7 @@ export function puedeEditarCampoCaso(rol = obtenerRolAlmacenado(), campo, opts =
   const key = String(campo || '');
   if (!key) return false;
   if (puedeEditarTodoElCaso(r, opts)) return true;
+  if (esRolConsultaBbva(r)) return false;
   if (esRolEra(r) || esIdentidadEra(opts)) {
     const modo = modoEdicionEraDelCaso(opts.caso, { ...opts, rol: r });
     if (modo === 'inspector') return CAMPOS_OPERATIVOS_INSPECTOR.includes(key);
@@ -389,6 +392,9 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}
   const identidad = { ...opts, rol: r };
   if (puedeEditarTodoElCaso(r, identidad)) {
     return { payload: { ...payload }, soloEstado: false };
+  }
+  if (esRolConsultaBbva(r)) {
+    return { payload: {}, soloEstado: false, denegado: true };
   }
   if (esRolEra(r) || esIdentidadEra(identidad)) {
     const modo = modoEdicionEraDelCaso(opts.caso || base, identidad);

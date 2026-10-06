@@ -218,6 +218,7 @@ if (!esAdminOSoporte) {
                 <option value="contractor_zurich">{t('roles.contractor_zurich')}</option>
                 <option value="contractor_solo_zurich">{t('roles.contractor_solo_zurich')}</option>
                 <option value="contractor_solo_bbva">{t('roles.contractor_solo_bbva')}</option>
+                <option value="contractor_consulta_bbva">{t('roles.contractor_consulta_bbva', 'Consulta BBVA CAT')}</option>
                 <option value="contractor_solo_equidad">{t('roles.contractor_solo_equidad', 'Equidad FDM')}</option>
                 <option value="contractor_solo_equidad_cat">{t('roles.contractor_solo_equidad_cat', 'Equidad CAT')}</option>
                 <option value="contractor_solo_express">{t('roles.contractor_solo_express', 'Express')}</option>

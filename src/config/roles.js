@@ -14,6 +14,7 @@ export const ROLES_VALIDOS = [
   'contractor_sura',
   'contractor_solo_zurich',
   'contractor_solo_bbva',
+  'contractor_consulta_bbva',
   'contractor_solo_equidad',
   'contractor_solo_equidad_cat',
   'contractor_solo_express',
@@ -30,6 +31,9 @@ export const ROL_SOLO_ZURICH = 'contractor_solo_zurich';
 
 /** Contratista solo módulo BBVA CAT. */
 export const ROL_SOLO_BBVA = 'contractor_solo_bbva';
+
+/** Call center: solo consulta BBVA CAT (sin editar). */
+export const ROL_CONSULTA_BBVA = 'contractor_consulta_bbva';
 
 /** Contratista solo bandeja Equidad FDM. */
 export const ROL_SOLO_EQUIDAD = 'contractor_solo_equidad';
@@ -53,6 +57,7 @@ export const ROLES_CONTRACTOR = [
   ...ROLES_CONTRACTOR_TRES,
   ROL_SOLO_ZURICH,
   ROL_SOLO_BBVA,
+  ROL_CONSULTA_BBVA,
   ROL_SOLO_EQUIDAD,
   ROL_SOLO_EQUIDAD_CAT,
   ROL_SOLO_EXPRESS,
@@ -94,6 +99,21 @@ export const CONFIG_SOLO_BBVA = {
   rutasExcluidas: ['/bbva-cat/listado/reporte'],
   incluirHome: true,
   etiqueta: 'BBVA',
+};
+
+export const CONFIG_CONSULTA_BBVA = {
+  seccionesMenu: ['bbvaCat'],
+  inicio: '/bbva-cat/listado/reporte',
+  prefijosRuta: ['/inicio', '/bbva-cat'],
+  rutasExcluidas: [
+    '/bbva-cat/carga',
+    '/bbva-cat/bloques',
+    '/bbva-cat/listado/mis-casos',
+    '/bbva-cat/listado/analista',
+  ],
+  incluirHome: true,
+  etiqueta: 'Consulta BBVA CAT',
+  soloLectura: true,
 };
 
 export const CONFIG_SOLO_EQUIDAD = {
@@ -179,6 +199,7 @@ export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   if (r === ROL_SOLO_ZURICH) return CONFIG_SOLO_ZURICH;
   if (r === ROL_SOLO_BBVA) return CONFIG_SOLO_BBVA;
+  if (r === ROL_CONSULTA_BBVA) return CONFIG_CONSULTA_BBVA;
   if (r === ROL_SOLO_EQUIDAD) return CONFIG_SOLO_EQUIDAD;
   if (r === ROL_SOLO_EQUIDAD_CAT) return CONFIG_SOLO_EQUIDAD_CAT;
   if (r === ROL_SOLO_EXPRESS) return CONFIG_SOLO_EXPRESS;
@@ -209,6 +230,10 @@ export function esRolSoloBbva(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_BBVA;
 }
 
+export function esRolConsultaBbva(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_CONSULTA_BBVA;
+}
+
 export function esRolSoloEquidad(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_EQUIDAD;
 }
@@ -225,7 +250,7 @@ export function esRolSoloExpress(rol = obtenerRolAlmacenado()) {
 export function puedeVerAgendaCatastrofico(rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   if (!r || r === 'visualizador' || r === 'puertos' || r === 'externo') return false;
-  if (r === ROL_SOLO_EQUIDAD || r === ROL_SOLO_EXPRESS) return false;
+  if (r === ROL_SOLO_EQUIDAD || r === ROL_SOLO_EXPRESS || r === ROL_CONSULTA_BBVA) return false;
   return true;
 }
 

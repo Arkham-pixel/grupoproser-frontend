@@ -81,7 +81,7 @@ import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { sesionPuedeVideoperitaje } from '../config/videoperitajePermitidos.js';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
-import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado, puedeVerAgendaCatastrofico } from '../config/roles';
+import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolConsultaBbva, esRolSoloBbva, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado, puedeVerAgendaCatastrofico } from '../config/roles';
 import { useIsMobileShell } from '../hooks/useMediaQuery';
 import { apiRequest } from '../config/apiConfig.js';
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
@@ -961,7 +961,14 @@ export default function Layout() {
           ]
       : [],
     bbvaCat: !accesoRestringido || configContractor?.seccionesMenu?.includes('bbvaCat')
-      ? [
+      ? esRolConsultaBbva(rolNorm)
+        ? [
+            { path: '/bbva-cat/listado/reporte', icon: FaTable, label: t('nav.bbvaCatListadoReport') },
+            { path: '/bbva-cat/listado/dashboard', icon: FaChartBar, label: t('nav.bbvaCatListadoDashboard') },
+            { path: '/bbva-cat/boletin-diario', icon: FaCalendarAlt, label: t('nav.bbvaCatDailyBulletin') },
+            { path: '/bbva-cat/archivero', icon: FaFolderOpen, label: t('nav.bbvaCatArchive') },
+          ]
+        : [
           { path: '/bbva-cat/listado/analista', icon: FaUserCheck, label: t('nav.bbvaCatListadoAnalista') },
           { path: '/bbva-cat/carga', icon: FaPlus, label: t('nav.bbvaCatAddCase') },
           { path: '/bbva-cat/listado/dashboard', icon: FaChartBar, label: t('nav.bbvaCatListadoDashboard') },
