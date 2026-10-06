@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaSave } from 'react-icons/fa';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -12,6 +12,7 @@ import {
   expressPageWrap,
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   fetchAllCasosPrevisora,
   getCasoPrevisoraById,
@@ -24,7 +25,11 @@ import {
   guardarInformeUnicoEnCasoPrevisoraListado,
   guardarLiquidadorEnCasoPrevisoraListado,
 } from '../../services/previsoraListadoService.js';
-import { calcularLiquidacionPrevisora, normalizarTipoInformePrevisora } from './liquidadorPrevisoraHelpers.js';
+import {
+  calcularLiquidacionPrevisora,
+  fusionarEncabezadoDesdeFichaPrevisora,
+  normalizarTipoInformePrevisora,
+} from './liquidadorPrevisoraHelpers.js';
 import {
   casoPrevisoraNsrOmitido,
   esStubLiquidadorNsr,
@@ -38,6 +43,7 @@ import usePrevisoraCasoAutosave from '../../hooks/usePrevisoraCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import FormularioPrevisora from './FormularioPrevisora.jsx';
 
 const LiquidadorPrevisora = lazy(() => import('./LiquidadorPrevisora.jsx'));
 const InspeccionCatPrevisora = lazy(() => import('./InspeccionCatPrevisora.jsx'));
@@ -162,6 +168,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
   const [cargandoNsr, setCargandoNsr] = useState(false);
+  const [gestionarAbierto, setGestionarAbierto] = useState(false);
 
   const casoId = casoPrevisora?._id || casoIdFromQuery || null;
   const nsrFetchKeyRef = useRef('');
@@ -237,6 +244,8 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
                 encabezado: { ...(incoming.encabezado || {}), ...(prev?.encabezado || {}) },
                 observaciones: prev?.observaciones || incoming.observaciones,
                 cotizacionPdf: prev?.cotizacionPdf || incoming.cotizacionPdf,
+                cotizacionesPdfRiesgos:
+                  prev?.cotizacionesPdfRiesgos || incoming.cotizacionesPdfRiesgos,
               };
             }
             if (scoreContenidoLiquidadorNsr(prev) > scoreContenidoLiquidadorNsr(incoming)) {
@@ -306,6 +315,36 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
     }
     return t(esModuloListado ? 'previsora.workspace.subtitleListado' : 'previsora.workspace.subtitle');
   }, [casoPrevisora, t, esModuloListado]);
+
+  const aplicarFichaAlWorkspace = useCallback((fresco, prevCaso) => {
+    const merged = {
+      ...(prevCaso || {}),
+      ...(fresco || {}),
+      liquidador: fresco?.liquidador || prevCaso?.liquidador,
+      informeUnico: fresco?.informeUnico || prevCaso?.informeUnico,
+      archivos: Array.isArray(fresco?.archivos) ? fresco.archivos : prevCaso?.archivos,
+    };
+    setCasoPrevisora((prev) => fusionarCasoPrevisoraConservandoNsr(prev, merged) || merged);
+    setLiquidadorState((prev) => {
+      if (!prev) return prev;
+      return fusionarEncabezadoDesdeFichaPrevisora(prev, merged);
+    });
+    return merged;
+  }, []);
+
+  const abrirGestionar = async () => {
+    if (casoId) {
+      try {
+        const fresco = esModuloListado
+          ? await getCasoPrevisoraListadoById(casoId)
+          : await getCasoPrevisoraById(casoId);
+        aplicarFichaAlWorkspace(fresco, casoPrevisora);
+      } catch {
+        /* se abre con lo que hay en memoria */
+      }
+    }
+    setGestionarAbierto(true);
+  };
 
   const casosFiltradosPicker = useMemo(() => {
     const q = String(busquedaCaso || '')
@@ -532,6 +571,15 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {casoId && (
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => abrirGestionar()}
+              >
+                <FaEdit /> {t('previsora.report.manage')}
+              </button>
+            )}
             {mostrarBotonGuardarSuperior && (
               <button
                 type="button"
@@ -674,7 +722,11 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
                       if (limpio && 'nsrOmitido' in limpio) delete limpio.nsrOmitido;
                       setLiquidadorState(limpio);
                       setTotalesState(tot);
-                      if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
+                      if (
+                        liq &&
+                        (Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf') ||
+                          Object.prototype.hasOwnProperty.call(liq, 'cotizacionesPdfRiesgos'))
+                      ) {
                         setInformeState((prev) => {
                           if (!prev) return prev;
                           const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
@@ -695,6 +747,37 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
           </div>
         </div>
       </div>
+      {gestionarAbierto && casoPrevisora && (
+        <ExpressModal
+          open
+          onClose={() => setGestionarAbierto(false)}
+          title={t('previsora.page.editCase', { caseNumber: casoPrevisora.consecutivo || '' })}
+          wide
+        >
+          <div className="p-4 sm:p-6">
+            <FormularioPrevisora
+              embed
+              origen={esModuloListado ? 'listado' : 'cat'}
+              initialData={casoPrevisora}
+              onClose={() => setGestionarAbierto(false)}
+              onSaved={async (guardado) => {
+                aplicarFichaAlWorkspace(guardado, casoPrevisora);
+                try {
+                  const fresco = esModuloListado
+                    ? await getCasoPrevisoraListadoById(casoId)
+                    : await getCasoPrevisoraById(casoId);
+                  aplicarFichaAlWorkspace(fresco, {
+                    ...(casoPrevisora || {}),
+                    ...(guardado || {}),
+                  });
+                } catch {
+                  /* ya aplicamos el guardado */
+                }
+              }}
+            />
+          </div>
+        </ExpressModal>
+      )}
       <ArnaldDraftChrome
         draftStatus={draftStatus}
         lastDraftAt={lastDraftAt}

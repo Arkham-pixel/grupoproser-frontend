@@ -38,6 +38,10 @@ import {
   reservaSugeridaPrevisora,
 } from './liquidadorPrevisoraHelpers.js';
 import { urlDescargaArchivoPrevisora } from '../../services/previsoraService.js';
+import {
+  paginasTodasCotizacionesPdfRiesgosPrevisora,
+  resumenCotizacionesPdfRiesgosPrevisora,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { candidatosUrlArchivoParaFetch } from '../../services/storageSignedUrl.js';
 import { fetchBytesImagenUrl } from '../../utils/fetchBytesImagenUrl.js';
@@ -497,7 +501,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
 }
 
 /** Tabla N° | ITEM | VALOR — liquidador (sin colores) */
-function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
+function _tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
   const lista = [...items];
   while (lista.length < 5) lista.push({ item: '', valor: '' });
 
@@ -714,7 +718,7 @@ async function cargarMapaRiesgoDataUrl(info = {}) {
   return null;
 }
 
-function extraerLatLngTexto(texto) {
+function _extraerLatLngTexto(texto) {
   const parts = String(texto || '')
     .split(',')
     .map((c) => parseFloat(String(c).trim()));
@@ -815,7 +819,6 @@ async function construirBloqueDaniosUbicacionPrevisora({ info = {}, caso = {} } 
   const descripcion = txt(info.descripcionDanios, '');
   const coordenadas = txt(info.coordenadasRiesgo, '');
   const direccion = txt(info.direccionRiesgo || caso.direccionPredio, '');
-  const coords = extraerLatLngTexto(coordenadas);
   const mapaDataUrl = await cargarMapaRiesgoDataUrl(info);
 
   bloques.push(heading('2. Descripción de los daños y/o perjuicios'));
@@ -1157,10 +1160,9 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
     );
   }
 
-  const fotosCotizacionRaw = [
-    ...(Array.isArray(info?.fotosCotizacion) ? info.fotosCotizacion : []),
-    ...(Array.isArray(liq?.cotizacionPdf?.paginas) ? liq.cotizacionPdf.paginas : []),
-  ].filter((f) => f && (f.ruta || f.file || f.preview || f._id));
+  const fotosCotizacionRaw = paginasTodasCotizacionesPdfRiesgosPrevisora(liq, info).filter(
+    (f) => f && (f.ruta || f.file || f.preview || f._id)
+  );
   const vistosCotiz = new Set();
   const fotosCotizacion = [];
   for (const f of fotosCotizacionRaw) {
@@ -1209,14 +1211,23 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       )
     );
   }
-  const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
+  const resumenRiesgosWord = resumenCotizacionesPdfRiesgosPrevisora(liq);
+  const montoCotizTxt = money(
+    totales.cotizacionMonto || resumenRiesgosWord.total || liq?.cotizacionPdf?.montoFinal
+  );
+  const detalleRiesgosTxt =
+    resumenRiesgosWord.nUsadas > 1
+      ? ` Suma de ${resumenRiesgosWord.nUsadas} riesgos: ${resumenRiesgosWord.usadas
+          .map((f) => `${f.etiqueta} ${money(f.monto)}`)
+          .join('; ')}.`
+      : '';
   const seccionCotizacion = cotizacionParrafos.length
     ? [
         heading('Cotización de reparación'),
         p(
           totales.origenPresupuesto === 'cotizacion'
-            ? `Soporte de la cotización usada como base de liquidación. Monto final: ${montoCotizTxt}.`
-            : `Captura de la cotización adjunta (${cotizacionesIncluidas} página(s)).`,
+            ? `Soporte de la cotización usada como base de liquidación. Monto final: ${montoCotizTxt}.${detalleRiesgosTxt}`
+            : `Captura de la cotización adjunta (${cotizacionesIncluidas} página(s)).${detalleRiesgosTxt}`,
           { after: 120, size: SIZE_12 }
         ),
         ...cotizacionParrafos,
@@ -1226,6 +1237,7 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
   const usaCotizacion = totales.origenPresupuesto === 'cotizacion';
   const tieneCotizacionPdf =
     usaCotizacion ||
+    resumenRiesgosWord.filas.some((f) => f.tieneArchivo) ||
     (Array.isArray(liq?.cotizacionPdf?.paginas) && liq.cotizacionPdf.paginas.length > 0) ||
     Boolean(liq?.cotizacionPdf?.archivoPdf);
 

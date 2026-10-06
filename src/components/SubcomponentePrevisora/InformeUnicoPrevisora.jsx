@@ -24,6 +24,7 @@ import {
   formDataNsrDesdeLiquidadorPrevisora,
   formatearMonto,
   formatDateLarga,
+  fusionarEncabezadoDesdeFichaPrevisora,
   mapcasoPrevisoraALiquidador,
   normalizarTipoInformePrevisora,
   reservaSugeridaPrevisora,
@@ -41,10 +42,11 @@ import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/Secci
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { contarItemsPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import SelectorTipoInformePrevisora from './SelectorTipoInformePrevisora.jsx';
-import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import CotizacionesPdfRiesgosPrevisora from './CotizacionesPdfRiesgosPrevisora.jsx';
 import {
   serializarPaginasCotizacion,
   montoCotizacionPdf,
+  resumenCotizacionesPdfRiesgosPrevisora,
   usaCotizacionComoBasePresupuesto,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { scoreInformeLlenoPrevisora } from './previsoraHelpers.js';
@@ -195,9 +197,23 @@ export default function InformeUnicoPrevisora({
         : calcularLiquidacionPrevisora(liquidador),
     [liquidador, esPreliminar]
   );
+  const resumenRiesgos = useMemo(
+    () => resumenCotizacionesPdfRiesgosPrevisora(liquidador),
+    [liquidador]
+  );
+  const encPoliza = liquidador?.encabezado || {};
+  const datoPoliza = (claveCaso, claveEnc) => {
+    const a = casoPrevisora?.[claveCaso];
+    if (a != null && String(a).trim() && String(a) !== '—') return a;
+    const b = encPoliza[claveEnc || claveCaso];
+    if (b != null && String(b).trim()) return b;
+    return '';
+  };
   const criterio = totales.criterio || {};
   const tieneCotizacionPdf = Boolean(
-    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+    resumenRiesgos.usaComoBase ||
+      resumenRiesgos.filas.some((f) => f.tieneArchivo) ||
+      (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
   );
   const nItemsNsr = contarItemsPresupuestoNsr(liquidador);
@@ -261,6 +277,63 @@ export default function InformeUnicoPrevisora({
     });
     setLiquidador(liq);
   }, [casoPrevisora?._id]);
+
+  useEffect(() => {
+    setLiquidador((prev) => fusionarEncabezadoDesdeFichaPrevisora(prev, casoPrevisora));
+  }, [
+    casoPrevisora?.tomador,
+    casoPrevisora?.asegurado,
+    casoPrevisora?.direccionPredio,
+    casoPrevisora?.numeroPoliza,
+    casoPrevisora?.fechaInicioPoliza,
+    casoPrevisora?.fechaFinPoliza,
+    casoPrevisora?.cobertura,
+    casoPrevisora?.estadoPagoPrimas,
+    casoPrevisora?.ciudad,
+    casoPrevisora?.departamento,
+    casoPrevisora?.siniestro,
+    casoPrevisora?.valorAseguradoInmueble,
+    casoPrevisora?.valorAseguradoContenidos,
+  ]);
+
+  useEffect(() => {
+    setInforme((prev) => {
+      const nextFilas = completarFilasPolizaCoberturaPrevisora(prev.filasPolizaCobertura, {
+        caso: casoPrevisora,
+        encabezado: liquidador?.encabezado,
+        informe: prev,
+        liquidador,
+      });
+      const prevFilas = Array.isArray(prev.filasPolizaCobertura) ? prev.filasPolizaCobertura : [];
+      const igual =
+        nextFilas.length === prevFilas.length &&
+        nextFilas.every((f, i) => {
+          const a = prevFilas[i] || {};
+          return (
+            String(a.concepto || '') === String(f.concepto || '') &&
+            String(a.analisis || '') === String(f.analisis || '') &&
+            String(a.conclusion || '') === String(f.conclusion || '')
+          );
+        });
+      if (igual) return prev;
+      return { ...prev, filasPolizaCobertura: nextFilas };
+    });
+  }, [
+    casoPrevisora?.tomador,
+    casoPrevisora?.numeroPoliza,
+    casoPrevisora?.fechaInicioPoliza,
+    casoPrevisora?.fechaFinPoliza,
+    casoPrevisora?.cobertura,
+    casoPrevisora?.direccionPredio,
+    casoPrevisora?.ciudad,
+    casoPrevisora?.departamento,
+    casoPrevisora?.reserva,
+    liquidador?.encabezado?.poliza,
+    liquidador?.encabezado?.direccion,
+    liquidador?.encabezado?.ciudad,
+    liquidador?.liquidacionCatastrofico?.deducible,
+    totales.totalIndemnizar,
+  ]);
 
   useEffect(() => {
     if (!liquidadorInicial?.evaluacionSismicaNSR10) return;
@@ -367,9 +440,12 @@ export default function InformeUnicoPrevisora({
     setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
   };
 
-  const handleCotizacionChange = (cotizacionPdf) => {
-    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
-    setCampo('fotosCotizacion', serializarPaginasCotizacion(cotizacionPdf?.paginas));
+  const handleCotizacionRiesgosChange = (patch) => {
+    setLiquidador((prev) => ({ ...prev, ...patch }));
+    setCampo(
+      'fotosCotizacion',
+      serializarPaginasCotizacion(patch?.cotizacionPdf?.paginas)
+    );
   };
 
   const restaurarInfoEvento = () => {
@@ -614,42 +690,52 @@ export default function InformeUnicoPrevisora({
         <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-gray-500">{t('previsora.fields.tomador')}</dt>
-            <dd className="font-medium">{casoPrevisora?.tomador || '—'}</dd>
+            <dd className="font-medium">{datoPoliza('tomador') || '—'}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('previsora.fields.numeroPoliza')}</dt>
-            <dd className="font-medium">{casoPrevisora?.numeroPoliza || '—'}</dd>
+            <dd className="font-medium">{datoPoliza('numeroPoliza', 'poliza') || '—'}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('previsora.fields.fechaInicioPoliza')}</dt>
             <dd className="font-medium">
-              {formatDateLarga(casoPrevisora?.fechaInicioPoliza)}
+              {formatDateLarga(
+                datoPoliza('fechaInicioPoliza') || null
+              )}
             </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('previsora.fields.fechaFinPoliza')}</dt>
             <dd className="font-medium">
-              {formatDateLarga(casoPrevisora?.fechaFinPoliza)}
+              {formatDateLarga(datoPoliza('fechaFinPoliza') || null)}
             </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('previsora.fields.cobertura')}</dt>
-            <dd className="font-medium">{casoPrevisora?.cobertura || '—'}</dd>
+            <dd className="font-medium">
+              {datoPoliza('cobertura') || encPoliza.evento || '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('previsora.fields.estadoPagoPrimas')}</dt>
-            <dd className="font-medium">{casoPrevisora?.estadoPagoPrimas || '—'}</dd>
+            <dd className="font-medium">
+              {datoPoliza('estadoPagoPrimas') || '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('previsora.fields.direccionPredio')}</dt>
-            <dd className="font-medium">{casoPrevisora?.direccionPredio || '—'}</dd>
+            <dd className="font-medium">
+              {datoPoliza('direccionPredio', 'direccion') ||
+                informe.direccionRiesgo ||
+                '—'}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">
               {t('previsora.fields.ciudad')} / {t('previsora.fields.departamento')}
             </dt>
             <dd className="font-medium">
-              {casoPrevisora?.ciudad || '—'} / {casoPrevisora?.departamento || '—'}
+              {datoPoliza('ciudad') || '—'} / {datoPoliza('departamento') || '—'}
             </dd>
           </div>
         </dl>
@@ -704,10 +790,9 @@ export default function InformeUnicoPrevisora({
               })}
             </p>
           ) : null}
-          <CotizacionPdfLiquidacion
-            i18nPrefix="previsora.settlement"
-            value={liquidador.cotizacionPdf}
-            onChange={handleCotizacionChange}
+          <CotizacionesPdfRiesgosPrevisora
+            liquidador={liquidador}
+            onChange={handleCotizacionRiesgosChange}
             compactEmpty={mostrarPresupuestoSinPdf}
             casoId={casoPrevisora?._id}
             api={api}
@@ -799,9 +884,11 @@ export default function InformeUnicoPrevisora({
             recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
             ocultarPresupuestoEscrito={tieneCotizacionPdf}
             totalPresupuestoOverride={
-              usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-                ? montoCotizacionPdf(liquidador.cotizacionPdf)
-                : null
+              resumenRiesgos.usaComoBase
+                ? resumenRiesgos.total
+                : usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+                  ? montoCotizacionPdf(liquidador.cotizacionPdf)
+                  : null
             }
           />
           </SeccionModoLiquidadorCat>

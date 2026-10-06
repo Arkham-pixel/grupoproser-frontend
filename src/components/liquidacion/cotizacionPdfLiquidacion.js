@@ -530,3 +530,202 @@ export function paginasTodasCotizacionesPdfAlfa(liquidador = {}, informe = null)
   const extra = delLiq.filter((f) => !keys.has(String(f._id || f.ruta || '')));
   return [...delInforme, ...extra];
 }
+
+/** --- Previsora: varios riesgos / cotizaciones PDF --- */
+
+function idRiesgoCotizacion() {
+  return `riesgo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function crearRiesgoCotizacionPdfPrevisora(parcial = {}, indice = 0) {
+  const n = Math.max(1, Number(indice) + 1 || 1);
+  return {
+    id: String(parcial.id || idRiesgoCotizacion()),
+    etiqueta: String(parcial.etiqueta || `Riesgo ${n}`).trim() || `Riesgo ${n}`,
+    cotizacion:
+      parcial.cotizacion && typeof parcial.cotizacion === 'object'
+        ? parcial.cotizacion
+        : null,
+  };
+}
+
+/**
+ * Normaliza `cotizacionesPdfRiesgos[]`.
+ * Si no hay array pero sí `cotizacionPdf` legacy, lo convierte en Riesgo 1.
+ * Siempre deja al menos un slot vacío listo para cargar.
+ */
+export function normalizarCotizacionesPdfRiesgosPrevisora(liquidador = {}) {
+  const raw = Array.isArray(liquidador?.cotizacionesPdfRiesgos)
+    ? liquidador.cotizacionesPdfRiesgos
+    : [];
+  const limpios = [];
+  raw.forEach((r, i) => {
+    if (!r || typeof r !== 'object') return;
+    const cot =
+      r.cotizacion && typeof r.cotizacion === 'object'
+        ? r.cotizacion
+        : r.paginas ||
+            r.montoFinal != null ||
+            r.nombreOriginal ||
+            r.archivoPdf
+          ? r
+          : null;
+    limpios.push(
+      crearRiesgoCotizacionPdfPrevisora(
+        {
+          id: r.id,
+          etiqueta: r.etiqueta,
+          cotizacion: cot && typeof cot === 'object' ? cot : null,
+        },
+        i
+      )
+    );
+  });
+  if (!limpios.length && liquidador?.cotizacionPdf && typeof liquidador.cotizacionPdf === 'object') {
+    limpios.push(
+      crearRiesgoCotizacionPdfPrevisora(
+        { id: 'riesgo-1', etiqueta: 'Riesgo 1', cotizacion: liquidador.cotizacionPdf },
+        0
+      )
+    );
+  }
+  if (!limpios.length) {
+    limpios.push(crearRiesgoCotizacionPdfPrevisora({ id: 'riesgo-1', etiqueta: 'Riesgo 1' }, 0));
+  }
+  return limpios;
+}
+
+/** Fusiona riesgos en un `cotizacionPdf` legacy (suma + todas las páginas) para Word/cálculo. */
+export function sincronizarCotizacionPdfDesdeRiesgosPrevisora(riesgos = []) {
+  const list = Array.isArray(riesgos) ? riesgos : [];
+  const conDatos = list.filter((r) => {
+    const c = r?.cotizacion;
+    if (!c || typeof c !== 'object') return false;
+    return (
+      montoCotizacionPdf(c) > 0 ||
+      (Array.isArray(c.paginas) && c.paginas.length > 0) ||
+      Boolean(c.archivoPdf) ||
+      Boolean(c.nombreOriginal)
+    );
+  });
+  if (!conDatos.length) return null;
+
+  const usadas = conDatos.filter((r) => usaCotizacionComoBasePresupuesto(r.cotizacion));
+  const total = usadas.reduce((acc, r) => acc + montoCotizacionPdf(r.cotizacion), 0);
+  const paginas = [];
+  conDatos.forEach((r) => {
+    const etiqueta = String(r.etiqueta || 'Riesgo').trim() || 'Riesgo';
+    (Array.isArray(r.cotizacion?.paginas) ? r.cotizacion.paginas : []).forEach((p, pi) => {
+      if (!p) return;
+      paginas.push({
+        ...p,
+        etiquetaRiesgo: etiqueta,
+        descripcion:
+          p.descripcion ||
+          `${etiqueta} · página ${p.pagina != null ? p.pagina : pi + 1}`.trim(),
+      });
+    });
+  });
+
+  const nombres = conDatos
+    .map((r) => String(r.cotizacion?.nombreOriginal || r.etiqueta || '').trim())
+    .filter(Boolean);
+  const primerArchivo = conDatos.find((r) => r.cotizacion?.archivoPdf)?.cotizacion?.archivoPdf || null;
+
+  return {
+    nombreOriginal: nombres.join(' + '),
+    montoFinal: usadas.length ? String(Math.round(total * 100) / 100) : '',
+    montoDetectado: usadas.length ? total : null,
+    usarComoBasePresupuesto: usadas.length > 0 && total > 0,
+    archivoPdf: primerArchivo,
+    paginas,
+    multiRiesgo: true,
+    nRiesgos: conDatos.length,
+    nRiesgosUsados: usadas.length,
+  };
+}
+
+export function serializarCotizacionesPdfRiesgosPrevisora(riesgos = []) {
+  return (Array.isArray(riesgos) ? riesgos : []).map((r, i) =>
+    crearRiesgoCotizacionPdfPrevisora(
+      {
+        id: r?.id,
+        etiqueta: r?.etiqueta,
+        cotizacion: serializarCotizacionPdf(r?.cotizacion),
+      },
+      i
+    )
+  );
+}
+
+export function resumenCotizacionesPdfRiesgosPrevisora(liquidador = {}) {
+  const riesgos = normalizarCotizacionesPdfRiesgosPrevisora(liquidador);
+  const filas = riesgos.map((r) => {
+    const cot = r.cotizacion;
+    const monto = montoCotizacionPdf(cot);
+    const usada = usaCotizacionComoBasePresupuesto(cot);
+    const tieneArchivo = Boolean(
+      (Array.isArray(cot?.paginas) && cot.paginas.length) ||
+        cot?.archivoPdf ||
+        cot?.nombreOriginal
+    );
+    return {
+      id: r.id,
+      etiqueta: r.etiqueta,
+      cotizacion: cot,
+      monto,
+      usada,
+      tieneArchivo,
+    };
+  });
+  const usadas = filas.filter((f) => f.usada);
+  const total = usadas.reduce((acc, f) => acc + (Number(f.monto) || 0), 0);
+  return {
+    riesgos,
+    filas,
+    usadas,
+    total: Math.round(total * 100) / 100,
+    nUsadas: usadas.length,
+    usaComoBase: usadas.length > 0 && total > 0,
+  };
+}
+
+export function paginasTodasCotizacionesPdfRiesgosPrevisora(liquidador = {}, informe = null) {
+  const delInforme = Array.isArray(informe?.fotosCotizacion)
+    ? informe.fotosCotizacion.filter((f) => f && (f.ruta || f._id || f.preview || f.file))
+    : [];
+  const resumen = resumenCotizacionesPdfRiesgosPrevisora(liquidador);
+  const delLiq = [];
+  resumen.filas.forEach((fila) => {
+    const pags = Array.isArray(fila.cotizacion?.paginas) ? fila.cotizacion.paginas : [];
+    pags.forEach((p) => {
+      if (!p || !(p.ruta || p._id || p.preview || p.file)) return;
+      delLiq.push({
+        ...p,
+        descripcion:
+          p.descripcion ||
+          `${fila.etiqueta} · página ${p.pagina != null ? p.pagina : ''}`.trim(),
+        etiquetaRiesgo: fila.etiqueta,
+      });
+    });
+  });
+  if (!delInforme.length) return delLiq;
+  const keys = new Set(delInforme.map((f) => String(f._id || f.ruta || '')).filter(Boolean));
+  const extra = delLiq.filter((f) => !keys.has(String(f._id || f.ruta || '')));
+  return [...delInforme, ...extra];
+}
+
+/**
+ * Aplica cambio de un riesgo y sincroniza `cotizacionPdf` agregado.
+ * @returns {{ cotizacionesPdfRiesgos: array, cotizacionPdf: object|null }}
+ */
+export function patchRiesgosCotizacionPdfPrevisora(liquidador = {}, riesgosNext) {
+  const riesgos = normalizarCotizacionesPdfRiesgosPrevisora({
+    ...liquidador,
+    cotizacionesPdfRiesgos: riesgosNext,
+  });
+  return {
+    cotizacionesPdfRiesgos: riesgos,
+    cotizacionPdf: sincronizarCotizacionPdfDesdeRiesgosPrevisora(riesgos),
+  };
+}

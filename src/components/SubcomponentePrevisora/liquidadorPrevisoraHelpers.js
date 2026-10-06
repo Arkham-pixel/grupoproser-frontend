@@ -23,6 +23,10 @@ import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInfor
 import {
   serializarCotizacionPdf,
   serializarPaginasCotizacion,
+  serializarCotizacionesPdfRiesgosPrevisora,
+  normalizarCotizacionesPdfRiesgosPrevisora,
+  sincronizarCotizacionPdfDesdeRiesgosPrevisora,
+  resumenCotizacionesPdfRiesgosPrevisora,
   montoCotizacionPdf,
   usaCotizacionComoBasePresupuesto,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
@@ -39,9 +43,16 @@ export function sanitizarInformeUnicoPrevisora(informe = {}) {
 export function sanitizarLiquidadorPrevisora(liquidador = {}) {
   if (!liquidador || typeof liquidador !== 'object') return liquidador;
   const { nsrOmitido: _omitido, ...rest } = liquidador;
+  const riesgos = serializarCotizacionesPdfRiesgosPrevisora(
+    normalizarCotizacionesPdfRiesgosPrevisora(liquidador)
+  );
+  const cotizacionPdf =
+    serializarCotizacionPdf(sincronizarCotizacionPdfDesdeRiesgosPrevisora(riesgos)) ||
+    serializarCotizacionPdf(liquidador.cotizacionPdf);
   return {
     ...rest,
-    cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
+    cotizacionesPdfRiesgos: riesgos,
+    cotizacionPdf,
   };
 }
 
@@ -144,15 +155,57 @@ export function encabezadoDesdecasoPrevisora(caso = {}) {
     tipoIdentificacion: c.tipoIdentificacion || '',
     causa: c.causa || '',
     fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
+    fechaInicioPoliza: c.fechaInicioPoliza || '',
+    fechaFinPoliza: c.fechaFinPoliza || '',
     direccion: c.direccionPredio || '',
     ciudad: c.ciudad || '',
     departamento: c.departamento || '',
     cobertura: c.cobertura || '',
+    estadoPagoPrimas: c.estadoPagoPrimas || '',
     evento: c.cobertura || 'TERREMOTO',
     ajustador: c.ajustador || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
     valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
   };
+}
+
+/** Rellena huecos del encabezado con la ficha (Gestionar) sin borrar lo ya escrito. */
+export function fusionarEncabezadoDesdeFichaPrevisora(liquidador, caso) {
+  const prev = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  const prevEnc = prev.encabezado && typeof prev.encabezado === 'object' ? prev.encabezado : {};
+  const desdeFicha = encabezadoDesdecasoPrevisora(caso || {});
+  const nextEnc = { ...desdeFicha };
+  for (const [k, v] of Object.entries(prevEnc)) {
+    if (String(v ?? '').trim()) nextEnc[k] = v;
+  }
+  const claves = new Set([...Object.keys(prevEnc), ...Object.keys(nextEnc)]);
+  let igual = true;
+  for (const k of claves) {
+    if (String(prevEnc[k] ?? '') !== String(nextEnc[k] ?? '')) {
+      igual = false;
+      break;
+    }
+  }
+  if (igual) {
+    const vaEnc = parsearNumero(nextEnc.valorAseguradoInmueble);
+    const vaLiq = parsearNumero(prev.liquidacionCatastrofico?.valorAsegurado);
+    if (vaEnc > 0 && !(vaLiq > 0)) {
+      return {
+        ...prev,
+        liquidacionCatastrofico: {
+          ...(prev.liquidacionCatastrofico || {}),
+          valorAsegurado: vaEnc,
+        },
+      };
+    }
+    return prev;
+  }
+  const vaEnc = parsearNumero(nextEnc.valorAseguradoInmueble);
+  const liq = { ...(prev.liquidacionCatastrofico || {}) };
+  if (vaEnc > 0 && !(parsearNumero(liq.valorAsegurado) > 0)) {
+    liq.valorAsegurado = vaEnc;
+  }
+  return { ...prev, encabezado: nextEnc, liquidacionCatastrofico: liq };
 }
 
 /** Prefill portada NSR desde caso Previsora */
@@ -187,10 +240,13 @@ export const DEFAULT_LIQUIDADOR_Previsora = {
     tipoIdentificacion: '',
     causa: '',
     fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
+    fechaInicioPoliza: '',
+    fechaFinPoliza: '',
     direccion: '',
     ciudad: '',
     departamento: '',
     cobertura: '',
+    estadoPagoPrimas: '',
     evento: 'TERREMOTO',
     ajustador: '',
     valorAseguradoInmueble: '',
@@ -201,6 +257,7 @@ export const DEFAULT_LIQUIDADOR_Previsora = {
   indemnizacionSugerida: '',
   observaciones: '',
   cotizacionPdf: null,
+  cotizacionesPdfRiesgos: [],
 };
 
 export function esLiquidadorNsrPrevisora(liquidador = {}) {
@@ -225,8 +282,13 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
-  const usaCotiz = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
-  const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
+  const resumenRiesgos = resumenCotizacionesPdfRiesgosPrevisora(liquidador);
+  const montoDesdeRiesgos = resumenRiesgos.usaComoBase ? resumenRiesgos.total : 0;
+  const montoDesdeLegacy = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+    ? montoCotizacionPdf(liquidador.cotizacionPdf)
+    : 0;
+  const montoCotiz = montoDesdeRiesgos > 0 ? montoDesdeRiesgos : montoDesdeLegacy;
+  const usaCotiz = montoCotiz > 0;
   const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
   const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const diagrama = calcularDiagramaLiquidacion({
@@ -297,6 +359,21 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
 export function itemsPlanosPrevisora(liquidador = {}) {
   const express = payloadExpressParaInforme(liquidador, { modulo: 'previsora' });
   if (express?.itemsPlanos?.length) return express.itemsPlanos;
+  const resumenRiesgos = resumenCotizacionesPdfRiesgosPrevisora(liquidador);
+  if (resumenRiesgos.usaComoBase) {
+    return resumenRiesgos.usadas.map((fila) => {
+      const nombre = String(fila.cotizacion?.nombreOriginal || '').trim();
+      const etiqueta = String(fila.etiqueta || 'Riesgo').trim();
+      return {
+        id: `cotizacion-pdf-${fila.id}`,
+        concepto: nombre
+          ? `Cotización ${etiqueta} (${nombre})`
+          : `Cotización de reparación · ${etiqueta}`,
+        valorReclamado: fila.monto,
+        valorIndemnizable: fila.monto,
+      };
+    });
+  }
   if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
     const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
     const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
@@ -375,7 +452,13 @@ export function mapcasoPrevisoraALiquidador(caso = {}) {
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
-    cotizacionPdf: guardado.cotizacionPdf || null,
+    cotizacionesPdfRiesgos: normalizarCotizacionesPdfRiesgosPrevisora(guardado),
+    cotizacionPdf:
+      sincronizarCotizacionPdfDesdeRiesgosPrevisora(
+        normalizarCotizacionesPdfRiesgosPrevisora(guardado)
+      ) ||
+      guardado.cotizacionPdf ||
+      null,
   };
 }
 
@@ -580,6 +663,30 @@ function filasPolizaSinTextoPrevisora(filas) {
   );
 }
 
+/** Textos automáticos del sistema: se pueden reemplazar cuando llega data de Gestionar. */
+function esTextoAutoPolizaPrevisora(texto) {
+  const t = String(texto || '').trim();
+  if (!t) return true;
+  return (
+    /^pendiente confirmar/i.test(t) ||
+    /^por verificar\.?$/i.test(t) ||
+    /^a verificar\.?$/i.test(t) ||
+    /^evento con cobertura\.?$/i.test(t) ||
+    /^verificar vigencia\.?$/i.test(t) ||
+    /se analizará frente a la vigencia/i.test(t) ||
+    /se analiza frente a la vigencia/i.test(t) ||
+    /^vigencia de la p[oó]liza/i.test(t) ||
+    /predio radicado en la p[oó]liza/i.test(t) ||
+    /deberá aportar los documentos que demuestren/i.test(t) ||
+    /se aplicar[aá] el deducible pactado/i.test(t) ||
+    /deducible seg[uú]n condiciones de la p[oó]liza/i.test(t) ||
+    /se solicitar[aá]n inventarios y soportes/i.test(t) ||
+    /reserva preliminar seg[uú]n/i.test(t) ||
+    /el asegurado tiene contratado el amparo/i.test(t) ||
+    /^terremoto(\s+de fecha|\.|$)/i.test(t)
+  );
+}
+
 function fechaMsPrevisora(valor) {
   if (valor == null || valor === '') return null;
   const raw =
@@ -722,11 +829,17 @@ export function completarFilasPolizaCoberturaPrevisora(filas, ctx = {}) {
     };
     porClave.delete(claveConceptoPolizaPrevisora(concepto));
     const auto = textoAutoFilaPolizaPrevisora({ ...prev, concepto }, ctx);
+    const analisisPrev = String(prev.analisis || '').trim();
+    const conclusionPrev = String(prev.conclusion || '').trim();
     return {
       ...prev,
       concepto,
-      analisis: String(prev.analisis || '').trim() || auto.analisis,
-      conclusion: String(prev.conclusion || '').trim() || auto.conclusion,
+      analisis: esTextoAutoPolizaPrevisora(analisisPrev)
+        ? auto.analisis || analisisPrev
+        : analisisPrev,
+      conclusion: esTextoAutoPolizaPrevisora(conclusionPrev)
+        ? auto.conclusion || conclusionPrev
+        : conclusionPrev,
     };
   });
 

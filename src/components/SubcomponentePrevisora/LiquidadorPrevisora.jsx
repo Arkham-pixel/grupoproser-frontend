@@ -24,6 +24,7 @@ import {
   calcularLiquidacionPrevisora,
   formDataNsrDesdeLiquidadorPrevisora,
   formatearMonto,
+  fusionarEncabezadoDesdeFichaPrevisora,
   itemsPlanosPrevisora,
   mapcasoPrevisoraALiquidador,
 } from './liquidadorPrevisoraHelpers.js';
@@ -36,9 +37,10 @@ import { previsoraArchivosApi } from './previsoraArchivosApi.js';
 import { archivarBlobEnCasoPrevisora, MIME_ARCHIVO_PREVISORA } from './archivarDocumentoPrevisora.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
-import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import CotizacionesPdfRiesgosPrevisora from './CotizacionesPdfRiesgosPrevisora.jsx';
 import {
   montoCotizacionPdf,
+  resumenCotizacionesPdfRiesgosPrevisora,
   usaCotizacionComoBasePresupuesto,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
 
@@ -79,6 +81,23 @@ export default function LiquidadorPrevisora({
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
+    setLiquidador((prev) => fusionarEncabezadoDesdeFichaPrevisora(prev, casoPrevisora));
+  }, [
+    casoPrevisora?.tomador,
+    casoPrevisora?.asegurado,
+    casoPrevisora?.direccionPredio,
+    casoPrevisora?.numeroPoliza,
+    casoPrevisora?.fechaInicioPoliza,
+    casoPrevisora?.fechaFinPoliza,
+    casoPrevisora?.cobertura,
+    casoPrevisora?.ciudad,
+    casoPrevisora?.departamento,
+    casoPrevisora?.siniestro,
+    casoPrevisora?.valorAseguradoInmueble,
+    casoPrevisora?.valorAseguradoContenidos,
+  ]);
+
+  useEffect(() => {
     if (!liquidadorInicial?.evaluacionSismicaNSR10) return;
     setLiquidador((prev) => {
       if (!prev || esStubLiquidadorNsr(prev) || scoreContenidoLiquidadorNsr(prev) === 0) {
@@ -92,9 +111,15 @@ export default function LiquidadorPrevisora({
   }, [liquidadorInicial]);
 
   const totales = useMemo(() => calcularLiquidacionPrevisora(liquidador), [liquidador]);
+  const resumenRiesgos = useMemo(
+    () => resumenCotizacionesPdfRiesgosPrevisora(liquidador),
+    [liquidador]
+  );
   const enc = liquidador.encabezado || {};
   const tieneCotizacionPdf = Boolean(
-    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+    resumenRiesgos.usaComoBase ||
+      resumenRiesgos.filas.some((f) => f.tieneArchivo) ||
+      (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
       liquidador.cotizacionPdf?.archivoPdf
   );
   const nItemsNsr = contarItemsPresupuestoNsr(liquidador);
@@ -160,8 +185,8 @@ export default function LiquidadorPrevisora({
     setMensaje(t('previsora.settlement.archiveSaved'));
   };
 
-  const handleCotizacionChange = (cotizacionPdf) => {
-    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+  const handleCotizacionRiesgosChange = (patch) => {
+    setLiquidador((prev) => ({ ...prev, ...patch }));
   };
 
   const MIME_EXPORT = {
@@ -355,10 +380,9 @@ export default function LiquidadorPrevisora({
           </div>
         ) : null}
         <div className="mt-4">
-          <CotizacionPdfLiquidacion
-            i18nPrefix="previsora.settlement"
-            value={liquidador.cotizacionPdf}
-            onChange={handleCotizacionChange}
+          <CotizacionesPdfRiesgosPrevisora
+            liquidador={liquidador}
+            onChange={handleCotizacionRiesgosChange}
             compactEmpty={mostrarPresupuestoSinPdf}
             casoId={casoPrevisora?._id}
             api={api}
@@ -459,9 +483,11 @@ export default function LiquidadorPrevisora({
             recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
             ocultarPresupuestoEscrito={tieneCotizacionPdf}
             totalPresupuestoOverride={
-              usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-                ? montoCotizacionPdf(liquidador.cotizacionPdf)
-                : null
+              resumenRiesgos.usaComoBase
+                ? resumenRiesgos.total
+                : usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+                  ? montoCotizacionPdf(liquidador.cotizacionPdf)
+                  : null
             }
           />
         </Suspense>
