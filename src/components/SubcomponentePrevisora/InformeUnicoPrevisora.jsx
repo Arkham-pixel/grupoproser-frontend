@@ -24,6 +24,7 @@ import {
   formDataNsrDesdeLiquidadorPrevisora,
   formatearMonto,
   formatDateLarga,
+  asegurarDeducibleTerremotoPrevisora,
   fusionarEncabezadoDesdeFichaPrevisora,
   mapcasoPrevisoraALiquidador,
   normalizarTipoInformePrevisora,
@@ -180,7 +181,9 @@ export default function InformeUnicoPrevisora({
   const api = useMemo(() => previsoraArchivosApi(origen), [origen]);
   const [informe, setInforme] = useState(() => defaultInformeUnicoPrevisora(casoPrevisora || {}));
   const [liquidador, setLiquidador] = useState(() =>
-    liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {})
+    asegurarDeducibleTerremotoPrevisora(
+      liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {})
+    )
   );
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -279,7 +282,12 @@ export default function InformeUnicoPrevisora({
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
-    setLiquidador((prev) => fusionarEncabezadoDesdeFichaPrevisora(prev, casoPrevisora));
+    setLiquidador((prev) =>
+      fusionarEncabezadoDesdeFichaPrevisora(
+        asegurarDeducibleTerremotoPrevisora(prev),
+        casoPrevisora
+      )
+    );
   }, [
     casoPrevisora?.tomador,
     casoPrevisora?.asegurado,

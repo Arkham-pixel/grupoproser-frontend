@@ -501,16 +501,20 @@ function redondearCopDeducible(n) {
 
 /**
  * Deducible aplicado = el mayor entre el % mostrado y el mínimo SMMLV/SMDLV,
- * con tope en el presupuesto. No usa el % sobre VA si la pantalla muestra pérdida.
+ * con tope en la pérdida / presupuesto.
+ * - tope null/undefined/'' = sin tope (muestra el bruto)
+ * - tope 0 = pérdida cero → aplicado 0 (no «sin tope»)
  */
 export function resolverDeducibleAplicadoVisible({
   montoPct = 0,
   montoSmmlv = 0,
-  tope = 0,
+  tope = null,
 } = {}) {
   const mayor = Math.max(Number(montoPct) || 0, Number(montoSmmlv) || 0);
+  if (tope === null || tope === undefined || tope === '') {
+    return redondearCopDeducible(mayor);
+  }
   const cap = Math.max(0, Number(tope) || 0);
-  if (!(cap > 0)) return redondearCopDeducible(mayor);
   return redondearCopDeducible(Math.min(mayor, cap));
 }
 

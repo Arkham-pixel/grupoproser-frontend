@@ -21,6 +21,7 @@ import {
 import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
 import CampoTomadorPrevisora from './CampoTomadorPrevisora.jsx';
 import {
+  asegurarDeducibleTerremotoPrevisora,
   calcularLiquidacionPrevisora,
   formDataNsrDesdeLiquidadorPrevisora,
   formatearMonto,
@@ -66,7 +67,9 @@ export default function LiquidadorPrevisora({
   const { t } = useTranslation();
   const api = useMemo(() => previsoraArchivosApi(origen), [origen]);
   const [liquidador, setLiquidador] = useState(() =>
-    liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {})
+    asegurarDeducibleTerremotoPrevisora(
+      liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {})
+    )
   );
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -74,14 +77,19 @@ export default function LiquidadorPrevisora({
 
   useEffect(() => {
     if (liquidadorInicial) {
-      setLiquidador(liquidadorInicial);
+      setLiquidador(asegurarDeducibleTerremotoPrevisora(liquidadorInicial));
       return;
     }
     setLiquidador(mapcasoPrevisoraALiquidador(casoPrevisora || {}));
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
-    setLiquidador((prev) => fusionarEncabezadoDesdeFichaPrevisora(prev, casoPrevisora));
+    setLiquidador((prev) =>
+      fusionarEncabezadoDesdeFichaPrevisora(
+        asegurarDeducibleTerremotoPrevisora(prev),
+        casoPrevisora
+      )
+    );
   }, [
     casoPrevisora?.tomador,
     casoPrevisora?.asegurado,
@@ -431,8 +439,8 @@ export default function LiquidadorPrevisora({
             <span>
               ${' '}
               {formatearMonto(
-                totales.diagrama?.deducibleContenidos?.aplicado ||
-                  totales.diagrama?.deducibleAplicado ||
+                totales.diagrama?.deducibleContenidos?.aplicado ??
+                  totales.diagrama?.deducibleAplicado ??
                   0
               )}
             </span>

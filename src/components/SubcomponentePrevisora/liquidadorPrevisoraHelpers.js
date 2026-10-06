@@ -125,19 +125,104 @@ const fechaInput = (value) => {
   return `${y}-${m}-${day}`;
 };
 
+/**
+ * Previsora terremoto (póliza típica edificio):
+ * 3% del valor de la pérdida, mínimo 1 SMMLV.
+ */
+export const TEXTO_DEDUCIBLE_TERREMOTO_PREVISORA =
+  '3% del valor de la pérdida, mínimo 1 SMMLV (terremoto)';
+
+export const DEFAULT_DEDUCIBLE_PREVISORA = {
+  ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+  aplica: true,
+  modo: 'max_pct_minimo',
+  porcentaje: 3,
+  tipoMinimo: 'SMMLV',
+  cantidadSMMLV: 1,
+  basePctDeducible: 'perdida',
+  baseDeducible: 'perdida',
+  texto: TEXTO_DEDUCIBLE_TERREMOTO_PREVISORA,
+};
+
+/** Config genérica CAT (10% / 4 SMMLV) o sin base elegida → regla Previsora. */
+export function pareceDeducibleGenericoOVaPrevisora(cfg = {}) {
+  if (!cfg || typeof cfg !== 'object') return true;
+  const pct = Number(cfg.porcentaje);
+  const cant = Number(cfg.cantidadSMMLV);
+  const base = String(cfg.basePctDeducible || cfg.baseDeducible || '').trim();
+  if (!base) return true;
+  if (pct === 10 || cant === 4) return true;
+  // 3% sobre VA: en Previsora la póliza de terremoto es sobre la pérdida
+  if (pct === 3 && (base === 'valor_asegurable' || base === 'valor_asegurado')) {
+    return true;
+  }
+  return false;
+}
+
+export function configDeducibleTerremotoPrevisora(cfgActual = {}) {
+  const actual = cfgActual && typeof cfgActual === 'object' ? cfgActual : {};
+  if (!pareceDeducibleGenericoOVaPrevisora(actual)) {
+    return {
+      ...DEFAULT_DEDUCIBLE_PREVISORA,
+      ...actual,
+      basePctDeducible:
+        String(actual.basePctDeducible || actual.baseDeducible || '').trim() || 'perdida',
+      baseDeducible:
+        String(actual.baseDeducible || actual.basePctDeducible || '').trim() || 'perdida',
+    };
+  }
+  return {
+    ...DEFAULT_DEDUCIBLE_PREVISORA,
+    anioSMMLV: actual.anioSMMLV ?? DEFAULT_DEDUCIBLE_PREVISORA.anioSMMLV,
+    valorSMMLV: actual.valorSMMLV ?? DEFAULT_DEDUCIBLE_PREVISORA.valorSMMLV,
+    valorSMDLV: actual.valorSMDLV ?? DEFAULT_DEDUCIBLE_PREVISORA.valorSMDLV,
+  };
+}
+
+export function asegurarDeducibleTerremotoPrevisora(liquidador = {}) {
+  const prev = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  const liq = {
+    ...(prev.liquidacionCatastrofico && typeof prev.liquidacionCatastrofico === 'object'
+      ? prev.liquidacionCatastrofico
+      : {}),
+  };
+  const nextPres = configDeducibleTerremotoPrevisora(liq.deducibleConfigPresupuesto);
+  const nextCont = configDeducibleTerremotoPrevisora(
+    liq.deducibleConfigContenidos || liq.deducibleConfig
+  );
+  const samePres =
+    JSON.stringify(liq.deducibleConfigPresupuesto || null) === JSON.stringify(nextPres);
+  const sameCont =
+    JSON.stringify(liq.deducibleConfigContenidos || liq.deducibleConfig || null) ===
+    JSON.stringify(nextCont);
+  if (samePres && sameCont) return prev;
+  return {
+    ...prev,
+    liquidacionCatastrofico: {
+      ...liq,
+      deducibleConfigPresupuesto: nextPres,
+      deducibleConfig: nextCont,
+      deducibleConfigContenidos: nextCont,
+      deducible: nextCont.texto || nextPres.texto || liq.deducible,
+    },
+  };
+}
+
 export function liquidacionCatastroficoDefaultPrevisora(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   const va =
     c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
       ? Number(c.valorAseguradoInmueble) || ''
       : '';
+  const cfg = { ...DEFAULT_DEDUCIBLE_PREVISORA };
   return {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
-    deducible: 'No aplica',
-    deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
-    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    deducible: TEXTO_DEDUCIBLE_TERREMOTO_PREVISORA,
+    deducibleConfig: cfg,
+    deducibleConfigContenidos: { ...cfg },
+    deducibleConfigPresupuesto: { ...cfg },
   };
 }
 
@@ -273,15 +358,17 @@ export function esLiquidadorNsrPrevisora(liquidador = {}) {
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionPrevisora(liquidador = {}) {
+  const liquidadorOk = asegurarDeducibleTerremotoPrevisora(liquidador);
   const evalData = aplicarRecargosEnEvaluacionNsr10(
-    liquidador.evaluacionSismicaNSR10 || {},
+    liquidadorOk.evaluacionSismicaNSR10 || {},
     RECARGOS_PRESUPUESTO_NSR10_CAT
   );
   const presupuesto = evalData.presupuesto || { items: [] };
-  const valoresAsegurablesCaso = valoresAsegurablesDesdeLiquidador(liquidador);
+  const valoresAsegurablesCaso = valoresAsegurablesDesdeLiquidador(liquidadorOk);
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
-  const liq = liquidador.liquidacionCatastrofico || {};
+  const liq = liquidadorOk.liquidacionCatastrofico || {};
+  liquidador = liquidadorOk;
   const resumenRiesgos = resumenCotizacionesPdfRiesgosPrevisora(liquidador);
   const montoDesdeRiesgos = resumenRiesgos.usaComoBase ? resumenRiesgos.total : 0;
   const montoDesdeLegacy = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
@@ -434,7 +521,7 @@ export function mapcasoPrevisoraALiquidador(caso = {}) {
     };
   }
 
-  return {
+  return asegurarDeducibleTerremotoPrevisora({
     ...base,
     ...guardado,
     modelo: 'nsr10',
@@ -459,7 +546,7 @@ export function mapcasoPrevisoraALiquidador(caso = {}) {
       ) ||
       guardado.cotizacionPdf ||
       null,
-  };
+  });
 }
 
 /** formData mínimo para ChecklistEvaluacionSismicaNSR10 */
