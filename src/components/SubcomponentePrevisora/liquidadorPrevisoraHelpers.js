@@ -1,5 +1,5 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
-import { formatMiles } from './previsoraHelpers.js';
+import { formatMiles, FECHA_SINIESTRO_FIJA_PREVISORA } from './previsoraHelpers.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
   argsDeduciblesPorArticuloDiagrama,
@@ -143,7 +143,7 @@ export function encabezadoDesdecasoPrevisora(caso = {}) {
     identificacion: c.identificacion || '',
     tipoIdentificacion: c.tipoIdentificacion || '',
     causa: c.causa || '',
-    fechaSiniestro: fechaInput(c.fechaSiniestro),
+    fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
     direccion: c.direccionPredio || '',
     ciudad: c.ciudad || '',
     departamento: c.departamento || '',
@@ -165,8 +165,8 @@ export function prefillNsrDesdecasoPrevisora(caso = {}, encabezado = {}) {
     ciudad: encabezado.ciudad || caso.ciudad || '',
     direccion: encabezado.direccion || caso.direccionPredio || '',
     direccionRiesgo: encabezado.direccion || caso.direccionPredio || '',
-    fechaSiniestro: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
-    fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
+    fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
+    fechaOcurrencia: FECHA_SINIESTRO_FIJA_PREVISORA,
     inspector: caso.ajustador || '',
     tipoEvento: encabezado.evento || caso.cobertura || 'TERREMOTO',
     ...camposValorAseguradoParaNsr(caso, encabezado),
@@ -186,7 +186,7 @@ export const DEFAULT_LIQUIDADOR_Previsora = {
     identificacion: '',
     tipoIdentificacion: '',
     causa: '',
-    fechaSiniestro: '',
+    fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
     direccion: '',
     ciudad: '',
     departamento: '',
@@ -393,7 +393,7 @@ export function formDataNsrDesdeLiquidadorPrevisora(liquidador = {}, caso = {}) 
     ciudad: enc.ciudad,
     direccionRiesgo: enc.direccion,
     numeroPoliza: enc.poliza,
-    fechaSiniestro: enc.fechaSiniestro,
+    fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
     actaAjustadorNombre: enc.ajustador || caso.ajustador || '',
   };
 }
@@ -599,7 +599,7 @@ function textoAutoFilaPolizaPrevisora(fila, ctx = {}) {
   const ciudad = String(caso.ciudad || enc.ciudad || '').trim();
   const ini = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
   const fin = caso.fechaFinPoliza || enc.fechaFinPoliza;
-  const ocurrencia = caso.fechaSiniestro || enc.fechaSiniestro;
+  const ocurrencia = FECHA_SINIESTRO_FIJA_PREVISORA;
   const reserva =
     reservaSugeridaPrevisora(info) || parsearNumero(caso.reserva || caso.valorReservaPreventivaPromedio);
 

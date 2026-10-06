@@ -37,6 +37,7 @@ import {
   CAMPOS_NUMERICOS_PREVISORA,
   CAMPOS_DECIMAL_PREVISORA,
   ESTADOS_PREVISORA,
+  FECHA_SINIESTRO_FIJA_PREVISORA,
   FECHA_ACCION_POR_ESTADO_PREVISORA,
   FORM_VACIO_PREVISORA,
   MODALIDADES_PREVISORA,
@@ -388,6 +389,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
       if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
     }
+    payload.fechaSiniestro = FECHA_SINIESTRO_FIJA_PREVISORA;
     if (!controlHorasTieneDatos(payload.control_horas)) delete payload.control_horas;
     return payload;
   };
@@ -1084,8 +1086,9 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               <Campo label={t('previsora.fields.fechaSiniestro')}>
                 <InputFenix
                   type="date"
-                  value={form.fechaSiniestro}
-                  onChange={setCampo('fechaSiniestro')}
+                  value={FECHA_SINIESTRO_FIJA_PREVISORA}
+                  readOnly
+                  disabled
                 />
               </Campo>
               <Campo label={t('previsora.fields.fechaLlamada')}>

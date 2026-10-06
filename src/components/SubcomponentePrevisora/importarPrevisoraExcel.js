@@ -1,5 +1,6 @@
 ﻿import * as XLSX from 'xlsx';
 import {
+  FECHA_SINIESTRO_FIJA_PREVISORA,
   homologarEstadoPrevisora,
   normalizarGradoAfectacionPrevisora,
   normalizarSiNoPrevisora,
@@ -431,6 +432,7 @@ const parsearHojaACasos = (sheet) => {
     if (!caso.identificacion) continue;
     if (!caso.estado) caso.estado = 'CASO NUEVO';
     caso.estado = homologarEstadoPrevisora(caso.estado);
+    caso.fechaSiniestro = FECHA_SINIESTRO_FIJA_PREVISORA;
     if (!caso.ciudad && caso.catUbicacionReferencia) {
       caso.ciudad = caso.catUbicacionReferencia;
     }

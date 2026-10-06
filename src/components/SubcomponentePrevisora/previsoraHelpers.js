@@ -3,6 +3,9 @@ import { hidratarCamposFacturacion } from '../shared/camposFacturacionAsegurador
 
 export const PREVISORA_REPORTE_PAGE_SIZE = 25;
 
+/** Fecha de siniestro CAT Previsora (terremoto 10/08/2026), fija en formulario e informes. */
+export const FECHA_SINIESTRO_FIJA_PREVISORA = '2026-08-10';
+
 export const ESTADOS_PREVISORA = [
   'CASO NUEVO',
   'PROGRAMANDO INSPECCIÓN',
@@ -634,7 +637,7 @@ export const FORM_VACIO_PREVISORA = {
   canalRadicacion: '',
   ciudad: '',
   departamento: '',
-  fechaSiniestro: '',
+  fechaSiniestro: FECHA_SINIESTRO_FIJA_PREVISORA,
   fechaInicioPoliza: '',
   fechaFinPoliza: '',
   valorAseguradoInmueble: '',
@@ -922,5 +925,6 @@ export const construirFormDesdecasoPrevisora = (caso = {}) => {
     base.fechaCasoCerrado = fechaParaInput(caso.fechaCasoCerrado || caso.fechaCasoParaPago);
   }
   base.solicitudAnticipo = normalizarSiNoPrevisora(base.solicitudAnticipo);
+  base.fechaSiniestro = FECHA_SINIESTRO_FIJA_PREVISORA;
   return hidratarCamposFacturacion(base, caso);
 };
