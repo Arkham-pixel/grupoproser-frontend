@@ -6,6 +6,8 @@ import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA } from '../../utils/heicToJpeg.js';
 import { queueOfflinePhoto } from '../../services/photoService.js';
 import { OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig.js';
 import { checkConnectivity } from '../../services/connectivityService.js';
+import { useTheme } from '../../context/ThemeContext';
+import InputArchivoNativo from '../shared/InputArchivoNativo.jsx';
 
 /**
  * Carga fotos desde el acta sin alterar su maquetación. Las guarda en el
@@ -14,12 +16,15 @@ import { checkConnectivity } from '../../services/connectivityService.js';
  */
 export default function FotosPreliminarFlotante({ formData, onInputChange }) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const inputGaleriaRef = useRef(null);
   const inputCamaraRef = useRef(null);
   const avisoTimeoutRef = useRef(null);
+  const temaActualRef = useRef(theme);
   const [procesando, setProcesando] = useState(false);
   const [fotosListas, setFotosListas] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [inputResetKey, setInputResetKey] = useState(0);
 
   useEffect(
     () => () => {
@@ -27,6 +32,12 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
     },
     []
   );
+
+  useEffect(() => {
+    if (temaActualRef.current === theme) return;
+    temaActualRef.current = theme;
+    setInputResetKey((k) => k + 1);
+  }, [theme]);
 
   const cargarFotos = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -114,23 +125,19 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
           </div>
         )}
 
-        {/* Cámara trasera del teléfono (una foto por toma; se puede repetir) */}
-        <input
+        <InputArchivoNativo
+          key={`camara-${inputResetKey}`}
           ref={inputCamaraRef}
-          type="file"
           accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
           capture="environment"
-          className="hidden"
           onChange={cargarFotos}
           disabled={procesando}
         />
-        {/* Galería / múltiples archivos */}
-        <input
+        <InputArchivoNativo
+          key={`galeria-${inputResetKey}`}
           ref={inputGaleriaRef}
-          type="file"
           accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
           multiple
-          className="hidden"
           onChange={cargarFotos}
           disabled={procesando}
         />

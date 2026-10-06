@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FaCamera,
@@ -18,6 +18,7 @@ import { isStoredFileReference } from '../../utils/storedFilePath';
 import { queueOfflinePhoto } from '../../services/photoService.js';
 import { OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig.js';
 import { checkConnectivity } from '../../services/connectivityService.js';
+import InputArchivoNativo from '../shared/InputArchivoNativo.jsx';
 
 const idImagen = (img, index = 0) =>
   String(img?.id ?? img?.ruta ?? img?.nombre ?? `idx-${index}`);
@@ -25,6 +26,10 @@ const idImagen = (img, index = 0) =>
 export default function InspeccionFotograficaAjuste({ formData, onInputChange, numeroSeccion = 4 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const inputId = useId();
+  const inputGaleriaRef = useRef(null);
+  const inputCamaraRef = useRef(null);
+  const [inputResetKey, setInputResetKey] = useState(0);
   
   // Colores según el tema
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -38,6 +43,13 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, n
   const [arrastrandoId, setArrastrandoId] = useState(null);
   const [destinoArrastreId, setDestinoArrastreId] = useState(null);
   const descripcionTimeoutRef = useRef(null);
+  const temaActualRef = useRef(theme);
+
+  useEffect(() => {
+    if (temaActualRef.current === theme) return;
+    temaActualRef.current = theme;
+    setInputResetKey((k) => k + 1);
+  }, [theme]);
 
   // Usar utilidades centralizadas de imageUtils
 
@@ -370,12 +382,30 @@ return imagenesProcesadas;
         </h3>
         
         <div 
-          className="border-2 border-dashed rounded-lg p-6 text-center"
+          className="relative border-2 border-dashed rounded-lg p-6 text-center"
           style={{
             borderColor: borderColor,
             backgroundColor: theme === 'dark' ? '#1F1F1F' : '#F9FAFB'
           }}
         >
+          <InputArchivoNativo
+            key={`galeria-${inputResetKey}`}
+            ref={inputGaleriaRef}
+            id={`${inputId}-galeria`}
+            multiple
+            accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
+            onChange={handleFileUpload}
+            disabled={comprimiendo}
+          />
+          <InputArchivoNativo
+            key={`camara-${inputResetKey}`}
+            ref={inputCamaraRef}
+            id={`${inputId}-camara`}
+            accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
+            capture="environment"
+            onChange={handleFileUpload}
+            disabled={comprimiendo}
+          />
           {comprimiendo ? (
             <div className="space-y-4">
               <FaCompress 
@@ -418,64 +448,36 @@ return imagenesProcesadas;
                   Las imágenes se comprimirán automáticamente
                 </p>
               </div>
-              <input
-                type="file"
-                multiple
-                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-                disabled={comprimiendo}
-              />
-              <input
-                type="file"
-                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
-                capture="environment"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload-camera"
-                disabled={comprimiendo}
-              />
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <label
-                  htmlFor="file-upload-camera"
+                <button
+                  type="button"
+                  onClick={() => inputCamaraRef.current?.click()}
                   className="px-4 py-2 rounded-lg cursor-pointer transition-colors inline-flex items-center gap-2"
                   style={{
-                    backgroundColor: comprimiendo
-                      ? (theme === 'dark' ? '#3A3A3A' : '#9CA3AF')
-                      : (theme === 'dark' ? 'rgba(37, 99, 235, 0.25)' : '#2563EB'),
+                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.25)' : '#2563EB',
                     color: '#FFFFFF',
-                    cursor: comprimiendo ? 'not-allowed' : 'pointer'
                   }}
                 >
                   <FaCamera />
-                  {comprimiendo ? t('adjustment.ui.fotos.processing') : 'Tomar foto'}
-                </label>
-                <label
-                  htmlFor="file-upload"
+                  Tomar foto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => inputGaleriaRef.current?.click()}
                   className="px-4 py-2 rounded-lg cursor-pointer transition-colors"
                   style={{
-                    backgroundColor: comprimiendo 
-                      ? (theme === 'dark' ? '#3A3A3A' : '#9CA3AF')
-                      : (theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA'),
-                    color: comprimiendo 
-                      ? (theme === 'dark' ? '#B0B0B0' : '#FFFFFF')
-                      : (theme === 'dark' ? '#C084FC' : '#FFFFFF'),
-                    cursor: comprimiendo ? 'not-allowed' : 'pointer'
+                    backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA',
+                    color: theme === 'dark' ? '#C084FC' : '#FFFFFF',
                   }}
                   onMouseEnter={(e) => {
-                    if (!comprimiendo) {
-                      e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.3)' : '#7C3AED';
-                    }
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.3)' : '#7C3AED';
                   }}
                   onMouseLeave={(e) => {
-                    if (!comprimiendo) {
-                      e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA';
-                    }
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA';
                   }}
                 >
-                  {comprimiendo ? t('adjustment.ui.fotos.processing') : t('adjustment.ui.fotos.selectImages')}
-                </label>
+                  {t('adjustment.ui.fotos.selectImages')}
+                </button>
               </div>
             </>
           )}
