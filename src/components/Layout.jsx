@@ -1290,7 +1290,11 @@ export default function Layout() {
     : menuCollapsed
       ? 'w-[72px]'
       : 'w-64 lg:w-72';
-  const mainOffsetClass = isMobileShell ? '' : menuCollapsed ? 'ml-[72px]' : 'ml-64 lg:ml-72';
+  const mainOffsetClass = isMobileShell
+    ? 'w-full'
+    : menuCollapsed
+      ? 'ml-[72px] w-[calc(100%-72px)]'
+      : 'ml-64 w-[calc(100%-16rem)] lg:ml-72 lg:w-[calc(100%-18rem)]';
 
   // Sesión externa (enlace de subtarea): sin menú de la plataforma, solo el
   // formulario asignado y un enlace para volver a su tarea.
@@ -1672,8 +1676,8 @@ export default function Layout() {
 
         <main
           ref={mainRef}
-          className={`app-shell-main flex-1 min-h-0 ${
-            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-auto overscroll-contain'
+          className={`app-shell-main flex-1 min-h-0 min-w-0 ${
+            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-y-auto overflow-x-auto overscroll-contain'
           }`}
         >
           <NovedadesBanner />

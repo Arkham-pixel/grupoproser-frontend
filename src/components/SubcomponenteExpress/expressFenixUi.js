@@ -6,13 +6,13 @@ export const expressScope = 'express-fenix-scope space-y-6 font-body';
 
 
 
-export const expressPageWrap = 'mx-auto w-full max-w-7xl space-y-6';
+export const expressPageWrap = 'mx-auto w-full min-w-0 max-w-7xl space-y-6';
 
 
 
 export const expressFormSection =
 
-  'rounded-xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/20 sm:p-5';
+  'min-w-0 max-w-full overflow-x-auto rounded-xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/20 sm:p-5';
 
 
 

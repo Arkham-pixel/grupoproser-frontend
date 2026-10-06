@@ -353,13 +353,13 @@ export default function InformeUnicoBbvaCat({
           value={informe.infoEvento || ''}
           onChange={(e) => setCampo('infoEvento', e.target.value)}
         />
-        <figure className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+        <figure className="mt-4 min-w-0 max-w-full overflow-hidden rounded-lg border border-gray-200 bg-[#0f172a] dark:border-gray-700">
           <img
             src={`${import.meta.env.BASE_URL || '/'}templates/mapa-evento-siniestro-Zurich.png`}
             alt={t('bbvaCat.reportUnique.eventMapAlt')}
-            className="mx-auto max-h-[420px] w-full object-contain bg-white p-2"
+            className="mx-auto h-auto max-h-[420px] w-full max-w-3xl object-contain object-center p-3"
           />
-          <figcaption className="border-t border-gray-100 px-3 py-2 text-center font-body text-xs text-gray-500 dark:border-gray-800">
+          <figcaption className="border-t border-white/10 px-3 py-2 text-center font-body text-xs text-slate-300">
             {t('bbvaCat.reportUnique.eventMapCaption')}
           </figcaption>
         </figure>

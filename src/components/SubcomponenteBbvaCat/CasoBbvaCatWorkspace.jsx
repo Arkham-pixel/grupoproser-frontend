@@ -48,7 +48,7 @@ import { sesionPuedeVideoperitaje } from '../../config/videoperitajePermitidos.j
 import { videoperitajeEnCatHabilitado } from '../../config/arnaldFeatures.js';
 import AsistenteArnaldPanel from '../SubcomponenteIa/AsistenteArnaldPanel.jsx';
 
-const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
+const root = 'min-h-full w-full min-w-0 max-w-full overflow-x-hidden bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
 export const TABS_BBVA_CAT = {
   LIQUIDADOR: 'liquidador',
