@@ -916,7 +916,7 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
 
       <fieldset
         disabled={soloInspector || soloLectura}
-        className="min-w-0 space-y-5 border-0 p-0 m-0 disabled:opacity-80"
+        className="m-0 min-w-0 max-w-full space-y-5 border-0 p-0 disabled:opacity-80"
       >
       {!esModuloListado && (
       <>

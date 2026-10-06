@@ -333,7 +333,10 @@ export default function InformeUnicoBbvaCat({
         {t('bbvaCat.reportUnique.archiveHint')}
       </p>
 
-      <fieldset disabled={soloLectura} className="space-y-5 border-0 p-0 m-0 disabled:opacity-90">
+      <fieldset
+        disabled={soloLectura}
+        className="m-0 min-w-0 max-w-full space-y-5 border-0 p-0 disabled:opacity-90"
+      >
 
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -348,8 +351,9 @@ export default function InformeUnicoBbvaCat({
           {t('bbvaCat.reportUnique.eventHint')}
         </p>
         <textarea
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          className="box-border w-full min-w-0 max-w-full resize-y break-words rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
           rows={6}
+          wrap="soft"
           value={informe.infoEvento || ''}
           onChange={(e) => setCampo('infoEvento', e.target.value)}
         />
@@ -357,7 +361,7 @@ export default function InformeUnicoBbvaCat({
           <img
             src={`${import.meta.env.BASE_URL || '/'}templates/mapa-evento-siniestro-Zurich.png`}
             alt={t('bbvaCat.reportUnique.eventMapAlt')}
-            className="mx-auto h-auto max-h-[420px] w-full max-w-3xl object-contain object-center p-3"
+            className="mx-auto h-auto max-h-[420px] w-full max-w-full object-contain object-center p-3"
           />
           <figcaption className="border-t border-white/10 px-3 py-2 text-center font-body text-xs text-slate-300">
             {t('bbvaCat.reportUnique.eventMapCaption')}
@@ -385,14 +389,15 @@ export default function InformeUnicoBbvaCat({
           2. {t('bbvaCat.reportUnique.sectionDamages')}
         </h3>
         <textarea
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          className="box-border w-full min-w-0 max-w-full resize-y break-words rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
           rows={5}
+          wrap="soft"
           value={informe.descripcionDanios || ''}
           onChange={(e) => setCampo('descripcionDanios', e.target.value)}
           placeholder={t('bbvaCat.reportUnique.sectionDamagesHint')}
         />
 
-        <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+        <div className="mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border border-gray-200 p-3 dark:border-gray-700">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h4 className="inline-flex items-center gap-2 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
               <FaMapMarkerAlt className="text-blue-600" />
@@ -657,8 +662,9 @@ export default function InformeUnicoBbvaCat({
         <h3 className={expressSectionTitle}>6. {t('bbvaCat.reportUnique.sectionConclusions')}</h3>
         <Campo label={t('bbvaCat.reportUnique.conclusions')}>
           <textarea
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+            className="box-border w-full min-w-0 max-w-full resize-y break-words rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
             rows={4}
+            wrap="soft"
             value={informe.conclusiones || ''}
             onChange={(e) => setCampo('conclusiones', e.target.value)}
           />
@@ -666,8 +672,9 @@ export default function InformeUnicoBbvaCat({
         <div className="mt-3">
           <Campo label={t('bbvaCat.reportUnique.recommendation')}>
             <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              className="box-border w-full min-w-0 max-w-full resize-y break-words rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
               rows={4}
+              wrap="soft"
               value={informe.recomendacion || ''}
               onChange={(e) => setCampo('recomendacion', e.target.value)}
             />

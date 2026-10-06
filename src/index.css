@@ -330,6 +330,13 @@
   min-height: 100%;
 }
 
+/* fieldset UA usa min-inline-size:min-content y estira formularios/textareas a lo ancho */
+fieldset {
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+}
+
 /* Campana: llama la atención si hay notificaciones sin leer */
 @keyframes notif-bell-ring {
   0%,
