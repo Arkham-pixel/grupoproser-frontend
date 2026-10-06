@@ -592,8 +592,8 @@ setMap(mapInstance)
     return (
       <div className="w-full" style={{ minHeight: '300px' }}>
         {/* Barra de búsqueda y controles */}
-        <div className="mb-2 flex flex-col sm:flex-row gap-2">
-          <div className="flex-1 relative">
+        <div className="mb-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
+          <div className="relative min-w-0 flex-1">
             {window.google?.maps?.places?.Autocomplete ? (
               <Autocomplete
                 onLoad={onAutocompleteLoad}
@@ -632,7 +632,7 @@ setMap(mapInstance)
             <FaSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <button
               onClick={obtenerUbicacionActual}
               disabled={!isLoaded}

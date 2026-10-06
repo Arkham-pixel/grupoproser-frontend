@@ -1673,7 +1673,7 @@ export default function Layout() {
         <main
           ref={mainRef}
           className={`app-shell-main flex-1 min-h-0 ${
-            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-y-auto overflow-x-hidden overscroll-contain'
+            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-auto overscroll-contain'
           }`}
         >
           <NovedadesBanner />
