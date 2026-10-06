@@ -225,6 +225,7 @@ const buildExportRow = (caso) => ({
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
+  'OBSERVACIÓN PENDIENTE DE DOCUMENTO': caso.observacionPendienteDocumento ?? '',
   'SEVERIDAD CAT': caso.severidadCat ?? '',
   'SEVERIDAD CAT DESCRIPCION': labelSeveridadCat(caso.severidadCat),
   'ACCESO PREDIO': caso.accesoPredio ?? '',

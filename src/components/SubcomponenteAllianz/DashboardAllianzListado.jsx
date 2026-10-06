@@ -319,6 +319,8 @@ export default function DashboardAllianzListado() {
       'DÍAS': caso.diasTotal ?? '',
       RESERVA: caso.reserva ?? caso.valorReservaPreventivaPromedio ?? '',
       'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
+      'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
+      'OBSERVACIÓN PENDIENTE DE DOCUMENTO': caso.observacionPendienteDocumento ?? '',
       'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
     }));
     const wb = XLSX.utils.book_new();

@@ -304,6 +304,7 @@ export default function DashboardZurichListado() {
       'VALOR RECLAMADO': caso.valorReclamado ?? '',
       'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
       'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
+      'OBSERVACIÓN PENDIENTE DE DOCUMENTO': caso.observacionPendienteDocumento ?? '',
       'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
       'FECHA FINALIZADO': formatDate(caso.fechaFinalizado),
     }));

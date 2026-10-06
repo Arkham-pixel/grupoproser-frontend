@@ -14,7 +14,7 @@ import MapaBloquesBbvaCatPanel from './MapaBloquesBbvaCatPanel.jsx';
 import ModalImportarExcelBbvaCat, {
   esAdminOSoporteBbvaCat,
 } from './ModalImportarExcelBbvaCat.jsx';
-import { esRolSoloBbva } from '../../config/roles.js';
+import { esRolConsultaBbva, esRolSoloBbva } from '../../config/roles.js';
 import {
   BBVA_CAT_REPORTE_PAGE_SIZE,
   RADIO_KM_ANALISTA_BBVA_CAT,
@@ -107,6 +107,7 @@ const COLUMNAS = [
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
+  { clave: 'observacionPendienteDocumento', labelKey: 'observacionPendienteDocumento' },
   { clave: 'observaciones', labelKey: 'observaciones' },
 ];
 
@@ -157,6 +158,7 @@ const buildExportRow = (caso) => ({
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
+  'OBSERVACIÓN PENDIENTE DE DOCUMENTO': caso.observacionPendienteDocumento ?? '',
   OBSERVACIONES: caso.observaciones ?? '',
   'Fecha creación': formatDate(caso.createdAt),
 });
@@ -168,6 +170,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
     useFiltroCasoExclusivo();
   const esAnalista = modo === 'analista';
   const esBbvaSolo = esRolSoloBbva();
+  const soloConsulta = esRolConsultaBbva();
   const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -499,6 +502,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
+              {!soloConsulta && (
               <Link
                 to="/bbva-cat/carga"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -506,13 +510,15 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                 <FaPlus />
                 {t('nav.bbvaCatAddCase')}
               </Link>
+              )}
               <Link
                 to="/bbva-cat/listado/dashboard"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
                 {t('nav.bbvaCatListadoDashboard')}
               </Link>
-              {esAnalista && !modoAsignados ? (
+              {!soloConsulta &&
+                (esAnalista && !modoAsignados ? (
                 <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
                   {t('nav.bbvaCatListadoAnalista')}
                 </span>
@@ -523,7 +529,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                 >
                   {t('nav.bbvaCatListadoAnalista')}
                 </Link>
-              )}
+              ))}
               {!esBbvaSolo &&
                 (esAnalista || modoAsignados ? (
                   <Link
@@ -537,7 +543,8 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                     {t('nav.bbvaCatListadoReport')}
                   </span>
                 ))}
-              {modoAsignados ? (
+              {!soloConsulta &&
+                (modoAsignados ? (
                 <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
                   {t('nav.assignedCases')}
                 </span>
@@ -548,7 +555,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados 
                 >
                   {t('nav.assignedCases')}
                 </Link>
-              )}
+              ))}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">

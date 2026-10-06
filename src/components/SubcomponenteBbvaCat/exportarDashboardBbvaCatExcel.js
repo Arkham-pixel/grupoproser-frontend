@@ -56,6 +56,7 @@ export function buildExportRowListadoBbvaCat(caso = {}) {
     'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
     'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
     'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
+    'OBSERVACIÓN PENDIENTE DE DOCUMENTO': caso.observacionPendienteDocumento ?? '',
     OBSERVACIONES: caso.observaciones ?? '',
     'Fecha creación': formatDate(caso.createdAt),
   };
