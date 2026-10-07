@@ -66,6 +66,9 @@ export default function Facturacion({
   historialDocs,
   updateHistorialDocs,
   tarifaBloqueada = false,
+  /** Zurich: sin control de horas; cobro por lista de tarifas. */
+  modoCobroTarifa = false,
+  contenidoTarifa = null,
   layout = 'acordeon',
   seccionInicial = 'controlHoras',
   abrirEditorControlHoras = false,
@@ -196,8 +199,16 @@ export default function Facturacion({
     documentosControlHoras.length > 0 ||
     (formData.adjunto_control_horas && formData.adjunto_control_horas !== 'Ninguno');
 
-  const puedeEnviarNotificacionControlHoras =
-    tieneControlHorasGuardado || tieneDocumentosControlHoras;
+  const tienePaqueteTarifa =
+    modoCobroTarifa &&
+    (formData.paquete_facturacion?.honorarios != null ||
+      (formData.valor_servicio !== '' &&
+        formData.valor_servicio != null &&
+        Number(formData.valor_servicio) > 0));
+
+  const puedeEnviarNotificacionControlHoras = modoCobroTarifa
+    ? tienePaqueteTarifa || tieneDocumentosControlHoras
+    : tieneControlHorasGuardado || tieneDocumentosControlHoras;
 
   const resumenControlHoras = useMemo(() => {
     if (!tieneControlHorasGuardado) return null;
@@ -352,8 +363,16 @@ export default function Facturacion({
     });
 
   const tabsMenu = [
-    { id: 'controlHoras', label: t('complex.ui.facturacion.control_de_horas') },
-    { id: 'envio', label: t('complex.ui.facturacion.envio_control_horas') },
+    {
+      id: 'controlHoras',
+      label: modoCobroTarifa ? 'Tarifa / Paquete' : t('complex.ui.facturacion.control_de_horas'),
+    },
+    {
+      id: 'envio',
+      label: modoCobroTarifa
+        ? 'Envío / notificación'
+        : t('complex.ui.facturacion.envio_control_horas'),
+    },
     { id: 'autorizacion', label: t('complex.ui.facturacion.autorizacion') },
     { id: 'factura', label: t('complex.ui.facturacion.facturacion') },
   ];
@@ -409,15 +428,101 @@ export default function Facturacion({
       )}
 
       <div className={esMenu ? 'space-y-4' : complexAccordionWrap}>
-        {/* Control de Horas */}
+        {/* Control de Horas / Tarifa Zurich */}
         <SeccionAcordeon
           abierto={esMenu ? tabMenu === 'controlHoras' : controlHorasAbierto}
           onToggle={() => setControlHorasAbierto(!controlHorasAbierto)}
           icon={FaClock}
-          titulo={t('complex.ui.facturacion.control_de_horas')}
-          subtitulo={t('complex.ui.facturacion.fase1_liquidacion')}
+          titulo={
+            modoCobroTarifa
+              ? 'Tarifa / Paquete'
+              : t('complex.ui.facturacion.control_de_horas')
+          }
+          subtitulo={
+            modoCobroTarifa
+              ? 'Honorarios por valor liquidado'
+              : t('complex.ui.facturacion.fase1_liquidacion')
+          }
           sinCabecera={esMenu}
         >
+          {modoCobroTarifa && contenidoTarifa ? (
+            <>
+              {contenidoTarifa}
+              <Campo label="Fecha del paquete / liquidación">
+                <InputFenix
+                  type="date"
+                  name="fecha_control_horas"
+                  value={formData.fecha_control_horas || ''}
+                  onChange={handleChange}
+                />
+              </Campo>
+              <Campo label="Documentos de soporte (opcional)">
+                <DropzoneFenix
+                  getRootProps={getRootPropsControlHoras}
+                  getInputProps={getInputPropsControlHoras}
+                  isDragActive={isDragActiveControlHoras}
+                  hint={hintArchivos(formData.adjunto_control_horas)}
+                />
+              </Campo>
+              <ListaDocumentos
+                titulo={t('complex.ui.facturacion.documentos_subidos')}
+                documentos={documentosControlHoras}
+                onDescargar={descargarDocumento}
+                onEliminar={eliminarDocumento}
+                tipoEliminar="controlHoras"
+              />
+              <Campo label={t('complex.ui.facturacion.enviar_notificacion_a')}>
+                <SelectFenix
+                  name="gerente_control_horas"
+                  value={formData.gerente_control_horas || ''}
+                  onChange={handleChange}
+                >
+                  <option value="">{t('complex.ui.facturacion.seleccione_un_gerente')}</option>
+                  <option value="elkin">{t('complex.ui.facturacion.elkin_tapia_gutierrez')}</option>
+                  <option value="iskharly">
+                    {t('complex.ui.facturacion.iskharly_jose_tapia_gutierrez')}
+                  </option>
+                  <option value="test">
+                    {t('complex.ui.facturacion.prueba_danalyst_proserpuertos_com_co')}
+                  </option>
+                </SelectFenix>
+              </Campo>
+              {formData.gerente_control_horas && (
+                <BotonEnviar
+                  disabled={enviando || !formData.gerente_control_horas}
+                  enviando={enviando}
+                  onClick={async () => {
+                    if (!puedeEnviarNotificacionControlHoras) {
+                      alert(
+                        'Aplique el paquete de tarifa Zurich antes de notificar al gerente.'
+                      );
+                      return;
+                    }
+                    if (!formData.fecha_control_horas) {
+                      alert(t('complex.ui.facturacion.indique_fecha_control'));
+                      return;
+                    }
+                    setEnviando(true);
+                    try {
+                      if (onEnviarControlHoras) {
+                        await onEnviarControlHoras(formData.gerente_control_horas);
+                      }
+                    } catch (error) {
+                      console.error('Error enviando notificación:', error);
+                      alert(t('complex.ui.facturacion.error_enviar_notificacion'));
+                    } finally {
+                      setEnviando(false);
+                    }
+                  }}
+                >
+                  {enviando
+                    ? t('complex.ui.facturacion.enviando')
+                    : 'Enviar paquete / tarifa al gerente'}
+                </BotonEnviar>
+              )}
+            </>
+          ) : (
+            <>
           <div className={complexInfoPanel}>
             <p className="mb-3 font-body text-base text-gray-600 dark:text-gray-400">{t("complex.ui.facturacion.un_control_de_horas_por_caso_puede_crearlo_en_el_sistema")}</p>
             {resumenControlHoras ? (
@@ -575,6 +680,8 @@ export default function Facturacion({
                 ? t('complex.ui.facturacion.enviando')
                 : t('complex.ui.facturacion.enviar_control_horas_gerente')}
             </BotonEnviar>
+          )}
+            </>
           )}
         </SeccionAcordeon>
 
@@ -768,7 +875,7 @@ export default function Facturacion({
       </div>
       )}
 
-      {setFormData && (
+      {setFormData && !modoCobroTarifa && (
         <ControlHorasEditor
           abierto={editorControlHorasAbierto}
           onCerrar={() => setEditorControlHorasAbierto(false)}

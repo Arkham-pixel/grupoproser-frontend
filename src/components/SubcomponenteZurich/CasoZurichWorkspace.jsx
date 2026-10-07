@@ -122,8 +122,28 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   const [listaCasos, setListaCasos] = useState([]);
   const [archiveroAbierto, setArchiveroAbierto] = useState(false);
   const [gestionarAbierto, setGestionarAbierto] = useState(false);
+  const [abrirTabFacturacion, setAbrirTabFacturacion] = useState(
+    () => Boolean(location.state?.abrirTabFacturacion)
+  );
 
   const casoId = casoZurich?._id || casoIdFromQuery || null;
+
+  useEffect(() => {
+    const quiereGestionar = Boolean(
+      location.state?.abrirGestionar || location.state?.abrirTabFacturacion
+    );
+    if (!quiereGestionar || !casoZurich?._id) return;
+    setGestionarAbierto(true);
+    if (location.state?.abrirTabFacturacion) setAbrirTabFacturacion(true);
+    const { abrirGestionar: _a, abrirTabFacturacion: _b, ...restState } =
+      location.state || {};
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: restState }
+    );
+    // Solo al llegar con flags de bandeja; no re-disparar en cada state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoZurich?._id]);
 
   useEffect(() => {
     let cancelado = false;
@@ -706,10 +726,15 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
               embed
               origen={esModuloListado ? 'listado' : 'cat'}
               initialData={casoZurich}
+              tabInicial={abrirTabFacturacion ? 'facturacion' : undefined}
               mostrarVolverInforme
-              onClose={() => setGestionarAbierto(false)}
+              onClose={() => {
+                setGestionarAbierto(false);
+                setAbrirTabFacturacion(false);
+              }}
               onVolverInforme={() => {
                 setGestionarAbierto(false);
+                setAbrirTabFacturacion(false);
                 setTab(TABS_ZURICH.INFORME);
               }}
               onSaved={async (guardado) => {

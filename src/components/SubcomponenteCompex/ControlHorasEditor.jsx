@@ -34,6 +34,13 @@ import {
 } from './controlHoras/catalogoControlHoras';
 import { generarControlHorasExcel, descargarBlob } from './controlHoras/generarControlHorasExcel';
 import { resolverTarifaHora } from './controlHoras/tarifasHoraAseguradoras';
+import { escalarHorasPlantillaHaciaObjetivo } from './controlHoras/tarifaHonorariosSura.js';
+import {
+  buscarRangoZurichPorId,
+  formatearCopZurich,
+  opcionesTarifaZurich,
+  parsearValorLiquidadoZurich,
+} from './controlHoras/tarifaHonorariosZurich.js';
 
 export default function ControlHorasEditor({
   abierto,
@@ -65,6 +72,12 @@ export default function ControlHorasEditor({
     nombreCliente: formData.nombreCliente,
     fchaAsgncion: formData.fchaAsgncion,
     reserva: formData.reserva,
+    valorLiquidado: formData.valorLiquidado,
+    rangoIdZurich:
+      datos?.tarifa_rango_id ||
+      controlHorasGuardado?.tarifa_rango_id ||
+      formData.tarifa_rango_id ||
+      null,
     formData,
     caso: {
       ...formData,
@@ -104,21 +117,74 @@ export default function ControlHorasEditor({
     [formData, nombreAseguradora, emailAnalista]
   );
 
-  const totales = useMemo(
-    () => (datos ? calcularTotalesControlHoras(datos) : null),
-    [datos]
-  );
+  const tarifaCatalogoPreview = useMemo(() => {
+    if (!abierto) return null;
+    return resolverTarifaHora({
+      codiAsgrdra: formData.codiAsgrdra,
+      nombreAseguradora: nombreAseguradoraResuelto,
+      nombreCliente: formData.nombreCliente,
+      fchaAsgncion: formData.fchaAsgncion,
+      reserva: formData.reserva,
+      valorLiquidado: formData.valorLiquidado,
+      rangoIdZurich:
+        datos?.tarifa_rango_id ||
+        controlHorasGuardado?.tarifa_rango_id ||
+        formData.tarifa_rango_id ||
+        null,
+      formData,
+      caso: formData,
+    });
+  }, [
+    abierto,
+    formData,
+    nombreAseguradoraResuelto,
+    datos?.tarifa_rango_id,
+    controlHorasGuardado?.tarifa_rango_id,
+  ]);
+
+  const totales = useMemo(() => {
+    if (!datos) return null;
+    const base = calcularTotalesControlHoras(datos);
+    const honorariosTarifa =
+      datos.tarifa_honorarios != null && datos.tarifa_honorarios !== ''
+        ? Math.round(Number(datos.tarifa_honorarios))
+        : null;
+    if (
+      tarifaCatalogoPreview?.tarifaId === 'ZURICH_COLOMBIA' &&
+      honorariosTarifa != null &&
+      Number.isFinite(honorariosTarifa)
+    ) {
+      const gastos = Number(base.gastos) || 0;
+      return {
+        ...base,
+        subtotal_honorarios: honorariosTarifa,
+        total: honorariosTarifa + gastos,
+      };
+    }
+    return base;
+  }, [datos, tarifaCatalogoPreview?.tarifaId]);
 
   if (!abierto || !datos) return null;
 
   const valorHoraPorTarifa =
     tarifaBloqueada || (datos.valor_hora_origen === 'tarifa' && !edicionManualValorHora);
-  const tarifaCatalogo = resolverTarifaHora(argsTarifa);
+  const tarifaCatalogo = tarifaCatalogoPreview || resolverTarifaHora(argsTarifa);
   const esTarifaPrevisora = tarifaCatalogo.tarifaId === 'PREVISORA';
   const esTarifaSura = tarifaCatalogo.tarifaId === 'SURA';
+  const esTarifaZurich = tarifaCatalogo.tarifaId === 'ZURICH_COLOMBIA';
   const topeHorasPrevisora = esTarifaPrevisora ? Number(tarifaCatalogo.maxHoras) || 12.5 : null;
   const topeHonorariosSura = esTarifaSura ? Number(tarifaCatalogo.maxHonorarios) || null : null;
-  const puedeRestaurarTarifa = tarifaCatalogo.origen === 'tarifa';
+  const honorariosZurich =
+    esTarifaZurich && datos.tarifa_honorarios != null && datos.tarifa_honorarios !== ''
+      ? Number(datos.tarifa_honorarios)
+      : esTarifaZurich
+        ? Number(tarifaCatalogo.honorariosSugeridos) || null
+        : null;
+  const opcionesZurich = esTarifaZurich ? opcionesTarifaZurich() : [];
+  const puedeRestaurarTarifa = tarifaCatalogo.origen === 'tarifa' && !esTarifaZurich;
+  const rangoZurichActual = esTarifaZurich
+    ? buscarRangoZurichPorId(datos.tarifa_rango_id || tarifaCatalogo.rangoId)
+    : null;
 
   const actualizarCampo = (campo, valor) => {
     setDatos((prev) => {
@@ -224,11 +290,65 @@ export default function ControlHorasEditor({
     const tarifa = resolverTarifaHora(argsTarifa);
     setMensajeTarifa(tarifa.mensaje);
     setEdicionManualValorHora(tarifa.origen !== 'tarifa');
-    setDatos((prev) => ({
-      ...prev,
-      valor_hora: tarifa.valorHora ?? prev.valor_hora,
-      valor_hora_origen: tarifa.origen,
-    }));
+    setDatos((prev) => {
+      const tipo = normalizarTipoLiquidadorControlHoras(prev.tipo_liquidador);
+      let filas = Array.isArray(prev.filas) ? prev.filas : [];
+      if (tarifa.tarifaId === 'ZURICH_COLOMBIA') {
+        if (!filas.length || !filas.some((f) => esFilaFijaControlHoras(f))) {
+          filas = aplicarPlantillaTipoLiquidador(filas, tipo, formData);
+        }
+        if (Number(tarifa.horasSugeridas) > 0) {
+          filas = escalarHorasPlantillaHaciaObjetivo(filas, tarifa.horasSugeridas);
+        }
+      }
+      return {
+        ...prev,
+        valor_hora: tarifa.valorHora ?? prev.valor_hora,
+        valor_hora_origen: tarifa.origen,
+        tarifa_rango_id: tarifa.rangoId || prev.tarifa_rango_id || '',
+        tarifa_honorarios: tarifa.honorariosSugeridos ?? prev.tarifa_honorarios ?? null,
+        filas,
+      };
+    });
+  };
+
+  const aplicarRangoZurich = (rangoId) => {
+    const rangoSel = buscarRangoZurichPorId(rangoId);
+    const vl = parsearValorLiquidadoZurich(formData.valorLiquidado);
+    if (rangoSel?.modo === 'porcentaje' && (vl == null || vl <= 0)) {
+      mostrarAviso(
+        'Para cobrar el 1,5% del ajuste bruto debe estar diligenciado el valor liquidado del caso.',
+        'Tarifa Zurich 1,5%',
+        'warning'
+      );
+    }
+    const tarifa = resolverTarifaHora({
+      ...argsTarifa,
+      rangoIdZurich: rangoId || null,
+    });
+    setMensajeTarifa(tarifa.mensaje);
+    setEdicionManualValorHora(false);
+    setDatos((prev) => {
+      const tipo = normalizarTipoLiquidadorControlHoras(prev.tipo_liquidador);
+      let filas = Array.isArray(prev.filas) ? prev.filas : [];
+      const tieneFijos = filas.some((f) => esFilaFijaControlHoras(f));
+      if (!filas.length || !tieneFijos) {
+        filas = aplicarPlantillaTipoLiquidador(filas, tipo, formData);
+      }
+      if (Number(tarifa.horasSugeridas) > 0) {
+        filas = escalarHorasPlantillaHaciaObjetivo(filas, tarifa.horasSugeridas);
+      }
+      return {
+        ...prev,
+        valor_hora: tarifa.valorHora ?? 100000,
+        valor_hora_origen: 'tarifa',
+        tarifa_rango_id: rangoId || tarifa.rangoId || '',
+        tarifa_honorarios:
+          tarifa.honorariosSugeridos != null ? Math.round(Number(tarifa.honorariosSugeridos)) : null,
+        tipo_liquidador: tipo,
+        filas,
+      };
+    });
   };
 
   const validar = () => {
@@ -317,6 +437,48 @@ export default function ControlHorasEditor({
       mostrarAviso(
         'Este caso es Cancelado SURA / sin cobro. No se pueden guardar honorarios.',
         'Tope honorarios SURA',
+        'warning'
+      );
+      return false;
+    }
+
+    if (esTarifaZurich && !String(datos.tarifa_rango_id || '').trim()) {
+      mostrarAviso(
+        'Seleccione el rango de tarifa Zurich (lista de precios por valor liquidado) antes de guardar el control de horas.',
+        'Tarifa Zurich',
+        'warning'
+      );
+      return false;
+    }
+
+    if (esTarifaZurich && rangoZurichActual?.modo === 'porcentaje') {
+      const vl = parsearValorLiquidadoZurich(formData.valorLiquidado);
+      if (vl == null || vl <= 0) {
+        mostrarAviso(
+          'El rango del 1,5% necesita el valor liquidado (ajuste bruto) del caso. Complételo en datos del caso e intente de nuevo.',
+          'Tarifa Zurich 1,5%',
+          'warning'
+        );
+        return false;
+      }
+      if (honorariosZurich == null || honorariosZurich <= 0) {
+        mostrarAviso(
+          'No se pudo calcular el 1,5% del valor liquidado. Revise el valor liquidado del caso.',
+          'Tarifa Zurich 1,5%',
+          'warning'
+        );
+        return false;
+      }
+    }
+
+    if (
+      esTarifaZurich &&
+      rangoZurichActual?.modo === 'fijo' &&
+      (honorariosZurich == null || honorariosZurich <= 0)
+    ) {
+      mostrarAviso(
+        'Seleccione un rango de tarifa Zurich con honorarios válidos.',
+        'Tarifa Zurich',
         'warning'
       );
       return false;
@@ -417,6 +579,7 @@ export default function ControlHorasEditor({
           <div className={complexCard}>
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.liquidacion")}</h3>
+              {!esTarifaZurich && (
               <div className="flex flex-wrap gap-2">
                 {valorHoraPorTarifa && !tarifaBloqueada && (
                   <button
@@ -429,13 +592,50 @@ export default function ControlHorasEditor({
                   <button type="button" onClick={reaplicarTarifa} className={complexBtnSecondary}>{t("complex.ui.control_horas_editor.usar_tarifa_de_aseguradora")}</button>
                 )}
               </div>
+              )}
             </div>
             {mensajeTarifa && (
               <div className={`${complexInfoPanel} mb-3`}>
                 <p className="font-body text-base text-gray-700 dark:text-gray-300">{mensajeTarifa}</p>
               </div>
             )}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {esTarifaZurich && (
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={complexLabel}>
+                    Tarifa Zurich (lista de precios por valor liquidado)
+                  </label>
+                  <select
+                    className={`${complexInput} mt-1`}
+                    value={datos.tarifa_rango_id || tarifaCatalogo.rangoId || ''}
+                    onChange={(e) => aplicarRangoZurich(e.target.value)}
+                  >
+                    <option value="">Seleccione un rango…</option>
+                    {opcionesZurich.map((op) => (
+                      <option key={op.id} value={op.id}>
+                        {op.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 font-body text-xs text-gray-500">
+                    Valor liquidado del caso:{' '}
+                    {formatearCopZurich(formData.valorLiquidado ?? tarifaCatalogo.valorLiquidado)}
+                    {rangoZurichActual?.modo === 'porcentaje' ? ' · cobro = 1,5% de ese valor' : ''}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-red-50/50 px-3 py-2 dark:bg-red-950/20">
+                  <span className="text-sm text-gray-500">Honorarios según tarifa Zurich</span>
+                  <p className="font-heading text-xl font-bold text-fenix-primario">
+                    {honorariosZurich != null ? formatearMoneda(honorariosZurich) : '—'}
+                  </p>
+                  <p className="mt-1 font-body text-xs text-gray-500">
+                    Este es el valor a facturar y el que lleva el Excel/documento a la aseguradora.
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className={`grid gap-4 sm:grid-cols-2 ${esTarifaZurich ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
+              {!esTarifaZurich && (
               <div>
                 <label className={complexLabel}>{t("complex.ui.control_horas_editor.valor_hora")}{valorHoraPorTarifa && (
                     <span className="ml-2 font-normal text-fenix-primario">{t("complex.ui.control_horas_editor.tarifa_automatica")}</span>
@@ -467,6 +667,7 @@ export default function ControlHorasEditor({
                   <p className="mt-1 font-body text-sm text-gray-500">{t("complex.ui.control_horas_editor.segun_tarifa_de")}{nombreAseguradoraResuelto || t('complex.ui.control_horas_editor.la_aseguradora')}{t("complex.ui.control_horas_editor.texto")}</p>
                 )}
               </div>
+              )}
               <div>
                 <label className={complexLabel}>{t("complex.ui.control_horas_editor.gastos")}</label>
                 <input
@@ -490,6 +691,11 @@ export default function ControlHorasEditor({
                 <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">
                   {formatearMoneda(totales?.total)}
                 </p>
+                {esTarifaZurich ? (
+                  <p className="mt-0.5 font-body text-xs text-gray-500">
+                    Honorarios tarifa + gastos
+                  </p>
+                ) : null}
                 {esTarifaSura && topeHonorariosSura != null && topeHonorariosSura > 0 ? (
                   <p className="mt-0.5 font-body text-xs text-gray-500">
                     Referencia SURA {formatearMoneda(topeHonorariosSura)}

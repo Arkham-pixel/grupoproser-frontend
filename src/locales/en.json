@@ -11267,7 +11267,15 @@
       "origenCat": "CAT",
       "origenListado": "Listing",
       "buscarPlaceholder": "File number, claim, insured, adjuster…",
-      "copiaLider": " Copy sent to {{nombre}} (Zurich lead)."
+      "copiaLider": " Copy sent to {{nombre}} (Zurich lead).",
+      "exportExcel": "Download Excel",
+      "exportExcelLote": "Lot Excel",
+      "exportEmpty": "There are no cases or lots to export.",
+      "exportEmptyEnvios": "There are no notified sends to export.",
+      "casosSueltos": "Loose cases (To bill)",
+      "casosSueltosHint": "Select cases and create a lot, or download the zone Excel.",
+      "carpetasLotes": "Folders / lots",
+      "carpetasHint": "Each lot can be closed as Billed and downloaded to Excel."
     },
     "billing": {
       "openMenu": "Menu",

@@ -282,9 +282,11 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
   };
 
   const resolveDownloadUrl = (doc) => {
-    if (doc.origin === 'sharepoint') return doc.downloadUrl || null;
+    if (doc.origin === 'sharepoint') return doc.downloadUrl || doc.ruta || null;
     return null;
   };
+
+  const rutaDescargaArnald = (doc) => doc?.ruta || doc?.downloadUrl || null;
 
   return (
     <div className="space-y-4">
@@ -321,6 +323,10 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
             failed: summary.failed || 0,
             none: summary.none || 0,
           })}
+          <div className="mt-1 text-gray-500 dark:text-gray-400">
+            Los archivos de ARNALD se descargan con el botón Descargar de cada fila (columna Acciones),
+            aunque SharePoint figure como no sincronizado.
+          </div>
         </div>
       )}
 
@@ -377,7 +383,7 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
@@ -396,7 +402,7 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
               <th className="px-3 py-2 text-left font-body text-xs font-semibold uppercase text-gray-500">
                 {t('segurosSura.archive.sharepoint.column', { defaultValue: 'Estado' })}
               </th>
-              <th className="px-3 py-2 text-right font-body text-xs font-semibold uppercase text-gray-500">
+              <th className="sticky right-0 z-10 bg-gray-50 px-3 py-2 text-right font-body text-xs font-semibold uppercase text-gray-500 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.15)] dark:bg-gray-900/50">
                 {t('segurosSura.report.actions', { defaultValue: 'Acciones' })}
               </th>
             </tr>
@@ -411,27 +417,30 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
             ) : documentos.length > 0 ? (
               documentos.map((doc) => {
                 const url = resolveDownloadUrl(doc);
+                const rutaArnald = rutaDescargaArnald(doc);
                 const status = doc.estado || 'none';
                 return (
                   <tr key={doc.key || doc.id}>
-                    <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
-                      <div>{doc.nombre}</div>
+                    <td className="max-w-[16rem] px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200 sm:max-w-[22rem]">
+                      <div className="truncate" title={doc.nombre}>
+                        {doc.nombre}
+                      </div>
                       {doc.associatedByLabel ? (
                         <div className="mt-0.5 font-body text-[11px] text-gray-500">
                           {doc.associatedByLabel}
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {t(`segurosSura.archive.labels.${String(doc.tipo || '').toUpperCase()}`, {
                         defaultValue: doc.tipo || '—',
                       })}
                     </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {doc.originLabel ||
                         (doc.origin === 'sharepoint' ? 'SURA / SHAREPOINT' : 'ARNALD')}
                     </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {formatDate(doc.fecha || doc.fechaSubida) || '—'}
                     </td>
                     <td className="px-3 py-2">
@@ -447,7 +456,7 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
                         {doc.estadoLabel || labelForStatus(status)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="sticky right-0 z-10 bg-white px-3 py-2 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-[#1A1A1A]">
                       <div className="inline-flex flex-wrap justify-end gap-2">
                         {doc.origin === 'sharepoint' && url ? (
                           <a
@@ -460,9 +469,9 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
                             {t('segurosSura.archive.download')}
                           </a>
                         ) : (
-                          doc.ruta && (
+                          rutaArnald && (
                             <BotonDescargaStorage
-                              ruta={doc.ruta}
+                              ruta={rutaArnald}
                               nombre={doc.nombre}
                               onError={(err) => setError(err.message)}
                             >
@@ -531,18 +540,20 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
                 const status = sync.status || 'none';
                 return (
                   <tr key={arch._id}>
-                    <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">
-                      {arch.nombreOriginal}
+                    <td className="max-w-[16rem] px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200 sm:max-w-[22rem]">
+                      <div className="truncate" title={arch.nombreOriginal}>
+                        {arch.nombreOriginal}
+                      </div>
                     </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {t(`segurosSura.archive.labels.${arch.etiqueta || 'GENERAL'}`, {
                         defaultValue: arch.etiqueta || 'GENERAL',
                       })}
                     </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       ARNALD
                     </td>
-                    <td className="px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-2 font-body text-sm text-gray-600 dark:text-gray-300">
                       {formatDate(arch.fechaSubida) || '—'}
                     </td>
                     <td className="px-3 py-2">
@@ -552,7 +563,7 @@ export default function ArchiveroSegurosSura({ caso, onClose, onChanged }) {
                         {labelForStatus(status)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="sticky right-0 z-10 bg-white px-3 py-2 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-[#1A1A1A]">
                       <div className="inline-flex flex-wrap justify-end gap-2">
                         {arch.ruta && (
                           <BotonDescargaStorage

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual — Bandeja control de horas Zurich | ARNALD</title>
+  <style>
+    :root { --rojo: #c8102e; --texto: #111827; --muted: #6b7280; --borde: #e5e7eb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--texto); line-height: 1.55; background: #f9fafb; }
+    header { background: linear-gradient(135deg, #1a0a0e, #111827); color: #fff; padding: 2.5rem 1.5rem; text-align: center; }
+    header .brand { color: #fca5a5; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; }
+    header h1 { margin: .4rem 0; font-size: clamp(1.4rem, 3vw, 2rem); }
+    header p { margin: 0 auto; max-width: 36rem; color: #d1d5db; font-size: .95rem; }
+    main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    section { background: #fff; border: 1px solid var(--borde); border-radius: 14px; padding: 1.35rem 1.4rem; margin: 1rem 0; }
+    h2 { margin: 0 0 .6rem; font-size: 1.2rem; color: var(--rojo); }
+    h3 { margin: 1rem 0 .4rem; font-size: 1.02rem; }
+    ol, ul { margin: .4rem 0 .8rem; padding-left: 1.25rem; }
+    li { margin: .25rem 0; }
+    .tip { background: #fef2f2; border-left: 4px solid var(--rojo); padding: .7rem .9rem; border-radius: 0 8px 8px 0; font-size: .92rem; }
+    figure { margin: 1rem 0 0; }
+    figure img { width: 100%; border: 1px solid var(--borde); border-radius: 10px; display: block; }
+    figcaption { font-size: .8rem; color: var(--muted); margin-top: .35rem; text-align: center; }
+    .acciones { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+    .acciones a, .acciones button {
+      appearance: none; border: 1px solid var(--borde); background: #fff; color: var(--texto);
+      padding: .55rem .9rem; border-radius: 8px; font-weight: 600; font-size: .9rem; text-decoration: none; cursor: pointer;
+    }
+    .acciones a.primary, .acciones button.primary { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+    @media print {
+      body { background: #fff; }
+      header { break-after: avoid; }
+      section { break-inside: avoid; box-shadow: none; }
+      .acciones { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">ARNALD Data Flow · Grupo Proser</div>
+    <h1>Manual de uso — Bandeja control de horas Zurich</h1>
+    <p>Zona / lotes, marcar Facturar, crear carpetas y descargar Excel.</p>
+  </header>
+  <main>
+    <div class="acciones">
+      <a class="primary" href="Manual-Bandeja-Control-Horas-Zurich.docx">Descargar Word (.docx)</a>
+      <a href="laminas.html">Ver láminas grandes</a>
+      <button class="primary" type="button" onclick="window.print()">Imprimir / Guardar PDF</button>
+    </div>
+
+    <section>
+      <h2>1. ¿Para qué sirve?</h2>
+      <p>Permite marcar casos Zurich para facturar, agruparlos en lotes (carpetas), cerrarlos como Facturado y descargar Excel.</p>
+      <ol>
+        <li>En <strong>Reporte listado</strong>, pulse <strong>Facturar</strong> en el caso.</li>
+        <li>El caso aparece en la bandeja como <strong>caso suelto</strong>.</li>
+        <li>Seleccione varios y <strong>Crear lote</strong>.</li>
+        <li>Use <strong>Descargar Excel</strong> (zona o lote).</li>
+        <li>Al <strong>Cerrar / Facturado</strong> también se descarga el Excel del lote.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>2. Cómo entrar</h2>
+      <ol>
+        <li>Inicie sesión en ARNALD.</li>
+        <li>Menú <strong>ZURICH</strong> → <strong>Bandeja control de horas</strong>.</li>
+      </ol>
+      <figure>
+        <img src="img/m00-bandeja-real.png" alt="Vista real de la bandeja" />
+        <figcaption>Vista real: Bandeja control de horas (Zona / lotes y Descargar Excel)</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <h2>3. Zona / lotes — botones clave</h2>
+      <ul>
+        <li><strong>Zona / lotes</strong> — casos por facturar y carpetas.</li>
+        <li><strong>Envíos notificados</strong> — histórico de correos.</li>
+        <li><strong>Descargar Excel</strong> — archivo .xlsx de la zona.</li>
+        <li><strong>Reporte listado</strong> — listado para marcar Facturar.</li>
+      </ul>
+      <figure>
+        <img src="img/m01-bandeja-excel.png" alt="Botones Descargar Excel y Zona / lotes" />
+        <figcaption>Lámina 1 — Descargar Excel (azul) y Zona / lotes (verde)</figcaption>
+      </figure>
+      <figure>
+        <img src="img/m02-casos-sueltos.png" alt="Casos sueltos y Crear lote" />
+        <figcaption>Lámina 2 — Casos sueltos → Crear lote</figcaption>
+      </figure>
+      <figure>
+        <img src="img/m03-lote-excel.png" alt="Excel y Cerrar lote" />
+        <figcaption>Lámina 3 — Excel del lote y Cerrar / Facturado</figcaption>
+      </figure>
+      <p class="tip"><strong>Nota:</strong> Si no hay casos sueltos, primero márquelos Facturar en el listado (paso 4).</p>
+    </section>
+
+    <section>
+      <h2>4. Marcar Facturar desde el listado</h2>
+      <ol>
+        <li>Vaya a <strong>ZURICH → Reporte listado</strong>.</li>
+        <li>Busque el caso.</li>
+        <li>En la columna <strong>FACTURAR</strong> pulse el botón rojo.</li>
+      </ol>
+      <figure>
+        <img src="img/m04-facturar.png" alt="Botón Facturar en el listado" />
+        <figcaption>Lámina 4 — Botón rojo Facturar (sin este paso la bandeja queda vacía)</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <h2>5. Crear lote y Excel</h2>
+      <ol>
+        <li>En la bandeja, marque los checkboxes de los casos sueltos.</li>
+        <li>Opcional: nombre del lote.</li>
+        <li>Pulse <strong>Crear lote</strong>.</li>
+        <li><strong>Descargar Excel</strong> exporta sueltos + lotes + detalle.</li>
+        <li>En cada lote, el botón <strong>Excel</strong> descarga solo ese lote.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>6. Cerrar lote / Facturado</h2>
+      <ol>
+        <li>En el lote abierto: <strong>Cerrar / Facturado</strong>.</li>
+        <li>Puede indicar N° de factura (opcional).</li>
+        <li>Se marca Facturado y se descarga el Excel del lote.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>7. Envíos notificados</h2>
+      <p>Histórico de notificaciones de control de horas / gerencia. Filtre por jefe, tipo y fechas; use <strong>Descargar Excel</strong> para exportar.</p>
+      <figure>
+        <img src="img/03-envios-notificados.png" alt="Envíos notificados" />
+        <figcaption>Pestaña Envíos notificados</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <h2>8. Preguntas frecuentes</h2>
+      <h3>No veo casos sueltos</h3>
+      <p>Marque primero <strong>Facturar</strong> en el Reporte listado.</p>
+      <h3>Excel no descarga</h3>
+      <p>Si no hay datos, el sistema avisa. Cree o marque casos antes.</p>
+      <h3>Quitar un caso del lote</h3>
+      <p>Ver casos → <strong>Quitar</strong> (solo lote abierto).</p>
+    </section>
+  </main>
+</body>
+</html>

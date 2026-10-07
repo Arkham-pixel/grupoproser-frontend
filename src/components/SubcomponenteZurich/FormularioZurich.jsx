@@ -104,6 +104,7 @@ const FormularioZurich = ({
   initialData = null,
   embed = false,
   origen = 'cat',
+  tabInicial = null,
   onClose,
   onSaved,
   onVolverInforme,
@@ -143,7 +144,14 @@ const FormularioZurich = ({
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
-  const [tabActiva, setTabActiva] = useState('datosGenerales');
+  const [tabActiva, setTabActiva] = useState(() =>
+    tabInicial === 'facturacion' ? 'facturacion' : 'datosGenerales'
+  );
+  useEffect(() => {
+    if (tabInicial === 'facturacion' && puedeFacturacion) {
+      setTabActiva('facturacion');
+    }
+  }, [tabInicial, puedeFacturacion]);
   const formTabs = useMemo(() => {
     const tabs = [
       { id: 'datosGenerales', label: t('zurich.tabs.datosGenerales') },

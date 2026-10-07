@@ -570,6 +570,8 @@ export const guardarLiquidadorEnCasoAlfa = async ({
   liquidador,
   totales = {},
   casoBase = {},
+  /** true = guardado manual (puede reducir ítems). false/omitido = autoguardado protegido. */
+  permitirReducirItems = false,
 }) => {
   if (!casoId) throw new Error('El caso Alfa debe estar guardado antes de adjuntar el liquidador.');
 
@@ -586,7 +588,10 @@ export const guardarLiquidadorEnCasoAlfa = async ({
     );
   }
 
-  const liquidadorSeguro = liquidadorAlfaParaPersistir(liquidadorSeguroRaw);
+  const liquidadorSeguro = {
+    ...liquidadorAlfaParaPersistir(liquidadorSeguroRaw),
+    ...(permitirReducirItems ? { permitirReducirItems: true } : {}),
+  };
 
   // valorLiquidado siempre desde el liquidador (nunca un totalIndemnizar/stale del cliente)
   const { totales: totalesFrescos, totalIndemnizar } = resolverMontoIndemnizarAlfa(

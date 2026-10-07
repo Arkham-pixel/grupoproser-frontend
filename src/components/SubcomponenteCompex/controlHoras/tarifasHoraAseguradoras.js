@@ -4,6 +4,12 @@ import {
   resolverTarifaHonorariosSura,
   VALOR_HORA_SURA,
 } from './tarifaHonorariosSura.js';
+import {
+  buscarRangoZurichPorId,
+  formatearCopZurich,
+  parsearValorLiquidadoZurich,
+  resolverTarifaHonorariosZurich,
+} from './tarifaHonorariosZurich.js';
 
 /**
  * Tarifas por hora — Control de Horas Complex (cuadro oficial).
@@ -14,7 +20,7 @@ import {
  * | SURA (*)               | 187.400    | En BD: SEGUROS GENERALES SURAMERICANA S.A.|
  * | SEGUROS BOLIVAR        | 135.851    | automático                                |
  * | ALLIANZ                | 123.619    | automático                                |
- * | ZURICH COLOMBIA        | 100.000    | Zúrich Colombia Seguros S.A.              |
+ * | ZURICH COLOMBIA        | 100.000    | Honorarios fijos por valor liquidado      |
  * | BBVA COLOMBIA          | 90.000     | BBVA SEGUROS COLOMBIA S.A.                |
  * | BBVA-ZURICH            | 80.000     | automático                                |
  * | EQUIDAD                | 85.000     | automático                                |
@@ -78,7 +84,7 @@ export const TARIFAS_HORA_ASEGURADORAS = [
     etiqueta: 'ZURICH',
     razonSocial: 'ZURICH COLOMBIA SEGUROS S.A.',
     valorHora: 100000,
-    modo: 'auto',
+    modo: 'zurich_valor_liquidado',
     requiereTokensMarca: ['ZURICH', 'COLOMBIA'],
     aliases: [
       'ZURICH COLOMBIA SEGUROS S.A.',
@@ -226,6 +232,8 @@ export const resolverTarifaHora = ({
   nombreCliente = '',
   fchaAsgncion = '',
   reserva = '',
+  valorLiquidado = '',
+  rangoIdZurich = null,
   formData = null,
   caso = null,
 } = {}) => {
@@ -244,6 +252,59 @@ export const resolverTarifaHora = ({
 
   for (const tarifa of TARIFAS_HORA_ASEGURADORAS) {
     if (!candidatoCoincideTarifa(candidatos, tarifa)) continue;
+
+    if (tarifa.modo === 'zurich_valor_liquidado') {
+      const casoZur = caso || formData || {};
+      const valorLiq =
+        valorLiquidado ||
+        casoZur.valorLiquidado ||
+        formData?.valorLiquidado ||
+        null;
+      let rangoForzado =
+        rangoIdZurich ||
+        casoZur.control_horas?.tarifa_rango_id ||
+        casoZur.tarifa_rango_id ||
+        casoZur.paquete_facturacion?.rangoId ||
+        null;
+      const vlNum = parsearValorLiquidadoZurich(valorLiq);
+      const rangoPrev = rangoForzado ? buscarRangoZurichPorId(rangoForzado) : null;
+      // Sin valor liquidado el 1,5% no se puede calcular: usar rango sugerido por valor.
+      if (rangoPrev?.modo === 'porcentaje' && (vlNum == null || vlNum <= 0)) {
+        rangoForzado = null;
+      }
+      const zur = resolverTarifaHonorariosZurich(valorLiq, rangoForzado);
+      const honorarios = zur.honorarios;
+      const horasSugeridas =
+        honorarios != null && honorarios > 0 && tarifa.valorHora
+          ? Math.round((honorarios / tarifa.valorHora) * 100) / 100
+          : null;
+      const esPorcentaje = zur.modo === 'porcentaje';
+      let mensaje =
+        'Zurich: elija el rango de la lista de precios. El control de horas (Excel) es el documento que se envía a la aseguradora.';
+      if (zur.rangoId) {
+        if (esPorcentaje) {
+          mensaje =
+            zur.valorLiquidado != null && zur.valorLiquidado > 0
+              ? `Zurich — 1,5% del ajuste bruto (valor liquidado ${formatearCopZurich(zur.valorLiquidado)}) = ${formatearCopZurich(honorarios)}. Ese es el valor a facturar.`
+              : 'Zurich — rango 1,5% del ajuste bruto: complete el valor liquidado del caso para calcular los honorarios.';
+        } else {
+          mensaje = `Zurich — ${zur.label}. Honorarios a facturar: ${formatearCopZurich(honorarios)}. Valor liquidado del caso: ${formatearCopZurich(zur.valorLiquidado)}.`;
+        }
+      }
+      return {
+        valorHora: tarifa.valorHora,
+        origen: 'tarifa',
+        tarifaId: tarifa.id,
+        modo: tarifa.modo,
+        honorariosSugeridos: honorarios,
+        horasSugeridas,
+        rangoId: zur.rangoId,
+        rangoLabel: zur.label,
+        rangoModo: zur.modo,
+        valorLiquidado: zur.valorLiquidado,
+        mensaje,
+      };
+    }
 
     if (tarifa.modo === 'previsora_reserva') {
       const prev = resolverTarifaHonorariosPrevisora(reserva);

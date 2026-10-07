@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Láminas manual Zurich</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #e5e7eb; color: #111827; }
+    .lamina {
+      width: 1200px; min-height: 680px; margin: 24px auto; background: #fff;
+      border-radius: 16px; padding: 28px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
+      page-break-after: always;
+    }
+    .badge {
+      display: inline-block; background: #1d4ed8; color: #fff; font-weight: 800;
+      font-size: 14px; padding: 8px 12px; border-radius: 8px; margin-bottom: 14px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0 0 18px; color: #4b5563; font-size: 16px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; border-radius: 10px;
+      padding: 12px 16px; font-weight: 800; font-size: 16px; border: 2px solid #d1d5db; background: #fff;
+    }
+    .btn.red { background: #c8102e; color: #fff; border-color: #c8102e; }
+    .btn.hl { outline: 5px solid #2563eb; outline-offset: 4px; box-shadow: 0 0 0 10px rgba(37,99,235,.2); }
+    .btn.green-hl { outline: 4px solid #16a34a; outline-offset: 3px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 10px 8px; text-align: left; }
+    th { font-size: 12px; color: #6b7280; text-transform: uppercase; }
+    .pill { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+    .callout {
+      margin-top: 18px; background: #eff6ff; border-left: 5px solid #2563eb;
+      padding: 12px 14px; border-radius: 0 10px 10px 0; font-weight: 700; color: #1e3a8a;
+    }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
+    .step { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; }
+    .step b { display: block; color: #c8102e; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <section class="lamina" id="L1">
+    <div class="badge">LÁMINA 1 — Pantalla principal</div>
+    <h1>Bandeja control de horas Zurich</h1>
+    <p>Menú ZURICH → Bandeja control de horas. Aquí se agrupan los casos para facturar y se descarga Excel.</p>
+    <div class="row">
+      <span class="btn red green-hl">📁 Zona / lotes</span>
+      <span class="btn">Envíos notificados</span>
+      <span class="btn red hl">📊 Descargar Excel</span>
+      <span class="btn">Reporte listado</span>
+    </div>
+    <div class="callout">El botón rojo «Descargar Excel» genera el archivo .xlsx de la zona (casos sueltos + lotes + detalle).</div>
+    <div class="steps">
+      <div class="step"><b>1. Facturar</b>En el listado marque el caso con Facturar.</div>
+      <div class="step"><b>2. Suelto</b>Aparece en «Casos sueltos (Por facturar)».</div>
+      <div class="step"><b>3. Lote</b>Seleccione varios y pulse Crear lote.</div>
+      <div class="step"><b>4. Excel</b>Descargue Excel de la zona o del lote.</div>
+    </div>
+  </section>
+
+  <section class="lamina" id="L2">
+    <div class="badge">LÁMINA 2 — Casos sueltos</div>
+    <h1>Casos sueltos (Por facturar)</h1>
+    <p>Marque los checkboxes, opcionalmente ponga nombre al lote, y pulse <b>Crear lote</b>.</p>
+    <table>
+      <thead>
+        <tr><th></th><th>Módulo</th><th>Consecutivo</th><th>ZC</th><th>STRO</th><th>Asegurado</th><th>Honorarios</th><th>Acción</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>☑</td><td>Listado</td><td>ZUR-2026-00123</td><td>ZC-88991</td><td>9260001999999</td><td>Ejemplo Asegurado S.A.</td><td>$ 850.000</td><td>Gestionar</td></tr>
+        <tr><td>☑</td><td>Listado</td><td>ZUR-2026-00124</td><td>ZC-88992</td><td>9260001888888</td><td>Comercial del Valle</td><td>$ 620.000</td><td>Gestionar</td></tr>
+      </tbody>
+    </table>
+    <div class="row" style="margin-top:20px">
+      <span class="btn">Nombre del lote: Lote marzo Zurich</span>
+      <span class="btn red hl">Crear lote (2)</span>
+    </div>
+    <div class="callout">Si la tabla está vacía: vaya al Reporte listado y pulse Facturar en cada caso.</div>
+  </section>
+
+  <section class="lamina" id="L3">
+    <div class="badge">LÁMINA 3 — Lote / Excel / Cerrar</div>
+    <h1>Carpetas / lotes</h1>
+    <p>Cada lote tiene acciones claras. Use <b>Excel</b> para descargar solo ese lote.</p>
+    <table>
+      <thead>
+        <tr><th>Código</th><th>Nombre</th><th>Estado</th><th>Casos</th><th>Total honorarios</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>LZ-2026-015</b></td>
+          <td>Lote marzo Zurich</td>
+          <td><span class="pill">Abierto</span></td>
+          <td>2</td>
+          <td><b>$ 1.470.000</b></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="row" style="margin-top:24px">
+      <span class="btn">Ver casos</span>
+      <span class="btn hl" style="background:#dbeafe;border-color:#1d4ed8;color:#1e3a8a">📊 Excel</span>
+      <span class="btn red green-hl">Cerrar / Facturado</span>
+    </div>
+    <div class="callout">Al cerrar el lote como Facturado, el sistema también descarga automáticamente el Excel del lote.</div>
+  </section>
+
+  <section class="lamina" id="L4">
+    <div class="badge">LÁMINA 4 — Paso previo en el listado</div>
+    <h1>Reporte listado Zurich → Facturar</h1>
+    <p>Sin este paso, la bandeja no tendrá casos sueltos.</p>
+    <table>
+      <thead>
+        <tr><th>Estado</th><th>Facturar</th><th>Facturado</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CASO NUEVO</td><td><span class="btn red hl">Facturar</span></td><td>No</td></tr>
+        <tr><td>ASIGNADO</td><td><span class="btn red hl">Facturar</span></td><td>No</td></tr>
+        <tr><td>INSPECCIÓN COORDINADA</td><td><span class="btn red hl">Facturar</span></td><td>No</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">Pulse el botón rojo FACTURAR de la fila. Luego abra Bandeja control de horas y verá el caso en «Casos sueltos».</div>
+  </section>
+</body>
+</html>

@@ -457,6 +457,9 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           ...(casoAlfa || {}),
           informeUnico: informeState || casoAlfa?.informeUnico,
         },
+        // Guardado manual: permite borrar ítems a propósito.
+        // El autoguardado NO manda este flag → no puede achicar el liquidador.
+        permitirReducirItems: true,
       });
 
       // Verificar en Mongo: re-leer y comprobar que el contenido quedó
@@ -596,6 +599,8 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           ...(casoAlfa || {}),
           informeUnico: nextInforme,
         },
+        // Import Excel CAT: reemplazo intencional del liquidador.
+        permitirReducirItems: true,
       });
 
       const actualizadoInf = await guardarInformeUnicoEnCasoAlfa({

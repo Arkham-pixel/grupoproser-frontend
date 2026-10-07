@@ -504,3 +504,80 @@ export const eliminarEnvioBandejaFacturacionZurich = async (payload) => {
   }
   return leerRespuestaBandejaZurich(response, 'No se pudo quitar el registro');
 };
+
+/** Zona Facturar / lotes Zurich (flujo B). */
+export const obtenerZonaFacturacionZurich = async (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set('q', params.q);
+  const login = params.login ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('login') : '') ?? '';
+  const nombre = params.nombre ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') : '') ?? '';
+  if (login) qs.set('login', login);
+  if (nombre) qs.set('nombre', nombre);
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/zona?${qs.toString()}`, {
+    headers: authHeaders(),
+  });
+  return leerRespuestaBandejaZurich(response, 'Error al cargar la zona de facturación Zurich');
+};
+
+export const marcarFacturarZurich = async ({ casoId, origen = 'listado' } = {}) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/marcar-facturar`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ casoId, origen, login }),
+  });
+  return leerRespuestaBandejaZurich(response, 'No se pudo marcar Facturar');
+};
+
+export const desmarcarFacturarZurich = async ({ casoId, origen = 'listado' } = {}) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/desmarcar-facturar`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ casoId, origen, login }),
+  });
+  return leerRespuestaBandejaZurich(response, 'No se pudo desmarcar Facturar');
+};
+
+export const crearLoteFacturacionZurich = async ({ nombre, casos } = {}) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/lotes`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ nombre, casos, login }),
+  });
+  return leerRespuestaBandejaZurich(response, 'No se pudo crear el lote');
+};
+
+export const agregarCasosALoteZurich = async (loteId, casos = []) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/lotes/${loteId}/agregar`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ casos, login }),
+  });
+  return leerRespuestaBandejaZurich(response, 'No se pudo agregar al lote');
+};
+
+export const quitarCasoDeLoteZurich = async (loteId, { casoId, origen = 'listado' } = {}) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/lotes/${loteId}/quitar`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ casoId, origen, login }),
+  });
+  return leerRespuestaBandejaZurich(response, 'No se pudo quitar del lote');
+};
+
+export const cerrarLoteFacturacionZurich = async (
+  loteId,
+  { numero_factura, fecha_factura, observaciones } = {}
+) => {
+  const { headers, login } = bandejaAuthHeaders();
+  const response = await fetch(`${ZURICH_API_URL}/facturacion/lotes/${loteId}/cerrar`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ numero_factura, fecha_factura, observaciones, login }),
+  });
+  return leerRespuestaBandejaZurich(response, 'No se pudo cerrar el lote');
+};

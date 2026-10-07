@@ -54,6 +54,16 @@ export const normalizeZurichListadoItem = (item = {}) => {
     valorAseguradoInmueble: item.valorAseguradoInmueble ?? caso.valorAseguradoInmueble ?? null,
     valorReclamado: item.valorReclamado ?? caso.valorReclamado ?? null,
     valorLiquidado: item.valorLiquidado ?? caso.valorLiquidado ?? null,
+    estadoFacturacion: item.estadoFacturacion ?? null,
+    fechaMarcaFacturar: item.fechaMarcaFacturar ?? null,
+    fechaMarcaFacturado: item.fechaMarcaFacturado ?? null,
+    loteFacturacionId: item.loteFacturacionId ?? null,
+    tarifa_honorarios: item.tarifa_honorarios ?? item.paquete_facturacion?.honorarios ?? null,
+    tarifa_rango_id: item.tarifa_rango_id ?? item.paquete_facturacion?.rangoId ?? '',
+    paquete_facturacion:
+      item.paquete_facturacion && typeof item.paquete_facturacion === 'object'
+        ? item.paquete_facturacion
+        : null,
     ajustadorLider: item.ajustadorLider ?? '',
     ajustador: item.ajustador ?? '',
     inspector: item.inspector ?? '',

@@ -11328,7 +11328,15 @@
       "origenCat": "CAT",
       "origenListado": "Listado",
       "buscarPlaceholder": "Consecutivo, siniestro, asegurado, ajustador…",
-      "copiaLider": " Copia enviada a {{nombre}} (líder Zurich)."
+      "copiaLider": " Copia enviada a {{nombre}} (líder Zurich).",
+      "exportExcel": "Descargar Excel",
+      "exportExcelLote": "Excel del lote",
+      "exportEmpty": "No hay casos ni lotes para exportar.",
+      "exportEmptyEnvios": "No hay envíos notificados para exportar.",
+      "casosSueltos": "Casos sueltos (Por facturar)",
+      "casosSueltosHint": "Marque casos y cree un lote, o descargue el Excel de la zona.",
+      "carpetasLotes": "Carpetas / lotes",
+      "carpetasHint": "Cada lote se puede cerrar como Facturado y descargar en Excel."
     },
     "billing": {
       "openMenu": "Menú",

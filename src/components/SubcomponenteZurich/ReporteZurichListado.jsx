@@ -8,6 +8,7 @@ import {
   fetchAllCasosZurichListado,
   getCasoZurichListadoById,
 } from '../../services/zurichListadoService.js';
+import { marcarFacturarZurich, desmarcarFacturarZurich } from '../../services/zurichService.js';
 import FormularioZurich from './FormularioZurich.jsx';
 import AccionesZurichMenu from './AccionesZurichMenu.jsx';
 import ArchiveroZurich from './ArchiveroZurich.jsx';
@@ -15,6 +16,7 @@ import ModalImportarExcelZurich, {
   esAdminOSoporteZurich,
 } from './ModalImportarExcelZurich.jsx';
 import { esRolContractorZurich } from '../../config/roles.js';
+import { puedeVerFacturacionZurich } from '../../config/gerentesFacturacion.js';
 import {
   ZURICH_REPORTE_PAGE_SIZE,
   ESTADOS_ZURICH,
@@ -82,6 +84,8 @@ const COLUMNAS = [
   { clave: 'fechaInicioPoliza', labelKey: 'fechaInicioPoliza' },
   { clave: 'fechaFinPoliza', labelKey: 'fechaFinPoliza' },
   { clave: 'estado', labelKey: 'estado' },
+  { clave: 'facturar', labelKey: 'facturar', interno: true, especial: true },
+  { clave: 'facturado', labelKey: 'facturado', interno: true, especial: true },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
@@ -131,6 +135,13 @@ const buildExportRow = (caso) => ({
   'FECHA INICIO PÓLIZA': formatDate(caso.fechaInicioPoliza),
   'FECHA FIN PÓLIZA': formatDate(caso.fechaFinPoliza),
   ESTADO: caso.estado ?? '',
+  FACTURAR:
+    caso.estadoFacturacion === 'por_facturar' ||
+    caso.estadoFacturacion === 'en_lote' ||
+    caso.estadoFacturacion === 'facturado'
+      ? 'Sí'
+      : 'No',
+  FACTURADO: caso.estadoFacturacion === 'facturado' ? 'Sí' : 'No',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
@@ -185,7 +196,10 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
+  const [marcandoFacturarId, setMarcandoFacturarId] = useState(null);
   const puedeImportarExcel = esAdminOSoporteZurich();
+  const loginSesion = typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '';
+  const puedeFacturar = !esClienteZurich && puedeVerFacturacionZurich(loginSesion);
 
   const abrirEdicion = useCallback(async (item) => {
     if (!item?._id) return;
@@ -321,7 +335,143 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     'ultimaGestion',
   ]);
 
+  const etiquetaFacturar = (item) => {
+    const e = String(item?.estadoFacturacion || '').toLowerCase();
+    if (e === 'por_facturar') return 'Por facturar';
+    if (e === 'en_lote') return 'En lote';
+    if (e === 'facturado') return 'Facturado';
+    return '';
+  };
+
+  const manejarMarcarFacturar = useCallback(
+    async (item) => {
+      if (!item?._id || !puedeFacturar) return;
+      setMarcandoFacturarId(item._id);
+      try {
+        const data = await marcarFacturarZurich({ casoId: item._id, origen: 'listado' });
+        const next = data?.caso || {};
+        setCasos((prev) =>
+          prev.map((c) =>
+            c._id === item._id
+              ? {
+                  ...c,
+                  estadoFacturacion: next.estadoFacturacion || 'por_facturar',
+                  fechaMarcaFacturar: next.fechaMarcaFacturar || new Date().toISOString(),
+                  tarifa_honorarios: next.honorarios ?? c.tarifa_honorarios,
+                }
+              : c
+          )
+        );
+      } catch (err) {
+        setAviso({
+          tipo: 'error',
+          titulo: 'Facturar',
+          mensaje: err.message || 'No se pudo marcar Facturar',
+        });
+      } finally {
+        setMarcandoFacturarId(null);
+      }
+    },
+    [puedeFacturar]
+  );
+
+  const manejarDesmarcarFacturar = useCallback(
+    async (item) => {
+      if (!item?._id || !puedeFacturar) return;
+      setMarcandoFacturarId(item._id);
+      try {
+        await desmarcarFacturarZurich({ casoId: item._id, origen: 'listado' });
+        setCasos((prev) =>
+          prev.map((c) =>
+            c._id === item._id
+              ? { ...c, estadoFacturacion: null, fechaMarcaFacturar: null, loteFacturacionId: null }
+              : c
+          )
+        );
+      } catch (err) {
+        setAviso({
+          tipo: 'error',
+          titulo: 'Facturar',
+          mensaje: err.message || 'No se pudo desmarcar',
+        });
+      } finally {
+        setMarcandoFacturarId(null);
+      }
+    },
+    [puedeFacturar]
+  );
+
+  const renderCeldaEspecial = (item, clave) => {
+    if (clave === 'facturar') {
+      const e = String(item.estadoFacturacion || '').toLowerCase();
+      const marcado = e === 'por_facturar' || e === 'en_lote' || e === 'facturado';
+      if (!puedeFacturar) {
+        return (
+          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+            {marcado ? etiquetaFacturar(item) || 'Sí' : '—'}
+          </span>
+        );
+      }
+      if (e === 'facturado' || e === 'en_lote') {
+        return (
+          <span
+            className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
+              e === 'facturado'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+                : 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
+            }`}
+          >
+            {etiquetaFacturar(item)}
+          </span>
+        );
+      }
+      if (e === 'por_facturar') {
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex rounded-md bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
+              Por facturar
+            </span>
+            <button
+              type="button"
+              className="text-left text-[11px] font-medium text-gray-500 underline hover:text-fenix-primario"
+              disabled={marcandoFacturarId === item._id}
+              onClick={() => manejarDesmarcarFacturar(item)}
+            >
+              Desmarcar
+            </button>
+          </div>
+        );
+      }
+      return (
+        <button
+          type="button"
+          className={`${expressBtnPrimary} !px-2 !py-1 text-xs`}
+          disabled={marcandoFacturarId === item._id}
+          onClick={() => manejarMarcarFacturar(item)}
+        >
+          {marcandoFacturarId === item._id ? '…' : 'Facturar'}
+        </button>
+      );
+    }
+    if (clave === 'facturado') {
+      const facturado = String(item.estadoFacturacion || '').toLowerCase() === 'facturado';
+      return (
+        <span
+          className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
+            facturado
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+          }`}
+        >
+          {facturado ? formatDate(item.fechaMarcaFacturado) || 'Sí' : 'No'}
+        </span>
+      );
+    }
+    return null;
+  };
+
   const obtenerValorCelda = (item, clave) => {
+    if (clave === 'facturar' || clave === 'facturado') return renderCeldaEspecial(item, clave);
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaZurich(item) || '—';
     if (clave === 'diasEnEstado') return diasEnEstadoZurich(item) || '—';
     if (clave === 'reserva' || clave === 'valorAseguradoInmueble' || clave === 'valorReclamado' || clave === 'valorLiquidado') {
@@ -588,7 +738,11 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
                     >
                       {col.clave === 'consecutivo'
                         ? t('zurich.report.consecutivo')
-                        : t(`zurich.fields.${col.labelKey}`)}
+                        : col.clave === 'facturar'
+                          ? 'Facturar'
+                          : col.clave === 'facturado'
+                            ? 'Facturado'
+                            : t(`zurich.fields.${col.labelKey}`)}
                     </ThOrdenable>
                   ))}
                 </tr>

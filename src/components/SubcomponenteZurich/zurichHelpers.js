@@ -1085,6 +1085,13 @@ export const FORM_VACIO_ZURICH = {
   observacion_compromisos: '',
   gerente_control_horas: '',
   gerente_gerencia: '',
+  tarifa_rango_id: '',
+  tarifa_honorarios: '',
+  paquete_facturacion: null,
+  estadoFacturacion: null,
+  fechaMarcaFacturar: '',
+  fechaMarcaFacturado: '',
+  loteFacturacionId: null,
 };
 
 export const TIPOS_NEGOCIO_HOMOLOGADO_ZURICH = [
@@ -1271,6 +1278,17 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
     '';
   base.valor_servicio = caso.valor_servicio ?? caso.vlorServcios ?? '';
   base.valor_gastos = caso.valor_gastos ?? caso.vlorGastos ?? '';
+  base.tarifa_rango_id = caso.tarifa_rango_id || caso.paquete_facturacion?.rangoId || '';
+  base.tarifa_honorarios =
+    caso.tarifa_honorarios ?? caso.paquete_facturacion?.honorarios ?? '';
+  base.paquete_facturacion =
+    caso.paquete_facturacion && typeof caso.paquete_facturacion === 'object'
+      ? caso.paquete_facturacion
+      : null;
+  base.estadoFacturacion = caso.estadoFacturacion ?? null;
+  base.fechaMarcaFacturar = fechaParaInput(caso.fechaMarcaFacturar || '');
+  base.fechaMarcaFacturado = fechaParaInput(caso.fechaMarcaFacturado || '');
+  base.loteFacturacionId = caso.loteFacturacionId || null;
   base.control_horas = resolverControlHorasDesdeEnvios(caso);
   base.historialDocs = Array.isArray(caso.historialDocs) ? caso.historialDocs : [];
   base.createdAt = caso.createdAt || '';
@@ -1309,6 +1327,9 @@ export const CAMPOS_FACTURACION_ZURICH_NO_PISAR = [
   'valor_servicio',
   'vlorGastos',
   'valor_gastos',
+  'tarifa_rango_id',
+  'tarifa_honorarios',
+  'paquete_facturacion',
 ];
 
 export const camposFacturacionZurichDesdeForm = (form = {}) => ({
@@ -1330,5 +1351,8 @@ export const camposFacturacionZurichDesdeForm = (form = {}) => ({
   fecha_factura: form.fecha_factura || null,
   fecha_ultima_revision: form.fecha_ultima_revision || null,
   observacion_compromisos: form.observacion_compromisos || '',
+  tarifa_rango_id: form.tarifa_rango_id || '',
+  tarifa_honorarios: form.tarifa_honorarios === '' ? null : form.tarifa_honorarios,
+  paquete_facturacion: form.paquete_facturacion || null,
 });
 

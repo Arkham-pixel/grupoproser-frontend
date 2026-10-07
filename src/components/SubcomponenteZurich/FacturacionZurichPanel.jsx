@@ -1,16 +1,24 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL, resolveUploadsUrl } from '../../config/apiConfig.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
-import { actualizarCasoZurich } from '../../services/zurichService.js';
+import {
+  actualizarCasoZurich,
+  marcarFacturarZurich,
+  desmarcarFacturarZurich,
+} from '../../services/zurichService.js';
 import { actualizarCasoZurichListado } from '../../services/zurichListadoService.js';
 import Facturacion from '../SubcomponenteCompex/Facturacion.jsx';
-import {
-  calcularTotalesControlHoras,
-  controlHorasTieneDatos,
-} from '../SubcomponenteCompex/controlHoras/controlHorasUtils.js';
 import { ZURICH_RAZON_SOCIAL_CONTROL_HORAS } from './zurichHelpers.js';
+import TarifaZurichFacturacion from './TarifaZurichFacturacion.jsx';
+import { puedeVerFacturacionZurich } from '../../config/gerentesFacturacion.js';
+import {
+  complexBtnPrimary,
+  complexBtnSecondary,
+  complexInfoPanel,
+} from '../SubcomponenteCompex/complexFenixUi.js';
+import { FaFileInvoiceDollar } from 'react-icons/fa';
 
 const mapearFormAFacturacion = (form = {}, initialData = {}) => ({
   ...form,
@@ -75,8 +83,65 @@ export default function FacturacionZurichPanel({
   const apiModulo = esListado ? 'zurich-listado' : 'zurich';
   const actualizarCaso = esListado ? actualizarCasoZurichListado : actualizarCasoZurich;
   const casoId = initialData?._id || form._id;
+  const [guardandoPaquete, setGuardandoPaquete] = useState(false);
+  const [marcandoFacturar, setMarcandoFacturar] = useState(false);
+  const loginSesion =
+    typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '';
+  const puedeFacturar = puedeVerFacturacionZurich(loginSesion);
+  const estadoFact = String(form.estadoFacturacion || '').toLowerCase();
 
   const formData = useMemo(() => mapearFormAFacturacion(form, initialData), [form, initialData]);
+
+  const etiquetaEstadoFact = useMemo(() => {
+    if (estadoFact === 'por_facturar') return 'Por facturar (en zona)';
+    if (estadoFact === 'en_lote') return 'En lote / carpeta';
+    if (estadoFact === 'facturado') return 'Facturado';
+    return 'Sin marcar';
+  }, [estadoFact]);
+
+  const handleMarcarFacturar = useCallback(async () => {
+    if (!casoId || !puedeFacturar) return;
+    setMarcandoFacturar(true);
+    try {
+      const data = await marcarFacturarZurich({
+        casoId,
+        origen: esListado ? 'listado' : 'cat',
+      });
+      const next = data?.caso || {};
+      setForm((prev) => ({
+        ...prev,
+        estadoFacturacion: next.estadoFacturacion || 'por_facturar',
+        fechaMarcaFacturar: next.fechaMarcaFacturar || new Date().toISOString().slice(0, 10),
+        tarifa_honorarios: next.honorarios ?? prev.tarifa_honorarios,
+      }));
+      alert('Caso marcado Facturar. Aparece suelto en la bandeja de facturación Zurich.');
+    } catch (error) {
+      alert(error.message || 'No se pudo marcar Facturar');
+    } finally {
+      setMarcandoFacturar(false);
+    }
+  }, [casoId, puedeFacturar, esListado, setForm]);
+
+  const handleDesmarcarFacturar = useCallback(async () => {
+    if (!casoId || !puedeFacturar) return;
+    setMarcandoFacturar(true);
+    try {
+      await desmarcarFacturarZurich({
+        casoId,
+        origen: esListado ? 'listado' : 'cat',
+      });
+      setForm((prev) => ({
+        ...prev,
+        estadoFacturacion: null,
+        fechaMarcaFacturar: '',
+        loteFacturacionId: null,
+      }));
+    } catch (error) {
+      alert(error.message || 'No se pudo desmarcar');
+    } finally {
+      setMarcandoFacturar(false);
+    }
+  }, [casoId, puedeFacturar, esListado, setForm]);
 
   const construirUrlArchivo = useCallback((valor) => {
     if (!valor) return '';
@@ -116,61 +181,43 @@ export default function FacturacionZurichPanel({
     [setForm]
   );
 
-  const persistirControlHorasEnServidor = useCallback(
-    async (controlHoras, totales) => {
-      if (!casoId || !controlHorasTieneDatos(controlHoras)) return false;
+  const persistirPaqueteTarifa = useCallback(
+    async (paquete) => {
+      if (!paquete?.honorarios && paquete?.honorarios !== 0) return false;
+      const hoy = new Date().toISOString().slice(0, 10);
+      const honorarios = Math.round(Number(paquete.honorarios));
+      const payload = {
+        paquete_facturacion: paquete,
+        tarifa_rango_id: paquete.rangoId,
+        tarifa_honorarios: honorarios,
+        valor_servicio: honorarios,
+        fecha_control_horas: form.fecha_control_horas || hoy,
+      };
+      setForm((prev) => ({
+        ...prev,
+        ...payload,
+        fecha_control_horas: prev.fecha_control_horas || hoy,
+      }));
+      if (!casoId) return true;
+      setGuardandoPaquete(true);
       try {
-        await actualizarCaso(casoId, {
-          control_horas: controlHoras,
-          fecha_control_horas:
-            form.fecha_control_horas || new Date().toISOString().slice(0, 10),
-          ...(totales?.subtotal_honorarios != null
-            ? { valor_servicio: Math.round(totales.subtotal_honorarios) }
-            : {}),
-          ...(totales?.gastos != null ? { valor_gastos: Math.round(totales.gastos) } : {}),
-        });
+        await actualizarCaso(casoId, payload);
         return true;
       } catch (error) {
-        console.error('❌ Error persistiendo control de horas Zurich:', error);
+        console.error('❌ Error persistiendo tarifa Zurich:', error);
+        alert(error.message || t('zurich.messages.saveError'));
         return false;
+      } finally {
+        setGuardandoPaquete(false);
       }
     },
-    [casoId, actualizarCaso, form.fecha_control_horas]
+    [actualizarCaso, casoId, form.fecha_control_horas, setForm, t]
   );
 
   const handleDocumentDrop = useCallback(
     async (tipoDocumento, campoFormData, acceptedFiles) => {
       if (!acceptedFiles?.length) return;
       const archivos = Array.from(acceptedFiles);
-
-      if (tipoDocumento === 'controlHoras') {
-        const docsActuales = Array.isArray(form.historialDocs) ? form.historialDocs : [];
-        const docsControlHoras = docsActuales.filter(
-          (doc) => doc?.tipo === 'controlHoras' || doc?.categoria === 'controlHoras'
-        );
-        const adjuntoTexto = String(form.adjunto_control_horas || '').trim();
-        const yaTiene =
-          docsControlHoras.length > 0 ||
-          (adjuntoTexto && adjuntoTexto.toLowerCase() !== 'ninguno') ||
-          controlHorasTieneDatos(form.control_horas);
-        if (yaTiene) {
-          const detalleDocs =
-            docsControlHoras.length > 0
-              ? `\n\nArchivos actuales (${docsControlHoras.length}):\n• ${docsControlHoras
-                  .map((d) => d.nombre || 'sin nombre')
-                  .join('\n• ')}`
-              : controlHorasTieneDatos(form.control_horas)
-                ? '\n\nYa existe un control de horas registrado en el sistema para este caso.'
-                : '';
-          const confirmar = window.confirm(
-            'Este caso ya tiene un control de horas montado.' +
-              detalleDocs +
-              t('complex.ui.formulario_caso_complex.confirmar_otro_archivo')
-          );
-          if (!confirmar) return;
-        }
-      }
-
       const token = localStorage.getItem('token');
       const resultados = [];
       for (const file of archivos) {
@@ -225,7 +272,7 @@ export default function FacturacionZurichPanel({
         updateHistorialDocs((prev) => [...(Array.isArray(prev) ? prev : []), ...resultados]);
       }
     },
-    [apiModulo, construirUrlArchivo, form, setForm, t, updateHistorialDocs]
+    [apiModulo, construirUrlArchivo, setForm, t, updateHistorialDocs]
   );
 
   const dropzonePropsFactura = useDropzone({
@@ -249,31 +296,57 @@ export default function FacturacionZurichPanel({
   const handleEnviarControlHoras = useCallback(
     async (gerenteSeleccionado) => {
       const token = localStorage.getItem('token');
-      let archivosControlHoras = archivosDesdeHistorial(
-        form.historialDocs,
-        ['controlHoras'],
-        construirUrlArchivo
-      );
-      if (archivosControlHoras.length === 0 && form.adjunto_control_horas) {
+      let archivos = archivosDesdeHistorial(form.historialDocs, ['controlHoras'], construirUrlArchivo);
+      if (archivos.length === 0 && form.adjunto_control_horas) {
         const adjuntos = String(form.adjunto_control_horas)
           .split(',')
           .map((a) => a.trim())
           .filter(Boolean);
-        archivosControlHoras =
+        archivos =
           adjuntos.length > 0
             ? adjuntos.map((nombre) => ({ nombre, ruta: '', url: '' }))
-            : [{ nombre: 'Archivo de control de horas', ruta: '', url: '' }];
+            : [];
       }
 
-      const tieneControlHorasEnSistema = Boolean(form.control_horas?.filas?.length);
-      if (archivosControlHoras.length === 0 && !tieneControlHorasEnSistema) {
-        alert(t('complex.ui.formulario_caso_complex.registre_control_horas'));
+      const paquete = form.paquete_facturacion;
+      const honorarios =
+        paquete?.honorarios != null
+          ? Math.round(Number(paquete.honorarios))
+          : form.tarifa_honorarios != null
+            ? Math.round(Number(form.tarifa_honorarios))
+            : form.valor_servicio != null && form.valor_servicio !== ''
+              ? Math.round(Number(form.valor_servicio))
+              : null;
+
+      if (honorarios == null) {
+        alert('Aplique el paquete de tarifa Zurich antes de enviar.');
         return;
       }
 
-      const resumenControlHoras = tieneControlHorasEnSistema
-        ? calcularTotalesControlHoras(form.control_horas)
-        : null;
+      if (casoId) {
+        await persistirPaqueteTarifa(
+          paquete || {
+            valorLiquidado: form.valorLiquidado,
+            honorarios,
+            rangoId: form.tarifa_rango_id || null,
+            rangoLabel: '',
+            fecha: form.fecha_control_horas || new Date().toISOString().slice(0, 10),
+          }
+        );
+      }
+
+      const resumenControlHoras = {
+        total_horas: 0,
+        valor_hora: 0,
+        subtotal_honorarios: honorarios,
+        gastos: Math.round(Number(form.valor_gastos) || 0),
+        total: honorarios + Math.round(Number(form.valor_gastos) || 0),
+        modo: 'tarifa_zurich',
+        rangoId: paquete?.rangoId || form.tarifa_rango_id || null,
+        rangoLabel: paquete?.rangoLabel || '',
+        valorLiquidado: paquete?.valorLiquidado ?? form.valorLiquidado,
+      };
+
       const sinNumero = t('complex.ui.formulario_caso_complex.sin_numero');
       const numeroCaso = initialData?.consecutivo || form.consecutivo || sinNumero;
       const usuario = localStorage.getItem('login') || localStorage.getItem('usuario') || 'unknown';
@@ -288,10 +361,11 @@ export default function FacturacionZurichPanel({
           numeroCaso,
           numeroSiniestro: form.siniestro,
           responsable: form.ajustador,
-          archivos: archivosControlHoras.map((a) => a.nombre),
-          archivosConRuta: archivosControlHoras,
-          controlHoras: tieneControlHorasEnSistema ? form.control_horas : null,
+          archivos: archivos.map((a) => a.nombre),
+          archivosConRuta: archivos,
+          controlHoras: null,
           resumenControlHoras,
+          paqueteFacturacion: paquete || null,
           usuario,
           gerente: gerenteSeleccionado,
           casoId,
@@ -300,7 +374,9 @@ export default function FacturacionZurichPanel({
       });
       const resultado = await response.json().catch(() => ({}));
       if (!response.ok || !resultado.success) {
-        throw new Error(resultado.error || t('complex.ui.formulario_caso_complex.error_enviar_notificacion'));
+        throw new Error(
+          resultado.error || t('complex.ui.formulario_caso_complex.error_enviar_notificacion')
+        );
       }
 
       const nombreGerente =
@@ -322,9 +398,6 @@ export default function FacturacionZurichPanel({
         mensaje += t('complex.ui.formulario_caso_complex.registrado_bandeja');
       } else if (resultado.motivoNoRegistro === 'caso_no_encontrado') {
         mensaje += t('complex.ui.formulario_caso_complex.guarde_caso_bandeja');
-      } else if (tieneControlHorasEnSistema && casoId) {
-        const persistido = await persistirControlHorasEnServidor(form.control_horas, resumenControlHoras);
-        if (!persistido) mensaje += t('complex.ui.formulario_caso_complex.correo_ok_no_guardo_horas');
       }
       if (resultado.copiaLider?.nombre) {
         mensaje += t('zurich.bandejaFacturacion.copiaLider', {
@@ -340,7 +413,7 @@ export default function FacturacionZurichPanel({
       esListado,
       form,
       initialData?.consecutivo,
-      persistirControlHorasEnServidor,
+      persistirPaqueteTarifa,
       t,
     ]
   );
@@ -390,7 +463,9 @@ export default function FacturacionZurichPanel({
       });
       const resultado = await response.json().catch(() => ({}));
       if (!response.ok || !resultado.success) {
-        throw new Error(resultado.error || t('complex.ui.formulario_caso_complex.error_enviar_notificacion'));
+        throw new Error(
+          resultado.error || t('complex.ui.formulario_caso_complex.error_enviar_notificacion')
+        );
       }
       const nombreGerente =
         gerenteSeleccionado === 'adriana'
@@ -421,7 +496,67 @@ export default function FacturacionZurichPanel({
   );
 
   return (
-    <Facturacion
+    <div className="space-y-4">
+      <div className={`${complexInfoPanel} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+        <div>
+          <p className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+            <FaFileInvoiceDollar className="text-fenix-primario" />
+            Facturar / Facturado
+          </p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Estado de facturación (aparte del estado del caso):{' '}
+            <strong>{etiquetaEstadoFact}</strong>
+            {estadoFact === 'facturado' && form.fechaMarcaFacturado
+              ? ` · ${form.fechaMarcaFacturado}`
+              : ''}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Facturar envía el caso solo a la zona; luego se agrupa en un lote/carpeta. Al cerrar el
+            lote pasa a Facturado.
+          </p>
+        </div>
+        {puedeFacturar && casoId && (
+          <div className="flex flex-wrap gap-2">
+            {!estadoFact || estadoFact === 'ninguno' ? (
+              <button
+                type="button"
+                className={complexBtnPrimary}
+                disabled={marcandoFacturar}
+                onClick={handleMarcarFacturar}
+              >
+                {marcandoFacturar ? 'Marcando…' : 'Facturar'}
+              </button>
+            ) : null}
+            {estadoFact === 'por_facturar' ? (
+              <>
+                <span className="inline-flex items-center rounded-md bg-sky-100 px-3 py-1.5 text-sm font-semibold text-sky-900">
+                  Por facturar
+                </span>
+                <button
+                  type="button"
+                  className={complexBtnSecondary}
+                  disabled={marcandoFacturar}
+                  onClick={handleDesmarcarFacturar}
+                >
+                  Desmarcar
+                </button>
+              </>
+            ) : null}
+            {estadoFact === 'en_lote' ? (
+              <span className="inline-flex items-center rounded-md bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-900">
+                En lote
+              </span>
+            ) : null}
+            {estadoFact === 'facturado' ? (
+              <span className="inline-flex items-center rounded-md bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-800">
+                Facturado
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <Facturacion
         formData={formData}
         setFormData={setFormData}
         nombreAseguradora={ZURICH_RAZON_SOCIAL_CONTROL_HORAS}
@@ -433,7 +568,6 @@ export default function FacturacionZurichPanel({
         getInputPropsControlHoras={dropzonePropsControlHoras.getInputProps}
         isDragActiveControlHoras={dropzonePropsControlHoras.isDragActive}
         onEnviarControlHoras={handleEnviarControlHoras}
-        onPersistirControlHoras={persistirControlHorasEnServidor}
         getRootPropsEvidencia={dropzonePropsEvidencia.getRootProps}
         getInputPropsEvidencia={dropzonePropsEvidencia.getInputProps}
         isDragActiveEvidencia={dropzonePropsEvidencia.isDragActive}
@@ -443,7 +577,16 @@ export default function FacturacionZurichPanel({
         onEnviarGerencia={handleEnviarGerencia}
         historialDocs={form.historialDocs}
         updateHistorialDocs={updateHistorialDocs}
-        tarifaBloqueada
+        modoCobroTarifa
+        contenidoTarifa={
+          <TarifaZurichFacturacion
+            form={form}
+            initialData={initialData}
+            onAplicarPaquete={persistirPaqueteTarifa}
+            guardando={guardandoPaquete}
+          />
+        }
       />
+    </div>
   );
 }

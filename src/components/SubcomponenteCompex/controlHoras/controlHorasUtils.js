@@ -265,6 +265,20 @@ export const aplicarPlantillaTipoLiquidador = (filasActuales = [], tipo, formDat
   ];
 };
 
+/** Garantiza ítems fijos/variables de la plantilla (amarillos + cobrados por defecto). */
+const asegurarPlantillaControlHoras = (filas, tipo, formData) => {
+  const lista = Array.isArray(filas) ? filas : [];
+  if (!lista.length) {
+    return crearFilasPlantillaControlHoras(tipo, formData);
+  }
+  const tieneFijos = lista.some((f) => esFilaFijaControlHoras(f));
+  const tieneCatalogo = lista.some((f) => f.catalogo_id || buscarItemCatalogoControlHoras(f));
+  if (tieneFijos && tieneCatalogo) {
+    return lista.map((f) => anotarFilaCatalogo(f, true));
+  }
+  return aplicarPlantillaTipoLiquidador(lista, tipo, formData);
+};
+
 export const crearControlHorasInicial = (formData, nombreAseguradora, existente) => {
   const tarifa = resolverTarifaHora({
     codiAsgrdra: formData.codiAsgrdra,
@@ -272,20 +286,40 @@ export const crearControlHorasInicial = (formData, nombreAseguradora, existente)
     nombreCliente: formData.nombreCliente,
     fchaAsgncion: formData.fchaAsgncion,
     reserva: formData.reserva,
+    valorLiquidado: formData.valorLiquidado,
+    rangoIdZurich: existente?.tarifa_rango_id || formData.tarifa_rango_id || null,
     formData,
     caso: formData,
   });
 
-  if (existente && typeof existente === 'object' && Array.isArray(existente.filas)) {
-    const esPlantillaNueva = Boolean(existente.tipo_liquidador || existente.filas.some((f) => f.catalogo_id || f.fijo));
+  const tieneFilasExistentes =
+    existente &&
+    typeof existente === 'object' &&
+    Array.isArray(existente.filas) &&
+    existente.filas.length > 0;
+
+  if (tieneFilasExistentes) {
+    const esPlantillaNueva = Boolean(
+      existente.tipo_liquidador || existente.filas.some((f) => f.catalogo_id || f.fijo)
+    );
     const tipo = normalizarTipoLiquidadorControlHoras(
       existente.tipo_liquidador || inferirTipoLiquidadorDesdeFilas(existente.filas)
     );
+    let filas = existente.filas.map((f) => anotarFilaCatalogo(f, esPlantillaNueva));
+    filas = asegurarPlantillaControlHoras(filas, tipo, formData);
+
     const base = {
       gastos: existente.gastos ?? '',
       tipo_liquidador: tipo,
       horas_extra_autorizadas: existente.horas_extra_autorizadas === true,
-      filas: existente.filas.map((f) => anotarFilaCatalogo(f, esPlantillaNueva)),
+      filas,
+      tarifa_rango_id:
+        existente.tarifa_rango_id || tarifa.rangoId || formData.tarifa_rango_id || '',
+      tarifa_honorarios:
+        existente.tarifa_honorarios ??
+        tarifa.honorariosSugeridos ??
+        formData.tarifa_honorarios ??
+        null,
     };
 
     if (existente.valor_hora_origen === 'manual') {
@@ -317,19 +351,29 @@ export const crearControlHorasInicial = (formData, nombreAseguradora, existente)
   const tipo =
     tarifa.tarifaId === 'SURA' && tarifa.tipoLiquidadorSura
       ? normalizarTipoLiquidadorControlHoras(tarifa.tipoLiquidadorSura)
-      : TIPO_LIQUIDADOR_DEFAULT;
+      : normalizarTipoLiquidadorControlHoras(existente?.tipo_liquidador) || TIPO_LIQUIDADOR_DEFAULT;
 
   let filas = crearFilasPlantillaControlHoras(tipo, formData);
-  if (tarifa.tarifaId === 'SURA' && Number(tarifa.horasSugeridas) > 0) {
+  if (
+    (tarifa.tarifaId === 'SURA' || tarifa.tarifaId === 'ZURICH_COLOMBIA') &&
+    Number(tarifa.horasSugeridas) > 0
+  ) {
     filas = escalarHorasPlantillaHaciaObjetivo(filas, tarifa.horasSugeridas);
   }
 
   return {
     valor_hora: tarifa.valorHora ?? '',
     valor_hora_origen: tarifa.origen,
-    gastos: formData.valor_gastos ?? '',
+    gastos: formData.valor_gastos ?? (existente?.gastos ?? ''),
     tipo_liquidador: tipo,
     horas_extra_autorizadas: false,
+    tarifa_rango_id:
+      existente?.tarifa_rango_id || tarifa.rangoId || formData.tarifa_rango_id || '',
+    tarifa_honorarios:
+      existente?.tarifa_honorarios ??
+      tarifa.honorariosSugeridos ??
+      formData.tarifa_honorarios ??
+      null,
     filas,
     _mensajeTarifa: tarifa.mensaje,
   };
@@ -371,6 +415,11 @@ export const normalizarControlHorasParaGuardar = (controlHoras, usuario = '') =>
   tipo_liquidador: normalizarTipoLiquidadorControlHoras(controlHoras.tipo_liquidador),
   horas_extra_autorizadas: controlHoras.horas_extra_autorizadas === true,
   gastos: parseNumero(controlHoras.gastos),
+  tarifa_rango_id: controlHoras.tarifa_rango_id || '',
+  tarifa_honorarios:
+    controlHoras.tarifa_honorarios === '' || controlHoras.tarifa_honorarios == null
+      ? null
+      : parseNumero(controlHoras.tarifa_honorarios),
   filas: (controlHoras.filas || []).map((f) => {
     const anotada = anotarFilaCatalogo(f, true);
     return {
