@@ -782,30 +782,35 @@ function coincideIdSiniestroBbvaCat(token, palabras) {
   return palabras.some((w) => {
     const varsW = variantesIdSiniestroBbvaCat(w);
     if (!varsW.length) return false;
-    return varsQ.some((vq) => varsW.includes(vq) || varsW.some((vw) => vw.includes(vq) && vq.length >= 6));
+    // Solo igualdad de variantes (100018306 ↔ 10018306). No "includes" suelto ni fuzzy.
+    return varsQ.some((vq) => varsW.includes(vq));
   });
 }
 
-/** AND por palabras + 1 typo. “Edificio Fénix Telesentinel” encuentra Edifinio / Fenix. */
+/** AND por palabras + 1 typo en nombres. IDs numéricos: exacto o variante del cero 1000. */
 export function coincideBusquedaBbvaCat(campos, busqueda) {
   const q = normTexto(busqueda);
   if (!q) return true;
   const blob = (Array.isArray(campos) ? campos : [campos]).map(normTexto).join(' ');
   if (!blob) return false;
   if (blob.includes(q)) return true;
-  // Búsqueda solo numérica: tolerar el cero del prefijo 1000…
+  const palabras = blob.split(/[^A-Z0-9]+/).filter(Boolean);
+  // Solo dígitos: no usar Levenshtein (un typo empareja ~25 siniestros vecinos).
   if (/^[\d\s./-]+$/.test(q) && soloDigitos(q).length >= 5) {
-    const palabrasId = blob.split(/[^A-Z0-9]+/).filter(Boolean);
-    if (coincideIdSiniestroBbvaCat(q, palabrasId)) return true;
+    return coincideIdSiniestroBbvaCat(q, palabras);
   }
   const tokens = q.split(' ').filter((t) => t.length >= 2);
   if (!tokens.length) return true;
-  const palabras = blob.split(/[^A-Z0-9]+/).filter(Boolean);
   return tokens.every((token) => {
     if (blob.includes(token)) return true;
-    if (/^\d{5,}$/.test(token) && coincideIdSiniestroBbvaCat(token, palabras)) return true;
+    if (/^\d{5,}$/.test(token)) return coincideIdSiniestroBbvaCat(token, palabras);
     if (token.length < 5) return false;
-    return palabras.some((w) => distanciaLevenshteinCorta(w, token, 1) <= 1);
+    // Fuzzy solo para texto (nombres), no para números de siniestro.
+    if (/^\d+$/.test(token)) return false;
+    return palabras.some((w) => {
+      if (/^\d{5,}$/.test(w)) return false;
+      return distanciaLevenshteinCorta(w, token, 1) <= 1;
+    });
   });
 }
 
