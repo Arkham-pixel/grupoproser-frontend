@@ -799,32 +799,8 @@ if (casoData && casoData._id) {
               normalizados.inspector = casoData.inspector || '';
               normalizados.vlorResrva = casoData.vlorResrva ?? casoData.reserva;
               normalizados.vlorReclmo = casoData.vlorReclmo ?? casoData.valorReclamado;
-              // Trazabilidad: si el informe ya tiene fecha pero el hito está vacío, mostrarla.
-              if (!casoData.fchaInfoPrelm) {
-                const inf = casoData.informeUnico;
-                const tipo = String(inf?.tipoInforme || '')
-                  .toLowerCase()
-                  .normalize('NFD')
-                  .replace(/\p{M}/gu, '');
-                const fechaPrelim =
-                  inf?.fechaInformePreliminar ||
-                  (tipo.includes('prelim') ? inf?.fechaInforme : '') ||
-                  '';
-                if (fechaPrelim) normalizados.fchaInfoPrelm = fechaPrelim;
-              }
-              if (!casoData.fchaInfoFnal) {
-                const inf = casoData.informeUnico;
-                const tipo = String(inf?.tipoInforme || '')
-                  .toLowerCase()
-                  .normalize('NFD')
-                  .replace(/\p{M}/gu, '');
-                if (
-                  (tipo.includes('final') || tipo.includes('unic')) &&
-                  inf?.fechaInforme
-                ) {
-                  normalizados.fchaInfoFnal = inf.fechaInforme;
-                }
-              }
+              // No rellenar hitos vacíos desde informeUnico: el usuario puede borrarlos
+              // a propósito; si se muestran otra vez, parece que «no deja borrar».
             }
             
             // Aplicar las mismas normalizaciones que se hacen con initialData
@@ -3084,6 +3060,12 @@ return;
       }
       return undefined;
     };
+    /** Vacío → null para que el backend BORRE la fecha (undefined la deja intacta). */
+    const fechaHitoONull = (valor) => {
+      if (valor === undefined) return undefined;
+      if (valor === null || valor === '') return null;
+      return valor;
+    };
 
     const payload = {
       // IMPORTANTE: Incluir _id si existe para que el backend sepa que es una actualización
@@ -3142,12 +3124,12 @@ return;
       descripcionEstado: formData.descripcionEstado || '',
       ...(esSura ? { estadoFacilitador: formData.estadoFacilitador || '' } : {}),
       observacionesPendientes: formData.observacionesPendientes || '',
-      fchaAsgncion: formData.fchaAsgncion,
+      fchaAsgncion: fechaHitoONull(formData.fchaAsgncion),
       fchaSinstro: formData.fchaSinstro,
-      fchaInspccion: formData.fchaInspccion,
-      fchaContIni: formData.fchaContIni,
-      fchaCoordInspeccion: formData.fchaCoordInspeccion !== undefined && formData.fchaCoordInspeccion !== null && formData.fchaCoordInspeccion !== '' ? formData.fchaCoordInspeccion : undefined,
-      fchaProgInspeccion: formData.fchaProgInspeccion !== undefined && formData.fchaProgInspeccion !== null && formData.fchaProgInspeccion !== '' ? formData.fchaProgInspeccion : undefined,
+      fchaInspccion: fechaHitoONull(formData.fchaInspccion),
+      fchaContIni: fechaHitoONull(formData.fchaContIni),
+      fchaCoordInspeccion: fechaHitoONull(formData.fchaCoordInspeccion),
+      fchaProgInspeccion: fechaHitoONull(formData.fchaProgInspeccion),
       ...(esSura
         ? {
             fechaInspeccion:
@@ -3166,28 +3148,27 @@ return;
       anexContIni: pick('anexContIni', 'adjuntos_contacto_inicial'),
       obseInspccion: pick('obseInspccion', 'obse_inspccion'),
       anexActaInspccion: pick('anexActaInspccion', 'adjunto_acta_inspeccion'),
-      // IMPORTANTE: Usar directamente formData para fechas (no pick) para asegurar que se guarden
-      // Incluir la fecha incluso si está vacía para que se pueda limpiar en el backend
-      fchaSoliDocu: formData.fchaSoliDocu !== undefined && formData.fchaSoliDocu !== null && formData.fchaSoliDocu !== '' ? formData.fchaSoliDocu : undefined,
+      // Fechas hito: vacío → null para permitir borrar en BD (undefined no limpia).
+      fchaSoliDocu: fechaHitoONull(formData.fchaSoliDocu),
       anexSolDoc: pick('anexSolDoc', 'adjunto_solicitud_documento'),
       obseSoliDocu: pick('obseSoliDocu', 'obse_soli_docu'),
-      fchaInfoPrelm: formData.fchaInfoPrelm !== undefined && formData.fchaInfoPrelm !== null && formData.fchaInfoPrelm !== '' ? formData.fchaInfoPrelm : undefined,
+      fchaInfoPrelm: fechaHitoONull(formData.fchaInfoPrelm),
       obseInfoPrelm: pick('obseInfoPrelm', 'obse_info_prelm'),
       anxoInfPrelim: pick('anxoInfPrelim', 'adjunto_informe_preliminar'),
-      fchaInfoFnal: formData.fchaInfoFnal !== undefined && formData.fchaInfoFnal !== null && formData.fchaInfoFnal !== '' ? formData.fchaInfoFnal : undefined,
+      fchaInfoFnal: fechaHitoONull(formData.fchaInfoFnal),
       obseInfoFnal: pick('obseInfoFnal', 'obse_info_fnal'),
       anxoInfoFnal: pick('anxoInfoFnal', 'adjunto_informe_final'),
-      fchaRepoActi: formData.fchaRepoActi !== undefined && formData.fchaRepoActi !== null && formData.fchaRepoActi !== '' ? formData.fchaRepoActi : undefined,
+      fchaRepoActi: fechaHitoONull(formData.fchaRepoActi),
       obseRepoActi: pick('obseRepoActi', 'obse_repo_acti'),
       anxoRepoActi: pick('anxoRepoActi', 'adjunto_entrega_ultimo_documento'),
-      fchaPresentacionCifras: formData.fchaPresentacionCifras !== undefined && formData.fchaPresentacionCifras !== null && formData.fchaPresentacionCifras !== '' ? formData.fchaPresentacionCifras : undefined,
-      fchaAceptacionCifrasAseguradora: formData.fchaAceptacionCifrasAseguradora !== undefined && formData.fchaAceptacionCifrasAseguradora !== null && formData.fchaAceptacionCifrasAseguradora !== '' ? formData.fchaAceptacionCifrasAseguradora : undefined,
-      fchaReconsideracion: formData.fchaReconsideracion !== undefined && formData.fchaReconsideracion !== null && formData.fchaReconsideracion !== '' ? formData.fchaReconsideracion : undefined,
+      fchaPresentacionCifras: fechaHitoONull(formData.fchaPresentacionCifras),
+      fchaAceptacionCifrasAseguradora: fechaHitoONull(formData.fchaAceptacionCifrasAseguradora),
+      fchaReconsideracion: fechaHitoONull(formData.fchaReconsideracion),
       obsePresentacionCifras: pick('obsePresentacionCifras', 'obse_presentacion_cifras'),
       anxoPresentacionCifras: pick('anxoPresentacionCifras', 'adjunto_presentacion_cifras'),
-      fchaEnvioFiniquito: formData.fchaEnvioFiniquito !== undefined && formData.fchaEnvioFiniquito !== null && formData.fchaEnvioFiniquito !== '' ? formData.fchaEnvioFiniquito : undefined,
-      fchaEnProcesoFacturacion: formData.fchaEnProcesoFacturacion !== undefined && formData.fchaEnProcesoFacturacion !== null && formData.fchaEnProcesoFacturacion !== '' ? formData.fchaEnProcesoFacturacion : undefined,
-      fchaFacturado: formData.fchaFacturado !== undefined && formData.fchaFacturado !== null && formData.fchaFacturado !== '' ? formData.fchaFacturado : undefined,
+      fchaEnvioFiniquito: fechaHitoONull(formData.fchaEnvioFiniquito),
+      fchaEnProcesoFacturacion: fechaHitoONull(formData.fchaEnProcesoFacturacion),
+      fchaFacturado: fechaHitoONull(formData.fchaFacturado),
       obseEnvioFiniquito: pick('obseEnvioFiniquito', 'obse_envio_finiquito'),
       anxoEnvioFiniquito: pick('anxoEnvioFiniquito', 'adjunto_envio_finiquito'),
       obseSegmnto: pick('obseSegmnto', 'obse_segmnto'),
