@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { obtenerEstadoEncuestaDocumentacion } from '../../services/encuestaDocumentacionExternosService';
-import { RUTA_ENCUESTA_DOCUMENTACION } from '../../config/encuestaDocumentacionExternos';
+import {
+  RUTA_ENCUESTA_DOCUMENTACION,
+  KEY_ENCUESTA_POSPUESTA,
+} from '../../config/encuestaDocumentacionExternos';
 
 /**
- * Bloquea la plataforma si el backend marca la encuesta documental como obligatoria
- * (contractor_* elegibles; no Zurich/BBVA ni exclusiones).
+ * Si aplica y está vigente, redirige a la encuesta salvo que el usuario
+ * eligió «hacerlo más tarde» en esta sesión.
  */
 export default function EncuestaDocumentacionGate({ children }) {
   const location = useLocation();
@@ -15,6 +18,9 @@ export default function EncuestaDocumentacionGate({ children }) {
   const enRutaEncuesta = location.pathname.startsWith(RUTA_ENCUESTA_DOCUMENTACION);
   const tipoUsuario = localStorage.getItem('tipoUsuario');
   const token = localStorage.getItem('token');
+  const pospuesta =
+    typeof sessionStorage !== 'undefined' &&
+    sessionStorage.getItem(KEY_ENCUESTA_POSPUESTA) === '1';
 
   const consultar = useCallback(async () => {
     if (!token || tipoUsuario !== 'secur') {
@@ -26,7 +32,6 @@ export default function EncuestaDocumentacionGate({ children }) {
       const res = await obtenerEstadoEncuestaDocumentacion();
       setEstado(res);
     } catch {
-      // No bloquear la plataforma si el endpoint falla (red / deploy parcial)
       setEstado({ obligatoria: false });
     } finally {
       setCargando(false);
@@ -36,9 +41,21 @@ export default function EncuestaDocumentacionGate({ children }) {
   useEffect(() => {
     setCargando(true);
     consultar();
-    const onDone = () => consultar();
+    const onDone = () => {
+      try {
+        sessionStorage.removeItem(KEY_ENCUESTA_POSPUESTA);
+      } catch {
+        /* ignore */
+      }
+      consultar();
+    };
+    const onPosponer = () => consultar();
     window.addEventListener('encuesta-documentacion-completada', onDone);
-    return () => window.removeEventListener('encuesta-documentacion-completada', onDone);
+    window.addEventListener('encuesta-documentacion-pospuesta', onPosponer);
+    return () => {
+      window.removeEventListener('encuesta-documentacion-completada', onDone);
+      window.removeEventListener('encuesta-documentacion-pospuesta', onPosponer);
+    };
   }, [consultar, location.pathname]);
 
   if (!token || tipoUsuario !== 'secur') return children;
@@ -51,7 +68,7 @@ export default function EncuestaDocumentacionGate({ children }) {
     );
   }
 
-  if (estado?.obligatoria && !enRutaEncuesta) {
+  if (estado?.obligatoria && !enRutaEncuesta && !pospuesta) {
     return <Navigate to={RUTA_ENCUESTA_DOCUMENTACION} replace />;
   }
 

@@ -7,6 +7,7 @@ import {
   descargarPlantillaConfidencialidadEncuesta,
 } from '../../services/encuestaDocumentacionExternosService';
 import { rutaInicioPorRol } from '../../config/roles';
+import { KEY_ENCUESTA_POSPUESTA } from '../../config/encuestaDocumentacionExternos';
 import LogoutButton from '../LogoutButton';
 import FirmaPad from '../Onboarding/FirmaPad';
 import { generarPdfConfidencialidadFirmada } from '../../utils/onboardingFirmasPdf';
@@ -24,37 +25,42 @@ function nombreLegal(nombre) {
 }
 
 const CAMPOS_DEFAULT = [
-  { key: 'hojaVida', label: 'Hoja de vida', requerido: true, hint: 'Adjunte su hoja de vida actualizada.' },
+  {
+    key: 'hojaVida',
+    label: 'Hoja de vida',
+    requerido: false,
+    hint: 'Adjunte su hoja de vida actualizada (opcional).',
+  },
   {
     key: 'certificacionBancaria',
     label: 'Certificación bancaria',
-    requerido: true,
-    hint: 'Adjunte una certificación bancaria donde se evidencie la titularidad de la cuenta.',
+    requerido: false,
+    hint: 'Adjunte una certificación bancaria donde se evidencie la titularidad de la cuenta (opcional).',
   },
   {
     key: 'copiaCedula',
     label: 'Copia de cédula',
-    requerido: true,
-    hint: 'Adjunte copia legible de su documento de identidad.',
+    requerido: false,
+    hint: 'Adjunte copia legible de su documento de identidad (opcional).',
   },
   {
     key: 'acuerdoConfidencialidad',
     label: 'Acuerdo de confidencialidad',
-    requerido: true,
-    hint: 'Lea y firme el acuerdo oficial de Grupo Proser (el mismo del onboarding).',
+    requerido: false,
+    hint: 'Puede leer y firmar el acuerdo oficial de Grupo Proser (opcional).',
     firmarOficial: true,
   },
   {
     key: 'contratoFirmado',
     label: 'Contrato firmado',
     requerido: false,
-    hint: 'Adjunte copia del contrato debidamente firmado.',
+    hint: 'Adjunte copia del contrato debidamente firmado (opcional).',
   },
   {
     key: 'certificadoArl',
     label: 'Certificado ARL',
-    requerido: true,
-    hint: 'Adjunte certificado de afiliación a ARL vigente.',
+    requerido: false,
+    hint: 'Adjunte certificado de afiliación a ARL vigente (opcional).',
   },
 ];
 
@@ -183,20 +189,22 @@ export default function EncuestaDocumentacionExternos() {
     }
   };
 
+  const hacerloMasTarde = () => {
+    try {
+      sessionStorage.setItem(KEY_ENCUESTA_POSPUESTA, '1');
+    } catch {
+      /* ignore */
+    }
+    window.dispatchEvent(new CustomEvent('encuesta-documentacion-pospuesta'));
+    navigate(rutaInicioPorRol(), { replace: true });
+  };
+
   const enviar = async (e) => {
     e.preventDefault();
     setBusy(true);
     setMensaje('');
     setError('');
     try {
-      for (const c of campos) {
-        if (c.requerido && !archivos[c.key]) {
-          if (c.key === 'acuerdoConfidencialidad') {
-            throw new Error('Debe firmar el acuerdo de confidencialidad (botón Firmar acuerdo)');
-          }
-          throw new Error(`Debe adjuntar: ${c.label}`);
-        }
-      }
       const res = await enviarEncuestaDocumentacion({
         nombreCompleto: nombreLegal(nombreCompleto) || nombreCompleto,
         correo,
@@ -204,6 +212,11 @@ export default function EncuestaDocumentacionExternos() {
       });
       setMensaje(res.message || 'Documentación enviada');
       setEstado(res);
+      try {
+        sessionStorage.removeItem(KEY_ENCUESTA_POSPUESTA);
+      } catch {
+        /* ignore */
+      }
       window.dispatchEvent(new CustomEvent('encuesta-documentacion-completada'));
       setTimeout(() => navigate(rutaInicioPorRol(), { replace: true }), 800);
     } catch (err) {
@@ -245,24 +258,15 @@ export default function EncuestaDocumentacionExternos() {
 
       <main className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 leading-relaxed">
-          Esta actualización documental se realiza por <strong>orden de la gerencia de Grupo Proser</strong>.
-          Por esa razón es <strong>obligatoria</strong> para colaboradores externos (excepto roles
-          Zurich/BBVA). Completarla es condición para continuar operando en la plataforma y mantener
-          vigente su relación contractual o de prestación de servicios.
+          Esta actualización documental se realiza por <strong>orden de la gerencia de Grupo Proser</strong>{' '}
+          para colaboradores externos (excepto roles Zurich/BBVA). Los documentos son{' '}
+          <strong>opcionales</strong>: puede adjuntar lo que tenga listo o elegir{' '}
+          <strong>hacerlo más tarde</strong> e ingresar a la plataforma.
         </div>
 
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {estado?.obligatoria || estado?.vigente ? (
-            <>
-              Mientras no envíe esta documentación, <strong>no podrá ingresar</strong> a los módulos de la
-              plataforma.
-            </>
-          ) : (
-            <>
-              Puede completar la documentación desde ya. A partir del{' '}
-              <strong>{estado?.fechaInicio || '2026-10-08'}</strong> será obligatoria al ingresar.
-            </>
-          )}
+        <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          Puede completar lo que desee ahora o continuar sin enviar. Si elige hacerlo más tarde, podrá
+          seguir trabajando y volver a esta encuesta cuando quiera.
         </div>
 
         {error && (
@@ -279,12 +283,9 @@ export default function EncuestaDocumentacionExternos() {
         <form onSubmit={enviar} className="space-y-4">
           <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3">
             <label className="block">
-              <span className="text-sm font-medium text-slate-800">
-                Correo <span className="text-red-500">*</span>
-              </span>
+              <span className="text-sm font-medium text-slate-800">Correo</span>
               <input
                 type="email"
-                required
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -292,12 +293,9 @@ export default function EncuestaDocumentacionExternos() {
               />
             </label>
             <label className="block">
-              <span className="text-sm font-medium text-slate-800">
-                Nombre completo <span className="text-red-500">*</span>
-              </span>
+              <span className="text-sm font-medium text-slate-800">Nombre completo</span>
               <input
                 type="text"
-                required
                 value={nombreCompleto}
                 onChange={(e) => setNombreCompleto(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -313,7 +311,7 @@ export default function EncuestaDocumentacionExternos() {
             >
               <div className="flex items-start justify-between gap-2">
                 <h2 className="text-sm font-semibold text-slate-900">{campo.label}</h2>
-                {campo.requerido && <span className="text-red-500 text-sm">*</span>}
+                <span className="text-xs text-slate-400">Opcional</span>
               </div>
               {campo.hint && <p className="mt-1 text-sm text-slate-600">{campo.hint}</p>}
 
@@ -362,7 +360,7 @@ export default function EncuestaDocumentacionExternos() {
             </section>
           ))}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             <button
               type="submit"
               disabled={busy}
@@ -370,7 +368,14 @@ export default function EncuestaDocumentacionExternos() {
             >
               {busy ? 'Enviando…' : 'Enviar'}
             </button>
-            <p className="text-xs text-slate-500">* Indica que la pregunta es obligatoria</p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={hacerloMasTarde}
+              className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            >
+              Hacerlo más tarde
+            </button>
           </div>
         </form>
       </main>
