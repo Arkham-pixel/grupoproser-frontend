@@ -11,6 +11,10 @@ export const ESTADOS_EQUIDAD_CAT = [
   'AUTORIZACIÓN ANALISTA',
   'CASO PARA PAGO',
   'FINALIZADO',
+  'ATENDIDO POR EQUIDAD',
+  'FACTURADO',
+  'FIRMA ASEGURADO',
+  'DESISTIMIENTO',
 ];
 
 export const ESTADOS_EQUIDAD_CAT_BLOQUE_INGRESO = Object.freeze([
@@ -28,6 +32,10 @@ export const ESTADOS_EQUIDAD_CAT_BLOQUE_CIERRE = Object.freeze([
   'OBJECIÓN',
   'CASO PARA PAGO',
   'FINALIZADO',
+  'ATENDIDO POR EQUIDAD',
+  'FACTURADO',
+  'FIRMA ASEGURADO',
+  'DESISTIMIENTO',
 ]);
 
 export const BLOQUES_SUMA_EQUIDAD_CAT = Object.freeze([
@@ -45,8 +53,9 @@ export const BLOQUES_SUMA_EQUIDAD_CAT = Object.freeze([
   },
   {
     id: 'bloque-cierre',
-    titulo: 'Objeción, pago y finalizado',
-    subtitulo: 'OBJECIÓN · CASO PARA PAGO · FINALIZADO',
+    titulo: 'Objeción, pago y cierre',
+    subtitulo:
+      'OBJECIÓN · CASO PARA PAGO · FINALIZADO · ATENDIDO POR EQUIDAD · FACTURADO · FIRMA ASEGURADO · DESISTIMIENTO',
     estados: [...ESTADOS_EQUIDAD_CAT_BLOQUE_CIERRE],
   },
 ]);
@@ -62,6 +71,10 @@ export const FECHA_ACCION_POR_ESTADO_EQUIDAD_CAT = {
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
   'CASO PARA PAGO': 'fechaCasoParaPago',
   FINALIZADO: 'fechaFinalizado',
+  'ATENDIDO POR EQUIDAD': 'fechaAtendidoPorEquidad',
+  FACTURADO: 'fechaFacturado',
+  'FIRMA ASEGURADO': 'fechaFirmaAsegurado',
+  DESISTIMIENTO: 'fechaDesistimiento',
 };
 
 export const CAMPOS_FECHA_ACCION_EQUIDAD_CAT = [
@@ -74,6 +87,10 @@ export const CAMPOS_FECHA_ACCION_EQUIDAD_CAT = [
   'fechaAutorizacionAnalista',
   'fechaCasoParaPago',
   'fechaFinalizado',
+  'fechaAtendidoPorEquidad',
+  'fechaFacturado',
+  'fechaFirmaAsegurado',
+  'fechaDesistimiento',
 ];
 
 const ESTADOS_EQUIDAD_CAT_LEGACY = {
@@ -85,6 +102,9 @@ const ESTADOS_EQUIDAD_CAT_LEGACY = {
   LIQUIDADO: 'CASO PARA PAGO',
   'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
   CERRADO: 'CASO PARA PAGO',
+  DESISTIDO: 'DESISTIMIENTO',
+  'ATENDIDO EQUIDAD': 'ATENDIDO POR EQUIDAD',
+  'FIRMA DEL ASEGURADO': 'FIRMA ASEGURADO',
 };
 
 const claveEstadoEquidadCat = (valor) =>
@@ -589,6 +609,10 @@ export const FORM_VACIO_EQUIDAD_CAT = {
   fechaAutorizacionAnalista: '',
   fechaCasoParaPago: '',
   fechaFinalizado: '',
+  fechaAtendidoPorEquidad: '',
+  fechaFacturado: '',
+  fechaFirmaAsegurado: '',
+  fechaDesistimiento: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',

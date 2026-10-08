@@ -173,10 +173,18 @@ export function clasificarCasoGestionTerremoto(caso = {}) {
     .join(' ');
 
   if (textoLibre && /desist/.test(normTexto(textoLibre))) return 'desistimientos';
+  if (estado === 'DESISTIMIENTO') return 'desistimientos';
   if (esPerdidaTotalTexto(textoLibre, estado)) return 'perdidasTotales';
   if (estado === 'OBJECIÓN') return 'objetados';
-  if (estado === 'CASO PARA PAGO' || estado === 'FINALIZADO') return 'pendientesPagoAlfa';
-  if (estado === 'AUTORIZACIÓN ANALISTA') return 'liquidados';
+  if (
+    estado === 'CASO PARA PAGO' ||
+    estado === 'FINALIZADO' ||
+    estado === 'FACTURADO' ||
+    estado === 'ATENDIDO POR EQUIDAD'
+  ) {
+    return 'pendientesPagoAlfa';
+  }
+  if (estado === 'AUTORIZACIÓN ANALISTA' || estado === 'FIRMA ASEGURADO') return 'liquidados';
   if (estado === 'ANÁLISIS DEL CASO' || estado === 'PENDIENTE DE DOCUMENTO') return 'enLiquidacion';
   if (estado === 'COORDINANDO INSPECCIÓN') return 'enInspeccion';
   return 'verificacion';
@@ -399,10 +407,13 @@ export function clasificarCasoAlCorte(caso = {}, isoCorte) {
 
   if (
     fechaIsoOnOrBefore(caso.fechaCasoParaPago, isoCorte) ||
-    fechaIsoOnOrBefore(caso.fechaFinalizado, isoCorte)
+    fechaIsoOnOrBefore(caso.fechaFinalizado, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaFacturado, isoCorte) ||
+    fechaIsoOnOrBefore(caso.fechaAtendidoPorEquidad, isoCorte)
   ) {
     return 'pendientesPagoAlfa';
   }
+  if (fechaIsoOnOrBefore(caso.fechaDesistimiento, isoCorte)) return 'desistimientos';
   if (fechaIsoOnOrBefore(caso.fechaObjecion, isoCorte)) return 'objetados';
   if (fechaIsoOnOrBefore(caso.fechaAutorizacionAnalista, isoCorte)) return 'liquidados';
   if (

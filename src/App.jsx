@@ -54,6 +54,8 @@ import ProtocoloTiemposComplex from './components/SubcomponenteCompex/ProtocoloT
 import PortalSubtareaExterna from './components/SubcomponenteCompex/PortalSubtareaExterna';
 import PortalAjusteExternoBridge from './components/SubcomponenteCompex/PortalAjusteExternoBridge';
 import PortalOnboarding from './components/Onboarding/PortalOnboarding';
+import EncuestaDocumentacionExternos from './components/EncuestaDocumentacionExternos/EncuestaDocumentacionExternos';
+import EncuestaDocumentacionGate from './components/EncuestaDocumentacionExternos/EncuestaDocumentacionGate';
 import VideoperitajeHistorial from './components/SubcomponenteVideoperitaje/VideoperitajeHistorial.jsx';
 import VideoperitajeSala from './components/SubcomponenteVideoperitaje/VideoperitajeSala.jsx';
 import VideoperitajePlantillas from './components/SubcomponenteVideoperitaje/VideoperitajePlantillas.jsx';
@@ -551,13 +553,25 @@ export default function App() {
           }
         />
 
+        {/* Encuesta obligatoria documentación colaboradores externos */}
+        <Route
+          path="/encuesta-documentacion-externos"
+          element={
+            <RequireAuth>
+              <EncuestaDocumentacionExternos />
+            </RequireAuth>
+          }
+        />
+
         {/* Rutas privadas protegidas por RequireAuth */}
         <Route
           element={
             <RequireAuth>
-              <RequireRutaPermitida>
-                <Layout />
-              </RequireRutaPermitida>
+              <EncuestaDocumentacionGate>
+                <RequireRutaPermitida>
+                  <Layout />
+                </RequireRutaPermitida>
+              </EncuestaDocumentacionGate>
             </RequireAuth>
           }
         >

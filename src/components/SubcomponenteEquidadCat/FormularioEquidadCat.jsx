@@ -319,6 +319,10 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
         fechaCasoParaPago: form.fechaCasoParaPago,
         fechaFinalizado: form.fechaFinalizado,
+        fechaAtendidoPorEquidad: form.fechaAtendidoPorEquidad,
+        fechaFacturado: form.fechaFacturado,
+        fechaFirmaAsegurado: form.fechaFirmaAsegurado,
+        fechaDesistimiento: form.fechaDesistimiento,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -719,6 +723,34 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
               type="date"
               value={form.fechaFinalizado}
               onChange={setCampo('fechaFinalizado')}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.fields.fechaAtendidoPorEquidad')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAtendidoPorEquidad}
+              onChange={setCampo('fechaAtendidoPorEquidad')}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.fields.fechaFacturado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFacturado}
+              onChange={setCampo('fechaFacturado')}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.fields.fechaFirmaAsegurado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFirmaAsegurado}
+              onChange={setCampo('fechaFirmaAsegurado')}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.fields.fechaDesistimiento')}>
+            <InputFenix
+              type="date"
+              value={form.fechaDesistimiento}
+              onChange={setCampo('fechaDesistimiento')}
             />
           </Campo>
           <Campo label={t('equidadCat.fields.diasEnEstado')}>

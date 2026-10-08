@@ -14,6 +14,11 @@ import {
   generarPdfPoliticaFirmada,
   generarPdfConfidencialidadFirmada,
 } from '../../utils/onboardingFirmasPdf';
+import {
+  rellenarAcuerdoConfidencialidad,
+  estructurarHtmlAcuerdoConfidencialidad,
+  rellenarDocxAcuerdoConfidencialidad,
+} from '../../utils/rellenarAcuerdoConfidencialidad';
 
 const STEPS = [
   { id: 'datos', label: 'Sus datos' },
@@ -105,6 +110,18 @@ export default function PortalOnboarding() {
     }
   }, [token]);
 
+  const datosNda = useMemo(
+    () => ({
+      nombre: data?.nombre || datosForm.nombre || '',
+      cedula: data?.cedula || datosForm.cedula || '',
+      correo: data?.correo || datosForm.correo || '',
+      celular: data?.celular || datosForm.celular || '',
+      direccion: '',
+      ciudad: '',
+    }),
+    [data, datosForm.nombre, datosForm.cedula, datosForm.correo, datosForm.celular]
+  );
+
   useEffect(() => {
     if (!token || !data) return;
     let cancelled = false;
@@ -115,8 +132,10 @@ export default function PortalOnboarding() {
         const html = await mammoth.convertToHtml({ arrayBuffer: buf });
         const text = await mammoth.extractRawText({ arrayBuffer: buf });
         if (!cancelled) {
-          setNdaHtml(html.value);
-          setNdaTexto(text.value);
+          const htmlRelleno = rellenarAcuerdoConfidencialidad(html.value, datosNda);
+          const textoRelleno = rellenarAcuerdoConfidencialidad(text.value, datosNda);
+          setNdaHtml(estructurarHtmlAcuerdoConfidencialidad(htmlRelleno));
+          setNdaTexto(textoRelleno);
         }
       } catch (e) {
         if (!cancelled) setNdaHtml('<p>No se pudo cargar el texto del acuerdo. Descargue la plantilla.</p>');
@@ -125,7 +144,7 @@ export default function PortalOnboarding() {
     return () => {
       cancelled = true;
     };
-  }, [token, data]);
+  }, [token, data, datosNda]);
 
   const step = useMemo(() => pasoActual(data), [data]);
   const plantillaPolitica = token ? urlPlantillaOnboarding(token, 'politica') : '';
@@ -188,6 +207,8 @@ export default function PortalOnboarding() {
         firmaDataUrl: firmaNda,
         firmante: data.nombre,
         cedula: data.cedula,
+        correo: data.correo,
+        celular: data.celular,
       });
       setPdfNdaBlob(blob);
       await cargar();
@@ -238,6 +259,8 @@ export default function PortalOnboarding() {
           firmaDataUrl: firmaConf,
           firmante: data.nombre,
           cedula: data.cedula,
+          correo: data.correo,
+          celular: data.celular,
         });
         setPdfNdaBlob(confidencialidadPdf);
       }
@@ -299,6 +322,20 @@ export default function PortalOnboarding() {
     a.download = nombre;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const descargarWordRelleno = async () => {
+    try {
+      setBusy(true);
+      const url = urlPlantillaOnboarding(token, 'confidencialidad');
+      const buf = await fetch(url).then((r) => r.arrayBuffer());
+      const blob = await rellenarDocxAcuerdoConfidencialidad(buf, datosNda);
+      descargarBlob(blob, 'Acuerdo_Confidencialidad.docx');
+    } catch {
+      setMensaje('No se pudo generar el Word diligenciado');
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) {
@@ -493,16 +530,21 @@ export default function PortalOnboarding() {
         {step === 'confidencialidad' && (
           <section className="bg-white border rounded-lg p-4 sm:p-6 space-y-4 shadow-sm">
             <h2 className="text-lg font-semibold">3. Acuerdo de confidencialidad</h2>
+            <p className="text-sm text-slate-600">
+              Revise el texto (ya incluye sus datos personales) y firme para continuar.
+            </p>
             <div
-              className="prose prose-sm max-w-none max-h-[420px] overflow-y-auto border rounded p-3 bg-slate-50"
+              className="nda-preview max-h-[420px] overflow-y-auto border border-slate-200 rounded-lg p-4 sm:p-5 bg-white text-[13px] leading-relaxed text-slate-800 space-y-2 [&_.nda-parte]:my-4 [&_.nda-parte]:rounded-md [&_.nda-parte]:border [&_.nda-parte]:border-slate-200 [&_.nda-parte]:bg-slate-50 [&_.nda-parte]:p-3 [&_.nda-parte-titulo]:mb-2 [&_.nda-parte-titulo]:block [&_.nda-parte-titulo]:text-xs [&_.nda-parte-titulo]:font-semibold [&_.nda-parte-titulo]:uppercase [&_.nda-parte-titulo]:tracking-wide [&_.nda-parte-titulo]:text-slate-500 [&_.nda-nota]:mt-3 [&_.nda-nota]:text-xs [&_.nda-nota]:text-slate-600 [&_p]:mb-2 [&_strong]:font-semibold"
               dangerouslySetInnerHTML={{ __html: ndaHtml }}
             />
-            <a
-              href={urlPlantillaOnboarding(token, 'confidencialidad')}
-              className="text-sm text-blue-700 underline"
+            <button
+              type="button"
+              onClick={descargarWordRelleno}
+              disabled={busy}
+              className="text-sm text-blue-700 underline disabled:opacity-60"
             >
-              Descargar Word original
-            </a>
+              Descargar Word diligenciado
+            </button>
             <FirmaPad onChange={setFirmaNda} />
             <button
               type="button"

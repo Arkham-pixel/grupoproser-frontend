@@ -69,6 +69,8 @@ export function esLiquidadoEstado(estado) {
   return (
     e === 'LIQUIDADO' ||
     e === 'FINALIZADO' ||
+    e === 'ATENDIDO POR EQUIDAD' ||
+    e === 'FIRMA ASEGURADO' ||
     e === 'ENVIADO ASEGURADORA' ||
     e === 'PROCESO DE PAGO' ||
     e === 'PENDIENTE ACEPTACION CIFRAS' ||
@@ -108,6 +110,8 @@ export function esActivo(estado) {
     e !== 'ANULADO/CANCELADO' &&
     e !== 'CANCELADO' &&
     e !== 'FINALIZADO' &&
+    e !== 'ATENDIDO POR EQUIDAD' &&
+    e !== 'FIRMA ASEGURADO' &&
     e !== 'OBJETADO' &&
     e !== 'DESISTIDO' &&
     e !== 'DESISTIMIENTO'

@@ -324,6 +324,12 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
 
   const contractor = obtenerConfigContractor(r);
   if (contractor) {
+    if (
+      path === '/encuesta-documentacion-externos' ||
+      path.startsWith('/encuesta-documentacion-externos/')
+    ) {
+      return true;
+    }
     const permitida =
       contractor.prefijosRuta.some((prefijo) => path === prefijo || path.startsWith(`${prefijo}/`)) ||
       path === '/inicio';
