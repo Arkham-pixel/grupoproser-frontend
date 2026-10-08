@@ -302,19 +302,14 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
         ? await guardarLiquidadorEnCasoZurichListado({
             casoId,
             liquidador,
-            casoBase: {
-              ...(casoZurich || {}),
-              informeUnico: informeState || casoZurich?.informeUnico,
-            },
+            totales,
+            casoBase: casoZurich || {},
           })
         : await guardarLiquidadorEnCasoZurich({
             casoId,
             liquidador,
             totales,
-            casoBase: {
-              ...(casoZurich || {}),
-              informeUnico: informeState || casoZurich?.informeUnico,
-            },
+            casoBase: casoZurich || {},
           });
       setCasoZurich(actualizado);
       setLiquidadorState(liquidador);

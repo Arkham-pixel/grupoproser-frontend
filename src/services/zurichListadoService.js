@@ -12,6 +12,8 @@ import {
   sanitizarInformeUnicoZurich,
   sanitizarLiquidadorZurich,
   camposPolizaParaCasoZurich,
+  camposValoresGestionZurich,
+  enriquecerCasoZurichDesdeInforme,
 } from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 const API_URL = `${BASE_URL}/api/zurich-listado`;
@@ -21,9 +23,53 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const parseMontoListaZurich = (valor) => {
+  if (valor == null || valor === '') return 0;
+  if (typeof valor === 'number' && Number.isFinite(valor)) return valor;
+  const n = Number(
+    String(valor)
+      .replace(/\./g, '')
+      .replace(/[^\d-]/g, '')
+  );
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * Reserva para reporte/listado:
+ * - Si hay reservaSugerida del informe distinta y > 0, preferir la mayor
+ *   (evita mostrar la fórmula vieja 185.808.000 cuando el preliminar ya tiene la buena).
+ * - Campos livianos del aggregate: reservaSugeridaInforme.
+ */
+const reservaDesdeInformeOCaso = (item = {}) => {
+  const delCaso = parseMontoListaZurich(item.reserva);
+  const sug = parseMontoListaZurich(
+    item.reservaSugeridaInforme ?? item.informeUnico?.reservaSugerida
+  );
+  if (sug > 0 && delCaso > 0) return Math.max(sug, delCaso);
+  if (sug > 0) return sug;
+  if (delCaso > 0) return delCaso;
+  return item.reserva ?? null;
+};
+
+const valorAseguradoDesdeListaZurich = (item = {}) => {
+  const delCaso = parseMontoListaZurich(item.valorAseguradoInmueble);
+  if (delCaso > 0) return delCaso;
+  const delInf = parseMontoListaZurich(
+    item.valorAseguradoInforme ?? item.informeUnico?.valorAsegurado
+  );
+  if (delInf > 0) return delInf;
+  const delLiq = parseMontoListaZurich(item.valorAseguradoLiquidador);
+  if (delLiq > 0) return delLiq;
+  const enc = item.liquidador?.encabezado?.valorAseguradoInmueble;
+  const liq = item.liquidador?.liquidacionCatastrofico?.valorAsegurado;
+  return parseMontoListaZurich(liq) || parseMontoListaZurich(enc) || item.valorAseguradoInmueble || null;
+};
+
 export const normalizeZurichListadoItem = (item = {}) => {
   const caso = migrarFechasEstadoZurich(item);
   const estado = caso.estado;
+  const reserva = reservaDesdeInformeOCaso(item);
+  const valorAseguradoInmueble = valorAseguradoDesdeListaZurich(item);
   return {
     ...caso,
     zc: item.zc ?? '',
@@ -43,7 +89,7 @@ export const normalizeZurichListadoItem = (item = {}) => {
     correoAsegurado: item.correoAsegurado ?? '',
     contactoAsegurado: item.contactoAsegurado ?? '',
     observaciones: item.observaciones ?? '',
-    reserva: item.reserva ?? null,
+    reserva,
     ciudad: homologarCiudadZurich(item.ciudad) || item.ciudad || '',
     departamento: item.departamento ?? caso.departamento ?? '',
     tomador: item.tomador ?? caso.tomador ?? '',
@@ -51,7 +97,8 @@ export const normalizeZurichListadoItem = (item = {}) => {
     fechaInicioPoliza: item.fechaInicioPoliza ?? caso.fechaInicioPoliza ?? null,
     fechaFinPoliza: item.fechaFinPoliza ?? caso.fechaFinPoliza ?? null,
     cobertura: item.cobertura ?? caso.cobertura ?? '',
-    valorAseguradoInmueble: item.valorAseguradoInmueble ?? caso.valorAseguradoInmueble ?? null,
+    valorAseguradoInmueble:
+      valorAseguradoInmueble > 0 ? valorAseguradoInmueble : item.valorAseguradoInmueble ?? null,
     valorReclamado: item.valorReclamado ?? caso.valorReclamado ?? null,
     valorLiquidado: item.valorLiquidado ?? caso.valorLiquidado ?? null,
     estadoFacturacion: item.estadoFacturacion ?? null,
@@ -185,7 +232,52 @@ export const getCasoZurichListadoById = async (id) => {
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error al obtener el caso (${response.status})`);
   }
-  return normalizeZurichListadoItem(payload?.data ?? payload);
+  const crudo = payload?.data ?? payload;
+  const enriquecido = enriquecerCasoZurichDesdeInforme(crudo);
+  const normalizado = normalizeZurichListadoItem(enriquecido);
+
+  // Si la reserva/VA del informe no estaban en Gestionar, corregir en BD al abrir.
+  const reservaAntes = Number(crudo?.reserva) || 0;
+  const reservaNueva = Number(enriquecido?.reserva) || 0;
+  const vaAntes = Number(crudo?.valorAseguradoInmueble) || 0;
+  const vaNuevo = Number(enriquecido?.valorAseguradoInmueble) || 0;
+  const hayCorreccion =
+    (reservaNueva > 0 && reservaNueva !== reservaAntes) ||
+    (vaNuevo > 0 && vaNuevo !== vaAntes) ||
+    (Number(enriquecido?.valorReclamado) > 0 &&
+      Number(enriquecido?.valorReclamado) !== Number(crudo?.valorReclamado || 0));
+  if (hayCorreccion) {
+    const patch = {};
+    if (reservaNueva > 0) patch.reserva = reservaNueva;
+    if (vaNuevo > 0) patch.valorAseguradoInmueble = vaNuevo;
+    if (Number(enriquecido?.valorReclamado) > 0) {
+      patch.valorReclamado = Number(enriquecido.valorReclamado);
+    }
+    if (Number(enriquecido?.valorLiquidado) > 0) {
+      patch.valorLiquidado = Number(enriquecido.valorLiquidado);
+    }
+    // Actualiza también reservaSugerida para que el reporte (proyección liviana) la lea.
+    if (reservaNueva > 0 && crudo.informeUnico && typeof crudo.informeUnico === 'object') {
+      patch.informeUnico = {
+        ...crudo.informeUnico,
+        reservaSugerida: String(reservaNueva),
+        ...(vaNuevo > 0 ? { valorAsegurado: vaNuevo } : {}),
+      };
+    }
+    try {
+      const guardado = await actualizarCasoZurichListado(id, patch);
+      return normalizeZurichListadoItem({
+        ...guardado,
+        ...patch,
+        reservaSugeridaInforme: reservaNueva || guardado.reservaSugeridaInforme,
+        valorAseguradoInforme: vaNuevo || guardado.valorAseguradoInforme,
+        informeUnico: enriquecido.informeUnico || guardado.informeUnico,
+      });
+    } catch (err) {
+      console.warn('No se pudo persistir sync reserva→Gestionar:', err);
+    }
+  }
+  return normalizado;
 };
 
 const omitirMeta = (casoBase = {}) => {
@@ -215,14 +307,25 @@ const fichaSinHuecos = (casoBase = {}) => {
 export const guardarLiquidadorEnCasoZurichListado = async ({
   casoId,
   liquidador,
+  totales = {},
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
-  return actualizarCasoZurichListado(casoId, {
+  const liqSan = sanitizarLiquidadorZurich(liquidador || {});
+  const payload = {
     ...fichaSinHuecos(casoBase),
-    ...camposPolizaParaCasoZurich(liquidador || {}, casoBase),
-    liquidador: sanitizarLiquidadorZurich(liquidador || {}),
-  });
+    ...camposPolizaParaCasoZurich(liqSan, casoBase),
+    ...camposValoresGestionZurich({
+      liquidador: liqSan,
+      casoBase,
+      totales,
+    }),
+    liquidador: liqSan,
+  };
+  // No reenviar informeUnico ni reserva: el liquidador no debe pisar la del preliminar.
+  delete payload.informeUnico;
+  delete payload.reserva;
+  return actualizarCasoZurichListado(casoId, payload);
 };
 
 export const guardarInformeUnicoEnCasoZurichListado = async ({
@@ -231,11 +334,12 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
-  const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
+  const liq = casoBase.liquidador || null;
   const extrasReserva = {
     caso: casoBase,
-    liquidador: casoBase.liquidador,
+    liquidador: liq,
   };
+  const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {}, extrasReserva);
   const desglose = desgloseReservaPreliminarZurich(sanitizado, extrasReserva);
   const reservaPerito =
     desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado, extrasReserva);
@@ -244,11 +348,25 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
   }
   const payload = {
     ...fichaSinHuecos(casoBase),
-    ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
+    ...camposPolizaParaCasoZurich(liq || {}, casoBase),
+    ...camposValoresGestionZurich({
+      liquidador: liq,
+      casoBase,
+      desglose,
+      reserva: reservaPerito,
+    }),
     informeUnico: sanitizado,
     ...fechasInformeParaCasoZurich(sanitizado, casoBase),
   };
-  if (desglose.perdida > 0 || reservaPerito > 0) payload.reserva = reservaPerito;
+  // Forzar al final: la reserva del desglose del informe manda sobre casoBase.
+  if (reservaPerito > 0) {
+    payload.reserva = Math.round(Number(reservaPerito));
+    sanitizado.reservaSugerida = String(payload.reserva);
+    payload.informeUnico = sanitizado;
+  }
+  if (liq && typeof liq === 'object') {
+    payload.liquidador = sanitizarLiquidadorZurich(liq);
+  }
   return actualizarCasoZurichListado(casoId, payload);
 };
 

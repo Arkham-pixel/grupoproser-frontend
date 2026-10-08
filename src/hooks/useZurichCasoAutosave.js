@@ -28,6 +28,8 @@ export default function useZurichCasoAutosave({
   guardarInforme = guardarInformeUnicoEnCasoZurich,
 } = {}) {
   const casoRef = useRef(casoZurich);
+  const liquidadorRef = useRef(liquidadorState);
+  const totalesRef = useRef(totalesState);
   const savingRef = useRef(false);
   const pendingFlushRef = useRef(null);
   const lastLiqSnap = useRef('');
@@ -35,6 +37,8 @@ export default function useZurichCasoAutosave({
   const readyRef = useRef(false);
 
   casoRef.current = casoZurich;
+  liquidadorRef.current = liquidadorState;
+  totalesRef.current = totalesState;
 
   useEffect(() => {
     readyRef.current = false;
@@ -99,7 +103,10 @@ export default function useZurichCasoAutosave({
         savingRef.current = true;
         setAutosaveUiStatus({ state: 'saving', message: 'Guardando…' });
         try {
-          const base = casoRef.current || {};
+          const base = {
+            ...(casoRef.current || {}),
+            liquidador: liquidadorRef.current || casoRef.current?.liquidador,
+          };
           let actualizado;
           if (payload.tipo === 'informe') {
             actualizado = await guardarInforme({
@@ -115,7 +122,7 @@ export default function useZurichCasoAutosave({
                 payload.data,
                 base.liquidador
               ),
-              totales: payload.totales || {},
+              totales: payload.totales || totalesRef.current || {},
               casoBase: base,
             });
             lastLiqSnap.current = JSON.stringify(payload.data);
@@ -174,7 +181,10 @@ export default function useZurichCasoAutosave({
       savingRef.current = true;
       setAutosaveUiStatus({ state: 'syncing', message: 'Sincronizando…' });
       try {
-        const base = casoRef.current || {};
+        const base = {
+          ...(casoRef.current || {}),
+          liquidador: liquidadorRef.current || casoRef.current?.liquidador,
+        };
         let actualizado;
         if (payload.tipo === 'informe') {
           actualizado = await guardarInforme({
@@ -190,7 +200,7 @@ export default function useZurichCasoAutosave({
               payload.data,
               base.liquidador
             ),
-            totales: payload.totales || {},
+            totales: payload.totales || totalesRef.current || {},
             casoBase: base,
           });
           lastLiqSnap.current = JSON.stringify(payload.data);

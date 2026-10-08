@@ -204,7 +204,12 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const abrirEdicion = useCallback(async (item) => {
     if (!item?._id) return;
     try {
-      setCasoEdicion(await getCasoZurichListadoById(item._id));
+      const fresco = await getCasoZurichListadoById(item._id);
+      setCasoEdicion(fresco);
+      // Reflejar en el reporte lo que Gestionar acaba de sincronizar (reserva/VA).
+      setCasos((prev) =>
+        prev.map((c) => (c._id === fresco._id ? { ...c, ...fresco } : c))
+      );
     } catch {
       setCasoEdicion(item);
     }

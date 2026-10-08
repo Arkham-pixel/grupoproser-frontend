@@ -1820,6 +1820,65 @@ export function camposPolizaParaCasoZurich(fuente = {}, casoBase = {}) {
 }
 
 /**
+ * Sincroniza valores de Gestionar/reporte desde liquidador + desglose preliminar.
+ * Solo escribe montos > 0 para no pisar con ceros.
+ */
+export function camposValoresGestionZurich({
+  liquidador = null,
+  casoBase = {},
+  totales = {},
+  desglose = null,
+  reserva = null,
+} = {}) {
+  const enc = liquidador?.encabezado && typeof liquidador.encabezado === 'object'
+    ? liquidador.encabezado
+    : {};
+  const vaInmueble =
+    valorAseguradoPresupuestoZurich(liquidador || {}) ||
+    parsearNumero(desglose?.valorAsegurado) ||
+    parsearNumero(casoBase.valorAseguradoInmueble) ||
+    0;
+  const vaContenidos =
+    parsearNumero(enc.valorAseguradoContenidos) ||
+    parsearNumero(casoBase.valorAseguradoContenidos) ||
+    0;
+  const reclamado =
+    (totales.totalReclamado != null && Number(totales.totalReclamado) > 0
+      ? Number(totales.totalReclamado)
+      : null) ??
+    (desglose?.perdida > 0 ? Number(desglose.perdida) : null) ??
+    (parsearNumero(casoBase.valorReclamado) || null);
+  const liquidado =
+    (totales.totalIndemnizar != null && Number.isFinite(Number(totales.totalIndemnizar))
+      ? Number(totales.totalIndemnizar)
+      : null) ??
+    (parsearNumero(casoBase.valorLiquidado) || null);
+  const out = {};
+  if (vaInmueble > 0) out.valorAseguradoInmueble = Math.round(vaInmueble);
+  if (vaContenidos > 0) out.valorAseguradoContenidos = Math.round(vaContenidos);
+  if (reclamado != null && reclamado > 0) out.valorReclamado = Math.round(reclamado);
+  // Solo desde totales del liquidador y solo si hay indemnización > 0 (no pisar con cero).
+  if (
+    totales.totalIndemnizar != null &&
+    Number.isFinite(liquidado) &&
+    liquidado > 0
+  ) {
+    out.valorLiquidado = Math.round(liquidado);
+  }
+  // Reserva SOLO desde preliminar (desglose / reserva explicita).
+  // Nunca reenviar casoBase.reserva: el autoguardado del liquidador la pisaba
+  // con el valor viejo (p. ej. formula suma-% ).
+  const reservaExplicita =
+    reserva != null && Number(reserva) > 0
+      ? Math.round(Number(reserva))
+      : desglose?.reserva > 0
+        ? Math.round(Number(desglose.reserva))
+        : null;
+  if (reservaExplicita > 0) out.reserva = reservaExplicita;
+  return out;
+}
+
+/**
  * El liquidador NSR / PDF no usa el 1% automático de hospedaje del CAT.
  * Solo cuenta un monto manual si el ajustador lo escribió en Gastos.
  */
@@ -2257,13 +2316,24 @@ export function serializarFotosInspeccionZurich(fotos = []) {
     .filter((f) => f.ruta || f._id);
 }
 
-export function sanitizarInformeUnicoZurich(informe = {}) {
+export function sanitizarInformeUnicoZurich(informe = {}, extras = {}) {
   if (!informe || typeof informe !== 'object') return {};
   const limpio = sanitizarInformeUnicoCamposWord(informe);
   const tipo = limpio.tipoInforme
     ? normalizarTipoInformeZurich(limpio.tipoInforme, 'preliminar')
     : undefined;
-  const desglose = desgloseReservaPreliminarZurich(limpio);
+  const desglose = desgloseReservaPreliminarZurich(limpio, extras);
+  const reservaUi = parsearNumero(limpio.reservaSugerida);
+  const vaCtx = valorAseguradoReservaZurich(limpio, extras);
+  // Sin VA/liquidador el desglose inventa suma-% ; conservar lo del UI.
+  const reservaFinal =
+    desglose.perdida > 0 && vaCtx > 0
+      ? desglose.reserva
+      : reservaUi > 0
+        ? reservaUi
+        : desglose.perdida > 0
+          ? desglose.reserva
+          : 0;
   const base = {
     ...limpio,
     ...(tipo ? { tipoInforme: tipo } : {}),
@@ -2273,11 +2343,71 @@ export function sanitizarInformeUnicoZurich(informe = {}) {
       limpio.deducibleConfigReserva && typeof limpio.deducibleConfigReserva === 'object'
         ? limpio.deducibleConfigReserva
         : undefined,
-    ...(desglose.perdida > 0 ? { reservaSugerida: String(desglose.reserva) } : {}),
+    ...(reservaFinal > 0 ? { reservaSugerida: String(Math.round(reservaFinal)) } : {}),
     fotosInspeccion: serializarFotosInspeccionZurich(limpio.fotosInspeccion),
     fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
   };
   return asegurarSnapshotPreliminarZurich(base);
+}
+
+/**
+ * Recalcula reserva / VA / reclamado desde informe+liquidador del caso.
+ * Sirve para Gestionar/reporte cuando el campo caso.reserva quedó con fórmula vieja.
+ */
+export function enriquecerCasoZurichDesdeInforme(caso = {}) {
+  if (!caso || typeof caso !== 'object') return caso;
+  const informe = caso.informeUnico;
+  if (!informe || typeof informe !== 'object') return caso;
+  const liquidador = caso.liquidador || null;
+  const extras = { caso, liquidador };
+  const desglose = desgloseReservaPreliminarZurich(informe, extras);
+  const sug = parsearNumero(informe.reservaSugerida);
+  const va =
+    desglose.valorAsegurado ||
+    valorAseguradoPresupuestoZurich(liquidador || {}) ||
+    parsearNumero(informe.valorAsegurado) ||
+    0;
+  // Con VA: desglose del preliminar. Sin VA: confiar en reservaSugerida del informe (UI).
+  const reservaFinal =
+    desglose.perdida > 0 && va > 0
+      ? desglose.reserva
+      : sug > 0
+        ? sug
+        : desglose.perdida > 0
+          ? desglose.reserva
+          : 0;
+  if (!(reservaFinal > 0) && !(desglose.perdida > 0) && !(va > 0)) return caso;
+  const desgloseParaValores =
+    reservaFinal > 0 && reservaFinal !== desglose.reserva
+      ? { ...desglose, reserva: reservaFinal, valorAsegurado: va || desglose.valorAsegurado }
+      : { ...desglose, reserva: reservaFinal || desglose.reserva };
+  const totales =
+    liquidador && typeof liquidador === 'object'
+      ? (() => {
+          try {
+            return calcularLiquidacionZurich(liquidador);
+          } catch {
+            return {};
+          }
+        })()
+      : {};
+  const valores = camposValoresGestionZurich({
+    liquidador,
+    casoBase: caso,
+    desglose: desgloseParaValores,
+    reserva: reservaFinal,
+    totales,
+  });
+  if (!Object.keys(valores).length) return caso;
+  return {
+    ...caso,
+    ...valores,
+    informeUnico: {
+      ...informe,
+      ...(reservaFinal > 0 ? { reservaSugerida: String(reservaFinal) } : {}),
+      ...(va > 0 ? { valorAsegurado: va } : {}),
+    },
+  };
 }
 
 /** Quita File/blob/preview del liquidador antes de guardar en Mongo. */

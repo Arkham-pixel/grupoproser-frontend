@@ -13,6 +13,8 @@ import {
   sanitizarInformeUnicoZurich,
   sanitizarLiquidadorZurich,
   camposPolizaParaCasoZurich,
+  camposValoresGestionZurich,
+  enriquecerCasoZurichDesdeInforme,
 } from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 const ZURICH_API_URL = `${BASE_URL}/api/zurich`;
@@ -127,7 +129,38 @@ export const getCasoZurichById = async (id) => {
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error al obtener el caso (${response.status})`);
   }
-  return normalizeZurichItem(payload?.data ?? payload);
+  const crudo = payload?.data ?? payload;
+  const enriquecido = enriquecerCasoZurichDesdeInforme(crudo);
+  const normalizado = normalizeZurichItem(enriquecido);
+  const reservaAntes = Number(crudo?.reserva) || 0;
+  const reservaNueva = Number(enriquecido?.reserva) || 0;
+  const vaAntes = Number(crudo?.valorAseguradoInmueble) || 0;
+  const vaNuevo = Number(enriquecido?.valorAseguradoInmueble) || 0;
+  const hayCorreccion =
+    (reservaNueva > 0 && reservaNueva !== reservaAntes) ||
+    (vaNuevo > 0 && vaNuevo !== vaAntes);
+  if (hayCorreccion) {
+    const patch = {};
+    if (reservaNueva > 0) patch.reserva = reservaNueva;
+    if (vaNuevo > 0) patch.valorAseguradoInmueble = vaNuevo;
+    if (Number(enriquecido?.valorReclamado) > 0) {
+      patch.valorReclamado = Number(enriquecido.valorReclamado);
+    }
+    if (Number(enriquecido?.valorLiquidado) > 0) {
+      patch.valorLiquidado = Number(enriquecido.valorLiquidado);
+    }
+    try {
+      const guardado = await actualizarCasoZurich(id, patch);
+      return normalizeZurichItem({
+        ...guardado,
+        ...patch,
+        informeUnico: enriquecido.informeUnico || guardado.informeUnico,
+      });
+    } catch (err) {
+      console.warn('No se pudo persistir sync reserva→Gestionar (CAT):', err);
+    }
+  }
+  return normalizado;
 };
 
 export const crearCasoZurich = async (datos) => {
@@ -377,16 +410,21 @@ export const guardarLiquidadorEnCasoZurich = async ({
 }) => {
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el liquidador.');
 
+  const liqSan = sanitizarLiquidadorZurich(liquidador || {});
   const payload = {
     ...fichaSinHuecos(omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR)),
-    ...camposPolizaParaCasoZurich(liquidador || {}, casoBase),
-    liquidador: sanitizarLiquidadorZurich(liquidador || {}),
-    valorReclamado:
-      totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
-    valorLiquidado:
-      totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
+    ...camposPolizaParaCasoZurich(liqSan, casoBase),
+    ...camposValoresGestionZurich({
+      liquidador: liqSan,
+      casoBase,
+      totales,
+    }),
+    liquidador: liqSan,
   };
 
+  // No reenviar informeUnico ni reserva: el liquidador no pisa la del preliminar.
+  delete payload.informeUnico;
+  delete payload.reserva;
   delete payload._id;
   delete payload.__v;
   delete payload.createdAt;
@@ -403,11 +441,12 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el informe.');
-  const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
+  const liq = casoBase.liquidador || null;
   const extrasReserva = {
     caso: casoBase,
-    liquidador: casoBase.liquidador,
+    liquidador: liq,
   };
+  const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {}, extrasReserva);
   const desglose = desgloseReservaPreliminarZurich(sanitizado, extrasReserva);
   const reservaPerito =
     desglose.perdida > 0 ? desglose.reserva : reservaSugeridaZurich(sanitizado, extrasReserva);
@@ -416,11 +455,26 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   }
   const payload = {
     ...fichaSinHuecos(omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR)),
-    ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
+    ...camposPolizaParaCasoZurich(liq || {}, casoBase),
+    ...camposValoresGestionZurich({
+      liquidador: liq,
+      casoBase,
+      desglose,
+      reserva: reservaPerito,
+    }),
     informeUnico: sanitizado,
     ...fechasInformeParaCasoZurich(sanitizado, casoBase),
   };
-  if (desglose.perdida > 0 || reservaPerito > 0) payload.reserva = reservaPerito;
+  // Forzar al final: la reserva del desglose del informe manda sobre casoBase.
+  if (reservaPerito > 0) {
+    payload.reserva = Math.round(Number(reservaPerito));
+    sanitizado.reservaSugerida = String(payload.reserva);
+    payload.informeUnico = sanitizado;
+  }
+  // Persistir liquidador si viene (p. ej. VA editado en el preliminar)
+  if (liq && typeof liq === 'object') {
+    payload.liquidador = sanitizarLiquidadorZurich(liq);
+  }
 
   delete payload._id;
   delete payload.__v;

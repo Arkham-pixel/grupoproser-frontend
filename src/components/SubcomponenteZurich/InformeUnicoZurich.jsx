@@ -410,9 +410,27 @@ export default function InformeUnicoZurich({
   );
   useEffect(() => {
     if (!esPreliminar || desgloseReserva.perdida <= 0) return;
-    if (String(informe.reservaSugerida || '') === String(desgloseReserva.reserva)) return;
-    setInforme((prev) => ({ ...prev, reservaSugerida: String(desgloseReserva.reserva) }));
-  }, [esPreliminar, desgloseReserva.perdida, desgloseReserva.reserva, informe.reservaSugerida]);
+    const mismaReserva =
+      String(informe.reservaSugerida || '') === String(desgloseReserva.reserva);
+    const mismoVa =
+      !desgloseReserva.valorAsegurado ||
+      String(informe.valorAsegurado || '') === String(desgloseReserva.valorAsegurado);
+    if (mismaReserva && mismoVa) return;
+    setInforme((prev) => ({
+      ...prev,
+      reservaSugerida: String(desgloseReserva.reserva),
+      ...(desgloseReserva.valorAsegurado > 0
+        ? { valorAsegurado: desgloseReserva.valorAsegurado }
+        : {}),
+    }));
+  }, [
+    esPreliminar,
+    desgloseReserva.perdida,
+    desgloseReserva.reserva,
+    desgloseReserva.valorAsegurado,
+    informe.reservaSugerida,
+    informe.valorAsegurado,
+  ]);
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
     [informe.coordenadasRiesgo]
@@ -1141,9 +1159,10 @@ export default function InformeUnicoZurich({
             titulo={t('zurich.reportUnique.deductibleReserveTitle')}
             hint={t('zurich.reportUnique.deductibleReserveHint')}
             onDeducibleChange={setDeducibleReserva}
-            onValorAseguradoChange={(valor) =>
-              setLiquidador((prev) => patchValorAseguradoZurich(prev, valor))
-            }
+            onValorAseguradoChange={(valor) => {
+              setLiquidador((prev) => patchValorAseguradoZurich(prev, valor));
+              setInforme((prev) => ({ ...prev, valorAsegurado: valor }));
+            }}
           />
           <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
@@ -1359,9 +1378,10 @@ export default function InformeUnicoZurich({
             onAiuChange={(aiuPorcentaje) =>
               setLiquidador((prev) => patchAiuCotizacionPdfZurich(prev, aiuPorcentaje))
             }
-            onValorAseguradoChange={(valor) =>
-              setLiquidador((prev) => patchValorAseguradoZurich(prev, valor))
-            }
+            onValorAseguradoChange={(valor) => {
+              setLiquidador((prev) => patchValorAseguradoZurich(prev, valor));
+              setInforme((prev) => ({ ...prev, valorAsegurado: valor }));
+            }}
             disabled={guardandoCaso}
           />
         </div>

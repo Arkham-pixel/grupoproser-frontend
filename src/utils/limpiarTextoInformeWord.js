@@ -200,13 +200,12 @@ export function sanitizarInformeUnicoCamposWord(informe = {}) {
     (f, i) => sanitizarFilaPolizaInforme(f, i)
   );
 
-  const suma = filasPpto.reduce((acc, f) => acc + parsearMontoInformeSeguro(f.valor), 0);
-  let reservaSugerida = informe.reservaSugerida;
-  if (suma > 0) {
-    reservaSugerida = String(Math.round(suma));
-  } else {
-    const nRes = parsearMontoInformeSeguro(reservaSugerida);
-    reservaSugerida = nRes > 0 ? String(Math.round(nRes)) : '';
+  // Preservar reservaSugerida del UI (AIU + deducible). No pisar con la suma cruda.
+  const nRes = parsearMontoInformeSeguro(informe.reservaSugerida);
+  let reservaSugerida = nRes > 0 ? String(Math.round(nRes)) : '';
+  if (!reservaSugerida) {
+    const suma = filasPpto.reduce((acc, f) => acc + parsearMontoInformeSeguro(f.valor), 0);
+    if (suma > 0) reservaSugerida = String(Math.round(suma));
   }
 
   return {
