@@ -17,10 +17,15 @@ function safeSeg(valor, fallback = 'SIN_NOMBRE') {
 }
 
 function nombreArchivo(arch) {
-  return (
+  let nombre =
     String(arch?.nombreOriginal || arch?.nombreArchivo || '').trim() ||
-    `archivo_${String(arch?._id || Date.now()).slice(-8)}`
-  );
+    `archivo_${String(arch?._id || Date.now()).slice(-8)}`;
+  if (/\.pdf$/i.test(nombre)) return nombre;
+  const mime = String(arch?.tipoMime || '').toLowerCase();
+  const pareceRazonsocial =
+    /\sS\.A\.?S?$/i.test(nombre) || /\.(A|S|SA|SAS|LTDA)$/i.test(nombre);
+  if (mime.includes('pdf') || pareceRazonsocial) return `${nombre}.pdf`;
+  return nombre;
 }
 
 function etiquetaCarpeta(arch) {

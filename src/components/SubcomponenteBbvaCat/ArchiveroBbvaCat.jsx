@@ -72,7 +72,18 @@ function archivosVisibles(lista) {
 }
 
 function nombreArchivoMostrar(arch) {
-  return String(arch?.nombreOriginal || arch?.nombreArchivo || '').trim();
+  let nombre = String(arch?.nombreOriginal || arch?.nombreArchivo || '').trim();
+  if (!nombre) return '';
+  if (/\.pdf$/i.test(nombre)) return nombre;
+  const mime = String(arch?.tipoMime || '').toLowerCase();
+  // Ya subidos como "... S.A" / "... S.A.S" sin .pdf → al descargar Windows los abre bien
+  const pareceRazonsocial =
+    /\sS\.A\.?S?$/i.test(nombre) ||
+    /\.(A|S|SA|SAS|LTDA)$/i.test(nombre);
+  if (mime.includes('pdf') || pareceRazonsocial) {
+    return `${nombre}.pdf`;
+  }
+  return nombre;
 }
 
 function tamañoArchivo(arch) {
