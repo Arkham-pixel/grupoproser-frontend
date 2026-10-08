@@ -7891,7 +7891,7 @@ return (
                 type="text"
                 value={tipoInsumoOtro}
                 onChange={(e) => setTipoInsumoOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.supplyType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7964,7 +7964,7 @@ return (
               type="text"
               value={descripcionContenidosInsumo}
               onChange={(e) => setDescripcionContenidosInsumo(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -8021,7 +8021,7 @@ return (
                 type="text"
                 value={contenedoresInsumoOtro}
                 onChange={(e) => setContenedoresInsumoOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8078,7 +8078,7 @@ return (
                 type="text"
                 value={tipoAlmacenamientoInsumoOtro}
                 onChange={(e) => setTipoAlmacenamientoInsumoOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8197,7 +8197,7 @@ return (
                 type="text"
                 value={tipoMateriasPrimasOtro}
                 onChange={(e) => setTipoMateriasPrimasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.rawMaterialType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8270,7 +8270,7 @@ return (
               type="text"
               value={descripcionContenidosMateriasPrimas}
               onChange={(e) => setDescripcionContenidosMateriasPrimas(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -8327,7 +8327,7 @@ return (
                 type="text"
                 value={contenedoresMateriasPrimasOtro}
                 onChange={(e) => setContenedoresMateriasPrimasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8384,7 +8384,7 @@ return (
                 type="text"
                 value={tipoAlmacenamientoMateriasPrimasOtro}
                 onChange={(e) => setTipoAlmacenamientoMateriasPrimasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8503,7 +8503,7 @@ return (
                 type="text"
                 value={tipoMercanciasOtro}
                 onChange={(e) => setTipoMercanciasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.merchandiseType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8576,7 +8576,7 @@ return (
               type="text"
               value={descripcionContenidosMercancias}
               onChange={(e) => setDescripcionContenidosMercancias(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -8633,7 +8633,7 @@ return (
                 type="text"
                 value={contenedoresMercanciasOtro}
                 onChange={(e) => setContenedoresMercanciasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8690,7 +8690,7 @@ return (
                 type="text"
                 value={tipoAlmacenamientoMercanciasOtro}
                 onChange={(e) => setTipoAlmacenamientoMercanciasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9031,7 +9031,7 @@ return (
                 type="text"
                 value={ubicacionPredioOtro}
                 onChange={(e) => setUbicacionPredioOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.propertyLocation')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9087,7 +9087,7 @@ return (
                 type="text"
                 value={vulnerabilidadContenidosOtro}
                 onChange={(e) => setVulnerabilidadContenidosOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.contentVulnerability')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9142,7 +9142,7 @@ return (
                 type="text"
                 value={accesoInstalacionesOtro}
                 onChange={(e) => setAccesoInstalacionesOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.facilityAccess')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9197,7 +9197,7 @@ return (
                 type="text"
                 value={circulacionPersonasExternasOtro}
                 onChange={(e) => setCirculacionPersonasExternasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.externalPeopleCirculation')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9252,7 +9252,7 @@ return (
                 type="text"
                 value={proteccionesPasivasOtro}
                 onChange={(e) => setProteccionesPasivasOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.passiveProtections')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9305,7 +9305,7 @@ return (
               type="text"
               value={personalRecaudo}
               onChange={(e) => setPersonalRecaudo(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.collectionStaff')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9333,7 +9333,7 @@ return (
               type="text"
               value={horariosRecaudo}
               onChange={(e) => setHorariosRecaudo(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.collectionSchedules')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9361,7 +9361,7 @@ return (
               type="text"
               value={lugarRecaudo}
               onChange={(e) => setLugarRecaudo(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.collectionPlace')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9389,7 +9389,7 @@ return (
               type="text"
               value={transporteDinero}
               onChange={(e) => setTransporteDinero(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.moneyTransport')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9517,7 +9517,7 @@ return (
               type="text"
               value={empresaMonitorea}
               onChange={(e) => setEmpresaMonitorea(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.monitoringCompany')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9572,7 +9572,7 @@ return (
                 type="text"
                 value={tipoComunicacionAlarmaOtro}
                 onChange={(e) => setTipoComunicacionAlarmaOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.communicationType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9668,7 +9668,7 @@ return (
                 type="text"
                 value={sensoresAlarmaOtro}
                 onChange={(e) => setSensoresAlarmaOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.sensorsOwned')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9762,7 +9762,7 @@ return (
               type="text"
               value={numeroCamaras}
               onChange={(e) => setNumeroCamaras(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.numberOfCameras')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9816,7 +9816,7 @@ return (
                 type="text"
                 value={controladoPorOtro}
                 onChange={(e) => setControladoPorOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.controlledBy')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9872,7 +9872,7 @@ return (
                 type="text"
                 value={tipoMonitoreoCCTVOtro}
                 onChange={(e) => setTipoMonitoreoCCTVOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.monitoringType')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9928,7 +9928,7 @@ return (
                 type="text"
                 value={frecuenciaGrabacionOtro}
                 onChange={(e) => setFrecuenciaGrabacionOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.recordingFrequency')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9963,7 +9963,7 @@ return (
               type="text"
               value={tiempoRespaldo}
               onChange={(e) => setTiempoRespaldo(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.backupTime')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10017,7 +10017,7 @@ return (
                 type="text"
                 value={dispositivoGrabacionOtro}
                 onChange={(e) => setDispositivoGrabacionOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.recordingDevice')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10072,7 +10072,7 @@ return (
                 type="text"
                 value={ubicacionGrabadorOtro}
                 onChange={(e) => setUbicacionGrabadorOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.recorderLocation')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10202,7 +10202,7 @@ return (
               type="text"
               value={contratadaCon}
               onChange={(e) => setContratadaCon(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.contractedWith')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10236,7 +10236,7 @@ return (
               type="text"
               value={numeroVigilantes}
               onChange={(e) => setNumeroVigilantes(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.numberOfGuards')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10291,7 +10291,7 @@ return (
                 type="text"
                 value={jornadaVigilanciaOtro}
                 onChange={(e) => setJornadaVigilanciaOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.workShift')}
+
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10994,7 +10994,7 @@ return (
               type="text"
               value={coberturaDeteccion}
               onChange={(e) => setCoberturaDeteccion(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.coverage')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11028,7 +11028,7 @@ return (
               type="text"
               value={instalacionDeteccion}
               onChange={(e) => setInstalacionDeteccion(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.installation')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11121,7 +11121,7 @@ return (
               type="text"
               value={cantidadExtintores}
               onChange={(e) => setCantidadExtintores(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.quantity')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11155,7 +11155,7 @@ return (
               type="text"
               value={tipoExtintores}
               onChange={(e) => setTipoExtintores(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.type')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11225,7 +11225,7 @@ return (
               type="text"
               value={instalacionExtintores}
               onChange={(e) => setInstalacionExtintores(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.installation')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11259,7 +11259,7 @@ return (
               type="text"
               value={senalizacionExtintores}
               onChange={(e) => setSenalizacionExtintores(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.signaling')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11347,7 +11347,7 @@ return (
               type="text"
               value={bombaPrincipal}
               onChange={(e) => setBombaPrincipal(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.mainPump')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11375,7 +11375,7 @@ return (
               type="text"
               value={bombaJockey}
               onChange={(e) => setBombaJockey(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.jockeyPump')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11403,7 +11403,7 @@ return (
               type="text"
               value={presionContraincendios}
               onChange={(e) => setPresionContraincendios(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.pressure')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11458,7 +11458,7 @@ return (
               type="text"
               value={estacionBomberosNombre}
               onChange={(e) => setEstacionBomberosNombre(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.fireStationName')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11487,7 +11487,7 @@ return (
               inputMode="numeric"
               value={estacionBomberosTiempoMin}
               onChange={(e) => setEstacionBomberosTiempoMin(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.responseTimeMinutes')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11516,7 +11516,7 @@ return (
               inputMode="numeric"
               value={estacionBomberosDistanciaMetros}
               onChange={(e) => setEstacionBomberosDistanciaMetros(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.distanceMeters')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11669,7 +11669,7 @@ return (
   >
     {t('inspection.ui.formulario_inspeccion.fireProtectionComments')}
   </label>
-  <textarea placeholder={t('inspection.ui.formulario_inspeccion.additionalFireProtectionComments')}
+  <textarea
     rows={6}
     placeholder={t('inspection.ui.formulario_inspeccion.fireProtectionCommentsPlaceholder')}
     value={comentariosProteccionIncendios}
@@ -11767,7 +11767,7 @@ return (
                   type="text"
                   value={areaRequeridaLucroCesanteOtro}
                   onChange={(e) => setAreaRequeridaLucroCesanteOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.areaRequiredActivities')}
+
                   className="w-full px-2 py-1 rounded mt-2"
                   style={{
                     backgroundColor: inputBg,
@@ -11822,7 +11822,7 @@ return (
                   type="text"
                   value={complejidadActividadLucroCesanteOtro}
                   onChange={(e) => setComplejidadActividadLucroCesanteOtro(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.activityComplexity')}
+
                   className="w-full px-2 py-1 rounded mt-2"
                   style={{
                     backgroundColor: inputBg,
@@ -11894,7 +11894,7 @@ return (
                 type="text"
                 value={valorNominaMensual}
                 onChange={(e) => setValorNominaMensual(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.monthlyPayrollValue')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11928,7 +11928,7 @@ return (
                 type="text"
                 value={valorFacturacionAnoAnterior}
                 onChange={(e) => setValorFacturacionAnoAnterior(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.previousYearBilling')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11962,7 +11962,7 @@ return (
                 type="text"
                 value={valorProyectadoFacturacion}
                 onChange={(e) => setValorProyectadoFacturacion(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.projectedBillingCurrentYear')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11988,7 +11988,7 @@ return (
     >
       {t('inspection.ui.formulario_inspeccion.analysisAndComments')}
     </label>
-    <textarea placeholder={t('inspection.ui.formulario_inspeccion.analysisAndComments')}
+    <textarea
       value={comentariosLucroCesante}
       onChange={(e) => setComentariosLucroCesante(e.target.value)}
       rows={8}
@@ -12221,7 +12221,7 @@ return (
                 type="text"
                 value={capacidadInstaladaPlanta}
                 onChange={(e) => setCapacidadInstaladaPlanta(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.installedProductionCapacity')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12255,7 +12255,7 @@ return (
                 type="text"
                 value={indicePromedioCapacidad}
                 onChange={(e) => setIndicePromedioCapacidad(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.averageCapacityIndex')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12289,7 +12289,7 @@ return (
                 type="text"
                 value={numeroLineasProduccion}
                 onChange={(e) => setNumeroLineasProduccion(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.numberOfProductionLines')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12323,7 +12323,7 @@ return (
                 type="text"
                 value={maquinariaCritica}
                 onChange={(e) => setMaquinariaCritica(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.criticalMachinery')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12357,7 +12357,7 @@ return (
                 type="text"
                 value={incidenciaProduccion}
                 onChange={(e) => setIncidenciaProduccion(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.productionImpactPct')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12391,7 +12391,7 @@ return (
                 type="text"
                 value={origenMaquinariaCritica}
                 onChange={(e) => setOrigenMaquinariaCritica(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.criticalMachineryOrigin')}
+
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12615,7 +12615,7 @@ return (
             type="text"
             value={promedioEdadEquipos}
             onChange={(e) => setPromedioEdadEquipos(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.averageEquipmentAge')}
+
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
             placeholder={t('inspection.ui.formulario_inspeccion.averageEquipmentAge')}
@@ -12632,7 +12632,7 @@ return (
             type="text"
             value={tipoMantenimientoEquipos}
             onChange={(e) => setTipoMantenimientoEquipos(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceType')}
+
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
             placeholder={t('inspection.ui.formulario_inspeccion.maintenanceType')}
@@ -12649,7 +12649,7 @@ return (
             type="text"
             value={bitacorasMantenimiento}
             onChange={(e) => setBitacorasMantenimiento(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceLogs')}
+
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
             placeholder={t('inspection.ui.formulario_inspeccion.maintenanceLogs')}
@@ -12666,7 +12666,7 @@ return (
             type="text"
             value={personalMantenimiento}
             onChange={(e) => setPersonalMantenimiento(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceStaff')}
+
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
             placeholder={t('inspection.ui.formulario_inspeccion.maintenanceStaff')}
@@ -12683,7 +12683,7 @@ return (
             type="text"
             value={periodicidadMantenimientos}
             onChange={(e) => setPeriodicidadMantenimientos(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceFrequency')}
+
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
             placeholder={t('inspection.ui.formulario_inspeccion.maintenanceFrequency')}
@@ -13079,7 +13079,7 @@ return (
     >
       {t('inspection.ui.formulario_inspeccion.comments')}
     </label>
-    <textarea placeholder={t('inspection.ui.formulario_inspeccion.comments')}
+    <textarea
       rows={6}
       value={energiaComentarios}
       onChange={(e) => setEnergiaComentarios(e.target.value)}
@@ -13174,7 +13174,7 @@ return (
             type="text"
             value={aguaFuente}
             onChange={(e) => setAguaFuente(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
+
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -13196,7 +13196,7 @@ return (
             type="text"
             value={aguaUso}
             onChange={(e) => setAguaUso(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
+
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -13218,7 +13218,7 @@ return (
             type="text"
             value={aguaAlmacenamiento}
             onChange={(e) => setAguaAlmacenamiento(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
+
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -13240,7 +13240,7 @@ return (
             type="text"
             value={aguaBombeo}
             onChange={(e) => setAguaBombeo(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
+
             className="w-full rounded px-3 py-2"
             style={{
               backgroundColor: inputBg,
@@ -13301,7 +13301,7 @@ return (
               value={siniestralidadAno}
               onChange={(e) => setSiniestralidadAno(e.target.value)}
               className="w-full rounded px-3 py-2"
-            placeholder={t('inspection.ui.formulario_inspeccion.yearShort')}
+
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
@@ -13330,7 +13330,7 @@ return (
               value={siniestralidadValor}
               onChange={(e) => setSiniestralidadValor(e.target.value)}
               className="w-full rounded px-3 py-2"
-            placeholder={t('inspection.ui.formulario_inspeccion.claimValue')}
+
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
@@ -13363,7 +13363,7 @@ return (
                 setSiniestralidad(value); // compatibilidad con historial existente
               }}
               className="w-full rounded px-3 py-2"
-              placeholder={t('inspection.ui.formulario_inspeccion.claimDetailPlaceholder')}
+
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
@@ -13392,7 +13392,7 @@ return (
               value={siniestralidadMejoras}
               onChange={(e) => setSiniestralidadMejoras(e.target.value)}
               className="w-full rounded px-3 py-2"
-              placeholder={t('inspection.ui.formulario_inspeccion.measuresImplementedPlaceholder')}
+
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
@@ -13450,7 +13450,7 @@ return (
               type="text"
               value={almacenAlturaMaxima}
               onChange={(e) => setAlmacenAlturaMaxima(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.maxWarehouseHeight')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -13509,7 +13509,7 @@ return (
               type="text"
               value={almacenAlturaMaximaEstanteria}
               onChange={(e) => setAlmacenAlturaMaximaEstanteria(e.target.value)}
-            placeholder={t('inspection.ui.formulario_inspeccion.maxShelvingHeight')}
+
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
