@@ -1,5 +1,4 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
-import { estadoSuraPorTipoInforme } from '../components/SubcomponenteSura/segurosSuraHelpers.js';
 import { construirResumenReporteLiquidacionSura } from '../components/SubcomponenteSura/liquidadorSuraHelpers.js';
 import { sanitizarInformeUnicoCamposWord } from '../utils/limpiarTextoInformeWord.js';
 
@@ -421,6 +420,7 @@ export const guardarLiquidadorEnCasoSura = async ({
   delete payload.createdAt;
   delete payload.updatedAt;
   delete payload.archivos;
+  delete payload.informeUnico;
 
   return actualizarCasoSura(casoId, payload);
 };
@@ -458,10 +458,10 @@ export const guardarInformeUnicoEnCasoSura = async ({
       '';
   }
 
+  // No forzar Estado del caso según tipo de informe: el select lo maneja el usuario.
   const payload = {
     ...casoBase,
     informeUnico: sanitizado,
-    estado: estadoSuraPorTipoInforme(sanitizado?.tipoInforme, casoBase.estado),
   };
 
   const fechaPrelim =
@@ -496,6 +496,11 @@ export const guardarSeccionCasoSura = async ({ casoId, casoBase = {}, patch = {}
   delete payload.createdAt;
   delete payload.updatedAt;
   delete payload.archivos;
+  // Evitar reenviar informeUnico al guardar otras secciones (el backend lo interpreta
+  // como «actualiza informe» y puede rellenar hitos). Solo viaja si el patch lo trae.
+  if (patch?.informeUnico === undefined) {
+    delete payload.informeUnico;
+  }
   return actualizarCasoSura(casoId, payload);
 };
 
