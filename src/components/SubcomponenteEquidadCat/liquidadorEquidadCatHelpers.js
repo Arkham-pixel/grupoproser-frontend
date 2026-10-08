@@ -296,6 +296,42 @@ export function formatearMonto(valor, { decimals = 0 } = {}) {
   });
 }
 
+export function relacionInfraseguroPct(valorAsegurado, valorComercial) {
+  const va = parsearNumero(valorAsegurado);
+  const vc = parsearNumero(valorComercial);
+  if (!(va > 0) || !(vc > 0)) return null;
+  return Math.round((va / vc) * 1000) / 10;
+}
+
+export function aplicaInfraseguroSugerido(valorAsegurado, valorComercial) {
+  const pct = relacionInfraseguroPct(valorAsegurado, valorComercial);
+  if (pct == null) return '';
+  return pct < 100 ? 'SI' : 'NO';
+}
+
+export function resumenInfraseguroEquidadCat(informe = {}, caso = {}) {
+  const valorAsegurado =
+    informe.valorAseguradoInfraseguro !== '' && informe.valorAseguradoInfraseguro != null
+      ? informe.valorAseguradoInfraseguro
+      : caso.valorAsegurado || caso.valorAseguradoInmueble || '';
+  const valorComercial =
+    informe.valorComercialInfraseguro !== '' && informe.valorComercialInfraseguro != null
+      ? informe.valorComercialInfraseguro
+      : caso.valorComercialInmueble || '';
+  const relacion = relacionInfraseguroPct(valorAsegurado, valorComercial);
+  const aplica =
+    String(informe.aplicaInfraseguro || '').trim() ||
+    aplicaInfraseguroSugerido(valorAsegurado, valorComercial);
+  return {
+    valorAsegurado,
+    valorComercial,
+    relacion,
+    relacionTexto: relacion == null ? '—' : `${formatearMonto(relacion, { decimals: 1 })} %`,
+    aplica: aplica || '—',
+    analisis: String(informe.analisisInfraseguro || '').trim(),
+  };
+}
+
 /** @deprecated compat — ítems FDM ya no se usan en el flujo activo */
 export function crearItemEquidadCat(item = '', valor = '', id) {
   return {
@@ -675,6 +711,10 @@ export function defaultInformeUnicoEquidadCat(caso = {}) {
     filasDanios: plantillaFilasDaniosEquidadCat(),
     filasPolizaCobertura: plantillaFilasPolizaEquidadCat(),
     filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarEquidadCat(),
+    valorAseguradoInfraseguro: caso.valorAsegurado || caso.valorAseguradoInmueble || '',
+    valorComercialInfraseguro: caso.valorComercialInmueble || '',
+    aplicaInfraseguro: '',
+    analisisInfraseguro: '',
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
@@ -709,6 +749,16 @@ export function defaultInformeUnicoEquidadCat(caso = {}) {
       guardado.filasPresupuestoPreliminar,
       base.filasPresupuestoPreliminar
     ),
+    valorAseguradoInfraseguro:
+      guardado.valorAseguradoInfraseguro !== '' && guardado.valorAseguradoInfraseguro != null
+        ? guardado.valorAseguradoInfraseguro
+        : base.valorAseguradoInfraseguro,
+    valorComercialInfraseguro:
+      guardado.valorComercialInfraseguro !== '' && guardado.valorComercialInfraseguro != null
+        ? guardado.valorComercialInfraseguro
+        : base.valorComercialInfraseguro,
+    aplicaInfraseguro: guardado.aplicaInfraseguro || base.aplicaInfraseguro,
+    analisisInfraseguro: guardado.analisisInfraseguro || base.analisisInfraseguro,
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
     fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
   };

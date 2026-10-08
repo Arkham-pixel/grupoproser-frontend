@@ -22,6 +22,7 @@ import {
   formatearMonto,
   formatDateLarga,
   parsearNumero,
+  resumenInfraseguroEquidadCat,
 } from './liquidadorEquidadCatHelpers.js';
 import { mapCasoEquidadCatALiquidadorFdm } from './equidadCatLiquidadorAdapter.js';
 import {
@@ -1402,6 +1403,28 @@ export async function descargarWordInformeEquidadCat({
     }),
   ];
 
+  const infra = resumenInfraseguroEquidadCat(info, caso);
+  const infraseguroRows = [
+    campoFila('Valor asegurado', money(infra.valorAsegurado)),
+    campoFila('Valor comercial / real', money(infra.valorComercial)),
+    campoFila('Relación valor asegurado / valor comercial', infra.relacionTexto),
+    campoFila('¿Aplica infraseguro?', infra.aplica, { boldValue: true }),
+  ];
+  const infraseguroParrafos = String(infra.analisis || '')
+    .split(/\n+/)
+    .filter((l) => l.trim())
+    .map((l) =>
+      p(l, { after: 80, alignment: AlignmentType.JUSTIFIED })
+    );
+  if (!infraseguroParrafos.length) {
+    infraseguroParrafos.push(
+      p('Pendiente diligenciar el análisis de infraseguro.', {
+        after: 120,
+        alignment: AlignmentType.JUSTIFIED,
+      })
+    );
+  }
+
   const fallbackTablasFdm = !capturaParrafos.length
     ? [
         p('No se pudo embeber la captura; se incluye el desglose de ítems FDM.', {
@@ -1521,7 +1544,21 @@ export async function descargarWordInformeEquidadCat({
           ),
           ...fotoParrafos,
 
-          heading('7. Conclusiones y recomendación del ajustador'),
+          heading('7. Análisis de infraseguro'),
+          p(
+            'Se compara el valor asegurado con el valor comercial del inmueble para determinar si opera infraseguro.',
+            { after: 80 }
+          ),
+          new Table({
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [4200, 5160],
+            borders: bordersCuadro,
+            rows: infraseguroRows,
+          }),
+          p('Análisis', { bold: true, before: 160, after: 40 }),
+          ...infraseguroParrafos,
+
+          heading('8. Conclusiones y recomendación del ajustador'),
           p('Conclusiones', { bold: true, after: 40 }),
           p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
             after: 120,

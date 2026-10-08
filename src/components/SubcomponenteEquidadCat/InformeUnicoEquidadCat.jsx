@@ -21,6 +21,7 @@ import {
   etiquetaArchivoInformeEquidadCat,
   formatearMonto,
   formatDateLarga,
+  resumenInfraseguroEquidadCat,
 } from './liquidadorEquidadCatHelpers.js';
 import {
   capturarPaginasLiquidadorFdm,
@@ -130,6 +131,10 @@ export default function InformeUnicoEquidadCat({
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
     [informe.coordenadasRiesgo]
+  );
+  const infraseguro = useMemo(
+    () => resumenInfraseguroEquidadCat(informe, casoEquidadCat || {}),
+    [informe, casoEquidadCat]
   );
   const capturaMapaInicial = useMemo(() => {
     const im = informe.imagenMapa;
@@ -655,7 +660,66 @@ export default function InformeUnicoEquidadCat({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>7. {t('equidadCat.reportUnique.sectionConclusions')}</h3>
+        <h3 className={expressSectionTitle}>7. {t('equidadCat.reportUnique.sectionUnderinsurance')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('equidadCat.reportUnique.underinsuranceHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Campo label={t('equidadCat.reportUnique.underinsuranceInsuredValue')}>
+            <InputFenix
+              type="text"
+              inputMode="decimal"
+              value={informe.valorAseguradoInfraseguro ?? infraseguro.valorAsegurado ?? ''}
+              onChange={(e) => setCampo('valorAseguradoInfraseguro', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.reportUnique.underinsuranceCommercialValue')}>
+            <InputFenix
+              type="text"
+              inputMode="decimal"
+              value={informe.valorComercialInfraseguro ?? infraseguro.valorComercial ?? ''}
+              onChange={(e) => setCampo('valorComercialInfraseguro', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('equidadCat.reportUnique.underinsuranceRatio')}>
+            <InputFenix value={infraseguro.relacionTexto} readOnly />
+          </Campo>
+          <Campo label={t('equidadCat.reportUnique.underinsuranceApplies')}>
+            <select
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              value={
+                ['SI', 'NO', 'POR DETERMINAR'].includes(
+                  String(informe.aplicaInfraseguro || infraseguro.aplica)
+                )
+                  ? informe.aplicaInfraseguro || infraseguro.aplica
+                  : ''
+              }
+              onChange={(e) => setCampo('aplicaInfraseguro', e.target.value)}
+            >
+              <option value="">{t('common.select')}</option>
+              <option value="SI">SI</option>
+              <option value="NO">NO</option>
+              <option value="POR DETERMINAR">
+                {t('equidadCat.reportUnique.underinsurancePending')}
+              </option>
+            </select>
+          </Campo>
+        </div>
+        <div className="mt-3">
+          <Campo label={t('equidadCat.reportUnique.underinsuranceAnalysis')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={5}
+              value={informe.analisisInfraseguro || ''}
+              onChange={(e) => setCampo('analisisInfraseguro', e.target.value)}
+              placeholder={t('equidadCat.reportUnique.underinsurancePlaceholder')}
+            />
+          </Campo>
+        </div>
+      </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>8. {t('equidadCat.reportUnique.sectionConclusions')}</h3>
         <Campo label={t('equidadCat.reportUnique.conclusions')}>
           <textarea
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
@@ -677,7 +741,7 @@ export default function InformeUnicoEquidadCat({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>8. {t('equidadCat.reportUnique.sectionSignatures')}</h3>
+        <h3 className={expressSectionTitle}>9. {t('equidadCat.reportUnique.sectionSignatures')}</h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('equidadCat.reportUnique.signaturesHint')}
         </p>
