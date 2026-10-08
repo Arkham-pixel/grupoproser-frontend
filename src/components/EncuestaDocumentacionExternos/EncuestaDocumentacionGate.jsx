@@ -5,7 +5,7 @@ import { RUTA_ENCUESTA_DOCUMENTACION } from '../../config/encuestaDocumentacionE
 
 /**
  * Bloquea la plataforma si el backend marca la encuesta documental como obligatoria
- * (contractor_* y usuarios ex-catastróficos / vinculados al catálogo CAT).
+ * (contractor_* elegibles; no Zurich/BBVA ni exclusiones).
  */
 export default function EncuestaDocumentacionGate({ children }) {
   const location = useLocation();

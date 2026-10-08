@@ -246,9 +246,8 @@ export default function EncuestaDocumentacionExternos() {
       <main className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 leading-relaxed">
           Esta actualización documental se realiza por <strong>orden de la gerencia de Grupo Proser</strong>.
-          Por esa razón es <strong>obligatoria</strong> para colaboradores externos y para quienes
-          estuvieron vinculados al módulo catastrófico (incluso si su rol actual es usuario de
-          plataforma). Completarla es condición para continuar operando en la plataforma y mantener
+          Por esa razón es <strong>obligatoria</strong> para colaboradores externos (excepto roles
+          Zurich/BBVA). Completarla es condición para continuar operando en la plataforma y mantener
           vigente su relación contractual o de prestación de servicios.
         </div>
 
