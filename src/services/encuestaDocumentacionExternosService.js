@@ -15,10 +15,16 @@ export async function obtenerEstadoEncuestaDocumentacion() {
   return res.data;
 }
 
-export async function enviarEncuestaDocumentacion({ nombreCompleto, correo, archivos }) {
+export async function enviarEncuestaDocumentacion({
+  nombreCompleto,
+  correo,
+  archivos,
+  finalizar = false,
+}) {
   const form = new FormData();
   form.append('nombreCompleto', nombreCompleto || '');
   form.append('correo', correo || '');
+  form.append('finalizar', finalizar ? 'true' : 'false');
   Object.entries(archivos || {}).forEach(([key, file]) => {
     if (file) form.append(key, file);
   });

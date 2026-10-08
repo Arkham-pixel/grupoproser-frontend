@@ -94,6 +94,8 @@ export default function EncuestaDocumentacionExternos() {
     return CAMPOS_DEFAULT;
   }, [estado]);
 
+  const yaCargados = estado?.documentosCargados || {};
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -181,7 +183,7 @@ export default function EncuestaDocumentacionExternos() {
       });
       onFile('acuerdoConfidencialidad', file);
       setMostrarFirmaNda(false);
-      setMensaje('Acuerdo de confidencialidad firmado. Continúe con los demás documentos.');
+      setMensaje('Acuerdo de confidencialidad firmado. Puede guardar y seguir después con el resto.');
     } catch (err) {
       setError(err.message || 'No se pudo generar el PDF firmado');
     } finally {
@@ -189,7 +191,7 @@ export default function EncuestaDocumentacionExternos() {
     }
   };
 
-  const hacerloMasTarde = () => {
+  const salirTrasGuardarParcial = () => {
     try {
       sessionStorage.setItem(KEY_ENCUESTA_POSPUESTA, '1');
     } catch {
@@ -199,8 +201,11 @@ export default function EncuestaDocumentacionExternos() {
     navigate(rutaInicioPorRol(), { replace: true });
   };
 
-  const enviar = async (e) => {
-    e.preventDefault();
+  const hacerloMasTarde = () => {
+    salirTrasGuardarParcial();
+  };
+
+  const guardar = async ({ finalizar }) => {
     setBusy(true);
     setMensaje('');
     setError('');
@@ -209,18 +214,24 @@ export default function EncuestaDocumentacionExternos() {
         nombreCompleto: nombreLegal(nombreCompleto) || nombreCompleto,
         correo,
         archivos,
+        finalizar,
       });
-      setMensaje(res.message || 'Documentación enviada');
+      setMensaje(res.message || 'Documentación guardada');
       setEstado(res);
-      try {
-        sessionStorage.removeItem(KEY_ENCUESTA_POSPUESTA);
-      } catch {
-        /* ignore */
+      setArchivos({});
+      if (finalizar) {
+        try {
+          sessionStorage.removeItem(KEY_ENCUESTA_POSPUESTA);
+        } catch {
+          /* ignore */
+        }
+        window.dispatchEvent(new CustomEvent('encuesta-documentacion-completada'));
+        setTimeout(() => navigate(rutaInicioPorRol(), { replace: true }), 700);
+      } else {
+        setTimeout(salirTrasGuardarParcial, 700);
       }
-      window.dispatchEvent(new CustomEvent('encuesta-documentacion-completada'));
-      setTimeout(() => navigate(rutaInicioPorRol(), { replace: true }), 800);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Error al enviar');
+      setError(err.response?.data?.message || err.message || 'Error al guardar');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setBusy(false);
@@ -247,9 +258,8 @@ export default function EncuestaDocumentacionExternos() {
               Actualización de documentación – Colaboradores Externos
             </h1>
             <p className="text-sm text-slate-600 mt-2 max-w-xl">
-              Para mantener la documentación actualizada y consolidada, complete el formulario y
-              adjunte los documentos solicitados. Deben estar completos, legibles y firmados cuando
-              corresponda.
+              Puede cargar lo que tenga ahora y, si después consigue otro documento (por ejemplo el
+              contrato), volver a subir el resto.
             </p>
           </div>
           <LogoutButton variant="compact" label="Salir" />
@@ -258,15 +268,23 @@ export default function EncuestaDocumentacionExternos() {
 
       <main className="max-w-2xl mx-auto px-4 py-6">
         <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 leading-relaxed">
-          Esta actualización documental se realiza por <strong>orden de la gerencia de Grupo Proser</strong>{' '}
-          para colaboradores externos (excepto roles Zurich/BBVA). Los documentos son{' '}
-          <strong>opcionales</strong>: puede adjuntar lo que tenga listo o elegir{' '}
-          <strong>hacerlo más tarde</strong> e ingresar a la plataforma.
+          Los documentos son <strong>opcionales</strong>. Si solo tiene algunos, guárdelos y siga
+          trabajando; más adelante puede volver a cargar los que falten. Nada de esto bloquea el
+          acceso a la plataforma.
         </div>
 
         <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          Puede completar lo que desee ahora o continuar sin enviar. Si elige hacerlo más tarde, podrá
-          seguir trabajando y volver a esta encuesta cuando quiera.
+          {estado?.cantidadCargados > 0 ? (
+            <>
+              Ya tiene <strong>{estado.cantidadCargados}</strong> documento(s) guardado(s) en este
+              ciclo. Puede añadir más cuando quiera.
+            </>
+          ) : (
+            <>
+              Use <strong>Guardar y seguir después</strong> para registrar lo que tenga sin cerrar la
+              actualización. Cuando no vaya a cargar nada más, use <strong>Ya terminé</strong>.
+            </>
+          )}
         </div>
 
         {error && (
@@ -280,7 +298,13 @@ export default function EncuestaDocumentacionExternos() {
           </div>
         )}
 
-        <form onSubmit={enviar} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            guardar({ finalizar: false });
+          }}
+          className="space-y-4"
+        >
           <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3">
             <label className="block">
               <span className="text-sm font-medium text-slate-800">Correo</span>
@@ -304,69 +328,87 @@ export default function EncuestaDocumentacionExternos() {
             </label>
           </section>
 
-          {campos.map((campo) => (
-            <section
-              key={campo.key}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">{campo.label}</h2>
-                <span className="text-xs text-slate-400">Opcional</span>
-              </div>
-              {campo.hint && <p className="mt-1 text-sm text-slate-600">{campo.hint}</p>}
-
-              {campo.firmarOficial ? (
-                <div className="mt-3 space-y-2">
-                  <button
-                    type="button"
-                    onClick={abrirFirmaAcuerdo}
-                    disabled={busy || firmandoNda}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#7b3fa0] bg-[#7b3fa0] px-3 py-2 text-sm font-medium text-white hover:bg-[#6a3590] disabled:opacity-60"
-                  >
-                    {archivos.acuerdoConfidencialidad
-                      ? 'Volver a firmar el acuerdo'
-                      : 'Firmar acuerdo de confidencialidad'}
-                  </button>
-                  {archivos.acuerdoConfidencialidad && (
-                    <p className="text-xs text-emerald-700">
-                      Firmado: {archivos.acuerdoConfidencialidad.name}
-                    </p>
+          {campos.map((campo) => {
+            const yaEnServidor = Boolean(yaCargados[campo.key]);
+            return (
+              <section
+                key={campo.key}
+                className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900">{campo.label}</h2>
+                  {yaEnServidor ? (
+                    <span className="text-xs font-medium text-emerald-700">Ya cargado</span>
+                  ) : (
+                    <span className="text-xs text-slate-400">Opcional</span>
                   )}
-                  <p className="text-xs text-slate-500">
-                    Se abre el texto oficial completo para leerlo y firmarlo en pantalla.
-                  </p>
                 </div>
-              ) : (
-                <>
-                  <p className="mt-2 text-xs text-slate-500">
-                    Sube 1 archivo compatible. Tamaño máximo: 100 MB.
+                {campo.hint && <p className="mt-1 text-sm text-slate-600">{campo.hint}</p>}
+                {yaEnServidor && (
+                  <p className="mt-1 text-xs text-emerald-700">
+                    Este documento ya está en su gestión documental. Puede reemplazarlo subiendo otro
+                    archivo.
                   </p>
-                  <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-500 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
-                      onChange={(e) => onFile(campo.key, e.target.files?.[0] || null)}
-                    />
-                    Añadir archivo
-                  </label>
-                  {archivos[campo.key] && (
-                    <p className="mt-2 text-xs text-emerald-700 truncate">
-                      Seleccionado: {archivos[campo.key].name}
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-          ))}
+                )}
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+                {campo.firmarOficial ? (
+                  <div className="mt-3 space-y-2">
+                    <button
+                      type="button"
+                      onClick={abrirFirmaAcuerdo}
+                      disabled={busy || firmandoNda}
+                      className="inline-flex items-center gap-2 rounded-lg border border-[#7b3fa0] bg-[#7b3fa0] px-3 py-2 text-sm font-medium text-white hover:bg-[#6a3590] disabled:opacity-60"
+                    >
+                      {archivos.acuerdoConfidencialidad || yaEnServidor
+                        ? 'Volver a firmar el acuerdo'
+                        : 'Firmar acuerdo de confidencialidad'}
+                    </button>
+                    {archivos.acuerdoConfidencialidad && (
+                      <p className="text-xs text-emerald-700">
+                        Firmado: {archivos.acuerdoConfidencialidad.name}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Sube 1 archivo compatible. Tamaño máximo: 100 MB.
+                    </p>
+                    <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-500 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                        onChange={(e) => onFile(campo.key, e.target.files?.[0] || null)}
+                      />
+                      {yaEnServidor ? 'Reemplazar archivo' : 'Añadir archivo'}
+                    </label>
+                    {archivos[campo.key] && (
+                      <p className="mt-2 text-xs text-emerald-700 truncate">
+                        Seleccionado: {archivos[campo.key].name}
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+            );
+          })}
+
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 pt-2">
             <button
               type="submit"
               disabled={busy}
               className="rounded-lg bg-[#7b3fa0] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#6a3590] disabled:opacity-60"
             >
-              {busy ? 'Enviando…' : 'Enviar'}
+              {busy ? 'Guardando…' : 'Guardar y seguir después'}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => guardar({ finalizar: true })}
+              className="rounded-lg border border-[#7b3fa0] bg-white px-5 py-2.5 text-sm font-semibold text-[#7b3fa0] hover:bg-purple-50 disabled:opacity-60"
+            >
+              Ya terminé
             </button>
             <button
               type="button"
@@ -377,6 +419,11 @@ export default function EncuestaDocumentacionExternos() {
               Hacerlo más tarde
             </button>
           </div>
+          <p className="text-xs text-slate-500">
+            <strong>Guardar y seguir después</strong> deja los archivos en su gestión documental y
+            le permite volver a cargar más en otro momento.{' '}
+            <strong>Ya terminé</strong> indica que no va a subir nada más en este ciclo.
+          </p>
         </form>
       </main>
 
