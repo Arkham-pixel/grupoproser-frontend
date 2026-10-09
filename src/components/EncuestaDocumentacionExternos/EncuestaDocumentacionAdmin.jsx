@@ -206,6 +206,9 @@ export default function EncuestaDocumentacionAdmin() {
                   </td>
                   <td className="px-3 py-3 text-slate-800">
                     {row.cantidadDocumentos}/{campos.length || 6}
+                    {row.documentosExtra > 0 && (
+                      <div className="text-xs text-slate-500">+{row.documentosExtra} otros</div>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
                     {fmtFecha(row.ultimoEnvioEn)}
