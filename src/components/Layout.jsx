@@ -627,6 +627,7 @@ export default function Layout() {
     '/admin/ajustadores-catastrofico': t('nav.pageTitles.adminCatastrophicAdjusters'),
     '/admin/inspectores-catastrofico': t('nav.pageTitles.adminCatastrophicInspectors'),
     '/admin/documentos': t('nav.pageTitles.adminDocuments'),
+    '/admin/encuesta-documentacion': t('nav.pageTitles.adminEncuestaDocumentacion'),
     '/editar-perfil-usuario': t('nav.pageTitles.editUserProfile'),
     '/informacion-completa': t('nav.pageTitles.fullEmployeeInfo'),
   }), [t]);
@@ -1053,7 +1054,14 @@ export default function Layout() {
             localStorage.getItem('cedula'),
             localStorage.getItem('login')
           ) && !esAdminOSoporte
-            ? [{ path: '/admin/documentos', icon: FaFolderOpen, label: t('nav.documentManagement') }]
+            ? [
+                { path: '/admin/documentos', icon: FaFolderOpen, label: t('nav.documentManagement') },
+                {
+                  path: '/admin/encuesta-documentacion',
+                  icon: FaClipboardList,
+                  label: t('nav.encuestaDocumentacion'),
+                },
+              ]
             : []),
           ...(puedeCatalogosExpress && !esAdminOSoporte
             ? [{ path: '/admin/catalogos-express', icon: FaList, label: t('nav.expressCatalogs') }]
@@ -1108,6 +1116,11 @@ export default function Layout() {
             label: t('nav.catastrophicInspectors'),
           },
           { path: '/admin/documentos', icon: FaFolderOpen, label: t('nav.documentManagement') },
+          {
+            path: '/admin/encuesta-documentacion',
+            icon: FaClipboardList,
+            label: t('nav.encuestaDocumentacion'),
+          },
           { path: '/admin/catalogos-express', icon: FaList, label: t('nav.expressCatalogs') },
           { path: '/complex/gestion-estados', icon: FaCog, label: t('nav.complexStates') },
           { path: '/complex/alertas', icon: FaExclamationTriangle, label: t('nav.alertSystem') },

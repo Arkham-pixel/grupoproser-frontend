@@ -56,6 +56,7 @@ import PortalAjusteExternoBridge from './components/SubcomponenteCompex/PortalAj
 import PortalOnboarding from './components/Onboarding/PortalOnboarding';
 import EncuestaDocumentacionExternos from './components/EncuestaDocumentacionExternos/EncuestaDocumentacionExternos';
 import EncuestaDocumentacionGate from './components/EncuestaDocumentacionExternos/EncuestaDocumentacionGate';
+import EncuestaDocumentacionAdmin from './components/EncuestaDocumentacionExternos/EncuestaDocumentacionAdmin';
 import VideoperitajeHistorial from './components/SubcomponenteVideoperitaje/VideoperitajeHistorial.jsx';
 import VideoperitajeSala from './components/SubcomponenteVideoperitaje/VideoperitajeSala.jsx';
 import VideoperitajePlantillas from './components/SubcomponenteVideoperitaje/VideoperitajePlantillas.jsx';
@@ -804,6 +805,7 @@ export default function App() {
           <Route path="admin/inspectores-catastrofico" element={<GestionInspectoresCatastrofico />} />
           <Route path="admin/catalogos-express" element={<CatalogosExpress />} />
           <Route path="admin/documentos" element={<GestionDocumentos />} />
+          <Route path="admin/encuesta-documentacion" element={<EncuestaDocumentacionAdmin />} />
           <Route path="test-email" element={<TestEmail />} />
           <Route path="test-email-complex" element={<TestEmailComplex />} />
           <Route path="test-api-riesgos" element={<TestApiRiesgos />} />

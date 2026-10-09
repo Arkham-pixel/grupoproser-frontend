@@ -46,3 +46,50 @@ export async function descargarPlantillaConfidencialidadEncuesta() {
   });
   return res.data;
 }
+
+export async function listarRespuestasEncuestaDocumentacion({ ciclo, q } = {}) {
+  const params = {};
+  if (ciclo) params.ciclo = ciclo;
+  if (q) params.q = q;
+  const res = await axios.get(`${BASE_URL}/api/encuesta-documentacion-externos/admin/respuestas`, {
+    headers: authHeaders(),
+    params,
+  });
+  return res.data;
+}
+
+function dispararDescargaBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function descargarZipUsuarioEncuesta(userId, filenameHint) {
+  const res = await axios.get(
+    `${BASE_URL}/api/encuesta-documentacion-externos/admin/respuestas/${userId}/zip`,
+    {
+      headers: authHeaders(true),
+      responseType: 'blob',
+    }
+  );
+  const name = filenameHint || `documentacion_${userId}.zip`;
+  dispararDescargaBlob(new Blob([res.data], { type: 'application/zip' }), name);
+}
+
+export async function descargarZipTodosEncuesta(ciclo) {
+  const res = await axios.get(
+    `${BASE_URL}/api/encuesta-documentacion-externos/admin/respuestas/zip`,
+    {
+      headers: authHeaders(true),
+      responseType: 'blob',
+      params: ciclo ? { ciclo } : undefined,
+    }
+  );
+  const name = `encuesta_documentacion_${ciclo || 'ciclo'}.zip`;
+  dispararDescargaBlob(new Blob([res.data], { type: 'application/zip' }), name);
+}
