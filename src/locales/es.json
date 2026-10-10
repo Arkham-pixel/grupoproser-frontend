@@ -2631,7 +2631,7 @@
       "quoteAmountHintManual": "No se leyó un total claro. Escriba el monto final de la cotización.",
       "quoteDetected": "Otros totales detectados",
       "quoteUseAsBase": "Usar este monto como base del deducible del presupuesto",
-      "quoteUseAsBaseHint": "El tope del deducible de edificio es este monto. El % se calcula sobre el valor asegurable cuando está diligenciado.",
+      "quoteUseAsBaseHint": "Si la cotización está al día, marque esta opción. Si está desfasada, desmárquela y haga el ajuste en la pestaña Presupuesto (NSR-10).",
       "quoteClear": "Quitar cotización",
       "quoteClearConfirm": "¿Quitar la cotización de este liquidador? Las capturas de página también se eliminan del archivero. El PDF original se conserva.",
       "quoteRemovePage": "Eliminar página",

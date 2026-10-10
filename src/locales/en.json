@@ -2584,7 +2584,7 @@
       "quoteAmountHintManual": "No clear total was read. Enter the quote final amount.",
       "quoteDetected": "Other detected totals",
       "quoteUseAsBase": "Use this amount as the budget deductible base",
-      "quoteUseAsBaseHint": "The building deductible cap is this amount. The % is calculated on the insurable value when available.",
+      "quoteUseAsBaseHint": "If the quote is current, leave this checked. If it is outdated, uncheck it and settle with the NSR-10 Budget tab.",
       "quoteClear": "Remove quote",
       "quoteClearConfirm": "Remove the quote from this settlement? Page captures are also deleted from the file cabinet. The original PDF is kept.",
       "quoteRemovePage": "Remove page",

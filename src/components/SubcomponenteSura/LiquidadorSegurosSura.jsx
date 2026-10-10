@@ -7,6 +7,7 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
+  SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
@@ -16,10 +17,19 @@ import {
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import {
   AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  formatMilesInputNsr10,
+  formatMilesNsr10,
+  parseMontoNsr10,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
   REGLAS_DEDUCIBLE_SURA,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/SeccionModoLiquidadorCat.jsx';
+import {
+  ANIOS_SMMLV,
+  DEFAULT_DEDUCIBLE_CATASTROFICO,
+  SMMLV_POR_ANIO,
+  valorSmdlvDesdeSmmlv,
+} from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import CampoTomadorSura from './CampoTomadorSura.jsx';
 import {
   calcularLiquidacionSura,
@@ -125,6 +135,29 @@ export default function LiquidadorSegurosSura({
 
   const handleCotizacionChange = (cotizacionPdf) => {
     setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+  };
+
+  const deducibleCfgPresupuesto = {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    ...(liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto || {}),
+  };
+  const esSmdlvPresupuesto = deducibleCfgPresupuesto.tipoMinimo === 'SMDLV';
+
+  const actualizarDeduciblePresupuesto = (patch) => {
+    setLiquidador((prev) => {
+      const liq = prev.liquidacionCatastrofico || {};
+      const base = {
+        ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+        ...(liq.deducibleConfigPresupuesto || {}),
+      };
+      return {
+        ...prev,
+        liquidacionCatastrofico: {
+          ...liq,
+          deducibleConfigPresupuesto: { ...base, ...patch },
+        },
+      };
+    });
   };
 
   const handleGuardar = async () => {
@@ -268,6 +301,157 @@ export default function LiquidadorSegurosSura({
           />
         </div>
 
+        {usaCotizBase && (
+          <div className="mt-4 max-w-xl space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {t('segurosSura.settlement.quoteDeductibleTitle', {
+                  defaultValue: 'Deducible de la cotización',
+                })}
+              </h4>
+              <p className="mt-1 text-xs text-gray-500">
+                {t('segurosSura.settlement.quoteDeductibleHint', {
+                  defaultValue:
+                    'Elija el % y el mínimo en salarios (SMMLV o SMDLV). Se aplica el mayor, con tope en el monto de la cotización.',
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`${!esSmdlvPresupuesto ? expressBtnPrimary : expressBtnGhost} !px-3 !py-1.5 text-xs`}
+                disabled={!!exportando || guardandoCaso}
+                onClick={() =>
+                  actualizarDeduciblePresupuesto({
+                    tipoMinimo: 'SMMLV',
+                    cantidadSMMLV:
+                      deducibleCfgPresupuesto.cantidadSMMLV === '' ||
+                      deducibleCfgPresupuesto.cantidadSMMLV == null
+                        ? deducibleCfgPresupuesto.cantidadSMDLV ?? 4
+                        : deducibleCfgPresupuesto.cantidadSMMLV,
+                  })
+                }
+              >
+                SMMLV (mensual)
+              </button>
+              <button
+                type="button"
+                className={`${esSmdlvPresupuesto ? expressBtnPrimary : expressBtnGhost} !px-3 !py-1.5 text-xs`}
+                disabled={!!exportando || guardandoCaso}
+                onClick={() =>
+                  actualizarDeduciblePresupuesto({
+                    tipoMinimo: 'SMDLV',
+                    cantidadSMDLV:
+                      deducibleCfgPresupuesto.cantidadSMDLV === '' ||
+                      deducibleCfgPresupuesto.cantidadSMDLV == null
+                        ? deducibleCfgPresupuesto.cantidadSMMLV ?? 10
+                        : deducibleCfgPresupuesto.cantidadSMDLV,
+                  })
+                }
+              >
+                SMDLV (diario)
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Campo label="% deducible">
+                <InputFenix
+                  type="text"
+                  inputMode="decimal"
+                  disabled={!!exportando || guardandoCaso}
+                  value={
+                    deducibleCfgPresupuesto.porcentaje === '' ||
+                    deducibleCfgPresupuesto.porcentaje == null
+                      ? ''
+                      : String(deducibleCfgPresupuesto.porcentaje)
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(',', '.').replace(/[^\d.]/g, '');
+                    if ((raw.match(/\./g) || []).length > 1) return;
+                    actualizarDeduciblePresupuesto({
+                      porcentaje: raw === '' ? '' : raw,
+                    });
+                  }}
+                />
+              </Campo>
+              <Campo label={esSmdlvPresupuesto ? 'Cant. SMDLV' : 'Cant. SMMLV'}>
+                <InputFenix
+                  type="text"
+                  inputMode="decimal"
+                  disabled={!!exportando || guardandoCaso}
+                  value={
+                    esSmdlvPresupuesto
+                      ? deducibleCfgPresupuesto.cantidadSMDLV ?? ''
+                      : deducibleCfgPresupuesto.cantidadSMMLV ?? ''
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(',', '.').replace(/[^\d.]/g, '');
+                    if ((raw.match(/\./g) || []).length > 1) return;
+                    actualizarDeduciblePresupuesto(
+                      esSmdlvPresupuesto
+                        ? { cantidadSMDLV: raw, tipoMinimo: 'SMDLV' }
+                        : { cantidadSMMLV: raw, tipoMinimo: 'SMMLV' }
+                    );
+                  }}
+                />
+              </Campo>
+              <Campo label="Año SMMLV">
+                <SelectFenix
+                  disabled={!!exportando || guardandoCaso}
+                  value={deducibleCfgPresupuesto.anioSMMLV ?? ''}
+                  onChange={(e) => {
+                    const anio = Number(e.target.value);
+                    const valorSMMLV = SMMLV_POR_ANIO[anio];
+                    actualizarDeduciblePresupuesto({
+                      anioSMMLV: anio,
+                      valorSMMLV,
+                      valorSMDLV: valorSmdlvDesdeSmmlv(valorSMMLV),
+                    });
+                  }}
+                >
+                  {ANIOS_SMMLV.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio} — $ {formatMilesNsr10(SMMLV_POR_ANIO[anio])}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
+              <Campo label={esSmdlvPresupuesto ? 'Valor SMDLV' : 'Valor SMMLV'}>
+                <InputFenix
+                  type="text"
+                  inputMode="decimal"
+                  disabled={!!exportando || guardandoCaso}
+                  value={
+                    esSmdlvPresupuesto
+                      ? formatMilesNsr10(deducibleCfgPresupuesto.valorSMDLV) ||
+                        String(deducibleCfgPresupuesto.valorSMDLV ?? '')
+                      : formatMilesNsr10(deducibleCfgPresupuesto.valorSMMLV) ||
+                        String(deducibleCfgPresupuesto.valorSMMLV ?? '')
+                  }
+                  onChange={(e) => {
+                    const fmt = formatMilesInputNsr10(e.target.value);
+                    if (esSmdlvPresupuesto) {
+                      actualizarDeduciblePresupuesto({
+                        valorSMDLV: fmt,
+                        tipoMinimo: 'SMDLV',
+                      });
+                      return;
+                    }
+                    const n = parseMontoNsr10(fmt);
+                    actualizarDeduciblePresupuesto({
+                      valorSMMLV: fmt,
+                      valorSMDLV:
+                        n == null
+                          ? deducibleCfgPresupuesto.valorSMDLV
+                          : valorSmdlvDesdeSmmlv(n),
+                      tipoMinimo: 'SMMLV',
+                    });
+                  }}
+                />
+              </Campo>
+            </div>
+          </div>
+        )}
+
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>
@@ -323,25 +507,28 @@ export default function LiquidadorSegurosSura({
             <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
           </div>
         </div>
-        {usaCotizBase && (
+        {usaCotizBase ? (
           <p className="mt-2 text-xs text-gray-500">
             {t('segurosSura.settlement.quoteDeductibleNote', {
               defaultValue:
-                'El tope del deducible de edificio es el monto de la cotización; el % se calcula sobre el valor asegurable cuando está diligenciado.',
+                'El tope del deducible de edificio es el monto de la cotización. Si la cotización está desfasada, desmarque «Usar este monto como base…» y liquide con el presupuesto NSR-10 en la pestaña Presupuesto.',
             })}
           </p>
-        )}
+        ) : tieneCotizacionPdf ? (
+          <p className="mt-2 text-xs text-gray-500">
+            {t('segurosSura.settlement.quoteNotBaseNote', {
+              defaultValue:
+                'La cotización PDF queda de referencia. La liquidación usa el presupuesto NSR-10 que diligencie el ajustador en Presupuesto.',
+            })}
+          </p>
+        ) : null}
       </section>
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
-          {tieneCotizacionPdf
-            ? t('segurosSura.settlement.nsrTitleQuote', {
-                defaultValue: 'Liquidador · Contenidos y totales (cotización PDF)',
-              })
-            : t('segurosSura.settlement.nsrTitle', {
-                defaultValue: 'Evaluación y liquidador NSR-10',
-              })}
+          {t('segurosSura.settlement.nsrTitle', {
+            defaultValue: 'Evaluación y liquidador NSR-10',
+          })}
         </h3>
         <SeccionModoLiquidadorCat
           modulo="sura"
@@ -360,7 +547,7 @@ export default function LiquidadorSegurosSura({
           habilitarUploadFotos={false}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
           reglasDeduciblePorCobertura={REGLAS_DEDUCIBLE_SURA}
-          ocultarPresupuestoEscrito={Boolean(tieneCotizacionPdf && usaCotizBase)}
+          ocultarPresupuestoEscrito={false}
           totalPresupuestoOverride={
             usaCotizBase ? montoCotizacionPdf(liquidador.cotizacionPdf) : null
           }

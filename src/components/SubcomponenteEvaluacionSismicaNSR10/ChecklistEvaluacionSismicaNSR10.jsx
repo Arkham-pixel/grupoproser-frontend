@@ -669,17 +669,17 @@ export default function ChecklistEvaluacionSismicaNSR10({
     []
   );
   const hojaRaw = evalData.hojaActiva || 'portada';
-  const hojasMenu = (modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10).filter(
-    (h) => !(ocultarPresupuestoEscrito && h.id === 'presupuesto')
+  // Con cotización PDF se oculta el presupuesto digitado, pero se mantiene la hoja
+  // para editar % deducible y salarios mínimos (SMMLV/SMDLV) sobre el monto del PDF.
+  const hojasMenu = (modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10).map((h) =>
+    ocultarPresupuestoEscrito && h.id === 'presupuesto'
+      ? { ...h, label: 'Deducible cotización' }
+      : h
   );
   const hojaFallback = simplificarDeducible
-    ? ocultarPresupuestoEscrito
-      ? 'totales'
-      : 'presupuesto'
+    ? 'presupuesto'
     : modoLiquidador
-      ? ocultarPresupuestoEscrito
-        ? 'totales'
-        : 'presupuesto'
+      ? 'presupuesto'
       : hojaActivaVisibleNSR10(hojaRaw);
   const hoja = hojasMenu.some((h) => h.id === hojaRaw) ? hojaRaw : hojaFallback;
   const portadaSyncRef = useRef('');
@@ -744,9 +744,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
       ) / 100
     : resumenTotales.sumaCompleta;
   const usaPorArticuloContenidos = true;
-  const modoDeduciblePresupuesto = simplificarDeducible
-    ? MODO_DEDUCIBLE_NSR10.GENERAL
-    : resolverModoDeduciblePresupuesto(liquidacion, resumenTotales);
+  // Cotización PDF: el tope es un monto único → deducible general editable (% / SMMLV).
+  const modoDeduciblePresupuesto =
+    simplificarDeducible || ocultarPresupuestoEscrito || usaTotalPresupuestoOverride
+      ? MODO_DEDUCIBLE_NSR10.GENERAL
+      : resolverModoDeduciblePresupuesto(liquidacion, resumenTotales);
   const usaPorArticuloPresupuesto =
     modoDeduciblePresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
   const usaPorArticulo = usaPorArticuloContenidos;
@@ -1515,7 +1517,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
             <p className="mt-1 text-sm" style={{ color: textSecondary }}>
           {modoLiquidador
             ? ocultarPresupuestoEscrito
-              ? 'La cotización PDF sustituye el presupuesto escrito. Contenidos y totales siguen alimentando el deducible.'
+              ? 'La cotización PDF sustituye el presupuesto escrito. En «Deducible cotización» puede cambiar el % y los salarios mínimos; contenidos y totales siguen alimentando el liquidador.'
               : 'Presupuesto (edificio), Contenidos, Gastos sin deducible y Totales. Los gastos no llevan deducible: se suman al neto.'
             : OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
               ? 'Portada, Presupuesto, Contenidos, Gastos sin deducible y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'
@@ -1830,6 +1832,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
 
       {hoja === 'presupuesto' && (
         <section className="space-y-4">
+          {ocultarPresupuestoEscrito ? (
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                Deducible de la cotización PDF
+              </h3>
+              <p className="text-xs" style={{ color: textSecondary }}>
+                El monto final de la cotización sustituye el presupuesto escrito. Aquí puede
+                escoger el % deducible, el mínimo en SMMLV/SMDLV y el año o valor del salario
+                mínimo. Se aplica el mayor entre el % y el mínimo, con tope en el monto de la
+                cotización.
+              </p>
+            </div>
+          ) : (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
@@ -1875,8 +1890,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </button>
             </div>
           </div>
+          )}
 
-          {!simplificarDeducible ? (
+          {!ocultarPresupuestoEscrito && !simplificarDeducible ? (
             <PreguntaModoDeducibleNsr
               modoActual={modoDeduciblePresupuesto}
               onElegir={elegirModoDeduciblePresupuesto}
@@ -1887,6 +1903,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
             />
           ) : null}
 
+          {!ocultarPresupuestoEscrito ? (
+          <>
           {usaPorArticuloPresupuesto ? (
             <label className="block max-w-sm">
               <span className={labelClass} style={{ color: textSecondary }}>
@@ -2578,6 +2596,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <strong style={{ color: textPrimary }}>{money(totales.total)}</strong>
             </div>
           </div>
+          </>
+          ) : null}
 
           {ocultarLiquidacionPresupuesto ? null : (
           <div
@@ -2586,7 +2606,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-semibold" style={{ color: textPrimary }}>
-                Liquidación presupuesto
+                {ocultarPresupuestoEscrito
+                  ? 'Liquidación cotización PDF'
+                  : 'Liquidación presupuesto'}
               </h4>
             </div>
             {usaPorArticuloPresupuesto ? null : (
@@ -2725,6 +2747,79 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   }}
                 />
               </label>
+              <label className="block text-xs" style={{ color: textSecondary }}>
+                Año SMMLV
+                <select
+                  className={`${inputClass} mt-1`}
+                  style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                  value={
+                    deducibleCfgPresupuestoInput.anioSMMLV ??
+                    deducibleCfgPresupuesto.anioSMMLV
+                  }
+                  onChange={(e) => {
+                    const anio = Number(e.target.value);
+                    const valorSMMLV = SMMLV_POR_ANIO[anio];
+                    actualizarDeduciblePresupuesto({
+                      anioSMMLV: anio,
+                      valorSMMLV,
+                      valorSMDLV: valorSmdlvDesdeSmmlv(valorSMMLV),
+                    });
+                  }}
+                >
+                  {ANIOS_SMMLV.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio} — $ {formatMilesNsr10(SMMLV_POR_ANIO[anio])}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {esSmdlvPresupuesto ? (
+                <label className="block text-xs" style={{ color: textSecondary }}>
+                  Valor SMDLV
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={displayMiles(
+                      deducibleCfgPresupuestoInput.valorSMDLV ??
+                        deducibleCfgPresupuesto.valorSMDLV
+                    )}
+                    onChange={(e) => {
+                      actualizarDeduciblePresupuesto({
+                        valorSMDLV: formatMilesInputNsr10(e.target.value),
+                        tipoMinimo: 'SMDLV',
+                      });
+                    }}
+                  />
+                </label>
+              ) : (
+                <label className="block text-xs" style={{ color: textSecondary }}>
+                  Valor SMMLV
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={displayMiles(
+                      deducibleCfgPresupuestoInput.valorSMMLV ??
+                        deducibleCfgPresupuesto.valorSMMLV
+                    )}
+                    onChange={(e) => {
+                      const fmt = formatMilesInputNsr10(e.target.value);
+                      const n = parseMontoNsr10(fmt);
+                      actualizarDeduciblePresupuesto({
+                        valorSMMLV: fmt,
+                        valorSMDLV:
+                          n == null
+                            ? deducibleCfgPresupuesto.valorSMDLV
+                            : valorSmdlvDesdeSmmlv(n),
+                        tipoMinimo: 'SMMLV',
+                      });
+                    }}
+                  />
+                </label>
+              )}
             </div>
             </>
             )}
