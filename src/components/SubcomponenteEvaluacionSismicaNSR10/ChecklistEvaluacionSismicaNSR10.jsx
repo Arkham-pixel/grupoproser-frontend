@@ -2657,49 +2657,56 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 SMDLV (diario)
               </button>
             </div>
-            {simplificarDeducible ? (
-              <div>
-                <p className="mb-1.5 text-xs font-medium" style={{ color: textSecondary }}>
-                  % sobre
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className={`rounded border px-2 py-1 text-xs font-semibold ${
-                      !esPctSobrePerdida ? 'border-blue-500 text-blue-600' : ''
-                    }`}
-                    style={
-                      !esPctSobrePerdida ? undefined : { borderColor, color: textSecondary }
-                    }
-                    onClick={() =>
-                      actualizarDeduciblePresupuesto({
-                        basePctDeducible: 'valor_asegurable',
-                        baseDeducible: 'valor_asegurable',
-                      })
-                    }
-                  >
-                    Valor asegurado
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded border px-2 py-1 text-xs font-semibold ${
-                      esPctSobrePerdida ? 'border-blue-500 text-blue-600' : ''
-                    }`}
-                    style={
-                      esPctSobrePerdida ? undefined : { borderColor, color: textSecondary }
-                    }
-                    onClick={() =>
-                      actualizarDeduciblePresupuesto({
-                        basePctDeducible: 'perdida',
-                        baseDeducible: 'perdida',
-                      })
-                    }
-                  >
-                    Pérdida
-                  </button>
-                </div>
+            <div>
+              <p className="mb-1.5 text-xs font-medium" style={{ color: textSecondary }}>
+                % sobre
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`rounded border px-2 py-1 text-xs font-semibold ${
+                    !esPctSobrePerdida && basePctPresupuesto === 'valor_asegurable'
+                      ? 'border-blue-500 text-blue-600'
+                      : ''
+                  }`}
+                  style={
+                    !esPctSobrePerdida && basePctPresupuesto === 'valor_asegurable'
+                      ? undefined
+                      : { borderColor, color: textSecondary }
+                  }
+                  onClick={() =>
+                    actualizarDeduciblePresupuesto({
+                      basePctDeducible: 'valor_asegurable',
+                      baseDeducible: 'valor_asegurable',
+                    })
+                  }
+                >
+                  Valor asegurable
+                </button>
+                <button
+                  type="button"
+                  className={`rounded border px-2 py-1 text-xs font-semibold ${
+                    esPctSobrePerdida ? 'border-blue-500 text-blue-600' : ''
+                  }`}
+                  style={
+                    esPctSobrePerdida ? undefined : { borderColor, color: textSecondary }
+                  }
+                  onClick={() =>
+                    actualizarDeduciblePresupuesto({
+                      basePctDeducible: 'perdida',
+                      baseDeducible: 'perdida',
+                    })
+                  }
+                >
+                  Pérdida
+                </button>
               </div>
-            ) : null}
+              {usaTotalPresupuestoOverride && !basePctPresupuesto ? (
+                <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
+                  Elija si el % va sobre valor asegurable o sobre la pérdida de la cotización.
+                </p>
+              ) : null}
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible

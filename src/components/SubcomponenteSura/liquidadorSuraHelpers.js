@@ -529,12 +529,35 @@ const fechaInput = (value) => {
   return `${y}-${m}-${day}`;
 };
 
+/**
+ * Valor asegurable para deducible: prioriza inmueble del caso, luego informe ágil
+ * (campo «30. VALOR ASEGURADO»), luego contenidos.
+ */
+export function resolverValorAsegurableDesdeCasoSura(caso = {}, liquidador = null) {
+  const c = caso && typeof caso === 'object' ? caso : {};
+  const liq = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  const agil =
+    c.informeAgil && typeof c.informeAgil === 'object' ? c.informeAgil : {};
+  const candidatos = [
+    liq.liquidacionCatastrofico?.valorAsegurado,
+    liq.encabezado?.valorAseguradoInmueble,
+    c.valorAseguradoInmueble,
+    agil.valorAsegurado,
+    c.valorAsegurado,
+    liq.encabezado?.valorAseguradoContenidos,
+    c.valorAseguradoContenidos,
+  ];
+  for (const raw of candidatos) {
+    const n = parsearNumero(raw);
+    if (n > 0) return n;
+  }
+  return 0;
+}
+
 export function liquidacionCatastroficoDefaultSura(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
-  const va =
-    c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
-      ? Number(c.valorAseguradoInmueble) || ''
-      : '';
+  const vaResuelto = resolverValorAsegurableDesdeCasoSura(c);
+  const va = vaResuelto > 0 ? vaResuelto : '';
   return {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
@@ -643,8 +666,21 @@ export function calcularLiquidacionSura(liquidador = {}) {
   const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
   const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
   const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
+  const valorAseguradoResuelto =
+    parsearNumero(liq.valorAsegurado) ||
+    Number(valoresAsegurablesCaso.inmueble) ||
+    parsearNumero(liquidador.encabezado?.valorAseguradoInmueble) ||
+    resolverValorAsegurableDesdeCasoSura(
+      {
+        valorAseguradoInmueble: liquidador.encabezado?.valorAseguradoInmueble,
+        valorAseguradoContenidos: liquidador.encabezado?.valorAseguradoContenidos,
+        informeAgil: liquidador.informeAgil,
+      },
+      liquidador
+    ) ||
+    0;
   const diagrama = calcularDiagramaLiquidacion({
-    valorAsegurado: liq.valorAsegurado,
+    valorAsegurado: valorAseguradoResuelto,
     totalDanios: sumaCompleta,
     totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
@@ -1130,6 +1166,8 @@ export function mapCasoSuraALiquidador(caso = {}) {
     evaluacionSismicaNSR10: evalInicial,
     liquidacionCatastrofico: liquidacionCatastroficoDefaultSura(c),
     otrosAmparos: defaultOtrosAmparos(),
+    /** Referencia para traer VA del formato ágil («30. VALOR ASEGURADO»). */
+    informeAgil: c.informeAgil && typeof c.informeAgil === 'object' ? c.informeAgil : null,
     valorReclamadoCaso:
       c.valorReclamado != null && c.valorReclamado !== ''
         ? formatMiles(c.valorReclamado)
@@ -1152,11 +1190,18 @@ export function mapCasoSuraALiquidador(caso = {}) {
     };
   }
 
+  const liqGuardada = guardado.liquidacionCatastrofico || {};
+  const vaGuardado = parsearNumero(liqGuardada.valorAsegurado);
+  const vaBase = parsearNumero(base.liquidacionCatastrofico?.valorAsegurado);
   return {
     ...base,
     ...guardado,
     modelo: 'nsr10',
     encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
+    informeAgil:
+      c.informeAgil && typeof c.informeAgil === 'object'
+        ? c.informeAgil
+        : base.informeAgil,
     evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
       guardado.evaluacionSismicaNSR10,
       prefill,
@@ -1164,7 +1209,9 @@ export function mapCasoSuraALiquidador(caso = {}) {
     ),
     liquidacionCatastrofico: {
       ...base.liquidacionCatastrofico,
-      ...(guardado.liquidacionCatastrofico || {}),
+      ...liqGuardada,
+      // Si el liquidador guardado no trae VA, conserva el del caso / informe ágil.
+      valorAsegurado: vaGuardado > 0 ? liqGuardada.valorAsegurado : vaBase || '',
     },
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
     otrosAmparos: Array.isArray(guardado.otrosAmparos)

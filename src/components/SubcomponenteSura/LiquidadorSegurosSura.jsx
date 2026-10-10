@@ -27,6 +27,7 @@ import SeccionModoLiquidadorCat from '../SubcomponenteLiquidadorCatExpress/Secci
 import {
   ANIOS_SMMLV,
   DEFAULT_DEDUCIBLE_CATASTROFICO,
+  resolverBasePctElegida,
   SMMLV_POR_ANIO,
   valorSmdlvDesdeSmmlv,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
@@ -36,6 +37,8 @@ import {
   formDataNsrDesdeLiquidadorSura,
   formatearMonto,
   mapCasoSuraALiquidador,
+  parsearNumero,
+  resolverValorAsegurableDesdeCasoSura,
 } from './liquidadorSuraHelpers.js';
 import { descargarFiniquitoSuraWord } from './generarFiniquitoSuraWord.js';
 import { descargarLiquidadorSuraExcel } from './generarLiquidadorSuraExcel.js';
@@ -142,22 +145,90 @@ export default function LiquidadorSegurosSura({
     ...(liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto || {}),
   };
   const esSmdlvPresupuesto = deducibleCfgPresupuesto.tipoMinimo === 'SMDLV';
+  const basePctElegida = resolverBasePctElegida(deducibleCfgPresupuesto);
+  const esPctSobrePerdida = basePctElegida === 'perdida';
+  const esPctSobreValorAsegurable = basePctElegida === 'valor_asegurable';
+  const valorAsegurableCasoN = resolverValorAsegurableDesdeCasoSura(casoSura, {
+    ...liquidador,
+    informeAgil: casoSura?.informeAgil || liquidador.informeAgil,
+  });
+  const valorAsegurableActualN =
+    parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
+    parsearNumero(liquidador.encabezado?.valorAseguradoInmueble) ||
+    valorAsegurableCasoN ||
+    0;
+  const valorAsegurableActual =
+    valorAsegurableActualN > 0 ? valorAsegurableActualN : '';
+  const valorAsegurableCaso =
+    valorAsegurableCasoN > 0 ? valorAsegurableCasoN : '';
 
-  const actualizarDeduciblePresupuesto = (patch) => {
+  const actualizarDeduciblePresupuesto = (patch, extras = {}) => {
     setLiquidador((prev) => {
       const liq = prev.liquidacionCatastrofico || {};
       const base = {
         ...DEFAULT_DEDUCIBLE_CATASTROFICO,
         ...(liq.deducibleConfigPresupuesto || {}),
       };
+      const nextLiq = {
+        ...liq,
+        deducibleConfigPresupuesto: { ...base, ...patch },
+        ...extras.liquidacionCatastrofico,
+      };
+      const nextEnc = extras.encabezado
+        ? { ...(prev.encabezado || {}), ...extras.encabezado }
+        : prev.encabezado;
       return {
         ...prev,
-        liquidacionCatastrofico: {
-          ...liq,
-          deducibleConfigPresupuesto: { ...base, ...patch },
-        },
+        encabezado: nextEnc,
+        liquidacionCatastrofico: nextLiq,
+        informeAgil: casoSura?.informeAgil || prev.informeAgil || null,
       };
     });
+  };
+
+  const actualizarValorAsegurable = (raw) => {
+    const fmt = formatMilesInputNsr10(raw);
+    const n = parseMontoNsr10(fmt);
+    setLiquidador((prev) => {
+      const liq = prev.liquidacionCatastrofico || {};
+      const enc = prev.encabezado || {};
+      return {
+        ...prev,
+        encabezado: {
+          ...enc,
+          valorAseguradoInmueble: fmt,
+        },
+        liquidacionCatastrofico: {
+          ...liq,
+          valorAsegurado: n == null ? '' : n,
+        },
+        informeAgil: casoSura?.informeAgil || prev.informeAgil || null,
+      };
+    });
+  };
+
+  const elegirBasePctDeducible = (base) => {
+    const esVa = base === 'valor_asegurable';
+    const delCaso = resolverValorAsegurableDesdeCasoSura(casoSura, {
+      ...liquidador,
+      informeAgil: casoSura?.informeAgil || liquidador.informeAgil,
+    });
+    const extras =
+      esVa && delCaso > 0
+        ? {
+            liquidacionCatastrofico: { valorAsegurado: delCaso },
+            encabezado: {
+              valorAseguradoInmueble: formatMilesInputNsr10(String(delCaso)),
+            },
+          }
+        : {};
+    actualizarDeduciblePresupuesto(
+      {
+        basePctDeducible: base,
+        baseDeducible: base,
+      },
+      extras
+    );
   };
 
   const handleGuardar = async () => {
@@ -312,10 +383,74 @@ export default function LiquidadorSegurosSura({
               <p className="mt-1 text-xs text-gray-500">
                 {t('segurosSura.settlement.quoteDeductibleHint', {
                   defaultValue:
-                    'Elija el % y el mínimo en salarios (SMMLV o SMDLV). Se aplica el mayor, con tope en el monto de la cotización.',
+                    'Indique si el % va sobre valor asegurable o sobre la pérdida (cotización). Se aplica el mayor entre ese % y el mínimo SMMLV/SMDLV, con tope en el monto de la cotización.',
                 })}
               </p>
             </div>
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                {t('segurosSura.settlement.quoteDeductibleBase', {
+                  defaultValue: 'El % deducible se calcula sobre',
+                })}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`${esPctSobreValorAsegurable ? expressBtnPrimary : expressBtnGhost} !px-3 !py-1.5 text-xs`}
+                  disabled={!!exportando || guardandoCaso}
+                  onClick={() => elegirBasePctDeducible('valor_asegurable')}
+                >
+                  Valor asegurable
+                </button>
+                <button
+                  type="button"
+                  className={`${esPctSobrePerdida ? expressBtnPrimary : expressBtnGhost} !px-3 !py-1.5 text-xs`}
+                  disabled={!!exportando || guardandoCaso}
+                  onClick={() => elegirBasePctDeducible('perdida')}
+                >
+                  Pérdida (cotización)
+                </button>
+              </div>
+              {!basePctElegida && (
+                <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                  {t('segurosSura.settlement.quoteDeductibleBaseRequired', {
+                    defaultValue:
+                      'Elija la base del %: valor asegurable (p. ej. 3% VA) o pérdida de la cotización.',
+                  })}
+                </p>
+              )}
+            </div>
+            {(esPctSobreValorAsegurable || !basePctElegida) && (
+              <Campo label="Valor asegurable (inmueble)">
+                <InputFenix
+                  type="text"
+                  inputMode="decimal"
+                  disabled={!!exportando || guardandoCaso}
+                  value={
+                    formatMilesNsr10(valorAsegurableActual) ||
+                    String(valorAsegurableActual ?? '')
+                  }
+                  onChange={(e) => actualizarValorAsegurable(e.target.value)}
+                  placeholder={
+                    parsearNumero(valorAsegurableCaso) > 0
+                      ? `Del caso: $ ${formatMilesNsr10(valorAsegurableCaso)}`
+                      : 'Escriba el valor asegurable'
+                  }
+                />
+                {parsearNumero(valorAsegurableCaso) > 0 &&
+                  parsearNumero(valorAsegurableActual) !==
+                    parsearNumero(valorAsegurableCaso) && (
+                    <button
+                      type="button"
+                      className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300"
+                      disabled={!!exportando || guardandoCaso}
+                      onClick={() => actualizarValorAsegurable(String(valorAsegurableCaso))}
+                    >
+                      Traer valor asegurable del caso ($ {formatMilesNsr10(valorAsegurableCaso)})
+                    </button>
+                  )}
+              </Campo>
+            )}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

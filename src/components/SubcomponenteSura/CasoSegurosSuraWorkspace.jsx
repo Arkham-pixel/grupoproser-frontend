@@ -659,7 +659,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
               />
             ) : (
               <LiquidadorSegurosSura
-                casoSura={casoSura}
+                casoSura={casoConSecciones()}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
